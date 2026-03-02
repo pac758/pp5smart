@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👩‍🏫 จัดการครูประจำชั้น (Inline Edit)</title>
+</head>
+<body>
+    <div class="animate-fade-in" style="max-width: 800px; margin: auto;">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-0 text-primary">
+                <i class="bi bi-pencil-square"></i> จัดการข้อมูลครูประจำชั้น
+            </h2>
+            <button class="btn btn-sm btn-outline-primary" id="refreshBtn">
+              <i class="bi bi-arrow-clockwise"></i> โหลดข้อมูลใหม่
+            </button>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <p class="card-text text-muted">
+                    ตารางนี้จะแสดงรายชื่อครูประจำชั้นทั้งหมด คุณสามารถคลิกปุ่ม "แก้ไข" เพื่อเปลี่ยนชื่อครู แล้วกด "บันทึก" ในแถวนั้นๆ ได้ทันที
+                </p>
+                <div id="teacherTableContainer" class="mt-3">
+                    </div>
+            </div>
+        </div>
+        
+        <div id="status" class="mt-3"></div>
+    </div>
+<script>
+    // 1. ฟังก์ชันหลักสำหรับโหลดและแสดงข้อมูล (ทำงานเมื่อหน้าถูกโหลด)
+    function initializeTeacherEditor() {
+        const tableContainer = document.getElementById('teacherTableContainer');
+        tableContainer.innerHTML = '<div class="text-center p-4">🔄 กำลังโหลดข้อมูล...</div>';
+
+        google.script.run
+            .withSuccessHandler(renderTeacherTable)
+            .withFailureHandler(handleError)
+            .getTeacherListForEditor();
+    }
+
+    // 2. ฟังก์ชันสำหรับสร้างตารางจากข้อมูลที่ได้รับ
+    function renderTeacherTable(data) {
+        const tableContainer = document.getElementById('teacherTableContainer');
+        if (!data || data.length === 0) {
+            tableContainer.innerHTML = '<div class="alert alert-warning">ไม่พบข้อมูลชั้นเรียนในระบบ</div>';
+            return;
+        }
+
+        let tableHTML = `
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>ระดับชั้น</th>
+                        <th>ห้อง</th>
+                        <th>ชื่อครูประจำชั้น</th>
+                        <th class="text-end">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        data.forEach(item => {
+            const rowId = `row-${item.grade}-${item.classNo}`;
+            tableHTML += `
+                <tr id="${rowId}" data-grade="${item.grade}" data-class-no="${item.classNo}">
+                    <td><strong>${item.grade}</strong></td>
+                    <td>${item.classNo}</td>
+                    <td>
+                        <span class="teacher-name-display">${item.teacherName || '<span class="text-muted">-- ว่าง --</span>'}</span>
+                        <input type="text" class="form-control d-none" value="${item.teacherName || ''}">
+                    </td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary btn-edit">แก้ไข</button>
+                        <button class="btn btn-sm btn-success btn-save d-none">บันทึก</button>
+                        <button class="btn btn-sm btn-outline-secondary btn-cancel d-none">ยกเลิก</button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        tableHTML += '</tbody></table>';
+        tableContainer.innerHTML = tableHTML;
+    }
+
+    // 3. ฟังก์ชันสลับโหมดแสดงผล/แก้ไข
+    function toggleEditMode(rowElement, isEditing) {
+        rowElement.querySelector('.teacher-name-display').classList.toggle('d-none', isEditing);
+        rowElement.querySelector('input').classList.toggle('d-none', !isEditing);
+        rowElement.querySelector('.btn-edit').classList.toggle('d-none', isEditing);
+        rowElement.querySelector('.btn-save').classList.toggle('d-none', !isEditing);
+        rowElement.querySelector('.btn-cancel').classList.toggle('d-none', !isEditing);
+    }
+
+    // 4. ฟังก์ชันสำหรับบันทึกข้อมูลแถวเดียว
+    function saveTeacher(rowElement) {
+        const teacherInfo = {
+            grade: rowElement.dataset.grade,
+            classNo: rowElement.dataset.classNo,
+            teacherName: rowElement.querySelector('input').value.trim()
+        };
+        
+        const saveBtn = rowElement.querySelector('.btn-save');
+        saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+        saveBtn.disabled = true;
+
+        google.script.run
+            .withSuccessHandler(message => {
+                rowElement.querySelector('.teacher-name-display').innerHTML = teacherInfo.teacherName || '<span class="text-muted">-- ว่าง --</span>';
+                toggleEditMode(rowElement, false);
+                saveBtn.innerHTML = 'บันทึก';
+                saveBtn.disabled = false;
+                showStatus(message, 'success');
+            })
+            .withFailureHandler(error => {
+                showStatus(`เกิดข้อผิดพลาด: ${error.message}`, 'danger');
+                saveBtn.innerHTML = 'บันทึก';
+                saveBtn.disabled = false;
+            })
+            .saveSingleTeacher(teacherInfo);
+    }
+    
+    // --- ฟังก์ชันเสริม ---
+    function handleError(error) {
+        document.getElementById('teacherTableContainer').innerHTML = `<div class="alert alert-danger">${error.message}</div>`;
+    }
+
+    function showStatus(message, type = 'success') {
+        const statusDiv = document.getElementById('status');
+        statusDiv.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+        setTimeout(() => statusDiv.innerHTML = '', 4000);
+    }
+    
+    // 5. [ส่วนสำคัญ] Event Delegation: เพิ่ม Listener ที่ตารางหลัก
+    document.getElementById('teacherTableContainer').addEventListener('click', function(event) {
+        const target = event.target;
+        const row = target.closest('tr');
+        if (!row) return;
+
+        if (target.classList.contains('btn-edit')) {
+            toggleEditMode(row, true);
+        } else if (target.classList.contains('btn-save')) {
+            saveTeacher(row);
+        } else if (target.classList.contains('btn-cancel')) {
+            // Reset input value to original display value before cancelling
+            const originalName = row.querySelector('.teacher-name-display').textContent;
+            row.querySelector('input').value = (originalName === '-- ว่าง --') ? '' : originalName;
+            toggleEditMode(row, false);
+        }
+    });
+
+    // เริ่มต้นทำงานเมื่อหน้าเว็บถูกโหลดเข้ามา
+    initializeTeacherEditor();
+
+</script>
+    
+</body>
+</html>

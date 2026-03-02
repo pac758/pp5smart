@@ -1,0 +1,66 @@
+<!-- import_students.html - Fully SPA Compatible -->
+<div class="container py-4">
+  <h4 class="text-center text-primary mb-3">📥 นำเข้ารายชื่อนักเรียนจากไฟล์ DMC (.csv)</h4>
+
+  <div class="mb-3">
+    <label class="form-label">เลือกไฟล์ .csv</label>
+    <input type="file" id="csvFileInput" accept=".csv" class="form-control">
+  </div>
+
+  <div class="text-center">
+    <button id="uploadCsvBtn" class="btn btn-success px-4">📤 อัปโหลดและนำเข้า</button>
+  </div>
+
+  <div class="text-center mt-3" id="importStatus"></div>
+</div>
+
+<div class="alert alert-info mt-4" role="alert">
+  <strong>คำแนะนำ:</strong>
+  <ul class="mb-0">
+    <li>ใช้ไฟล์ <strong>.CSV</strong> เท่านั้น (บันทึกจาก Excel เป็น CSV แบบ UTF-8)</li>
+    <li>แถวที่ 1: ชื่อโรงเรียน/ชื่อไฟล์ – <strong>ระบบจะข้าม</strong></li>
+    <li>แถวที่ 2: หัวตาราง</li>
+    <li>ข้อมูลเริ่มต้นจาก <strong>แถวที่ 3</strong> เป็นต้นไป</li>
+    <li>คอลัมน์ F: <code>รหัสนักเรียน</code> | C: <code>เลขบัตรประชาชน</code> | D–E: ชั้น/ห้อง</li>
+    <li>หากพบข้อความ “ไม่พบข้อมูล” กรุณาตรวจสอบตำแหน่งคอลัมน์ให้ตรงตามระบบ</li>
+  </ul>
+</div>
+
+<script>
+if (!window._importStudentLoaded) {
+  window._importStudentLoaded = true;
+
+  window.setupImportPage = function () {
+    const btn = document.getElementById('uploadCsvBtn');
+    const input = document.getElementById('csvFileInput');
+    const status = document.getElementById('importStatus');
+
+    if (!btn || !input || !status) return;
+
+    btn.addEventListener('click', () => {
+      const file = input.files[0];
+      if (!file) {
+        status.innerHTML = '<span class="text-danger">⚠️ กรุณาเลือกไฟล์ CSV ก่อน</span>';
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = e => {
+        const content = e.target.result;
+        status.innerHTML = '<span class="text-info">⏳ กำลังนำเข้าข้อมูล...</span>';
+
+        google.script.run
+          .withSuccessHandler(msg => status.innerHTML = '<span class="text-success">' + msg + '</span>')
+          .withFailureHandler(err => status.innerHTML = '<span class="text-danger">❌ ' + err.message + '</span>')
+          .importStudentFile('csv', content, file.name);
+      };
+      reader.readAsText(file, 'utf-8');
+    });
+  };
+
+  // เรียกทันทีถ้าโหลดแบบ SPA
+  if (typeof window.setupImportPage === 'function') {
+    window.setupImportPage();
+  }
+}
+</script>

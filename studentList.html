@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>📋 จัดการข้อมูลนักเรียน</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+ <style>
+  body {
+    font-family: 'Sarabun', sans-serif;
+    background-color: #f0f2f5;
+  }
+  .card-header h4 {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 0;
+  }
+  table th, table td {
+    font-size: 14px;
+    text-align: center;
+    vertical-align: middle;
+    padding: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+  }
+  table th:first-child,
+  table td:first-child {
+    max-width: 60px;
+    min-width: 60px;
+    width: 60px;
+  }
+  td input, td select {
+    width: 100%;
+    font-size: 13px;
+  }
+  .no-truncate {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    max-width: none !important;
+  }
+  .action-btn-group {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+  }
+  .status-message {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 1rem;
+    font-size: 1.1rem;
+  }
+  @media (max-width: 768px) {
+    .card-header h4 { font-size: 1.2rem; }
+    table th, table td {
+      font-size: 12px;
+      padding: 5px;
+      max-width: 80px;
+    }
+    table th:first-child,
+    table td:first-child {
+      max-width: 50px;
+      min-width: 50px;
+      width: 50px;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="container my-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white py-3">
+            <h4 class="text-center text-primary">
+                <i class="bi bi-people-fill"></i> จัดการข้อมูลนักเรียน
+            </h4>
+        </div>
+        <div class="card-body">
+            <div class="row g-2 mb-3 pb-3 border-bottom">
+                <div class="col-lg-6">
+                    <div class="row g-2">
+                        <div class="col-md-4 col-6">
+                            <select id="filterGrade" class="form-select">
+                                <option value="">ระดับชั้นทั้งหมด</option>
+                                <option value="อ.1">อ.1</option> <option value="อ.2">อ.2</option> <option value="อ.3">อ.3</option>
+                                <option value="ป.1">ป.1</option> <option value="ป.2">ป.2</option> <option value="ป.3">ป.3</option>
+                                <option value="ป.4">ป.4</option> <option value="ป.5">ป.5</option> <option value="ป.6">ป.6</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 col-6">
+                            <select id="filterClass" class="form-select">
+                                <option value="">ทุกห้อง</option>
+                                <option value="1">1</option> <option value="2">2</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 col-12">
+                            <button class="btn btn-primary w-100" onclick="window.loadStudentList()">
+                                <i class="bi bi-search"></i> กรองข้อมูล
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="row g-2">
+                        <div class="col-md-6 col-6">
+                            <button id="exportPdfBtn" class="btn btn-success w-100" onclick="window.exportToPDF()">
+                                <i class="bi bi-file-earmark-pdf-fill"></i> ส่งออกรายชื่อ (PDF)
+                            </button>
+                        </div>
+                        <div class="col-md-6 col-6">
+                            <button id="exportDataBtn" class="btn btn-info text-white w-100" onclick="window.exportStudentData()">
+                                <i class="bi bi-person-vcard-fill"></i> ส่งออกข้อมูลในปพ.5 (PDF)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <div id="statusContainer">
+                  <div id="loadingMsg" class="status-message text-muted d-none">
+                    <div class="spinner-border spinner-border-sm" role="status"></div>
+                    <span>กำลังโหลดข้อมูลนักเรียน...</span>
+                  </div>
+                  <div id="savingMsg" class="status-message text-info d-none">
+                    <div class="spinner-border spinner-border-sm" role="status"></div>
+                    <span>กำลังบันทึกข้อมูล...</span>
+                  </div>
+                </div>
+                <table class="table table-bordered table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr class="fw-semibold text-dark">
+                            <th>รหัส</th>
+                            <th>เลข ปชช.</th>
+                            <th>ชื่อ - สกุล</th>
+                            <th>ชั้น</th>
+                            <th>ห้อง</th>
+                            <th>เพศ</th>
+                            <th>วันเกิด</th>
+                            <th>อายุ</th>
+                            <th>น้ำหนัก (กก.)</th>
+                            <th>ส่วนสูง (ซม.)</th>
+                            <th>ดำเนินการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentListTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="confirmSaveModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="bi bi-question-circle-fill"></i> ยืนยันการบันทึก</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">คุณแน่ใจหรือไม่ว่าต้องการ <strong>บันทึกข้อมูลที่แก้ไข</strong> นี้?</div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i> ยกเลิก</button>
+        <button type="button" class="btn btn-success" onclick="window.confirmSaveStudent()"><i class="bi bi-check-lg"></i> บันทึกเลย</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999">
+  <div id="saveToast" class="toast align-items-center text-white bg-success border-0" role="alert">
+    <div class="d-flex">
+      <div class="toast-body"><i class="bi bi-check-circle-fill"></i> บันทึกข้อมูลเรียบร้อยแล้ว</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // --- Global State ---
+    window.originalStudentData = {};
+    window._pendingSaveId = null;
+
+    /**
+     * Formats a 'YYYY-MM-DD' date string into a Thai date format.
+     */
+    function formatThaiDate(dateStr) {
+        if (!dateStr) return "-";
+        const months = ["", "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+        try {
+            const [y, m, d] = dateStr.split("-");
+            const thaiYear = parseInt(y) + 543;
+            return `${parseInt(d)} ${months[parseInt(m)]} ${thaiYear}`;
+        } catch {
+            return dateStr;
+        }
+    }
+
+    /**
+     * Renders the student data into the table.
+     */
+    function renderTable(data) {
+        document.getElementById("loadingMsg").classList.add("d-none");
+        const tbody = document.getElementById("studentListTable");
+        tbody.innerHTML = "";
+
+        if (!data || data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="11" class="text-center text-danger py-4">ไม่พบข้อมูลนักเรียนที่ตรงกับเงื่อนไข</td></tr>`;
+            return;
+        }
+
+        // Sort data by student ID (numeric sort)
+        data.sort((a, b) => {
+            const idA = a.id || '';
+            const idB = b.id || '';
+            return String(idA).localeCompare(String(idB), undefined, { numeric: true });
+        });
+
+        data.forEach(s => {
+            const key = s.id;
+            window.originalStudentData[key] = { ...s };
+            tbody.innerHTML += `
+              <tr id="row-${key}">
+                <td>${s.id}</td>
+                <td>${s.idCard || "-"}</td>
+                <td class="text-start">${s.firstname} ${s.lastname}</td>
+                <td>${s.grade}</td>
+                <td>${s.classNo}</td>
+                <td>${s.gender}</td>
+                <td>${formatThaiDate(s.birthdate)}</td>
+                <td>${s.age || "-"}</td>
+                <td>${s.weight || "-"}</td>
+                <td>${s.height || "-"}</td>
+                <td>
+                    <div class="action-btn-group">
+                        <button class="btn btn-sm btn-outline-primary" onclick="window.enableEdit('${key}')" title="แก้ไข">✏️</button>
+                    </div>
+                </td>
+              </tr>`;
+        });
+    }
+
+    /**
+     * Toggles a table row into an editable form.
+     */
+    window.enableEdit = function(id) {
+        const s = window.originalStudentData[id];
+        const row = document.getElementById(`row-${id}`);
+        const [yyyy, mm, dd] = (s.birthdate || "2000-01-01").split("-");
+        const thaiYear = parseInt(yyyy) + 543;
+
+        row.innerHTML = `
+            <td>${s.id}</td>
+            <td>${s.idCard}</td>
+            <td class="no-truncate"><div class="d-flex gap-1">
+                <input class="form-control form-control-sm" id="edit-firstname-${id}" value="${s.firstname}">
+                <input class="form-control form-control-sm" id="edit-lastname-${id}" value="${s.lastname}">
+            </div></td>
+            <td><input class="form-control form-control-sm" id="edit-grade-${id}" value="${s.grade}"></td>
+            <td><input class="form-control form-control-sm" id="edit-classNo-${id}" value="${s.classNo}"></td>
+            <td>
+                <select class="form-select form-select-sm" id="edit-gender-${id}">
+                    <option value="ชาย" ${s.gender === "ชาย" ? "selected" : ""}>ชาย</option>
+                    <option value="หญิง" ${s.gender === "หญิง" ? "selected" : ""}>หญิง</option>
+                </select>
+            </td>
+            <td class="no-truncate"><div class="d-flex gap-1">
+                <select class="form-select form-select-sm" id="birth-day-${id}">${Array.from({length:31},(_,i)=>`<option value="${i+1}" ${i+1==dd?"selected":""}>${i+1}</option>`).join("")}</select>
+                <select class="form-select form-select-sm" id="birth-month-${id}">${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${i+1==mm?"selected":""}>${i+1}</option>`).join("")}</select>
+                <select class="form-select form-select-sm" id="birth-year-${id}">${Array.from({length:30},(_,i)=>{ const y = new Date().getFullYear() + 543 - 5 - i; return `<option value="${y}" ${y==thaiYear?"selected":""}>${y}</option>`; }).join("")}</select>
+            </div></td>
+            <td>${s.age || "-"}</td>
+            <td><input type="number" step="0.1" class="form-control form-control-sm" id="edit-weight-${id}" value="${s.weight || ""}"></td>
+            <td><input type="number" step="0.1" class="form-control form-control-sm" id="edit-height-${id}" value="${s.height || ""}"></td>
+            <td>
+                <div class="action-btn-group">
+                    <button class="btn btn-sm btn-success" onclick="window.saveEdit('${id}')" title="บันทึก">💾</button>
+                    <button class="btn btn-sm btn-secondary" onclick="window.cancelEdit()" title="ยกเลิก">❌</button>
+                </div>
+            </td>`;
+    };
+
+    /**
+     * Cancels the edit and reloads the student list.
+     */
+    window.cancelEdit = function() {
+        window.loadStudentList();
+    };
+    
+    /**
+     * Shows the confirmation modal before saving.
+     */
+    window.saveEdit = function(id) {
+        window._pendingSaveId = id;
+        const modal = new bootstrap.Modal(document.getElementById("confirmSaveModal"));
+        modal.show();
+    };
+
+    /**
+     * Gathers data from the form and sends it to the backend to be saved.
+     */
+    window.confirmSaveStudent = function () {
+        const id = window._pendingSaveId;
+        if (!id) return;
+        
+        bootstrap.Modal.getInstance(document.getElementById("confirmSaveModal")).hide();
+        document.getElementById("savingMsg").classList.remove("d-none");
+        document.getElementById("studentListTable").innerHTML = '';
+
+
+        const day = document.getElementById(`birth-day-${id}`).value;
+        const month = document.getElementById(`birth-month-${id}`).value;
+        const yearThai = document.getElementById(`birth-year-${id}`).value;
+
+        if (!day || !month || !yearThai) {
+            alert("❌ กรุณาระบุวันเดือนปีเกิดให้ครบถ้วน");
+            document.getElementById("savingMsg").classList.add("d-none");
+            return;
+        }
+
+        const year = parseInt(yearThai) - 543;
+        const birthdate = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+        if (isNaN(new Date(birthdate).getTime())) {
+            alert("❌ รูปแบบวันเกิดไม่ถูกต้อง");
+            document.getElementById("savingMsg").classList.add("d-none");
+            return;
+        }
+
+        const studentData = {
+            id: id,
+            firstname: document.getElementById(`edit-firstname-${id}`).value.trim(),
+            lastname: document.getElementById(`edit-lastname-${id}`).value.trim(),
+            grade: document.getElementById(`edit-grade-${id}`).value.trim(),
+            classNo: document.getElementById(`edit-classNo-${id}`).value.trim(),
+            gender: document.getElementById(`edit-gender-${id}`).value,
+            birthdate: birthdate,
+            weight: document.getElementById(`edit-weight-${id}`).value.trim(),
+            height: document.getElementById(`edit-height-${id}`).value.trim()
+        };
+
+        google.script.run
+            .withSuccessHandler(() => {
+                document.getElementById("savingMsg").classList.add("d-none");
+                const toast = new bootstrap.Toast(document.getElementById("saveToast"));
+                toast.show();
+                window.loadStudentList();
+                window._pendingSaveId = null;
+            })
+            .withFailureHandler(err => {
+                alert(`❌ เกิดข้อผิดพลาดในการบันทึก: ${err.message}`);
+                document.getElementById("savingMsg").classList.add("d-none");
+                window.loadStudentList();
+            })
+            .updateStudentInline(studentData);
+    };
+
+    /**
+     * Generic handler for PDF export buttons.
+     */
+    function handleExport(buttonId, serverFunctionName) {
+      const btn = document.getElementById(buttonId);
+      const originalHtml = btn.innerHTML;
+      btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status"></span> กำลังสร้างอาจใช้เวลาสักครู่...`;
+      btn.disabled = true;
+
+      const grade = document.getElementById("filterGrade").value;
+      const classNo = document.getElementById("filterClass").value;
+
+      google.script.run
+        .withSuccessHandler(url => {
+          btn.innerHTML = originalHtml;
+          btn.disabled = false;
+          if (url) {
+            window.open(url, '_blank');
+          } else {
+            alert('❌ ไม่สามารถสร้างไฟล์ PDF ได้ หรือไม่พบข้อมูลนักเรียน');
+          }
+        })
+        .withFailureHandler(err => {
+          btn.innerHTML = originalHtml;
+          btn.disabled = false;
+          alert(`❌ เกิดข้อผิดพลาด: ${err.message}`);
+        })
+        [serverFunctionName](grade, classNo);
+    }
+
+    /**
+     * Initiates the student list PDF export.
+     */
+    window.exportToPDF = function() {
+        handleExport('exportPdfBtn', 'exportStudentListPDF');
+    };
+
+    /**
+     * Initiates the student registry PDF export.
+     */
+    window.exportStudentData = function() {
+        handleExport('exportDataBtn', 'exportStudentRegistryPDF');
+    };
+
+    /**
+     * Fetches and displays the filtered list of students from the backend.
+     */
+    window.loadStudentList = function() {
+        document.getElementById("loadingMsg").classList.remove("d-none");
+        document.getElementById("studentListTable").innerHTML = '';
+        const grade = document.getElementById("filterGrade").value;
+        const classNo = document.getElementById("filterClass").value;
+        google.script.run
+          .withSuccessHandler(renderTable)
+          .withFailureHandler(err => {
+            console.error('getFilteredStudentsInline failed:', err);
+            document.getElementById("loadingMsg").classList.add("d-none");
+            document.getElementById("studentListTable").innerHTML = `<tr><td colspan="11" class="text-center text-danger py-4">โหลดข้อมูลนักเรียนไม่ได้</td></tr>`;
+            alert(`❌ โหลดข้อมูลนักเรียนไม่ได้: ${(err && err.message) ? err.message : err}`);
+          })
+          .getFilteredStudentsInline(grade, classNo);
+    };
+
+    // --- Initial Load ---
+    document.addEventListener("DOMContentLoaded", function() {
+        window.loadStudentList();
+    });
+</script>
+</body>
+</html>

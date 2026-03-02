@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ประเมินกิจกรรมพัฒนาผู้เรียน</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <!-- ✅ เพิ่ม Google Fonts Sarabun -->
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="container-fluid py-4">
+    <div class="row">
+      <div class="col-12">
+        <div class="card shadow">
+          <div class="card-header bg-success text-white">
+            <h5 class="mb-0">
+              <i class="fas fa-users"></i> ประเมินกิจกรรมพัฒนาผู้เรียน
+            </h5>
+          </div>
+          <div class="card-body">
+            <!-- เลือกชั้น/ห้อง -->
+            <div class="row mb-4">
+              <div class="col-md-3">
+                <label for="gradeSelect" class="form-label">ระดับชั้น</label>
+                <select class="form-select" id="gradeSelect" onchange="loadStudents()">
+                  <option value="">เลือกระดับชั้น</option>
+                  <option value="ป.1">ป.1</option>
+                  <option value="ป.2">ป.2</option>
+                  <option value="ป.3">ป.3</option>
+                  <option value="ป.4">ป.4</option>
+                  <option value="ป.5">ป.5</option>
+                  <option value="ป.6">ป.6</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label for="classSelect" class="form-label">ห้อง</label>
+                <select class="form-select" id="classSelect" onchange="loadStudents()">
+                  <option value="">เลือกห้อง</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                </select>
+              </div>
+              
+              <div class="col-md-6 d-flex align-items-end gap-2">
+                <button class="btn btn-primary" id="saveBtn" onclick="saveAssessment()">
+                  <i class="fas fa-save"></i> บันทึกผลการประเมิน
+                </button>
+                <button class="btn btn-danger" onclick="exportToPDF()" id="exportBtn" disabled>
+                  <i class="fas fa-file-pdf"></i> ส่งออก PDF
+                </button>
+              </div>
+            </div>
+
+            <!-- ส่วนให้คะแนนแบบ bulk -->
+            <div id="bulkScoreSection" class="card mb-4" style="display: none;">
+              <div class="card-header bg-secondary text-white">
+                <h6 class="mb-0"><i class="fas fa-magic"></i> ให้คะแนนแบบกลุ่ม</h6>
+              </div>
+              <div class="card-body">
+                <div class="row">
+                  <div class="col-md-8">
+                    <div class="btn-group flex-wrap gap-2" role="group">
+                      <button type="button" class="btn btn-outline-secondary btn-sm" onclick="selectActivityType('guidance')">แนะแนว</button>
+                      <button type="button" class="btn btn-outline-secondary btn-sm" onclick="selectActivityType('scout')">ลูกเสือ/เนตรนารี</button>
+                      <button type="button" class="btn btn-outline-secondary btn-sm" onclick="selectActivityType('club')">ชุมนุม</button>
+                      <button type="button" class="btn btn-outline-secondary btn-sm" onclick="selectActivityType('social')">เพื่อสังคม</button>
+                      <button type="button" class="btn btn-outline-secondary btn-sm" onclick="selectActivityType('overall')">รวมกิจกรรม</button>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="btn-group-vertical w-100" role="group">
+                      <button type="button" class="btn btn-success btn-sm" onclick="setBulkScore('ผ่าน')">
+                        <i class="fas fa-check"></i> ผ่าน ทั้งหมด
+                      </button>
+                      <button type="button" class="btn btn-danger btn-sm" onclick="setBulkScore('ไม่ผ่าน')">
+                        <i class="fas fa-times"></i> ไม่ผ่าน ทั้งหมด
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-2">
+                  <small class="text-muted">
+                    <i class="fas fa-info-circle"></i> 
+                    เลือกประเภทกิจกรรมก่อน แล้วคลิกปุ่มให้คะแนน
+                  </small>
+                </div>
+              </div>
+            </div>
+
+            <!-- คำอธิบายเกณฑ์การประเมิน -->
+            <div class="alert alert-info border mb-4">
+              <h6 class="mb-2">เกณฑ์การประเมิน:</h6>
+              <div class="row">
+                <div class="col-6"><span class="badge bg-success">ผ่าน</span> = เข้าร่วมกิจกรรมครบตามเกณฑ์</div>
+                <div class="col-6"><span class="badge bg-danger">ไม่ผ่าน</span> = เข้าร่วมกิจกรรมไม่ครบตามเกณฑ์</div>
+              </div>
+            </div>
+
+            <!-- ตารางข้อมูลนักเรียน -->
+            <div id="studentsTable" style="display: none;">
+              <div class="table-responsive">
+                <table class="table table-bordered table-hover activity-table">
+                  <thead class="table-success">
+                    <tr>
+                      <th class="col-num">ที่</th>
+                      <th class="col-name">ชื่อ-นามสกุล</th>
+                      <th class="col-activity">แนะแนว</th>
+                      <th class="col-activity">ลูกเสือ/เนตรนารี</th>
+                      <th class="col-activity">ชุมนุม</th>
+                      <th class="col-activity">เพื่อสังคม</th>
+                      <th class="col-activity">รวมกิจกรรม</th>
+                    </tr>
+                  </thead>
+                  <tbody id="studentsTableBody">
+                    <!-- ข้อมูลนักเรียนจะแสดงที่นี่ -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loadingMessage" class="text-center text-muted py-4">
+              <i class="fas fa-info-circle"></i> เลือกระดับชั้นและห้องเพื่อเริ่มประเมิน
+            </div>
+
+            <!-- Error State -->
+            <div id="errorMessage" class="alert alert-danger" style="display: none;">
+              <i class="fas fa-exclamation-triangle"></i> 
+              <span id="errorText">เกิดข้อผิดพลาด</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <script>
+    // ✅ ใช้ namespace เพื่อป้องกันการชนกัน
+    window.ActivityAssessment = (function() {
+      // ตัวแปรเก็บข้อมูลแบบ private
+      let studentsData = [];
+      let currentGrade = '';
+      let currentClass = '';
+      let selectedActivityType = '';
+      let isPageActive = true;
+
+      // ✅ ฟังก์ชันตรวจสอบว่า elements ยังอยู่หรือไม่
+      function checkPageActive() {
+        const gradeSelect = document.getElementById('gradeSelect');
+        isPageActive = gradeSelect !== null;
+        return isPageActive;
+      }
+
+      // ✅ ฟังก์ชันโหลดนักเรียน
+      function loadStudents() {
+        if (!checkPageActive()) return;
+
+        const gradeSelect = document.getElementById('gradeSelect');
+        const classSelect = document.getElementById('classSelect');
+        
+        if (!gradeSelect || !classSelect) return;
+
+        const grade = gradeSelect.value;
+        const classNo = classSelect.value;
+
+        currentGrade = grade;
+        currentClass = classNo;
+
+        const studentsTable = document.getElementById('studentsTable');
+        const loadingMessage = document.getElementById('loadingMessage');
+        const errorMessage = document.getElementById('errorMessage');
+        const bulkScoreSection = document.getElementById('bulkScoreSection');
+        const exportBtn = document.getElementById('exportBtn');
+
+        if (!studentsTable || !loadingMessage || !errorMessage || !bulkScoreSection || !exportBtn) return;
+
+        if (!grade || !classNo) {
+          studentsTable.style.display = 'none';
+          errorMessage.style.display = 'none';
+          bulkScoreSection.style.display = 'none';
+          loadingMessage.style.display = 'block';
+          loadingMessage.innerHTML = '<i class="fas fa-info-circle"></i> เลือกระดับชั้นและห้องเพื่อเริ่มประเมิน';
+          exportBtn.disabled = true;
+          return;
+        }
+
+        // แสดง loading
+        studentsTable.style.display = 'none';
+        errorMessage.style.display = 'none';
+        bulkScoreSection.style.display = 'none';
+        loadingMessage.style.display = 'block';
+        loadingMessage.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังโหลดข้อมูลนักเรียน...';
+        exportBtn.disabled = true;
+
+        google.script.run
+          .withSuccessHandler(function(students) {
+            if (!checkPageActive()) return;
+            
+            console.log('✅ ได้รับข้อมูลนักเรียน:', students);
+            
+            if (!students || students.length === 0) {
+              showError(`ไม่พบข้อมูลนักเรียนในชั้น ${grade} ห้อง ${classNo}`);
+              return;
+            }
+
+            // เรียงลำดับนักเรียนตาม ID
+            if (students && Array.isArray(students)) {
+                students.sort((a, b) => {
+                    const idA = a.studentId || '';
+                    const idB = b.studentId || '';
+                    return String(idA).localeCompare(String(idB));
+                });
+            }
+
+            studentsData = students;
+            renderStudentsTable();
+            
+            // แสดงตารางและซ่อน loading
+            const elements = {
+              loadingMessage: document.getElementById('loadingMessage'),
+              studentsTable: document.getElementById('studentsTable'),
+              bulkScoreSection: document.getElementById('bulkScoreSection'),
+              exportBtn: document.getElementById('exportBtn')
+            };
+
+            if (elements.loadingMessage) elements.loadingMessage.style.display = 'none';
+            if (elements.studentsTable) elements.studentsTable.style.display = 'block';
+            if (elements.bulkScoreSection) elements.bulkScoreSection.style.display = 'block';
+            if (elements.exportBtn) elements.exportBtn.disabled = false;
+          })
+          .withFailureHandler(function(error) {
+            if (!checkPageActive()) return;
+            
+            console.error('❌ เกิดข้อผิดพลาด:', error);
+            showError('เกิดข้อผิดพลาดในการโหลดข้อมูล: ' + error.message);
+          })
+          .getStudentsForActivity(grade, classNo);
+      }
+
+
+      // ✅ ฟังก์ชันแสดงตารางนักเรียน
+      function renderStudentsTable() {
+        if (!checkPageActive()) return;
+        
+        const tbody = document.getElementById('studentsTableBody');
+        if (!tbody) return;
+        
+        tbody.innerHTML = '';
+
+        studentsData.forEach((student, index) => {
+          const activities = student.activities || {};
+          
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td class="text-center">${index + 1}</td>
+            <td class="text-start fw-medium">${student.name}</td>
+            <td class="text-center">
+              <select class="form-select form-select-sm" 
+                      data-student="${student.studentId}" 
+                      data-activity="guidance"
+                      onchange="ActivityAssessment.updateActivityScore('${student.studentId}', 'guidance', this.value)">
+                <option value="">-</option>
+                <option value="ผ่าน" ${activities.guidance === 'ผ่าน' ? 'selected' : ''}>ผ่าน</option>
+                <option value="ไม่ผ่าน" ${activities.guidance === 'ไม่ผ่าน' ? 'selected' : ''}>ไม่ผ่าน</option>
+              </select>
+            </td>
+            <td class="text-center">
+              <select class="form-select form-select-sm" 
+                      data-student="${student.studentId}" 
+                      data-activity="scout"
+                      onchange="ActivityAssessment.updateActivityScore('${student.studentId}', 'scout', this.value)">
+                <option value="">-</option>
+                <option value="ผ่าน" ${activities.scout === 'ผ่าน' ? 'selected' : ''}>ผ่าน</option>
+                <option value="ไม่ผ่าน" ${activities.scout === 'ไม่ผ่าน' ? 'selected' : ''}>ไม่ผ่าน</option>
+              </select>
+            </td>
+            <td class="text-center">
+              <select class="form-select form-select-sm" 
+                      data-student="${student.studentId}" 
+                      data-activity="club"
+                      onchange="ActivityAssessment.updateActivityScore('${student.studentId}', 'club', this.value)">
+                <option value="">-</option>
+                <option value="ผ่าน" ${activities.club === 'ผ่าน' ? 'selected' : ''}>ผ่าน</option>
+                <option value="ไม่ผ่าน" ${activities.club === 'ไม่ผ่าน' ? 'selected' : ''}>ไม่ผ่าน</option>
+              </select>
+            </td>
+            <td class="text-center">
+              <select class="form-select form-select-sm" 
+                      data-student="${student.studentId}" 
+                      data-activity="social"
+                      onchange="ActivityAssessment.updateActivityScore('${student.studentId}', 'social', this.value)">
+                <option value="">-</option>
+                <option value="ผ่าน" ${activities.social === 'ผ่าน' ? 'selected' : ''}>ผ่าน</option>
+                <option value="ไม่ผ่าน" ${activities.social === 'ไม่ผ่าน' ? 'selected' : ''}>ไม่ผ่าน</option>
+              </select>
+            </td>
+            <td class="text-center">
+              <select class="form-select form-select-sm" 
+                      data-student="${student.studentId}" 
+                      data-activity="overall"
+                      onchange="ActivityAssessment.updateActivityScore('${student.studentId}', 'overall', this.value)">
+                <option value="">-</option>
+                <option value="ผ่าน" ${activities.overall === 'ผ่าน' ? 'selected' : ''}>ผ่าน</option>
+                <option value="ไม่ผ่าน" ${activities.overall === 'ไม่ผ่าน' ? 'selected' : ''}>ไม่ผ่าน</option>
+              </select>
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+      }
+
+      // ✅ ฟังก์ชันอัปเดตคะแนนกิจกรรม
+      function updateActivityScore(studentId, activityType, value) {
+        if (!checkPageActive()) return;
+        
+        const student = studentsData.find(s => s.studentId === studentId);
+        if (!student) return;
+
+        if (!student.activities) student.activities = {};
+        student.activities[activityType] = value;
+
+        console.log(`อัปเดตคะแนน: ${student.name} - ${activityType} = ${value}`);
+      }
+
+      // ✅ ฟังก์ชันเลือกประเภทกิจกรรม
+      function selectActivityType(activityType) {
+        if (!checkPageActive()) return;
+        
+        selectedActivityType = activityType;
+        
+        // อัปเดต UI
+        document.querySelectorAll('#bulkScoreSection .btn-outline-secondary').forEach(btn => {
+          btn.classList.remove('active');
+        });
+        
+        document.querySelector(`[onclick="selectActivityType('${activityType}')"]`)?.classList.add('active');
+      }
+
+      // ✅ ฟังก์ชันให้คะแนนแบบ bulk
+      function setBulkScore(score) {
+        if (!checkPageActive()) return;
+        
+        if (!selectedActivityType) {
+          updateSaveBtnStatus('warning', 'กรุณาเลือกประเภทกิจกรรม');
+          return;
+        }
+
+        studentsData.forEach(student => {
+          if (!student.activities) student.activities = {};
+          student.activities[selectedActivityType] = score;
+        });
+
+        renderStudentsTable();
+      }
+
+      // ✅ ฟังก์ชันอัปเดตสถานะปุ่มบันทึก
+      function updateSaveBtnStatus(type, message) {
+        const saveBtn = document.getElementById('saveBtn');
+        if (!saveBtn) return;
+        
+        const originalHTML = '<i class="fas fa-save"></i> บันทึกผลการประเมิน';
+        
+        const configs = {
+          loading: { icon: 'spinner fa-spin', text: message || 'กำลังบันทึก...', class: 'btn-secondary', disabled: true },
+          success: { icon: 'check', text: message || 'บันทึกสำเร็จ!', class: 'btn-success', disabled: false },
+          error: { icon: 'times', text: message || 'เกิดข้อผิดพลาด', class: 'btn-danger', disabled: false },
+          warning: { icon: 'exclamation-triangle', text: message || 'กรุณาตรวจสอบ', class: 'btn-warning', disabled: false }
+        };
+        
+        const config = configs[type];
+        if (!config) return;
+        
+        saveBtn.className = `btn ${config.class}`;
+        saveBtn.disabled = config.disabled;
+        saveBtn.innerHTML = `<i class="fas fa-${config.icon} me-1"></i> ${config.text}`;
+        
+        if (type !== 'loading') {
+          setTimeout(() => {
+            saveBtn.className = 'btn btn-primary';
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalHTML;
+          }, 2500);
+        }
+      }
+
+      // ✅ ฟังก์ชันบันทึกผลการประเมิน
+      function saveAssessment() {
+        if (!checkPageActive()) return;
+        
+        if (!currentGrade || !currentClass) {
+          updateSaveBtnStatus('warning', 'กรุณาเลือกชั้น/ห้อง');
+          return;
+        }
+
+        if (studentsData.length === 0) {
+          updateSaveBtnStatus('warning', 'ไม่มีข้อมูลนักเรียน');
+          return;
+        }
+
+        updateSaveBtnStatus('loading', 'กำลังบันทึก...');
+
+        // เตรียม payload
+        const payload = studentsData.map(student => {
+          const activities = student.activities || {};
+          return {
+            studentId: student.studentId,
+            name: student.name,
+            grade: student.grade,
+            classNo: student.classNo,
+            activities: {
+              guidance: activities.guidance || 'ผ่าน',
+              scout: activities.scout || 'ผ่าน',
+              club: activities.club || 'ผ่าน',
+              social: activities.social || 'ผ่าน',
+              overall: activities.overall || 'ผ่าน'
+            }
+          };
+        });
+
+        google.script.run
+          .withSuccessHandler(function(result) {
+            if (!checkPageActive()) return;
+            updateSaveBtnStatus('success', 'บันทึกสำเร็จ!');
+          })
+          .withFailureHandler(function(error) {
+            if (!checkPageActive()) return;
+            updateSaveBtnStatus('error', 'เกิดข้อผิดพลาด');
+            console.error('Save error:', error);
+          })
+          .saveActivityAssessmentBatch(payload);
+      }
+
+      // ✅ ฟังก์ชันอัปเดตสถานะปุ่ม Export
+      function updateExportBtnStatus(type, message) {
+        const exportBtn = document.getElementById('exportBtn');
+        if (!exportBtn) return;
+        
+        const originalHTML = '<i class="fas fa-file-pdf"></i> ส่งออก PDF';
+        
+        const configs = {
+          loading: { icon: 'spinner fa-spin', text: message || 'กำลังสร้าง PDF...', class: 'btn-secondary', disabled: true },
+          success: { icon: 'check', text: message || 'สำเร็จ!', class: 'btn-success', disabled: false },
+          error: { icon: 'times', text: message || 'เกิดข้อผิดพลาด', class: 'btn-danger', disabled: false },
+          warning: { icon: 'exclamation-triangle', text: message || 'กรุณาตรวจสอบ', class: 'btn-warning', disabled: false }
+        };
+        
+        const config = configs[type];
+        if (!config) return;
+        
+        exportBtn.className = `btn ${config.class}`;
+        exportBtn.disabled = config.disabled;
+        exportBtn.innerHTML = `<i class="fas fa-${config.icon} me-1"></i> ${config.text}`;
+        
+        if (type !== 'loading') {
+          setTimeout(() => {
+            exportBtn.className = 'btn btn-danger';
+            exportBtn.disabled = false;
+            exportBtn.innerHTML = originalHTML;
+          }, 2500);
+        }
+      }
+
+      // ✅ ฟังก์ชันส่งออก PDF
+      function exportToPDF() {
+        if (!checkPageActive()) return;
+        
+        if (!currentGrade || !currentClass) {
+          updateExportBtnStatus('warning', 'กรุณาเลือกชั้น/ห้อง');
+          return;
+        }
+
+        updateExportBtnStatus('loading', 'กำลังสร้าง PDF...');
+
+        google.script.run
+          .withSuccessHandler(function(url) {
+            if (!checkPageActive()) return;
+            updateExportBtnStatus('success', 'สำเร็จ!');
+            window.open(url, '_blank');
+          })
+          .withFailureHandler(function(error) {
+            if (!checkPageActive()) return;
+            updateExportBtnStatus('error', 'เกิดข้อผิดพลาด');
+            console.error('PDF export error:', error);
+          })
+          .generateActivityAssessmentPDF(currentGrade, currentClass);
+      }
+
+      // ✅ ฟังก์ชันแสดงข้อผิดพลาด
+      function showError(message) {
+        if (!checkPageActive()) return;
+        
+        const loadingMessage = document.getElementById('loadingMessage');
+        const errorMessage = document.getElementById('errorMessage');
+        const errorText = document.getElementById('errorText');
+        
+        if (loadingMessage) loadingMessage.style.display = 'none';
+        if (errorMessage) {
+          errorMessage.style.display = 'block';
+          if (errorText) errorText.textContent = message;
+        }
+      }
+
+      // ✅ ฟังก์ชันช่วยแสดงชื่อกิจกรรม
+      function getActivityDisplayName(activityType) {
+        const names = {
+          guidance: 'กิจกรรมแนะแนว',
+          scout: 'ลูกเสือ/เนตรนารี',
+          club: 'ชุมนุม',
+          social: 'เพื่อสังคม',
+          overall: 'รวมกิจกรรม'
+        };
+        return names[activityType] || activityType;
+      }
+
+      // ✅ Cleanup เมื่อออกจากหน้า
+      function cleanup() {
+        isPageActive = false;
+        studentsData = [];
+        currentGrade = '';
+        currentClass = '';
+        selectedActivityType = '';
+      }
+
+      // ✅ Export public methods
+      return {
+        loadStudents,
+        updateActivityScore,
+        selectActivityType,
+        setBulkScore,
+        saveAssessment,
+        exportToPDF,
+        cleanup
+      };
+    })();
+
+    // ✅ Compatibility layer สำหรับ inline event handlers
+    function loadStudents() {
+      if (window.ActivityAssessment) {
+        window.ActivityAssessment.loadStudents();
+      }
+    }
+
+    function selectActivityType(activityType) {
+      if (window.ActivityAssessment) {
+        window.ActivityAssessment.selectActivityType(activityType);
+      }
+    }
+
+    function setBulkScore(score) {
+      if (window.ActivityAssessment) {
+        window.ActivityAssessment.setBulkScore(score);
+      }
+    }
+
+    function saveAssessment() {
+      if (window.ActivityAssessment) {
+        window.ActivityAssessment.saveAssessment();
+      }
+    }
+
+    function exportToPDF() {
+      if (window.ActivityAssessment) {
+        window.ActivityAssessment.exportToPDF();
+      }
+    }
+
+    // ✅ Cleanup เมื่อออกจากหน้า
+    window.addEventListener('beforeunload', function() {
+      if (window.ActivityAssessment) {
+        window.ActivityAssessment.cleanup();
+      }
+    });
+  </script>
+
+  <style>
+    /* ✅ กำหนด Font Sarabun ให้ทั้งหน้า */
+    body {
+      font-family: 'Sarabun', sans-serif;
+      font-size: 16px;
+      font-weight: 400;
+      background-color: #f8f9fa;
+    }
+
+    /* ✅ Card styles */
+    .card {
+      border-radius: 12px;
+      border: none;
+    }
+
+    .card-header {
+      border-radius: 12px 12px 0 0 !important;
+      font-weight: 600;
+    }
+
+    .card-header h5, .card-header h6 {
+      font-weight: 600;
+    }
+
+    /* ✅ Form labels */
+    .form-label {
+      font-weight: 500;
+      color: #495057;
+    }
+
+    /* ✅ Form selects */
+    .form-select {
+      font-family: 'Sarabun', sans-serif;
+      cursor: pointer;
+    }
+
+    /* ✅ Buttons */
+    .btn {
+      font-family: 'Sarabun', sans-serif;
+      font-weight: 500;
+      border-radius: 8px;
+    }
+
+    /* ✅ Alert styles */
+    .alert {
+      font-family: 'Sarabun', sans-serif;
+      border-radius: 8px;
+    }
+
+    .alert h6 {
+      font-weight: 600;
+    }
+
+    /* ✅ Badge styles */
+    .badge {
+      font-weight: 500;
+      padding: 6px 12px;
+    }
+
+    /* ✅ Table styles */
+    .activity-table {
+      font-family: 'Sarabun', sans-serif;
+      font-size: 0.9rem;
+      white-space: nowrap;
+    }
+
+    .activity-table .col-num {
+      width: 40px !important;
+      min-width: 40px;
+      max-width: 40px;
+    }
+
+    .activity-table .col-name {
+      width: 25% !important;
+      min-width: 100px;
+      max-width: 160px;
+      white-space: normal;
+      word-wrap: break-word;
+    }
+
+    .activity-table .col-activity {
+      width: 15% !important;
+      min-width: 75px;
+      max-width: 100px;
+    }
+
+    .table th {
+      background-color: #198754 !important;
+      color: white;
+      text-align: center;
+      vertical-align: middle;
+      font-size: 0.85rem !important;
+      font-weight: 600;
+      padding: 10px 6px !important;
+    }
+
+    .table td {
+      vertical-align: middle;
+      text-align: center;
+      padding: 8px 4px !important;
+    }
+
+    .text-start {
+      text-align: left !important;
+    }
+
+    .fw-medium {
+      font-weight: 500 !important;
+    }
+
+    .form-select-sm {
+      font-family: 'Sarabun', sans-serif;
+      font-size: 0.8rem !important;
+      font-weight: 400;
+      padding: 4px 8px !important;
+      min-height: auto;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+
+    .form-select-sm:focus {
+      outline: none;
+      box-shadow: 0 0 0 0.15rem rgba(25, 135, 84, 0.25);
+    }
+
+    .table-responsive {
+      border-radius: 8px;
+      overflow-x: auto;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+
+    .btn-group .btn {
+      margin: 2px;
+    }
+
+    .btn.active {
+      background-color: #0d6efd !important;
+      border-color: #0d6efd !important;
+      color: white !important;
+    }
+
+    /* ✅ Responsive Design สำหรับมือถือ */
+    @media (max-width: 768px) {
+      body {
+        font-size: 14px;
+      }
+
+      .activity-table {
+        font-size: 0.75rem;
+      }
+      
+      .activity-table .col-name {
+        width: 22% !important;
+        min-width: 80px;
+        max-width: 120px;
+      }
+      
+      .activity-table .col-activity {
+        width: 15.6% !important;
+        min-width: 60px;
+        max-width: 80px;
+      }
+      
+      .table th {
+        font-size: 0.7rem !important;
+        padding: 6px 2px !important;
+      }
+      
+      .table td {
+        padding: 4px 2px !important;
+      }
+      
+      .form-select-sm {
+        font-size: 0.7rem !important;
+        padding: 2px 4px !important;
+      }
+
+      .btn-group {
+        flex-direction: column;
+      }
+
+      .btn-group .btn {
+        margin: 4px 0;
+      }
+    }
+  </style>
+</body>
+</html>

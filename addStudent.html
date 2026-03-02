@@ -1,0 +1,102 @@
+<!-- add_student.html - SPA Compatible -->
+<div class="container py-4">
+  <h3 class="text-center text-success mb-4">
+    <i class="bi bi-person-plus-fill"></i> เพิ่มนักเรียนใหม่
+  </h3>
+  <div id="alertContainer"></div>
+
+  <form id="studentForm" onsubmit="window.handleSubmit(event)">
+    <div class="row g-3">
+      <div class="col-md-4"><label class="form-label">รหัสนักเรียน *</label><input type="text" class="form-control" name="studentCode" required></div>
+      <div class="col-md-4"><label class="form-label">เลข ปชช. *</label><input type="text" class="form-control" name="nationalId" maxlength="13" required></div>
+      <div class="col-md-4"><label class="form-label">คำนำหน้า *</label><select class="form-select" name="prefix" required><option value="">เลือก</option><option>เด็กชาย</option><option>เด็กหญิง</option></select></div>
+      <div class="col-md-4"><label class="form-label">ชื่อ *</label><input type="text" class="form-control" name="firstName" required></div>
+      <div class="col-md-4"><label class="form-label">นามสกุล *</label><input type="text" class="form-control" name="lastName" required></div>
+      <div class="col-md-4"><label class="form-label">ระดับชั้น *</label><select class="form-select" name="grade" required><option value="">เลือกระดับชั้น</option><option value="ป.1">ป.1</option><option value="ป.2">ป.2</option><option value="ป.3">ป.3</option><option value="ป.4">ป.4</option><option value="ป.5">ป.5</option><option value="ป.6">ป.6</option></select></div>
+      <div class="col-md-4"><label class="form-label">ห้อง *</label><select class="form-select" name="classroom" required><option value="">เลือกห้อง</option><option value="1">1</option><option value="2">2</option></select></div>
+      <div class="col-md-4"><label class="form-label">เพศ *</label><select class="form-select" name="gender" required><option value="">เลือก</option><option>ชาย</option><option>หญิง</option></select></div>
+      <div class="col-md-4"><label class="form-label">ปีการศึกษา *</label><input type="number" class="form-control" name="academicYear" required></div>
+
+      <!-- วันเกิด -->
+      <div class="col-md-4"><label class="form-label">วันเกิด (วัน) *</label><input type="number" class="form-control" name="birthDay" min="1" max="31" required></div>
+      <div class="col-md-4"><label class="form-label">เดือน *</label><select class="form-select" name="birthMonthName" required><option value="">เลือกเดือน</option><option value="1">มกราคม</option><option value="2">กุมภาพันธ์</option><option value="3">มีนาคม</option><option value="4">เมษายน</option><option value="5">พฤษภาคม</option><option value="6">มิถุนายน</option><option value="7">กรกฎาคม</option><option value="8">สิงหาคม</option><option value="9">กันยายน</option><option value="10">ตุลาคม</option><option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option></select></div>
+      <div class="col-md-4"><label class="form-label">ปี (พ.ศ.) *</label><input type="number" class="form-control" name="birthYear" required></div>
+
+      <!-- น้ำหนัก / ส่วนสูง -->
+      <div class="col-md-6"><label class="form-label">น้ำหนัก (กก.)</label><input type="number" class="form-control" name="weight" step="0.1"></div>
+      <div class="col-md-6"><label class="form-label">ส่วนสูง (ซม.)</label><input type="number" class="form-control" name="height" step="0.1"></div>
+
+      <!-- อื่น ๆ -->
+      <div class="col-md-6"><label class="form-label">URL รูปถ่าย</label><input type="url" class="form-control" name="photoUrl"></div>
+      <div class="col-md-6"><label class="form-label">ที่อยู่ (รวม)</label><textarea class="form-control" name="address"></textarea></div>
+      <div class="col-md-6"><label class="form-label">ชื่อพ่อ</label><input type="text" class="form-control" name="fatherName"></div>
+      <div class="col-md-6"><label class="form-label">นามสกุลพ่อ</label><input type="text" class="form-control" name="fatherLastname"></div>
+      <div class="col-md-6"><label class="form-label">ชื่อแม่</label><input type="text" class="form-control" name="motherName"></div>
+      <div class="col-md-6"><label class="form-label">นามสกุลแม่</label><input type="text" class="form-control" name="motherLastname"></div>
+    </div>
+
+    <div class="text-end mt-4">
+      <button type="submit" class="btn btn-success">
+        <i class="bi bi-save"></i> บันทึกข้อมูล
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- Script สำหรับ SPA -->
+<script>
+  if (!window._addStudentLoaded) {
+    window._addStudentLoaded = true;
+
+    window.setupAddStudentPage = function () {
+      // future setup
+    };
+
+    window.handleSubmit = function (e) {
+      e.preventDefault();
+      const form = e.target;
+      const formData = new FormData(form);
+      const data = Object.fromEntries(formData.entries());
+
+      // ตรวจสอบ
+      if (!data.studentCode || !data.firstName || !data.lastName) {
+        showAlert("กรุณากรอกข้อมูลให้ครบ", "danger");
+        return;
+      }
+
+      // แปลงวันเกิด -> yyyy-mm-dd
+      const d = parseInt(data.birthDay);
+      const m = parseInt(data.birthMonthName); // ได้จาก select เดือนชื่อไทย
+      const y = parseInt(data.birthYear) - 543;
+
+      if (isNaN(d) || isNaN(m) || isNaN(y)) {
+        showAlert("วันเกิดไม่ถูกต้อง", "danger");
+        return;
+      }
+
+      data.birthdate = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+      showAlert("⏳ กำลังบันทึกข้อมูล...", "info");
+
+      google.script.run
+        .withSuccessHandler(msg => {
+          showAlert(msg, "success");
+          form.reset();
+        })
+        .withFailureHandler(err => {
+          showAlert(err.message || "เกิดข้อผิดพลาด", "danger");
+        })
+        .saveStudentData(data);
+    };
+
+    function showAlert(msg, type) {
+      document.getElementById("alertContainer").innerHTML = `
+        <div class="alert alert-${type} alert-dismissible fade show mt-3" role="alert">
+          ${msg}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>`;
+    }
+
+    window.setupAddStudentPage();
+  }
+</script>

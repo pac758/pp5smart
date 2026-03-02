@@ -1,0 +1,846 @@
+// ============================================================
+// 🚀 DASHBOARD & CACHING WITH ATTENDANCE DATA
+// ============================================================
+
+const DashboardCacheManager = {
+  cache: new Map(),
+  get(key) {
+    const item = this.cache.get(key);
+    if (item && item.expiry > Date.now()) return item.data;
+    if (item) this.cache.delete(key);
+    return null;
+  },
+  set(key, data, ttl = 120000) {
+    this.cache.set(key, { data: data, expiry: Date.now() + ttl, created: new Date().toISOString() });
+  },
+  clearAll() { this.cache.clear(); }
+};
+
+const AcademicCacheManager = {
+  cache: new Map(),
+  get(key) {
+    const item = this.cache.get(key);
+    if (item && item.expiry > Date.now()) return item.data;
+    if (item) this.cache.delete(key);
+    return null;
+  },
+  set(key, data, ttl = 300000) {
+    this.cache.set(key, { data: data, expiry: Date.now() + ttl, created: new Date().toISOString() });
+  },
+  clearAll() { this.cache.clear(); }
+};
+
+// === Wrapper: ใช้ฟังก์ชันจาก utils.gs ===
+function getCurrentThaiMonth() { return U_getCurrentThaiMonth(); }
+function getCurrentAcademicYear() { return U_getCurrentAcademicYear(); }
+
+// ============================================================
+// 📊 DASHBOARD SUMMARY
+// ============================================================
+
+function getCachedDashboardSummary() {
+  try {
+    const cache = CacheService.getScriptCache();
+    const cacheKey = 'dashboard_summary_v3';
+    const cachedData = cache.get(cacheKey);
+    if (cachedData != null) return JSON.parse(cachedData);
+
+    const startTime = Date.now();
+    const summary = getDashboardSummary();
+    summary.processingTime = Date.now() - startTime;
+    summary.lastUpdated = new Date().toISOString();
+    cache.put(cacheKey, JSON.stringify(summary), 300);
+    return summary;
+  } catch (e) {
+    Logger.log(`❌ getCachedDashboardSummary: ${e.message}`);
+    return { error: true, message: `ไม่สามารถโหลดข้อมูลสรุปได้: ${e.message}` };
+  }
+}
+
+function getDashboardSummary() {
+  const ss = SS();
+  const sheet = ss.getSheetByName("Students");
+  if (!sheet) throw new Error("ไม่พบชีต Students");
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const rows = data.slice(1);
+  const genderCol = headers.indexOf("gender");
+  const gradeCol = headers.indexOf("grade");
+  const studentIdCol = headers.indexOf("student_id");
+
+  if (genderCol === -1 || gradeCol === -1 || studentIdCol === -1) {
+    throw new Error("ไม่พบคอลัมน์ที่จำเป็น (gender, grade, student_id)");
+  }
+
+  let male = 0, female = 0;
+  const classMap = {};
+  const studentGradeMap = {};
+
+  rows.forEach(row => {
+    const gender = String(row[genderCol] || "").trim();
+    const grade = String(row[gradeCol] || "").trim();
+    const studentId = row[studentIdCol];
+    if (!grade || !studentId) return;
+
+    studentGradeMap[studentId] = grade;
+    if (!classMap[grade]) classMap[grade] = { male: 0, female: 0 };
+
+    if (gender === "ชาย" || gender === "ช") { male++; classMap[grade].male++; }
+    else if (gender === "หญิง" || gender === "ญ") { female++; classMap[grade].female++; }
+  });
+
+  const attendanceData = getAttendanceData(ss, studentGradeMap);
+
+  return { total: male + female, male, female, classes: classMap, attendance: attendanceData };
+}
+
+function getFastStudentStats() {
+  try {
+    const cache = CacheService.getScriptCache();
+    const cacheKey = 'fast_student_stats_v1';
+    const hit = cache.get(cacheKey);
+    if (hit) return JSON.parse(hit);
+
+    const ss = SS();
+    const sheet = ss.getSheetByName("Students");
+    if (!sheet) return { total: 0, male: 0, female: 0 };
+
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    let genderCol = headers.indexOf("gender");
+    if (genderCol === -1) genderCol = headers.indexOf("เพศ");
+
+    let male = 0, female = 0;
+    for (let i = 1; i < data.length; i++) {
+      const gender = String(data[i][genderCol] || "").trim();
+      if (["ชาย", "ช", "ด.ช.", "นาย"].includes(gender)) male++;
+      else if (["หญิง", "ญ", "ด.ญ.", "นาง", "นางสาว"].includes(gender)) female++;
+    }
+    const result = { total: male + female, male, female, lastUpdated: new Date().toISOString() };
+    cache.put(cacheKey, JSON.stringify(result), 300);
+    return result;
+  } catch (e) {
+    return { total: 0, male: 0, female: 0, error: e.message };
+  }
+}
+
+// ============================================================
+// 📅 ATTENDANCE DATA
+// ============================================================
+
+function getAttendanceData(ss, studentGradeMap) {
+  const months = [
+    'พฤษภาคม2568', 'มิถุนายน2568', 'กรกฎาคม2568', 'สิงหาคม2568',
+    'กันยายน2568', 'ตุลาคม2568', 'พฤศจิกายน2568', 'ธันวาคม2568',
+    'มกราคม2569', 'กุมภาพันธ์2569', 'มีนาคม2569', 'เมษายน2569'
+  ];
+
+  const currentMonth = getCurrentThaiMonth();
+  const monthlyData = {};
+  const gradeStats = {};
+
+  months.forEach(monthName => {
+    try {
+      const monthSheet = ss.getSheetByName(monthName);
+      if (!monthSheet) return;
+
+      const allData = monthSheet.getDataRange().getValues();
+      if (allData.length < 2) return;
+
+      const headers = allData[0];
+      const rows = allData.slice(1);
+      const studentIdCol = headers.indexOf('รหัส');
+      const presentCol = headers.indexOf('มา');
+      const leaveCol = headers.indexOf('ลา');
+      const absentCol = headers.indexOf('ขาด');
+      if (studentIdCol === -1 || presentCol === -1) return;
+
+      let schoolDaysInMonth = 0;
+      const firstDateCol = 3;
+      const lastDateCol = presentCol - 1;
+      for (let col = firstDateCol; col <= lastDateCol; col++) {
+        for (let row = 1; row < allData.length; row++) {
+          if (allData[row][col] && allData[row][col].toString().trim() !== '') {
+            schoolDaysInMonth++;
+            break;
+          }
+        }
+      }
+
+      const gradeData = {};
+      rows.forEach(row => {
+        const studentId = row[studentIdCol];
+        const grade = studentGradeMap[studentId];
+        if (!studentId || !grade) return;
+
+        const present = parseInt(row[presentCol]) || 0;
+        const leave = parseInt(row[leaveCol]) || 0;
+        const absent = parseInt(row[absentCol]) || 0;
+
+        if (!gradeData[grade]) {
+          gradeData[grade] = {
+            totalPresent: 0, totalLeave: 0, totalAbsent: 0, totalDays: 0, studentCount: 0,
+            schoolDaysInMonth: schoolDaysInMonth,
+            studentsWithLeave: new Set(), studentsWithAbsent: new Set()
+          };
+        }
+
+        gradeData[grade].totalPresent += present;
+        gradeData[grade].totalLeave += leave;
+        gradeData[grade].totalAbsent += absent;
+        gradeData[grade].totalDays += present + leave + absent;
+        gradeData[grade].studentCount++;
+        if (leave > 0) gradeData[grade].studentsWithLeave.add(studentId);
+        if (absent > 0) gradeData[grade].studentsWithAbsent.add(studentId);
+
+        if (!gradeStats[grade]) gradeStats[grade] = { totalPresent: 0, totalLeave: 0, totalAbsent: 0, totalDays: 0 };
+        gradeStats[grade].totalPresent += present;
+        gradeStats[grade].totalLeave += leave;
+        gradeStats[grade].totalAbsent += absent;
+        gradeStats[grade].totalDays += present + leave + absent;
+      });
+
+      Object.keys(gradeData).forEach(grade => {
+        const d = gradeData[grade];
+        d.attendanceRate = d.totalDays > 0 ? (d.totalPresent / d.totalDays * 100).toFixed(2) : 0;
+        d.uniqueAbsentCount = d.studentsWithAbsent.size;
+        d.uniqueLeaveCount = d.studentsWithLeave.size;
+        delete d.studentsWithAbsent;
+        delete d.studentsWithLeave;
+      });
+
+      monthlyData[monthName] = gradeData;
+    } catch (error) {
+      Logger.log(`❌ Error reading ${monthName}: ${error.message}`);
+    }
+  });
+
+  Object.keys(gradeStats).forEach(grade => {
+    const s = gradeStats[grade];
+    s.attendanceRate = s.totalDays > 0 ? (s.totalPresent / s.totalDays * 100).toFixed(2) : 0;
+  });
+
+  return { monthly: monthlyData, yearlyByGrade: gradeStats, availableMonths: Object.keys(monthlyData), currentMonth };
+}
+
+function getAttendanceByGrade(grade) {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = `attendance_grade_${grade}_v2`;
+  const hit = cache.get(cacheKey);
+  if (hit != null) return JSON.parse(hit);
+
+  const summary = getDashboardSummary();
+  if (!summary.attendance) throw new Error('ไม่พบข้อมูลการเช็คชื่อ');
+
+  const result = { grade, monthly: {}, yearly: { totalPresent: 0, totalLeave: 0, totalAbsent: 0, totalDays: 0, attendanceRate: 0 } };
+  const monthly = summary.attendance.monthly || {};
+
+  Object.keys(monthly).forEach(monthName => {
+    const g = monthly[monthName][grade];
+    if (!g) return;
+    const rec = {
+      totalPresent: g.totalPresent || 0, totalLeave: g.totalLeave || 0,
+      totalAbsent: g.totalAbsent || 0, totalDays: g.totalDays || 0,
+      studentCount: g.studentCount || 0,
+      attendanceRate: g.totalDays > 0 ? Number((g.totalPresent / g.totalDays * 100).toFixed(2)) : 0
+    };
+    result.monthly[monthName] = rec;
+    result.yearly.totalPresent += rec.totalPresent;
+    result.yearly.totalLeave += rec.totalLeave;
+    result.yearly.totalAbsent += rec.totalAbsent;
+    result.yearly.totalDays += rec.totalDays;
+  });
+
+  result.yearly.attendanceRate = result.yearly.totalDays > 0 ? Number((result.yearly.totalPresent / result.yearly.totalDays * 100).toFixed(2)) : 0;
+  cache.put(cacheKey, JSON.stringify(result), 300);
+  return result;
+}
+
+function getAttendanceByMonth(monthName = null) {
+  if (!monthName) monthName = getCurrentThaiMonth();
+  const cacheKey = `attendance_month_${monthName}`;
+  let data = DashboardCacheManager.get(cacheKey);
+  if (!data) {
+    const summary = getDashboardSummary();
+    if (!summary.attendance || !summary.attendance.monthly) throw new Error("ไม่พบข้อมูลการเช็คชื่อ");
+    data = { month: monthName, grades: summary.attendance.monthly[monthName] || {}, totalStats: calculateMonthTotalStats(summary.attendance.monthly[monthName]) };
+    DashboardCacheManager.set(cacheKey, data, 120000);
+  }
+  return data;
+}
+
+function getCurrentMonthAttendance() { return getAttendanceByMonth(); }
+
+function calculateMonthTotalStats(monthData) {
+  if (!monthData) return null;
+  let totalPresent = 0, totalLeave = 0, totalAbsent = 0, totalDays = 0;
+  Object.values(monthData).forEach(g => { totalPresent += g.totalPresent; totalLeave += g.totalLeave; totalAbsent += g.totalAbsent; totalDays += g.totalDays; });
+  return { totalPresent, totalLeave, totalAbsent, totalDays, attendanceRate: totalDays > 0 ? (totalPresent / totalDays * 100).toFixed(2) : 0 };
+}
+
+function compareAttendanceByGrades(monthName = null) {
+  const summary = getDashboardSummary();
+  if (!summary.attendance) throw new Error("ไม่พบข้อมูลการเช็คชื่อ");
+  let compareData = [];
+
+  if (monthName && summary.attendance.monthly[monthName]) {
+    const md = summary.attendance.monthly[monthName];
+    Object.keys(md).forEach(grade => {
+      compareData.push({ grade, attendanceRate: parseFloat(md[grade].attendanceRate), totalPresent: md[grade].totalPresent, totalDays: md[grade].totalDays, studentCount: md[grade].studentCount, period: monthName });
+    });
+  } else {
+    const yd = summary.attendance.yearlyByGrade;
+    Object.keys(yd).forEach(grade => {
+      compareData.push({ grade, attendanceRate: parseFloat(yd[grade].attendanceRate), totalPresent: yd[grade].totalPresent, totalDays: yd[grade].totalDays, period: 'รายปี' });
+    });
+  }
+  compareData.sort((a, b) => b.attendanceRate - a.attendanceRate);
+  return compareData;
+}
+
+function getLowestAttendanceGrades(limit = 3) { return compareAttendanceByGrades().slice(-limit).reverse(); }
+function getHighestAttendanceGrades(limit = 3) { return compareAttendanceByGrades().slice(0, limit); }
+
+// ============================================================
+// 📊 ATTENDANCE CHARTS
+// ============================================================
+
+function getAttendanceTrendChartData(grade) {
+  const data = getAttendanceByGrade(grade);
+  if (!data || !data.monthly) throw new Error(`ไม่พบข้อมูลสำหรับห้อง ${grade}`);
+
+  const monthOrder = ['พฤษภาคม2568','มิถุนายน2568','กรกฎาคม2568','สิงหาคม2568','กันยายน2568','ตุลาคม2568','พฤศจิกายน2568','ธันวาคม2568','มกราคม2569','กุมภาพันธ์2569','มีนาคม2569','เมษายน2569'];
+  const labels = [], attendanceRates = [], presentCounts = [], absentCounts = [];
+
+  monthOrder.forEach(month => {
+    if (data.monthly[month]) {
+      labels.push(month.replace('2568', '').replace('2569', '').trim());
+      attendanceRates.push(parseFloat(data.monthly[month].attendanceRate));
+      presentCounts.push(data.monthly[month].totalPresent);
+      absentCounts.push(data.monthly[month].totalAbsent);
+    }
+  });
+
+  return {
+    labels,
+    datasets: [
+      { label: 'อัตราการมาเรียน (%)', data: attendanceRates, borderColor: 'rgb(75, 192, 192)', backgroundColor: 'rgba(75, 192, 192, 0.2)', yAxisID: 'y-percentage' },
+      { label: 'จำนวนวันที่มา', data: presentCounts, borderColor: 'rgb(54, 162, 235)', backgroundColor: 'rgba(54, 162, 235, 0.2)', yAxisID: 'y-count' },
+      { label: 'จำนวนวันที่ขาด', data: absentCounts, borderColor: 'rgb(255, 99, 132)', backgroundColor: 'rgba(255, 99, 132, 0.2)', yAxisID: 'y-count' }
+    ]
+  };
+}
+
+function getAttendanceGradeComparisonChartData(monthName = null) {
+  if (monthName === null) monthName = getCurrentThaiMonth();
+  const comparison = compareAttendanceByGrades(monthName === 'yearly' ? null : monthName);
+  const labels = comparison.map(i => i.grade);
+  const rates = comparison.map(i => i.attendanceRate);
+
+  return {
+    labels,
+    datasets: [{
+      label: 'อัตราการมาเรียน (%)', data: rates,
+      backgroundColor: rates.map(r => r >= 95 ? 'rgba(75, 192, 192, 0.6)' : r >= 90 ? 'rgba(255, 206, 86, 0.6)' : 'rgba(255, 99, 132, 0.6)'),
+      borderColor: rates.map(r => r >= 95 ? 'rgb(75, 192, 192)' : r >= 90 ? 'rgb(255, 206, 86)' : 'rgb(255, 99, 132)'),
+      borderWidth: 2
+    }]
+  };
+}
+
+// ============================================================
+// 📋 ATTENDANCE REPORTS
+// ============================================================
+
+function generateMonthlyAttendanceReport(monthName) {
+  const data = getAttendanceByMonth(monthName);
+  if (!data || !data.grades || Object.keys(data.grades).length === 0) throw new Error(`ไม่พบข้อมูลสำหรับเดือน ${monthName}`);
+
+  const report = { title: `รายงานการเข้าเรียน - ${monthName}`, generatedAt: new Date().toISOString(), summary: data.totalStats, gradeDetails: [] };
+  const sortedGrades = Object.keys(data.grades).sort((a, b) => { const p = g => { const m = g.match(/^ป\.(\d+)$/); return m ? parseInt(m[1]) : 999; }; return p(a) - p(b); });
+
+  sortedGrades.forEach(grade => {
+    const gd = data.grades[grade];
+    report.gradeDetails.push({ grade, stats: gd, avgAttendancePerStudent: gd.studentCount > 0 ? (gd.totalPresent / gd.studentCount).toFixed(1) : 0 });
+  });
+  return report;
+}
+
+function generateYearlyAttendanceReport(grade) {
+  const data = getAttendanceByGrade(grade);
+  if (!data || !data.monthly) throw new Error(`ไม่พบข้อมูลสำหรับห้อง ${grade}`);
+
+  const report = { title: `รายงานการเข้าเรียนรายปี - ${grade}`, generatedAt: new Date().toISOString(), yearlyStats: data.yearly, monthlyBreakdown: [] };
+  const monthOrder = ['พฤษภาคม2568','มิถุนายน2568','กรกฎาคม2568','สิงหาคม2568','กันยายน2568','ตุลาคม2568','พฤศจิกายน2568','ธันวาคม2568','มกราคม2569','กุมภาพันธ์2569','มีนาคม2569','เมษายน2569'];
+  monthOrder.forEach(month => { if (data.monthly[month]) report.monthlyBreakdown.push({ month, stats: data.monthly[month] }); });
+  return report;
+}
+
+// ============================================================
+// 📚 ACADEMIC PERFORMANCE
+// ============================================================
+
+function normalizeGradeName(g) { return g ? String(g).trim().replace(/\s+/g,'').replace(/\/\d+$/,'') : ''; }
+function findHeaderIndex(headers, candidates) { const lower = headers.map(h => String(h||'').trim().toLowerCase()); for (const c of candidates) { const idx = lower.indexOf(String(c).toLowerCase()); if (idx !== -1) return idx; } return -1; }
+function pick(row, idx) { return idx < 0 ? '' : row[idx]; }
+function gradeRank(g) { const m = String(g||'').trim().match(/^ป\.(\d+)/); return m ? parseInt(m[1], 10) : 999; }
+function getUniqueStudentCount(scores) { return new Set(scores.map(s => s.student_id)).size; }
+function getUniqueSubjectCount(scores) { const u = new Set(scores.map(s => s.subject_code || '')); return u.has('') ? u.size - 1 : u.size; }
+
+function getScoresData(academicYear = null) {
+  try {
+    const ss = SS();
+    const sheet = ss.getSheetByName("SCORES_WAREHOUSE");
+    if (!sheet) return [];
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) return [];
+
+    const headers = data[0]; const rows = data.slice(1);
+    const idx = {
+      student_id: findHeaderIndex(headers, ['student_id','studentid','รหัสนักเรียน','รหัส']),
+      grade: findHeaderIndex(headers, ['grade','ชั้น','ชั้นเรียน','ระดับชั้น']),
+      subject_code: findHeaderIndex(headers, ['subject_code','subjectcode','รหัสวิชา']),
+      subject_name: findHeaderIndex(headers, ['subject_name','subject','ชื่อวิชา']),
+      subject_type: findHeaderIndex(headers, ['subject_type','ประเภทวิชา','กลุ่มสาระ']),
+      average: findHeaderIndex(headers, ['average','avg','คะแนนเฉลี่ย','เฉลี่ย']),
+      final_grade: findHeaderIndex(headers, ['final_grade','grade_final','เกรด','ผลการประเมิน','final']),
+      term1_total: findHeaderIndex(headers, ['term1_total','เทอม1','คะแนนรวมเทอม1','คะแนนระหว่างภาค']),
+      term2_total: findHeaderIndex(headers, ['term2_total','เทอม2','คะแนนรวมเทอม2','คะแนนปลายภาค']),
+      academic_year: findHeaderIndex(headers, ['academic_year','ปีการศึกษา'])
+    };
+
+    let scores = rows.map(r => ({
+      student_id: String(pick(r, idx.student_id)).trim(),
+      grade: normalizeGradeName(pick(r, idx.grade)),
+      subject_code: String(pick(r, idx.subject_code)).trim(),
+      subject_name: String(pick(r, idx.subject_name)).trim(),
+      subject_type: String(pick(r, idx.subject_type)).trim(),
+      average: Number(pick(r, idx.average)) || 0,
+      final_grade: Number(pick(r, idx.final_grade)) || 0,
+      term1_total: Number(pick(r, idx.term1_total)) || 0,
+      term2_total: Number(pick(r, idx.term2_total)) || 0,
+      academic_year: String(pick(r, idx.academic_year)).trim()
+    })).filter(o => o.student_id && o.grade);
+
+    if (academicYear) scores = scores.filter(s => String(s.academic_year) === String(academicYear));
+    return scores;
+  } catch (e) { Logger.log("❌ getScoresData Error: " + e.message); return []; }
+}
+
+function calculateAcademicSummary(academicYear = null) {
+  const scores = getScoresData(academicYear);
+  if (scores.length === 0) return { hasData: false, message: "ยังไม่มีข้อมูลผลการเรียน", overall: null, byGrade: {} };
+
+  const byGrade = {};
+  const gradesList = [...new Set(scores.map(s => s.grade))].filter(Boolean);
+
+  gradesList.forEach(grade => {
+    const gs = scores.filter(s => s.grade === grade);
+    const vs = gs.filter(s => s.average > 0);
+    const vg = gs.filter(s => s.final_grade > 0);
+    const avgScore = vs.length ? vs.reduce((sum, s) => sum + s.average, 0) / vs.length : 0;
+    const avgGrade = vg.length ? vg.reduce((sum, s) => sum + s.final_grade, 0) / vg.length : 0;
+    const passCount = vg.filter(s => s.final_grade >= 1).length;
+
+    byGrade[grade] = {
+      hasData: gs.length > 0, avgScore: Number(avgScore.toFixed(2)), avgGrade: Number(avgGrade.toFixed(2)),
+      passRate: Number((vg.length ? passCount / vg.length * 100 : 0).toFixed(1)),
+      studentCount: getUniqueStudentCount(gs), subjectCount: getUniqueSubjectCount(gs), recordCount: gs.length
+    };
+  });
+
+  const vsAll = scores.filter(s => s.average > 0);
+  const vgAll = scores.filter(s => s.final_grade > 0);
+  const overall = {
+    avgScore: Number((vsAll.length ? vsAll.reduce((a, b) => a + b.average, 0) / vsAll.length : 0).toFixed(2)),
+    avgGrade: Number((vgAll.length ? vgAll.reduce((a, b) => a + b.final_grade, 0) / vgAll.length : 0).toFixed(2)),
+    passRate: Number((vgAll.length ? vgAll.filter(s => s.final_grade >= 1).length / vgAll.length * 100 : 0).toFixed(1)),
+    totalRecords: vgAll.length, totalStudents: getUniqueStudentCount(scores)
+  };
+
+  return { hasData: true, overall, byGrade };
+}
+
+function getAcademicDashboardSummary(academicYear = null, force = false) {
+  try {
+    const cache = CacheService.getScriptCache();
+    const cacheKey = `academic_summary_${academicYear || 'all'}_v2`;
+    if (force) cache.remove(cacheKey);
+
+    const hit = cache.get(cacheKey);
+    if (hit != null) return JSON.parse(hit);
+
+    const start = Date.now();
+    const summary = calculateAcademicSummary(academicYear);
+    summary.processingTime = Date.now() - start;
+    summary.lastUpdated = new Date().toISOString();
+    cache.put(cacheKey, JSON.stringify(summary), 900);
+    return summary;
+  } catch (e) {
+    return { error: true, message: 'ไม่สามารถโหลดข้อมูลผลการเรียนได้: ' + e.message };
+  }
+}
+
+function refreshAcademicSummary(academicYear = null) { return getAcademicDashboardSummary(academicYear, true); }
+
+// ============================================================
+// 📊 ACADEMIC CHARTS
+// ============================================================
+
+function getGradeComparisonChartData(academicYear = null) {
+  const summary = calculateAcademicSummary(academicYear);
+  if (!summary.hasData) return { labels: [], datasets: [], hasData: false };
+
+  const gradesList = Object.keys(summary.byGrade || {}).filter(g => summary.byGrade[g]?.hasData).sort((a, b) => gradeRank(a) - gradeRank(b));
+  const labels = [], avgScores = [], avgGrades = [], studentCounts = [], bgColors = [], bdColors = [];
+  const palette = ['rgba(54,162,235,0.8)','rgba(255,99,132,0.8)','rgba(75,192,192,0.8)','rgba(255,206,86,0.8)','rgba(153,102,255,0.8)','rgba(255,159,64,0.8)'];
+
+  gradesList.forEach((grade, i) => {
+    const gd = summary.byGrade[grade];
+    labels.push(grade); avgScores.push(gd.avgScore); avgGrades.push(gd.avgGrade); studentCounts.push(gd.studentCount);
+    bgColors.push(palette[i % palette.length]); bdColors.push(palette[i % palette.length].replace('0.8', '1'));
+  });
+
+  return { labels, datasets: [{ label: 'คะแนนเฉลี่ย', data: avgScores, backgroundColor: bgColors, borderColor: bdColors, borderWidth: 1, borderRadius: 0 }], metadata: { grades: avgGrades, studentCounts }, hasData: labels.length > 0 };
+}
+
+function getOverallGradeDistributionChartData(academicYear = null) {
+  const scores = getScoresData(academicYear).filter(s => !isNaN(Number(s.final_grade)));
+  if (scores.length === 0) return { hasData: false };
+
+  const gradeTypes = ['4','3.5','3','2.5','2','1.5','1','0'];
+  const counts = gradeTypes.map(gt => scores.filter(s => Number(s.final_grade).toFixed(1) === Number(gt).toFixed(1)).length);
+  const total = counts.reduce((a, b) => a + b, 0);
+
+  return {
+    hasData: true,
+    labels: gradeTypes.map(g => `เกรด ${g}`),
+    datasets: [{ label: 'สัดส่วนรวมทุกชั้น', data: counts.map(c => total ? Math.round((c / total) * 1000) / 10 : 0), backgroundColor: gradeTypes.map(getGradeColor), borderWidth: 1 }],
+    totalRecords: total, rawCounts: counts
+  };
+}
+
+function getGradeDistributionChartData(academicYear = null) {
+  const summary = calculateAcademicSummary(academicYear);
+  if (!summary.hasData) return { labels: [], datasets: [], hasData: false };
+
+  const allScores = getScoresData(academicYear);
+  const gradesList = Object.keys(summary.byGrade || {}).filter(g => summary.byGrade[g]?.hasData).sort((a, b) => gradeRank(a) - gradeRank(b));
+  const labels = [];
+  const gradeTypes = ['4','3.5','3','2.5','2','1.5','1','0'];
+  const datasets = gradeTypes.map(gt => ({ label: `เกรด ${gt}`, data: [], backgroundColor: getGradeColor(gt), borderWidth: 0 }));
+
+  gradesList.forEach(grade => {
+    labels.push(grade);
+    const gs = allScores.filter(s => s.grade === grade && s.final_grade > 0);
+    gradeTypes.forEach((gType, i) => {
+      const cnt = gs.filter(s => Number(s.final_grade).toFixed(1) === Number(gType).toFixed(1)).length;
+      datasets[i].data.push(Number((gs.length ? cnt / gs.length * 100 : 0).toFixed(1)));
+    });
+  });
+
+  return { labels, datasets, hasData: labels.length > 0 };
+}
+
+function getGradeColor(grade) {
+  const g = parseFloat(grade);
+  if (g >= 4) return 'rgba(40, 167, 69, 0.8)';
+  if (g >= 3.5) return 'rgba(40, 167, 69, 0.6)';
+  if (g >= 3) return 'rgba(23, 162, 184, 0.8)';
+  if (g >= 2.5) return 'rgba(255, 193, 7, 0.8)';
+  if (g >= 2) return 'rgba(255, 152, 0, 0.8)';
+  if (g >= 1.5) return 'rgba(255, 111, 0, 0.8)';
+  if (g >= 1) return 'rgba(255, 99, 132, 0.8)';
+  return 'rgba(180, 60, 90, 0.8)';
+}
+
+// ============================================================
+// 🗑️ CACHE & UTILITIES
+// ============================================================
+
+/**
+ * รวม API calls กราฟ 2 ตัวเป็น call เดียว — ลดการอ่าน SCORES_WAREHOUSE จาก 3 รอบเหลือ 1 รอบ
+ */
+function getAllDashboardChartData(academicYear) {
+  try {
+    const cache = CacheService.getScriptCache();
+    const cacheKey = 'all_chart_data_' + (academicYear || 'all') + '_v1';
+    const hit = cache.get(cacheKey);
+    if (hit) return JSON.parse(hit);
+
+    const scores = getScoresData(academicYear);
+    if (scores.length === 0) return { gradeComparison: { labels: [], datasets: [], hasData: false }, gradeDistribution: { hasData: false } };
+
+    // --- Grade Comparison ---
+    const summary = calculateAcademicSummary(academicYear);
+    const gradesList = Object.keys(summary.byGrade || {}).filter(g => summary.byGrade[g]?.hasData).sort((a, b) => gradeRank(a) - gradeRank(b));
+    const labels = [], avgScores = [], avgGrades = [], studentCounts = [], bgColors = [], bdColors = [];
+    const palette = ['rgba(54,162,235,0.8)','rgba(255,99,132,0.8)','rgba(75,192,192,0.8)','rgba(255,206,86,0.8)','rgba(153,102,255,0.8)','rgba(255,159,64,0.8)'];
+    gradesList.forEach((grade, i) => {
+      const gd = summary.byGrade[grade];
+      labels.push(grade); avgScores.push(gd.avgScore); avgGrades.push(gd.avgGrade); studentCounts.push(gd.studentCount);
+      bgColors.push(palette[i % palette.length]); bdColors.push(palette[i % palette.length].replace('0.8', '1'));
+    });
+    const gradeComparison = { labels, datasets: [{ label: 'คะแนนเฉลี่ย', data: avgScores, backgroundColor: bgColors, borderColor: bdColors, borderWidth: 1, borderRadius: 0 }], metadata: { grades: avgGrades, studentCounts }, hasData: labels.length > 0 };
+
+    // --- Grade Distribution ---
+    const validScores = scores.filter(s => !isNaN(Number(s.final_grade)));
+    const gradeTypes = ['4','3.5','3','2.5','2','1.5','1','0'];
+    const counts = gradeTypes.map(gt => validScores.filter(s => Number(s.final_grade).toFixed(1) === Number(gt).toFixed(1)).length);
+    const total = counts.reduce((a, b) => a + b, 0);
+    const gradeDistribution = {
+      hasData: total > 0,
+      labels: gradeTypes.map(g => 'เกรด ' + g),
+      datasets: [{ label: 'สัดส่วนรวมทุกชั้น', data: counts.map(c => total ? Math.round((c / total) * 1000) / 10 : 0), backgroundColor: gradeTypes.map(getGradeColor), borderWidth: 1 }],
+      totalRecords: total, rawCounts: counts
+    };
+
+    const result = { gradeComparison, gradeDistribution, academicSummary: summary };
+    cache.put(cacheKey, JSON.stringify(result), 900);
+    return result;
+  } catch(e) {
+    Logger.log('getAllDashboardChartData error: ' + e.message);
+    return { gradeComparison: { labels: [], datasets: [], hasData: false }, gradeDistribution: { hasData: false }, error: e.message };
+  }
+}
+
+function clearDashboardCache() { DashboardCacheManager.clearAll(); return "✅ ล้าง Dashboard Cache เรียบร้อย"; }
+function clearAcademicCache() { AcademicCacheManager.clearAll(); return "✅ ล้าง Academic Cache เรียบร้อย"; }
+
+function clearServerCache() {
+  try {
+    CacheService.getScriptCache().removeAll(['dashboard_summary_v3', 'academic_summary_all_v2', 'fast_student_stats_v1', 'all_chart_data_all_v1', 'dashboard_progress_v1', 'dashboard_alerts_v1']);
+    return "✅ ล้าง Server Cache เรียบร้อย";
+  } catch (e) { return { error: true, message: e.message }; }
+}
+
+function getDashboardWithData() {
+  try {
+    var html = HtmlService.createTemplateFromFile('spa_dashboard').evaluate().getContent();
+    var summary = getCachedDashboardSummary();
+    var settings = getWebAppSettingsWithCache();
+    var currentMonth = getCurrentThaiMonth();
+    summary.currentMonth = currentMonth;
+    return { html, summary, settings, currentMonth };
+  } catch (e) {
+    throw new Error('Failed to load dashboard data: ' + e.message);
+  }
+}
+
+// ============================================================
+// 📋 DASHBOARD PROGRESS & ALERTS
+// ============================================================
+
+/**
+ * ดึงสถานะการกรอกข้อมูลสำหรับ Dashboard
+ */
+function getDashboardProgress() {
+  try {
+    const cache = CacheService.getScriptCache();
+    const cacheKey = 'dashboard_progress_v1';
+    const hit = cache.get(cacheKey);
+    if (hit) return JSON.parse(hit);
+
+    const ss = SS();
+    const items = [];
+
+    // 1. ตรวจสอบคะแนนรายวิชา (SCORES_WAREHOUSE)
+    try {
+      const scoresSheet = ss.getSheetByName('SCORES_WAREHOUSE');
+      if (scoresSheet && scoresSheet.getLastRow() > 1) {
+        const scoresData = scoresSheet.getDataRange().getValues();
+        const headers = scoresData[0];
+        const gradeIdx = findHeaderIndex(headers, ['grade','ชั้น','ระดับชั้น']);
+        const subjectIdx = findHeaderIndex(headers, ['subject_code','subjectcode','รหัสวิชา']);
+        
+        const uniqueGrades = new Set();
+        const uniqueSubjects = new Set();
+        for (let i = 1; i < scoresData.length; i++) {
+          if (gradeIdx >= 0) uniqueGrades.add(String(scoresData[i][gradeIdx]).trim());
+          if (subjectIdx >= 0) uniqueSubjects.add(String(scoresData[i][subjectIdx]).trim());
+        }
+        uniqueGrades.delete('');
+        uniqueSubjects.delete('');
+
+        items.push({
+          label: 'คะแนนรายวิชา',
+          completed: uniqueSubjects.size,
+          total: Math.max(uniqueSubjects.size, 8),
+          unit: 'วิชา',
+          icon: 'bi-pencil-square',
+          iconBg: '#6366f1'
+        });
+
+        items.push({
+          label: 'ชั้นเรียนที่มีข้อมูล',
+          completed: uniqueGrades.size,
+          total: Math.max(uniqueGrades.size, 6),
+          unit: 'ชั้น',
+          icon: 'bi-mortarboard',
+          iconBg: '#8b5cf6'
+        });
+      } else {
+        items.push({ label: 'คะแนนรายวิชา', completed: 0, total: 8, unit: 'วิชา', icon: 'bi-pencil-square', iconBg: '#6366f1' });
+      }
+    } catch(e) { Logger.log('Progress scores error: ' + e.message); }
+
+    // 2. ตรวจสอบการเช็คชื่อ (เดือนปัจจุบัน)
+    try {
+      const currentMonth = getCurrentThaiMonth();
+      const monthSheet = ss.getSheetByName(currentMonth);
+      if (monthSheet && monthSheet.getLastRow() > 1) {
+        const mData = monthSheet.getDataRange().getValues();
+        const mHeaders = mData[0];
+        const presentIdx = mHeaders.indexOf('มา');
+        let checkedCount = 0;
+        for (let i = 1; i < mData.length; i++) {
+          if (presentIdx >= 0 && Number(mData[i][presentIdx]) > 0) checkedCount++;
+        }
+        const totalStudents = mData.length - 1;
+        items.push({
+          label: 'เช็คชื่อเดือนนี้ (' + currentMonth.replace(/\d+/g,'') + ')',
+          completed: checkedCount,
+          total: totalStudents,
+          unit: 'คน',
+          icon: 'bi-calendar-check',
+          iconBg: '#10b981'
+        });
+      }
+    } catch(e) { Logger.log('Progress attendance error: ' + e.message); }
+
+    // 3. ตรวจสอบการประเมินอ่าน คิด เขียน
+    try {
+      const rtwSheet = ss.getSheetByName('การประเมินอ่านคิดเขียน');
+      if (rtwSheet && rtwSheet.getLastRow() > 1) {
+        const rtwData = rtwSheet.getDataRange().getValues();
+        const studentsSheet = ss.getSheetByName('Students');
+        const totalStudents = studentsSheet ? Math.max(studentsSheet.getLastRow() - 1, 0) : 0;
+        const rtwStudents = new Set();
+        for (let i = 1; i < rtwData.length; i++) {
+          const sid = String(rtwData[i][0] || '').trim();
+          if (sid) rtwStudents.add(sid);
+        }
+        items.push({
+          label: 'ประเมินอ่าน คิด เขียน',
+          completed: rtwStudents.size,
+          total: totalStudents || rtwStudents.size,
+          unit: 'คน',
+          icon: 'bi-journal-text',
+          iconBg: '#ec4899'
+        });
+      } else {
+        items.push({ label: 'ประเมินอ่าน คิด เขียน', completed: 0, total: 1, unit: '', icon: 'bi-journal-text', iconBg: '#ec4899' });
+      }
+    } catch(e) { Logger.log('Progress RTW error: ' + e.message); }
+
+    // 4. ตรวจสอบการประเมินคุณลักษณะ
+    try {
+      const charSheet = ss.getSheetByName('การประเมินคุณลักษณะ');
+      if (charSheet && charSheet.getLastRow() > 1) {
+        items.push({
+          label: 'ประเมินคุณลักษณะ',
+          completed: charSheet.getLastRow() - 1,
+          total: charSheet.getLastRow() - 1,
+          unit: 'รายการ',
+          icon: 'bi-check-circle',
+          iconBg: '#f59e0b'
+        });
+      } else {
+        items.push({ label: 'ประเมินคุณลักษณะ', completed: 0, total: 1, unit: '', icon: 'bi-check-circle', iconBg: '#f59e0b' });
+      }
+    } catch(e) { Logger.log('Progress char error: ' + e.message); }
+
+    const result = { items: items };
+    cache.put(cacheKey, JSON.stringify(result), 300);
+    return result;
+  } catch(e) {
+    Logger.log('getDashboardProgress error: ' + e.message);
+    return { error: true, message: e.message, items: [] };
+  }
+}
+
+/**
+ * ดึงแจ้งเตือนสำหรับ Dashboard
+ */
+function getDashboardAlerts() {
+  try {
+    const cache = CacheService.getScriptCache();
+    const cacheKey = 'dashboard_alerts_v1';
+    const hit = cache.get(cacheKey);
+    if (hit) return JSON.parse(hit);
+
+    const ss = SS();
+    const alerts = [];
+
+    // 1. ตรวจสอบนักเรียนที่ได้เกรด 0
+    try {
+      const scoresSheet = ss.getSheetByName('SCORES_WAREHOUSE');
+      if (scoresSheet && scoresSheet.getLastRow() > 1) {
+        const sData = scoresSheet.getDataRange().getValues();
+        const sHeaders = sData[0];
+        const gradeIdx = findHeaderIndex(sHeaders, ['final_grade','grade_final','เกรด','ผลการประเมิน','final']);
+        const nameIdx = findHeaderIndex(sHeaders, ['student_name','ชื่อ','ชื่อนักเรียน']);
+        const subjectIdx = findHeaderIndex(sHeaders, ['subject_name','subject','ชื่อวิชา']);
+        
+        let zeroGradeCount = 0;
+        const zeroSubjects = new Set();
+        for (let i = 1; i < sData.length; i++) {
+          const grade = gradeIdx >= 0 ? Number(sData[i][gradeIdx]) : -1;
+          if (grade === 0) {
+            zeroGradeCount++;
+            if (subjectIdx >= 0) zeroSubjects.add(String(sData[i][subjectIdx]).trim());
+          }
+        }
+        if (zeroGradeCount > 0) {
+          alerts.push({
+            type: 'danger',
+            icon: 'bi-exclamation-triangle-fill',
+            message: 'พบนักเรียนได้เกรด 0 จำนวน <strong>' + zeroGradeCount + '</strong> รายการ ใน ' + zeroSubjects.size + ' วิชา'
+          });
+        }
+      }
+    } catch(e) { Logger.log('Alert grade0 error: ' + e.message); }
+
+    // 2. ตรวจสอบ settings ที่ยังไม่ได้ตั้งค่า
+    try {
+      var settings = getGlobalSettings(true);
+      var schoolName = String(settings['ชื่อโรงเรียน'] || '').trim();
+      if (!schoolName || schoolName === 'โรงเรียนตัวอย่าง' || schoolName === 'โรงเรียน...') {
+        alerts.push({
+          type: 'warning',
+          icon: 'bi-gear-fill',
+          message: 'ยังไม่ได้ตั้งค่า<strong>ชื่อโรงเรียน</strong> — ไปที่ ระบบ > ตั้งค่าระบบ'
+        });
+      }
+      var director = String(settings['ชื่อผู้อำนวยการ'] || '').trim();
+      if (!director || director === '...' || director === 'ผู้อำนวยการ') {
+        alerts.push({
+          type: 'warning',
+          icon: 'bi-person-fill-gear',
+          message: 'ยังไม่ได้ตั้งค่า<strong>ชื่อผู้อำนวยการ</strong>'
+        });
+      }
+    } catch(e) { Logger.log('Alert settings error: ' + e.message); }
+
+    // 3. ตรวจสอบการเช็คชื่อเดือนนี้
+    try {
+      const currentMonth = getCurrentThaiMonth();
+      const monthSheet = ss.getSheetByName(currentMonth);
+      if (!monthSheet) {
+        alerts.push({
+          type: 'info',
+          icon: 'bi-calendar-x',
+          message: 'ยังไม่มีข้อมูลเช็คชื่อเดือน <strong>' + currentMonth.replace(/\d+/g,'') + '</strong>'
+        });
+      }
+    } catch(e) {}
+
+    const result = { alerts: alerts };
+    cache.put(cacheKey, JSON.stringify(result), 300);
+    return result;
+  } catch(e) {
+    Logger.log('getDashboardAlerts error: ' + e.message);
+    return { error: true, alerts: [] };
+  }
+}

@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>สรุปผลการเรียนรายชั้น</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Sarabun', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px 0;
+    }
+    
+    .container-wrapper {
+      max-width: 95%;
+      margin: 0 auto;
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      padding: 30px;
+    }
+    
+    .page-header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 3px solid #667eea;
+    }
+    
+    .page-header h1 {
+      color: #667eea;
+      font-weight: bold;
+      margin-bottom: 10px;
+      font-size: 2.5rem;
+    }
+    
+    .page-header p {
+      color: #666;
+      font-size: 1.1rem;
+    }
+    
+    .filter-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 10px;
+      padding: 25px;
+      margin-bottom: 30px;
+      color: white;
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    .filter-card label {
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: block;
+    }
+    
+    .filter-card select {
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      background: rgba(255, 255, 255, 0.95);
+      color: #333;
+      font-weight: 500;
+    }
+    
+    .filter-card select:focus {
+      border-color: white;
+      box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.3);
+    }
+    
+    .btn-primary {
+      background: white;
+      color: #667eea;
+      border: none;
+      font-weight: 600;
+      padding: 12px 40px;
+      transition: all 0.3s;
+    }
+    
+    .btn-primary:hover {
+      background: #f8f9fa;
+      color: #667eea;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+    
+    .btn-export {
+      background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      color: white;
+      border: none;
+      font-weight: 600;
+      padding: 10px 25px;
+      margin-left: 10px;
+      transition: all 0.3s;
+    }
+    
+    .btn-export:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(17, 153, 142, 0.4);
+    }
+    
+    .btn-pdf {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: white;
+      border: none;
+      font-weight: 600;
+      padding: 10px 25px;
+      margin-left: 10px;
+      transition: all 0.3s;
+    }
+    
+    .btn-pdf:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(240, 147, 251, 0.4);
+    }
+    
+    .info-banner {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 25px;
+      display: none;
+    }
+    
+    .info-banner.show {
+      display: block;
+      animation: slideDown 0.5s ease-out;
+    }
+    
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .info-banner h5 {
+      margin: 0 0 10px 0;
+      font-weight: bold;
+    }
+    
+    .table-container {
+      overflow-x: auto;
+      margin-top: 25px;
+      border-radius: 10px;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .scores-table {
+      width: 100%;
+      margin: 0;
+      background: white;
+    }
+    
+    .scores-table thead {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    
+    .scores-table th {
+      padding: 15px 10px;
+      text-align: center;
+      font-weight: 600;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      white-space: nowrap;
+      font-size: 0.95rem;
+    }
+    
+    .scores-table tbody tr {
+      transition: all 0.2s;
+    }
+    
+    .scores-table tbody tr:hover {
+      background: #f8f9fa;
+      transform: scale(1.01);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .scores-table td {
+      padding: 12px 10px;
+      text-align: center;
+      border: 1px solid #dee2e6;
+      font-size: 0.95rem;
+    }
+    
+    .scores-table tbody tr:nth-child(even) {
+      background: #f8f9fa;
+    }
+    
+    .student-no-col {
+      font-weight: 600;
+      color: #667eea;
+      min-width: 60px;
+    }
+    
+    .student-name-col {
+      text-align: left;
+      font-weight: 500;
+      min-width: 180px;
+      max-width: 250px;
+    }
+    
+    .grade-cell {
+      font-weight: 700;
+      font-size: 1.1rem;
+      min-width: 55px;
+    }
+    
+    .grade-4 { color: #28a745; background: #d4edda; }
+    .grade-3-5 { color: #20c997; background: #d1ecf1; }
+    .grade-3 { color: #17a2b8; background: #cfe2ff; }
+    .grade-2-5 { color: #ffc107; background: #fff3cd; }
+    .grade-2 { color: #fd7e14; background: #ffe5d0; }
+    .grade-1-5 { color: #dc3545; background: #f8d7da; }
+    .grade-1 { color: #c82333; background: #f5c2c7; }
+    .grade-0 { color: #6c757d; background: #e2e3e5; }
+    
+    .average-col {
+      font-weight: bold;
+      color: #667eea;
+      background: #e7e9fc;
+      min-width: 80px;
+      font-size: 1.1rem;
+    }
+    
+    .loading-spinner {
+      display: none;
+      text-align: center;
+      padding: 40px;
+    }
+    
+    .loading-spinner.show {
+      display: block;
+    }
+    
+    .spinner-border {
+      width: 3rem;
+      height: 3rem;
+      color: #667eea;
+    }
+    
+    .no-data {
+      text-align: center;
+      padding: 50px;
+      color: #6c757d;
+      display: none;
+    }
+    
+    .no-data.show {
+      display: block;
+    }
+    
+    .no-data i {
+      font-size: 4rem;
+      margin-bottom: 20px;
+      opacity: 0.5;
+    }
+    
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+      }
+      
+      .container-wrapper {
+        box-shadow: none;
+        border-radius: 0;
+      }
+      
+      .filter-card,
+      .btn-export,
+      .btn-pdf,
+      .no-print {
+        display: none !important;
+      }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 1200px) {
+      .container-wrapper {
+        max-width: 98%;
+        padding: 20px;
+      }
+      
+      .page-header h1 {
+        font-size: 2rem;
+      }
+      
+      .scores-table th,
+      .scores-table td {
+        padding: 10px 8px;
+        font-size: 0.9rem;
+      }
+    }
+
+    @media (max-width: 992px) {
+      .page-header h1 {
+        font-size: 1.8rem;
+      }
+      
+      .filter-card {
+        padding: 20px;
+      }
+      
+      .scores-table th,
+      .scores-table td {
+        padding: 8px 6px;
+        font-size: 0.85rem;
+      }
+      
+      .grade-cell {
+        font-size: 1rem;
+        min-width: 50px;
+      }
+      
+      .student-name-col {
+        min-width: 150px;
+        max-width: 200px;
+        font-size: 0.85rem;
+      }
+      
+      .average-col {
+        min-width: 70px;
+        font-size: 1rem;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .container-wrapper {
+        padding: 15px;
+        border-radius: 10px;
+      }
+      
+      .page-header {
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+      }
+      
+      .page-header h1 {
+        font-size: 1.5rem;
+      }
+      
+      .page-header p {
+        font-size: 0.95rem;
+      }
+      
+      .filter-card {
+        padding: 15px;
+      }
+      
+      .filter-card .row {
+        row-gap: 15px;
+      }
+      
+      .btn-primary {
+        padding: 10px 30px;
+        font-size: 0.95rem;
+      }
+      
+      .btn-export,
+      .btn-pdf {
+        padding: 8px 20px;
+        margin-left: 5px;
+        margin-top: 10px;
+        font-size: 0.9rem;
+      }
+      
+      .info-banner {
+        padding: 15px;
+      }
+      
+      .info-banner h5 {
+        font-size: 1.1rem;
+      }
+      
+      .info-banner p {
+        font-size: 0.9rem;
+      }
+      
+      .table-container {
+        margin-top: 20px;
+        border-radius: 8px;
+      }
+      
+      .scores-table {
+        font-size: 0.8rem;
+      }
+      
+      .scores-table th,
+      .scores-table td {
+        padding: 6px 4px;
+        font-size: 0.8rem;
+      }
+      
+      .scores-table th {
+        white-space: normal;
+        line-height: 1.2;
+      }
+      
+      .student-no-col {
+        min-width: 50px;
+        font-size: 0.8rem;
+      }
+      
+      .student-name-col {
+        min-width: 130px;
+        max-width: 180px;
+        font-size: 0.8rem;
+      }
+      
+      .grade-cell {
+        font-size: 0.9rem;
+        min-width: 45px;
+      }
+      
+      .average-col {
+        min-width: 60px;
+        font-size: 0.9rem;
+      }
+      
+      /* ซ่อนคอลัมน์บางส่วนในมือถือ ถ้าจำเป็น */
+      .hide-on-mobile {
+        display: none;
+      }
+    }
+
+    @media (max-width: 576px) {
+      body {
+        padding: 10px 0;
+      }
+      
+      .container-wrapper {
+        padding: 10px;
+        border-radius: 8px;
+      }
+      
+      .page-header h1 {
+        font-size: 1.3rem;
+      }
+      
+      .page-header h1 i {
+        font-size: 1.2rem;
+      }
+      
+      .page-header p {
+        font-size: 0.85rem;
+      }
+      
+      .filter-card {
+        padding: 12px;
+      }
+      
+      .filter-card label {
+        font-size: 0.9rem;
+        margin-bottom: 5px;
+      }
+      
+      .filter-card select {
+        font-size: 0.9rem;
+        padding: 8px;
+      }
+      
+      .btn-primary {
+        padding: 8px 20px;
+        font-size: 0.9rem;
+      }
+      
+      .text-end {
+        text-align: center !important;
+      }
+      
+      .btn-export,
+      .btn-pdf {
+        padding: 8px 15px;
+        margin: 5px;
+        font-size: 0.85rem;
+        display: inline-block;
+      }
+      
+      .info-banner {
+        padding: 12px;
+      }
+      
+      .info-banner h5 {
+        font-size: 1rem;
+      }
+      
+      .info-banner p {
+        font-size: 0.85rem;
+      }
+      
+      .scores-table {
+        font-size: 0.75rem;
+      }
+      
+      .scores-table th,
+      .scores-table td {
+        padding: 5px 3px;
+        font-size: 0.75rem;
+      }
+      
+      .scores-table th {
+        padding: 8px 3px;
+      }
+      
+      .student-no-col {
+        min-width: 40px;
+        font-size: 0.75rem;
+      }
+      
+      .student-name-col {
+        min-width: 110px;
+        max-width: 150px;
+        font-size: 0.75rem;
+        padding: 5px 3px;
+      }
+      
+      .grade-cell {
+        font-size: 0.85rem;
+        min-width: 38px;
+        padding: 5px 2px;
+      }
+      
+      .average-col {
+        min-width: 50px;
+        font-size: 0.85rem;
+      }
+      
+      .loading-spinner {
+        padding: 30px;
+      }
+      
+      .spinner-border {
+        width: 2rem;
+        height: 2rem;
+      }
+      
+      .no-data {
+        padding: 30px;
+      }
+      
+      .no-data i {
+        font-size: 3rem;
+      }
+      
+      .no-data h4 {
+        font-size: 1.1rem;
+      }
+      
+      .no-data p {
+        font-size: 0.9rem;
+      }
+    }
+
+    /* Landscape mode สำหรับมือถือ */
+    @media (max-width: 768px) and (orientation: landscape) {
+      .page-header h1 {
+        font-size: 1.3rem;
+        margin-bottom: 5px;
+      }
+      
+      .page-header p {
+        font-size: 0.85rem;
+      }
+      
+      .filter-card {
+        padding: 10px;
+      }
+      
+      .scores-table th,
+      .scores-table td {
+        padding: 4px 3px;
+        font-size: 0.75rem;
+      }
+    }
+
+    /* เพิ่ม smooth scrolling */
+    .table-container {
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* ปรับ hover effect ให้เหมาะกับ touch screen */
+    @media (hover: none) {
+      .scores-table tbody tr:hover {
+        transform: none;
+      }
+      
+      .btn-primary:hover,
+      .btn-export:hover,
+      .btn-pdf:hover {
+        transform: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container-wrapper">
+    <div class="page-header">
+      <h1><i class="bi bi-clipboard-data"></i> สรุปผลการเรียนรายชั้น</h1>
+      <p>ระบบแสดงผลการเรียนของนักเรียนแต่ละห้องเรียน</p>
+    </div>
+
+    <div class="filter-card no-print">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label for="gradeSelect">ระดับชั้น</label>
+          <select class="form-select" id="gradeSelect">
+            <option value="">-- เลือกชั้น --</option>
+            <option value="ป.1">ประถมศึกษาปีที่ 1</option>
+            <option value="ป.2">ประถมศึกษาปีที่ 2</option>
+            <option value="ป.3">ประถมศึกษาปีที่ 3</option>
+            <option value="ป.4">ประถมศึกษาปีที่ 4</option>
+            <option value="ป.5">ประถมศึกษาปีที่ 5</option>
+            <option value="ป.6">ประถมศึกษาปีที่ 6</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label for="classSelect">ห้อง</label>
+          <select class="form-select" id="classSelect">
+            <option value="">-- เลือกห้อง --</option>
+            <option value="1">ห้อง 1</option>
+            <option value="2">ห้อง 2</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label>&nbsp;</label>
+          <button class="btn btn-primary w-100" id="loadDataBtn">
+            <i class="bi bi-search"></i> ค้นหา
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-banner" id="infoBanner">
+      <h5 id="infoTitle"></h5>
+      <p id="infoText" class="mb-0"></p>
+    </div>
+
+    <div class="text-end mb-3 no-print" id="exportButtons" style="display: none;">
+      <button class="btn btn-export" onclick="exportToExcel()">
+        <i class="bi bi-file-earmark-excel-fill"></i> ส่งออก Excel
+      </button>
+      <button class="btn btn-pdf" id="exportPDFBtn" onclick="exportToPDF()">
+        <i class="bi bi-file-earmark-pdf-fill"></i> ส่งออก PDF
+      </button>
+    </div>
+
+    <div class="loading-spinner" id="loadingSpinner">
+      <div class="spinner-border" role="status">
+        <span class="visually-hidden">กำลังโหลด...</span>
+      </div>
+      <p class="mt-3">กำลังดึงข้อมูล...</p>
+    </div>
+
+    <div class="no-data" id="noData">
+      <i class="bi bi-inbox"></i>
+      <h4>ไม่พบข้อมูล</h4>
+      <p>กรุณาเลือกชั้นเรียนและห้องเรียน</p>
+    </div>
+
+    <div class="table-container" id="tableContainer" style="display: none;">
+      <table class="table scores-table table-bordered" id="scoresTable">
+        <thead>
+          <tr>
+            <th rowspan="2">ที่</th>
+            <th rowspan="2">รหัส</th>
+            <th rowspan="2">ชื่อ-นามสกุล</th>
+            <th colspan="999" id="subjectsHeader">รายวิชา</th>
+            <th rowspan="2">เฉลี่ย</th>
+          </tr>
+          <tr id="subjectNamesRow"></tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  
+  <script>
+    var appData = {
+      currentData: null,
+      currentGrade: '',
+      currentClass: ''
+    };
+
+    function getSubjectShortName(fullName) {
+      var shortNames = {
+        'ภาษาไทย': 'ภาษาไทย',
+        'คณิตศาสตร์': 'คณิต',
+        'วิทยาศาสตร์และเทคโนโลยี': 'วิทย์',
+        'วิทยาศาสตร์': 'วิทย์',
+        'สังคมศึกษา ศาสนา และวัฒนธรรม': 'สังคม',
+        'สังคมศึกษา': 'สังคม',
+        'ประวัติศาสตร์': 'ประวัติฯ',
+        'สุขศึกษาและพลศึกษา': 'สุขศึกษาฯ',
+        'สุขศึกษา': 'สุขศึกษาฯ',
+        'พลศึกษา': 'พลศึกษา',
+        'ศิลปะ': 'ศิลปะ',
+        'การงานอาชีพ': 'การงานฯ',
+        'การงาน': 'การงานฯ',
+        'ภาษาอังกฤษ': 'ภาษาอังกฤษ',
+        'หน้าที่พลเมือง': 'หน้าที่ฯ',
+        'การป้องกันตนเองและประเทศชาติ': 'การป้องกันฯ'
+      };
+      
+      for (var key in shortNames) {
+        if (fullName.indexOf(key) !== -1) {
+          return shortNames[key];
+        }
+      }
+      
+      return fullName.length > 10 ? fullName.substring(0, 10) + 'ฯ' : fullName;
+    }
+
+    function formatGrade(grade) {
+      if (grade === undefined || grade === null) {
+        return '-';
+      }
+      
+      if (Number.isInteger(grade)) {
+        return grade.toString();
+      }
+      
+      return grade.toFixed(1);
+    }
+
+    document.getElementById('loadDataBtn').addEventListener('click', loadScores);
+
+    function loadScores() {
+      var grade = document.getElementById('gradeSelect').value;
+      var classNo = document.getElementById('classSelect').value;
+
+      if (!grade || !classNo) {
+        showInfo('error', 'กรุณาเลือกชั้นและห้อง', 'เลือกชั้นเรียนและห้องเรียนก่อนค้นหา');
+        return;
+      }
+
+      appData.currentGrade = grade;
+      appData.currentClass = classNo;
+
+      document.getElementById('loadingSpinner').classList.add('show');
+      document.getElementById('tableContainer').style.display = 'none';
+      document.getElementById('noData').classList.remove('show');
+      document.getElementById('infoBanner').classList.remove('show');
+      document.getElementById('exportButtons').style.display = 'none';
+
+      google.script.run
+        .withSuccessHandler(displayScores)
+        .withFailureHandler(handleError)
+        .getStudentScoresForWeb(grade, classNo);
+    }
+
+    function displayScores(data) {
+      document.getElementById('loadingSpinner').classList.remove('show');
+
+      if (!data.success) {
+        showInfo('error', 'เกิดข้อผิดพลาด', data.message);
+        document.getElementById('noData').classList.add('show');
+        return;
+      }
+
+      appData.currentData = data;
+
+      var studentCount = data.students.length;
+      var subjectCount = data.subjects.length;
+      showInfo('success', data.gradeFullName + ' ห้อง ' + data.classNo, 
+               'จำนวนนักเรียน: ' + studentCount + ' คน | วิชาที่ประเมิน: ' + subjectCount + ' วิชา');
+
+      var subjectNamesRow = document.getElementById('subjectNamesRow');
+      subjectNamesRow.innerHTML = '';
+      
+      for (var i = 0; i < data.subjects.length; i++) {
+        var th = document.createElement('th');
+        th.textContent = getSubjectShortName(data.subjects[i]);
+        th.title = data.subjects[i];
+        subjectNamesRow.appendChild(th);
+      }
+
+      document.getElementById('subjectsHeader').setAttribute('colspan', data.subjects.length);
+
+      var tableBody = document.getElementById('tableBody');
+      tableBody.innerHTML = '';
+
+      for (var j = 0; j < data.students.length; j++) {
+        var student = data.students[j];
+        var tr = document.createElement('tr');
+
+        var tdNo = document.createElement('td');
+        tdNo.textContent = j + 1;
+        tdNo.style.textAlign = 'center';
+        tr.appendChild(tdNo);
+
+        var tdStudentNo = document.createElement('td');
+        tdStudentNo.className = 'student-no-col';
+        tdStudentNo.textContent = student.studentNo || student.studentId || '-';
+        tr.appendChild(tdStudentNo);
+
+        var tdName = document.createElement('td');
+        tdName.className = 'student-name-col';
+        tdName.textContent = student.fullName || '-';
+        tr.appendChild(tdName);
+
+        for (var k = 0; k < data.subjects.length; k++) {
+          var subject = data.subjects[k];
+          var tdGrade = document.createElement('td');
+          tdGrade.className = 'grade-cell';
+          var grade = student.grades[subject];
+          
+          if (grade !== undefined && grade !== null) {
+            tdGrade.textContent = formatGrade(grade);
+            tdGrade.classList.add(getGradeClass(grade));
+          } else {
+            tdGrade.textContent = '-';
+          }
+          
+          tr.appendChild(tdGrade);
+        }
+
+        var tdAverage = document.createElement('td');
+        tdAverage.className = 'average-col';
+        tdAverage.textContent = student.average || '0.00';
+        tr.appendChild(tdAverage);
+
+        tableBody.appendChild(tr);
+      }
+
+      document.getElementById('tableContainer').style.display = 'block';
+      document.getElementById('exportButtons').style.display = 'block';
+    }
+
+    function getGradeClass(grade) {
+      if (grade >= 4.0) return 'grade-4';
+      if (grade >= 3.5) return 'grade-3-5';
+      if (grade >= 3.0) return 'grade-3';
+      if (grade >= 2.5) return 'grade-2-5';
+      if (grade >= 2.0) return 'grade-2';
+      if (grade >= 1.5) return 'grade-1-5';
+      if (grade >= 1.0) return 'grade-1';
+      return 'grade-0';
+    }
+
+    function showInfo(type, title, text) {
+      var banner = document.getElementById('infoBanner');
+      var infoTitle = document.getElementById('infoTitle');
+      var infoText = document.getElementById('infoText');
+
+      banner.className = 'info-banner show';
+      
+      if (type === 'error') {
+        banner.style.background = 'linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%)';
+      } else {
+        banner.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+      }
+
+      infoTitle.textContent = title;
+      infoText.textContent = text;
+    }
+
+    function handleError(error) {
+      document.getElementById('loadingSpinner').classList.remove('show');
+      showInfo('error', 'เกิดข้อผิดพลาด', 'ไม่สามารถโหลดข้อมูลได้: ' + error.message);
+      document.getElementById('noData').classList.add('show');
+    }
+
+    function exportToExcel() {
+      if (!appData.currentData) {
+        alert('ไม่มีข้อมูลให้ส่งออก');
+        return;
+      }
+
+      var wsData = [];
+      var headerRow1 = ['ที่', 'รหัส', 'ชื่อ-นามสกุล'];
+      
+      for (var i = 0; i < appData.currentData.subjects.length; i++) {
+        headerRow1.push(getSubjectShortName(appData.currentData.subjects[i]));
+      }
+      headerRow1.push('เฉลี่ย');
+      wsData.push(headerRow1);
+
+      for (var j = 0; j < appData.currentData.students.length; j++) {
+        var student = appData.currentData.students[j];
+        var row = [
+          j + 1,
+          student.studentNo || student.studentId || '-',
+          student.fullName || '-'
+        ];
+        
+        for (var k = 0; k < appData.currentData.subjects.length; k++) {
+          var subject = appData.currentData.subjects[k];
+          var grade = student.grades[subject];
+          row.push(grade !== undefined ? formatGrade(grade) : '-');
+        }
+        
+        row.push(student.average || '0.00');
+        wsData.push(row);
+      }
+
+      var wb = XLSX.utils.book_new();
+      var ws = XLSX.utils.aoa_to_sheet(wsData);
+
+      var cols = [
+        { wch: 5 },
+        { wch: 10 },
+        { wch: 30 }
+      ];
+      
+      for (var m = 0; m < appData.currentData.subjects.length; m++) {
+        cols.push({ wch: 10 });
+      }
+      cols.push({ wch: 12 });
+      
+      ws['!cols'] = cols;
+
+      XLSX.utils.book_append_sheet(wb, ws, "เกรด");
+
+      var filename = 'เกรด_' + appData.currentData.grade + '_' + appData.currentData.classNo + '_' + new Date().getTime() + '.xlsx';
+      XLSX.writeFile(wb, filename);
+    }
+
+    function exportToPDF() {
+      if (!appData.currentGrade || !appData.currentClass) {
+        alert('กรุณาเลือกชั้นและห้องก่อน');
+        return;
+      }
+
+      var btn = document.getElementById('exportPDFBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> กำลังสร้าง PDF...';
+
+      google.script.run
+        .withSuccessHandler(function(url) {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="bi bi-file-earmark-pdf-fill"></i> ส่งออก PDF';
+          window.open(url, '_blank');
+          showInfo('success', 'สร้าง PDF สำเร็จ', 'กรุณาตรวจสอบแท็บใหม่หรือดาวน์โหลดไฟล์');
+        })
+        .withFailureHandler(function(error) {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="bi bi-file-earmark-pdf-fill"></i> ส่งออก PDF';
+          showInfo('error', 'เกิดข้อผิดพลาด', 'ไม่สามารถสร้าง PDF ได้: ' + error.message);
+        })
+        .exportStudentScoresPDF(appData.currentGrade, appData.currentClass);
+    }
+  </script>
+</body>
+</html>

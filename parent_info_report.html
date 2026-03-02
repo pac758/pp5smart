@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    body {
+      font-family: 'Sarabun', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f8f9fa;
+    }
+    
+    .page-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 25px;
+      border-radius: 12px;
+      margin-bottom: 30px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .page-header h4 {
+      margin: 0;
+      font-weight: 600;
+    }
+    
+    .page-header p {
+      margin: 10px 0 0 0;
+      opacity: 0.95;
+    }
+    
+    .nav-tabs {
+      border-bottom: 2px solid #e0e0e0;
+      margin-bottom: 25px;
+    }
+    
+    .nav-tabs .nav-link {
+      border: none;
+      color: #666;
+      font-weight: 500;
+      padding: 12px 24px;
+      margin-right: 5px;
+      transition: all 0.3s ease;
+    }
+    
+    .nav-tabs .nav-link:hover {
+      color: #667eea;
+      background: #f8f9ff;
+      border-radius: 8px 8px 0 0;
+    }
+    
+    .nav-tabs .nav-link.active {
+      color: #667eea;
+      background: white;
+      border-bottom: 3px solid #667eea;
+      font-weight: 600;
+    }
+    
+    .tab-content {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+    
+    .search-section {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 25px;
+      border-radius: 12px;
+      margin-bottom: 25px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .search-section .form-label {
+      color: white;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+    
+    .search-section .form-control,
+    .search-section .form-select {
+      border: 2px solid rgba(255,255,255,0.3);
+      background: rgba(255,255,255,0.95);
+      border-radius: 8px;
+      padding: 10px 15px;
+    }
+    
+    .search-section .form-control:focus,
+    .search-section .form-select:focus {
+      border-color: white;
+      box-shadow: 0 0 0 0.2rem rgba(255,255,255,0.25);
+    }
+    
+    .btn-search {
+      background: white;
+      color: #667eea;
+      border: none;
+      font-weight: 600;
+      padding: 10px 20px;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+    
+    .btn-search:hover {
+      background: #f8f9fa;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .search-results {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      margin-bottom: 25px;
+    }
+    
+    .student-card {
+      border: 1px solid #e0e0e0;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: white;
+    }
+    
+    .student-card:hover {
+      border-color: #667eea;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+      transform: translateX(5px);
+    }
+    
+    .student-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .student-name {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #333;
+      margin: 0;
+    }
+    
+    .student-info {
+      color: #666;
+      font-size: 0.9rem;
+      margin-top: 5px;
+    }
+    
+    .form-section {
+      display: none;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+    
+    .section-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 15px 20px;
+      border-radius: 10px;
+      margin-bottom: 25px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .section-header h5 {
+      margin: 0;
+      font-weight: 600;
+    }
+    
+    .section-header i {
+      font-size: 1.3rem;
+    }
+    
+    .guardian-card {
+      border-left: 4px solid #667eea;
+      padding: 20px;
+      background: #f8f9ff;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    
+    .student-info-badge {
+      background: linear-gradient(135deg, #e7f3ff 0%, #f0e7ff 100%);
+      border-left: 5px solid #0066cc;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 25px;
+    }
+    
+    .student-info-badge h5 {
+      color: #0066cc;
+      margin-bottom: 15px;
+      font-weight: 600;
+    }
+    
+    .info-row {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    
+    .info-item {
+      flex: 1;
+      min-width: 200px;
+    }
+    
+    .info-label {
+      font-weight: 600;
+      color: #555;
+      font-size: 0.9rem;
+    }
+    
+    .info-value {
+      color: #333;
+      font-size: 1rem;
+    }
+    
+    .required-field::after {
+      content: ' *';
+      color: #dc3545;
+      font-weight: bold;
+    }
+    
+    .form-control,
+    .form-select {
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 10px 15px;
+      transition: all 0.3s ease;
+    }
+    
+    .form-control:focus,
+    .form-select:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+    }
+    
+    .btn-save {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      color: white;
+      padding: 12px 30px;
+      font-weight: 600;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+    
+    .btn-save:hover {
+      background: linear-gradient(135deg, #5568d3 0%, #653a91 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-cancel {
+      background: #6c757d;
+      border: none;
+      color: white;
+      padding: 12px 30px;
+      font-weight: 600;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+    
+    .btn-cancel:hover {
+      background: #5a6268;
+      transform: translateY(-2px);
+    }
+    
+    .btn-generate {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      border: none;
+      color: white;
+      padding: 12px 30px;
+      font-weight: 600;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+    
+    .btn-generate:hover {
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    }
+    
+    .btn-generate.loading .spinner-border {
+      display: inline-block;
+    }
+    
+    .btn-generate .spinner-border {
+      display: none;
+      width: 1rem;
+      height: 1rem;
+      border-width: 0.15em;
+      margin-right: 8px;
+    }
+    
+    .btn-generate.loading .btn-text {
+      display: none;
+    }
+    
+    .status-area {
+      display: none;
+      margin-top: 15px;
+      border-radius: 10px;
+      padding: 15px 20px;
+    }
+    
+    .alert {
+      border-radius: 10px;
+      border: none;
+      padding: 15px 20px;
+      margin-top: 20px;
+    }
+    
+    .alert-success {
+      background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+      color: #155724;
+    }
+    
+    .alert-danger {
+      background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+      color: #721c24;
+    }
+    
+    .alert-warning {
+      background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+      color: #856404;
+    }
+    
+    .alert-info {
+      background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+      color: #0c5460;
+    }
+    
+    .card {
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    
+    .card-body {
+      padding: 25px;
+    }
+    
+    @media (max-width: 768px) {
+      .search-section {
+        padding: 20px 15px;
+      }
+      
+      .form-section {
+        padding: 20px 15px;
+      }
+      
+      .student-info-badge {
+        padding: 15px;
+      }
+      
+      .section-header {
+        padding: 12px 15px;
+      }
+      
+      .guardian-card {
+        padding: 15px;
+      }
+      
+      .tab-content {
+        padding: 20px 15px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="page-header">
+      <h4><i class="fas fa-users"></i> จัดการข้อมูลผู้ปกครอง</h4>
+      <p>แก้ไขข้อมูลผู้ปกครองและที่อยู่ หรือพิมพ์รายงานข้อมูลผู้ปกครอง</p>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs" id="parentTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="edit-tab" data-bs-toggle="tab" data-bs-target="#edit-panel" type="button" role="tab">
+          <i class="fas fa-edit"></i> แก้ไขข้อมูลผู้ปกครอง
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="report-tab" data-bs-toggle="tab" data-bs-target="#report-panel" type="button" role="tab">
+          <i class="fas fa-file-pdf"></i> พิมพ์รายงานผู้ปกครอง
+        </button>
+      </li>
+    </ul>
+
+    <div class="tab-content" id="parentTabContent">
+      <!-- Tab 1: แก้ไขข้อมูล -->
+      <div class="tab-pane fade show active" id="edit-panel" role="tabpanel">
+        <!-- Search Section -->
+        <div class="search-section">
+          <div class="row g-3">
+            <div class="col-md-3 col-sm-6">
+              <label class="form-label">ระดับชั้น</label>
+              <select id="searchGrade" class="form-select">
+                <option value="">-- ทุกชั้น --</option>
+              </select>
+            </div>
+            <div class="col-md-3 col-sm-6">
+              <label class="form-label">ห้อง</label>
+              <select id="searchClass" class="form-select">
+                <option value="">-- ทุกห้อง --</option>
+              </select>
+            </div>
+            <div class="col-md-4 col-sm-8">
+              <label class="form-label">ค้นหาชื่อ-นามสกุล</label>
+              <input type="text" id="searchName" class="form-control" placeholder="พิมพ์ชื่อหรือนามสกุล">
+            </div>
+            <div class="col-md-2 col-sm-4 d-flex align-items-end">
+              <button id="searchBtn" class="btn btn-search w-100">
+                <i class="fas fa-search"></i> ค้นหา
+              </button>
+            </div>
+          </div>
+
+          <!-- Search Results -->
+          <div id="searchResults" class="search-results" style="display: none; margin-top: 20px;">
+            <h6 class="mb-3"><i class="fas fa-list"></i> ผลการค้นหา:</h6>
+            <div id="studentList"></div>
+          </div>
+        </div>
+
+        <!-- Edit Form Section -->
+       <div id="editFormSection" class="form-section">
+  <div class="student-info-badge">
+    <h5><i class="fas fa-user-graduate"></i> ข้อมูลนักเรียน</h5>
+    <div id="studentInfoDisplay" class="info-row"></div>
+  </div>
+
+  <form id="parentForm">
+    <input type="hidden" id="studentId" name="studentId">
+
+    <div class="section-header">
+      <i class="fas fa-male"></i>
+      <h5>ข้อมูลบิดา</h5>
+    </div>
+    <div class="row g-3 mb-4">
+      <div class="col-md-6">
+        <label class="form-label">ชื่อ-นามสกุลบิดา</label>
+        <input type="text" class="form-control" id="fatherName" name="fatherName">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">อาชีพบิดา</label>
+        <input type="text" class="form-control" id="fatherOccupation" name="fatherOccupation">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">เบอร์โทรศัพท์บิดา</label>
+        <input type="tel" class="form-control" id="fatherPhone" name="fatherPhone" pattern="[0-9]{10}" placeholder="0812345678">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">สถานะบิดา</label>
+        <select class="form-select" id="fatherStatus" name="fatherStatus">
+          <option value="มีชีวิต">มีชีวิต</option>
+          <option value="เสียชีวิต">เสียชีวิต</option>
+          <option value="ไม่ทราบ">ไม่ทราบ</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <i class="fas fa-female"></i>
+      <h5>ข้อมูลมารดา</h5>
+    </div>
+    <div class="row g-3 mb-4">
+      <div class="col-md-6">
+        <label class="form-label">ชื่อ-นามสกุลมารดา</label>
+        <input type="text" class="form-control" id="motherName" name="motherName">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">อาชีพมารดา</label>
+        <input type="text" class="form-control" id="motherOccupation" name="motherOccupation">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">เบอร์โทรศัพท์มารดา</label>
+        <input type="tel" class="form-control" id="motherPhone" name="motherPhone" pattern="[0-9]{10}" placeholder="0812345678">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">สถานะมารดา</label>
+        <select class="form-select" id="motherStatus" name="motherStatus">
+          <option value="มีชีวิต">มีชีวิต</option>
+          <option value="เสียชีวิต">เสียชีวิต</option>
+          <option value="ไม่ทราบ">ไม่ทราบ</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <i class="fas fa-users"></i>
+      <h5>ข้อมูลผู้ปกครอง</h5>
+    </div>
+    <div class="guardian-card">
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="guardianSameAsParent">
+        <label class="form-check-label" for="guardianSameAsParent">
+          ผู้ปกครองคือบิดา/มารดา
+        </label>
+      </div>
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <label class="form-label">ชื่อ-นามสกุลผู้ปกครอง</label>
+          <input type="text" class="form-control" id="guardianName" name="guardianName">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">ความสัมพันธ์</label>
+          <select class="form-select" id="guardianRelation" name="guardianRelation">
+            <option value="บิดา">บิดา</option>
+            <option value="มารดา">มารดา</option>
+            <option value="ปู่">ปู่</option>
+            <option value="ย่า">ย่า</option>
+            <option value="ตา">ตา</option>
+            <option value="ยาย">ยาย</option>
+            <option value="ลุง">ลุง</option>
+            <option value="ป้า">ป้า</option>
+            <option value="น้า">น้า</option>
+            <option value="อา">อา</option>
+            <option value="พี่">พี่</option>
+            <option value="อื่นๆ">อื่นๆ</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">อาชีพผู้ปกครอง</label>
+          <input type="text" class="form-control" id="guardianOccupation" name="guardianOccupation">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">เบอร์โทรศัพท์ผู้ปกครอง</label>
+          <input type="tel" class="form-control" id="guardianPhone" name="guardianPhone" pattern="[0-9]{10}" placeholder="0812345678">
+        </div>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <i class="fas fa-map-marker-alt"></i>
+      <h5>ที่อยู่ปัจจุบัน</h5>
+    </div>
+    <div class="row g-3 mb-4">
+      <div class="col-md-12">
+        <label class="form-label">บ้านเลขที่ หมู่ที่ ถนน</label>
+        <textarea class="form-control" id="address" name="address" rows="2" placeholder="เช่น 123 หมู่ 5 ถนนมิตรภาพ"></textarea>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">ตำบล/แขวง</label>
+        <input type="text" class="form-control" id="subdistrict" name="subdistrict">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">อำเภอ/เขต</label>
+        <input type="text" class="form-control" id="district" name="district">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">จังหวัด</label>
+        <input type="text" class="form-control" id="province" name="province">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">รหัสไปรษณีย์</label>
+        <input type="text" class="form-control" id="postalCode" name="postalCode" pattern="[0-9]{5}" placeholder="30000">
+      </div>
+    </div>
+
+    <div class="d-flex gap-2 justify-content-end">
+      <button type="button" class="btn btn-cancel" id="cancelBtn">
+        <i class="fas fa-times"></i> ยกเลิก
+      </button>
+      <button type="submit" class="btn btn-save">
+        <i class="fas fa-save"></i> บันทึกข้อมูล
+      </button>
+    </div>
+  </form>
+</div> 
+
+        <div id="editStatusAlert" class="alert" style="display: none;" role="alert"></div>
+      </div>
+
+      <!-- Tab 2: พิมพ์รายงาน PDF -->
+      <div class="tab-pane fade" id="report-panel" role="tabpanel">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="mb-4"><i class="fas fa-file-pdf text-danger"></i> สร้างรายงานข้อมูลผู้ปกครอง PDF</h5>
+            <p class="text-muted mb-4">เลือกชั้นเรียนและห้องเพื่อสร้างเอกสารข้อมูลผู้ปกครองและที่อยู่ปัจจุบัน</p>
+            
+            <div class="row g-3">
+              <div class="col-md-5">
+                <label for="selectGrade" class="form-label">เลือกระดับชั้น</label>
+                <select id="selectGrade" class="form-select">
+                  <option value="">-- เลือกระดับชั้น --</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label for="selectClass" class="form-label">เลือกห้อง</label>
+                <select id="selectClass" class="form-select">
+                  <option value="">-- เลือกห้อง --</option>
+                </select>
+              </div>
+              <div class="col-md-3 d-flex align-items-end">
+                <button id="generateBtn" class="btn btn-generate w-100">
+                  <span class="spinner-border spinner-border-sm"></span>
+                  <span class="btn-text"><i class="fas fa-cogs"></i> สร้างรายงาน PDF</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="statusArea" class="alert status-area" role="alert"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  console.log('🚀 parent_info_report.html loaded');
+
+  // ============================================================
+  // 📋 ฟังก์ชันหลักของระบบ
+  // ============================================================
+  
+  (function() {
+    'use strict';
+    
+    console.log('🎬 Initializing Parent Info Report Page...');
+
+    // รอให้ google.script.run พร้อมใช้งาน
+    function waitForGoogleScript(callback, maxAttempts = 10) {
+      let attempts = 0;
+      
+      const checkInterval = setInterval(() => {
+        attempts++;
+        
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          clearInterval(checkInterval);
+          console.log('✅ google.script.run is ready!');
+          callback();
+        } else if (attempts >= maxAttempts) {
+          clearInterval(checkInterval);
+          console.error('❌ google.script.run not available');
+          alert('ไม่สามารถเชื่อมต่อกับระบบได้ กรุณารีเฟรชหน้าเว็บ');
+        }
+      }, 200);
+    }
+
+    // ฟังก์ชันเริ่มต้นระบบ
+    function initializeSystem() {
+      console.log('🚀 Starting system initialization...');
+
+      // Get all DOM elements
+      const elements = {
+        searchGrade: document.getElementById("searchGrade"),
+        searchClass: document.getElementById("searchClass"),
+        searchName: document.getElementById("searchName"),
+        searchBtn: document.getElementById("searchBtn"),
+        searchResults: document.getElementById("searchResults"),
+        studentList: document.getElementById("studentList"),
+        editFormSection: document.getElementById("editFormSection"),
+        parentForm: document.getElementById("parentForm"),
+        cancelBtn: document.getElementById("cancelBtn"),
+        guardianSameAsParent: document.getElementById("guardianSameAsParent"),
+        selectGrade: document.getElementById("selectGrade"),
+        selectClass: document.getElementById("selectClass"),
+        generateBtn: document.getElementById("generateBtn"),
+        statusArea: document.getElementById("statusArea")
+      };
+
+      // ตรวจสอบ DOM Elements
+      const missingElements = Object.keys(elements).filter(key => !elements[key]);
+      if (missingElements.length > 0) {
+        console.error('❌ Missing DOM elements:', missingElements);
+        return;
+      }
+
+      console.log('✅ All DOM elements found');
+
+      // โหลดข้อมูลระดับชั้น
+      loadGrades();
+
+      // ตั้งค่า Event Listeners
+      setupEventListeners();
+
+      console.log('✅ System initialized successfully');
+
+      // ============================================================
+      // 📡 ฟังก์ชันโหลดข้อมูล
+      // ============================================================
+
+      function loadGrades() {
+        console.log('📡 Loading grades...');
+        
+        google.script.run
+          .withSuccessHandler(function(grades) {
+            console.log('✅ Received grades:', grades);
+            
+            if (!grades || grades.length === 0) {
+              console.warn('⚠️ No grades returned');
+              return;
+            }
+            
+            grades.forEach(function(g) {
+              elements.searchGrade.add(new Option(g, g));
+              elements.selectGrade.add(new Option(g, g));
+            });
+            
+            console.log('✅ Grades loaded successfully');
+          })
+          .withFailureHandler(function(error) {
+            console.error('❌ Error loading grades:', error);
+            alert('เกิดข้อผิดพลาดในการโหลดระดับชั้น: ' + error.message);
+          })
+          .getAvailableGrades();
+      }
+
+      // ============================================================
+      // 🎯 ตั้งค่า Event Listeners
+      // ============================================================
+
+      function setupEventListeners() {
+        // เปลี่ยนระดับชั้น (Search tab)
+        elements.searchGrade.addEventListener('change', function() {
+          console.log('🔄 Search grade changed:', this.value);
+          elements.searchClass.innerHTML = '<option value="">-- ทุกห้อง --</option>';
+          
+          if (this.value) {
+            google.script.run
+              .withSuccessHandler(function(classes) {
+                console.log('✅ Received classes:', classes);
+                classes.forEach(function(c) {
+                  elements.searchClass.add(new Option(c, c));
+                });
+              })
+              .withFailureHandler(function(error) {
+                console.error('❌ Error loading classes:', error);
+              })
+              .getAvailableClasses(this.value);
+          }
+        });
+
+        // เปลี่ยนระดับชั้น (PDF tab)
+        elements.selectGrade.addEventListener('change', function() {
+          // เริ่มต้นด้วยการล้างค่าและปิดการใช้งานชั่วคราว
+          elements.selectClass.innerHTML = '<option value="">-- กำลังโหลด... --</option>';
+          elements.selectClass.disabled = true;
+
+          if (this.value) {
+            google.script.run
+              .withSuccessHandler(function(classes) {
+                // เมื่อโหลดเสร็จแล้ว ให้ล้างค่าอีกครั้งเพื่อใส่ข้อมูลจริง
+                elements.selectClass.innerHTML = '<option value="">-- เลือกห้อง --</option>';
+                if (classes && classes.length > 0) {
+                  classes.forEach(function(c) {
+                    elements.selectClass.add(new Option(c, c));
+                  });
+                }
+                // เปิดให้ใช้งานอีกครั้ง
+                elements.selectClass.disabled = false;
+              })
+              .withFailureHandler(function(error) {
+                console.error('❌ Error loading PDF classes:', error);
+                elements.selectClass.innerHTML = '<option value="">-- เลือกห้อง --</option>';
+                elements.selectClass.disabled = false;
+                showPDFStatus(`เกิดข้อผิดพลาดในการโหลดห้องเรียน: ${error.message || error}`, 'danger');
+              })
+              .getAvailableClasses(this.value);
+          } else {
+            // ถ้าผู้ใช้ยกเลิกการเลือกชั้นเรียน ให้กลับสู่สถานะเริ่มต้น
+            elements.selectClass.innerHTML = '<option value="">-- เลือกห้อง --</option>';
+            elements.selectClass.disabled = false;
+          }
+        });
+
+        // ปุ่มค้นหา
+        elements.searchBtn.addEventListener('click', function() {
+          console.log('🔍 Search clicked');
+          
+          const grade = elements.searchGrade.value;
+          const classNo = elements.searchClass.value;
+          const name = elements.searchName.value.trim();
+          
+          console.log('Search params:', { grade, classNo, name });
+          
+          if (!grade && !classNo && !name) {
+            showStatus('กรุณาระบุเงื่อนไขการค้นหาอย่างน้อย 1 รายการ', 'warning');
+            return;
+          }
+          
+          showStatus('กำลังค้นหา...', 'info');
+          
+          google.script.run
+            .withSuccessHandler(displaySearchResults)
+            .withFailureHandler(function(error) {
+              console.error('❌ Search error:', error);
+              showStatus(`เกิดข้อผิดพลาด: ${error.message}`, 'danger');
+            })
+            .searchStudentsForEdit(grade, classNo, name);
+        });
+
+        // ปุ่มสร้าง PDF
+        elements.generateBtn.addEventListener('click', function() {
+          const grade = elements.selectGrade.value;
+          const classNo = elements.selectClass.value;
+          
+          if (!grade || !classNo) {
+            showPDFStatus('กรุณาเลือกระดับชั้นและห้องให้ครบถ้วน', 'warning');
+            return;
+          }
+          
+          setLoading(true);
+          showPDFStatus('กำลังสร้างไฟล์ PDF กรุณารอสักครู่...', 'info');
+          
+          google.script.run
+            .withSuccessHandler(function(url) {
+              showPDFStatus('สร้าง PDF สำเร็จ!', 'success');
+              window.open(url, '_blank');
+              setLoading(false);
+            })
+            .withFailureHandler(function(error) {
+              showPDFStatus(`เกิดข้อผิดพลาด: ${error.message}`, 'danger');
+              setLoading(false);
+            })
+            .generateParentInfoPDF(grade, classNo);
+        });
+
+        // Checkbox ผู้ปกครองเป็นบิดา/มารดา
+        elements.guardianSameAsParent.addEventListener('change', function() {
+          if (this.checked) {
+            const fatherName = document.getElementById('fatherName').value;
+            const motherName = document.getElementById('motherName').value;
+            
+            if (fatherName && motherName) {
+              const choice = confirm('ต้องการใช้ข้อมูลของใคร?\n\nกด OK = บิดา\nกด Cancel = มารดา');
+              
+              if (choice) {
+                copyParentToGuardian('father');
+              } else {
+                copyParentToGuardian('mother');
+              }
+            } else if (fatherName) {
+              copyParentToGuardian('father');
+            } else if (motherName) {
+              copyParentToGuardian('mother');
+            }
+          }
+        });
+
+        // ปุ่มยกเลิก
+        elements.cancelBtn.addEventListener('click', function() {
+          if (confirm('ต้องการยกเลิกการแก้ไขหรือไม่?')) {
+            elements.editFormSection.style.display = 'none';
+            elements.parentForm.reset();
+            elements.parentForm.classList.remove('was-validated');
+            elements.searchResults.style.display = 'block';
+          }
+        });
+
+        // Submit form
+        elements.parentForm.addEventListener('submit', function(e) {
+          e.preventDefault();
+          
+          if (!this.checkValidity()) {
+            this.classList.add('was-validated');
+            showStatus('กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน', 'warning');
+            return;
+          }
+
+          const formData = collectFormData();
+          
+          showStatus('กำลังบันทึกข้อมูล...', 'info');
+
+          google.script.run
+            .withSuccessHandler(function() {
+              showStatus('บันทึกข้อมูลสำเร็จ!', 'success');
+              setTimeout(function() {
+                elements.editFormSection.style.display = 'none';
+                elements.parentForm.reset();
+                elements.parentForm.classList.remove('was-validated');
+                elements.searchResults.style.display = 'none';
+              }, 2000);
+            })
+            .withFailureHandler(function(error) {
+              showStatus(`เกิดข้อผิดพลาด: ${error.message}`, 'danger');
+            })
+            .saveParentData(formData);
+        });
+      }
+
+      // ============================================================
+      // 🛠️ ฟังก์ชันเสริม
+      // ============================================================
+
+      function displaySearchResults(students) {
+        console.log('📋 Search results:', students);
+        
+        if (!students || students.length === 0) {
+          showStatus('ไม่พบข้อมูลนักเรียนที่ค้นหา', 'warning');
+          elements.searchResults.style.display = 'none';
+          return;
+        }
+
+        elements.studentList.innerHTML = students.map(function(s) {
+          return `
+            <div class="student-card" data-student-id="${s.studentId}">
+              <div class="student-card-header">
+                <div>
+                  <h6 class="student-name">${s.fullName}</h6>
+                  <div class="student-info">ชั้น ${s.grade}/${s.classNo} | เลขที่ ${s.studentNo}</div>
+                </div>
+                <i class="fas fa-chevron-right text-muted"></i>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        elements.searchResults.style.display = 'block';
+        hideStatus();
+
+        // เพิ่ม click handlers
+        elements.studentList.querySelectorAll('.student-card').forEach(function(card) {
+          card.addEventListener('click', function() {
+            const studentId = this.dataset.studentId;
+            console.log('👤 Student clicked:', studentId);
+            loadStudentData(studentId);
+          });
+        });
+      }
+
+      function loadStudentData(studentId) {
+        showStatus('กำลังโหลดข้อมูล...', 'info');
+        
+        google.script.run
+          .withSuccessHandler(function(data) {
+            console.log('✅ Student data loaded:', data);
+            fillForm(data);
+            elements.editFormSection.style.display = 'block';
+            elements.searchResults.style.display = 'none';
+            hideStatus();
+            elements.editFormSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          })
+          .withFailureHandler(function(error) {
+            console.error('❌ Load student error:', error);
+            showStatus(`เกิดข้อผิดพลาด: ${error.message}`, 'danger');
+          })
+          .getStudentParentData(studentId);
+      }
+
+      function fillForm(data) {
+        document.getElementById('studentInfoDisplay').innerHTML = `
+          <div class="info-item">
+            <div class="info-label">ชื่อ-นามสกุล:</div>
+            <div class="info-value">${data.fullName}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">ชั้น:</div>
+            <div class="info-value">${data.grade}/${data.classNo}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">เลขที่:</div>
+            <div class="info-value">${data.studentNo}</div>
+          </div>
+        `;
+
+        const fields = [
+          'studentId', 'fatherName', 'fatherOccupation', 'fatherPhone', 'fatherStatus',
+          'motherName', 'motherOccupation', 'motherPhone', 'motherStatus',
+          'guardianName', 'guardianRelation', 'guardianOccupation', 'guardianPhone',
+          'address', 'subdistrict', 'district', 'province', 'postalCode'
+        ];
+
+        fields.forEach(function(field) {
+          const element = document.getElementById(field);
+          if (element) {
+            element.value = data[field] || (field.includes('Status') ? 'มีชีวิต' : '');
+          }
+        });
+      }
+
+      function copyParentToGuardian(type) {
+        const prefix = type === 'father' ? 'father' : 'mother';
+        const relation = type === 'father' ? 'บิดา' : 'มารดา';
+        
+        document.getElementById('guardianName').value = document.getElementById(prefix + 'Name').value;
+        document.getElementById('guardianRelation').value = relation;
+        document.getElementById('guardianOccupation').value = document.getElementById(prefix + 'Occupation').value;
+        document.getElementById('guardianPhone').value = document.getElementById(prefix + 'Phone').value;
+      }
+
+      function collectFormData() {
+        return {
+          studentId: document.getElementById('studentId').value,
+          fatherName: document.getElementById('fatherName').value,
+          fatherOccupation: document.getElementById('fatherOccupation').value,
+          fatherPhone: document.getElementById('fatherPhone').value,
+          fatherStatus: document.getElementById('fatherStatus').value,
+          motherName: document.getElementById('motherName').value,
+          motherOccupation: document.getElementById('motherOccupation').value,
+          motherPhone: document.getElementById('motherPhone').value,
+          motherStatus: document.getElementById('motherStatus').value,
+          guardianName: document.getElementById('guardianName').value,
+          guardianRelation: document.getElementById('guardianRelation').value,
+          guardianOccupation: document.getElementById('guardianOccupation').value,
+          guardianPhone: document.getElementById('guardianPhone').value,
+          address: document.getElementById('address').value,
+          subdistrict: document.getElementById('subdistrict').value,
+          district: document.getElementById('district').value,
+          province: document.getElementById('province').value,
+          postalCode: document.getElementById('postalCode').value
+        };
+      }
+
+      function showStatus(message, type) {
+        const alert = document.getElementById('editStatusAlert');
+        if (alert) {
+          alert.className = `alert alert-${type}`;
+          alert.textContent = message;
+          alert.style.display = 'block';
+        }
+      }
+
+      function hideStatus() {
+        const alert = document.getElementById('editStatusAlert');
+        if (alert) {
+          alert.style.display = 'none';
+        }
+      }
+
+      function showPDFStatus(message, type) {
+        elements.statusArea.style.display = 'block';
+        elements.statusArea.className = `alert alert-${type} status-area`;
+        elements.statusArea.textContent = message;
+      }
+
+      function setLoading(isLoading) {
+        elements.generateBtn.disabled = isLoading;
+        elements.generateBtn.classList.toggle('loading', isLoading);
+      }
+    }
+
+    // เริ่มต้นระบบเมื่อหน้าโหลดเสร็จ
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function() {
+        console.log('📄 DOM Content Loaded');
+        waitForGoogleScript(initializeSystem);
+      });
+    } else {
+      console.log('📄 DOM already loaded');
+      waitForGoogleScript(initializeSystem);
+    }
+
+  })();
+
+</script>
+</body>
+</html>

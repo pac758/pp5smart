@@ -1,0 +1,3710 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta http-equiv="Permissions-Policy" content="ambient-light-sensor=(), speaker=(), vibrate=(), vr=()">
+
+<title>🎓 ระบบบันทึกคะแนนนักเรียน (โหลดอัตโนมัติ)</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+
+<style>
+  /* ฟอนต์ Sarabun ครอบคลุมทั้งระบบ */
+  body,
+  .score-entry-system,
+  .score-entry-system * {
+    font-family: 'Sarabun', Tahoma, Verdana, sans-serif !important;
+  }
+
+  .score-entry-system {
+    --primary-color: #2563eb;
+    --primary-hover: #1d4ed8;
+    --success-color: #059669;
+    --success-hover: #047857;
+    --danger-color: #dc2626;
+    --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --border-radius: 16px;
+    background: var(--bg-gradient);
+    min-height: 100vh;
+    margin: 0; padding: 10px 0;
+  }
+  .score-entry-system * { box-sizing: border-box; }
+
+  .score-entry-wrapper {
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 0 10px;
+  }
+  .score-entry-header {
+    background: rgba(255,255,255,0.95);
+    padding: 1rem 1.5rem;
+    margin-bottom: 1rem;
+    border-radius: var(--border-radius);
+    box-shadow: 0 20px 25px rgba(0,0,0,0.1);
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+  .score-entry-header h1 {
+    color: var(--primary-color);
+    font-weight: 700;
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  .score-entry-header p {
+    color: #64748b;
+    font-size: 1.1rem;
+    margin: 0;
+    font-weight: 400;
+  }
+
+  .score-entry-control-panel {
+    background: rgba(255,255,255,0.95);
+    padding: 1rem 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: 0 20px 25px rgba(0,0,0,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    margin-bottom: 1rem;
+  }
+  .score-entry-control-panel h3 {
+    color: var(--primary-color);
+    font-weight: 600;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.3rem;
+  }
+  .score-entry-controls-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    align-items: end;
+  }
+  .score-entry-stats-panel {
+    background: rgba(255,255,255,0.95);
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    box-shadow: 0 20px 25px rgba(0,0,0,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    margin-top: 2rem;
+  }
+  .score-entry-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  .score-entry-stat-card {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 12px;
+    padding: 1.5rem 1rem;
+    text-align: center;
+    border: 2px solid #e2e8f0;
+    transition: all 0.3s ease;
+  }
+  .score-entry-stat-card:hover {
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    transform: translateY(-3px);
+  }
+  .score-entry-stat-number {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    display: block;
+  }
+  .score-entry-stat-label {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin-top: 0.3rem;
+  }
+  .score-entry-main-content {
+    background: rgba(255,255,255,0.95);
+    border-radius: var(--border-radius);
+    box-shadow: 0 20px 25px rgba(0,0,0,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    overflow: hidden;
+  }
+  .score-entry-content-header {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+    color: white;
+    padding: 1.5rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .score-entry-content-header h4 {
+    margin: 0;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .score-entry-table-container {
+    background: #f8fafc;
+    padding: 1.5rem;
+    border-top: 2px solid #e2e8f0;
+    overflow-x: auto;
+  }
+
+  /* ปรับขนาดตารางและฟอนต์ */
+.score-entry-table {
+  width: 100%;
+  min-width: 1200px; /* เพิ่มจาก 780px */
+  border-collapse: separate;
+  border-spacing: 0;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  border: 1px solid #e2e8f0;
+  font-family: 'Sarabun', sans-serif;
+  font-size: 1rem; /* เพิ่มจาก 0.85rem */
+}
+
+/* สีหัวตารางแถวแรก */
+.score-entry-table thead tr:nth-child(1) th {
+  background-color: #4a4a4a !important;
+  color: #f0f0f0 !important;
+  font-weight: 700;
+  padding: 0.75rem 0.5rem; /* เพิ่ม padding */
+  text-align: center;
+  border: none;
+  white-space: nowrap;
+  line-height: 1.3;
+  font-size: 1rem; /* เพิ่มจาก 0.85rem */
+}
+
+.score-entry-table thead tr.score-entry-fullscore-row th {
+  background: #f1f5f9 !important;
+  color: #334155 !important;
+  font-weight: 700;
+  border-bottom: 2px solid #cbd5e1;
+  padding: 0.75rem 0.5rem;
+  font-size: 0.95rem;
+}
+
+.score-entry-table tbody tr:nth-child(even) { 
+  background: #f8fafc; 
+}
+
+.score-entry-table tbody tr:hover { 
+  background: #e0e7ff;
+  transition: background 0.2s ease;
+}
+
+.score-entry-table td {
+  padding: 0.6rem 0.4rem; /* เพิ่มจาก 0.4rem */
+  vertical-align: middle;
+  border-color: #e5e7eb;
+  text-align: center;
+  font-size: 0.95rem; /* เพิ่มจาก 0.8rem */
+}
+
+.score-entry-student-name {
+  text-align: left !important;
+  font-weight: 500;
+  color: #374151;
+  max-width: 200px; /* เพิ่มจาก 140px */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-left: 0.75rem !important;
+}
+
+/* ช่องกรอคะแนน - ปรับขนาดให้สมดุล */
+.score-entry-input {
+  width: 50px; /* เพิ่มจาก 38px */
+  height: 36px; /* เพิ่มจาก 28px */
+  border-radius: 6px;
+  border: 2px solid #e2e8f0; /* เพิ่มความหนา */
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.95rem; /* เพิ่มจาก 0.75rem */
+  background: white;
+  transition: all 0.3s ease;
+}
+
+.score-entry-input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); /* เพิ่ม shadow */
+  outline: none;
+  background: #fefefe;
+}
+
+.score-entry-input.is-invalid {
+  background: #fee2e2;
+  border-color: var(--danger-color);
+  animation: scoreEntryShake 0.5s ease-in-out;
+}
+
+/* คอลัมน์คะแนนรวม - ให้โดดเด่น */
+.score-entry-sum,
+.score-entry-total {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #1e40af;
+  background: #eff6ff !important;
+  padding: 0.6rem 0.4rem;
+}
+
+/* เกรด - ปรับขนาดให้ใหญ่ขึ้น */
+.score-entry-grade-badge {
+  display: inline-flex;
+  width: 32px; /* เพิ่มจาก 22px */
+  height: 32px; /* เพิ่มจาก 22px */
+  font-size: 0.9rem; /* เพิ่มจาก 0.7rem */
+  font-weight: 700;
+  justify-content: center;
+  align-items: center;
+  border-radius: 50%;
+  color: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* สีเกรด */
+.score-entry-grade-4  { background: linear-gradient(135deg, #059669, #047857); }
+.score-entry-grade-3-5{ background: linear-gradient(135deg, #0891b2, #0e7490); }
+.score-entry-grade-3  { background: linear-gradient(135deg, #0891b2, #0e7490); }
+.score-entry-grade-2-5{ background: linear-gradient(135deg, #d97706, #b45309); }
+.score-entry-grade-2  { background: linear-gradient(135deg, #d97706, #b45309); }
+.score-entry-grade-1-5{ background: linear-gradient(135deg, #dc2626, #b91c1c); }
+.score-entry-grade-1  { background: linear-gradient(135deg, #dc2626, #b91c1c); }
+.score-entry-grade-0  { background: linear-gradient(135deg, #6b7280, #4b5563); }
+
+/* ช่องกรอกคะแนนกลางภาค/ปลายภาค - ให้เหมือนกับช่องอื่นๆ */
+.score-entry-final-input {
+  width: 50px; /* เท่ากับช่องอื่น */
+  height: 36px;
+  border-radius: 6px;
+  border: 2px solid #e2e8f0;
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.95rem;
+  background: white;
+  transition: all 0.3s ease;
+}
+
+.score-entry-final-input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  outline: none;
+  background: #fefefe;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .score-entry-table { 
+    min-width: 900px;
+    font-size: 0.9rem;
+  }
+  .score-entry-input,
+  .score-entry-final-input { 
+    width: 45px; 
+    height: 32px;
+    font-size: 0.85rem;
+  }
+  .score-entry-grade-badge {
+    width: 28px;
+    height: 28px;
+    font-size: 0.8rem;
+  }
+}
+/* ซ่อนปุ่มเพิ่ม/ลดของ input type="number" */
+.score-entry-input::-webkit-outer-spin-button,
+.score-entry-input::-webkit-inner-spin-button,
+.score-entry-final-input::-webkit-outer-spin-button,
+.score-entry-final-input::-webkit-inner-spin-button,
+.score-entry-full-score::-webkit-outer-spin-button,
+.score-entry-full-score::-webkit-inner-spin-button,
+.score-entry-full-final::-webkit-outer-spin-button,
+.score-entry-full-final::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.score-entry-input,
+.score-entry-final-input,
+.score-entry-full-score,
+.score-entry-full-final {
+  -moz-appearance: textfield; /* Firefox */
+}
+/* เพิ่มใน <style> */
+.score-entry-btn-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.score-entry-status-indicator {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 10px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  animation: fadeIn 0.3s ease-in;
+}
+
+.score-entry-status-indicator.saving {
+  color: #0891b2;
+  border: 1px solid #0891b2;
+}
+
+.score-entry-status-indicator.exporting {
+  color: #7c3aed;
+  border: 1px solid #7c3aed;
+}
+
+.score-entry-status-indicator.success {
+  color: #059669;
+  border: 1px solid #059669;
+}
+
+.score-entry-status-indicator.error {
+  color: #dc2626;
+  border: 1px solid #dc2626;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.score-entry-action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 1rem 1.5rem;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  flex-wrap: wrap;
+}
+
+/* จัดตำแหน่งให้ตรงกลางทั้งหมด */
+.score-entry-table thead th {
+  text-align: center !important;
+  vertical-align: middle !important;
+}
+
+.score-entry-table tbody td {
+  text-align: center !important;
+  vertical-align: middle !important;
+}
+
+/* ปรับช่องคะแนนเต็ม input ให้ตรงกลาง */
+.score-entry-full-score,
+.score-entry-full-final {
+  text-align: center !important;
+  margin: 0 auto;
+  display: block;
+}
+
+/* ปรับ span คะแนนเต็มให้ตรงกลาง */
+.score-entry-full-mid,
+.score-entry-full-total {
+  display: block;
+  text-align: center !important;
+  width: 100%;
+}
+
+/* จัดช่อง input คะแนนให้อยู่กึ่งกลาง */
+.score-entry-input,
+.score-entry-final-input {
+  margin: 0 auto;
+  display: block;
+}
+
+/* จัดคะแนนรวมกลางภาค (sum) และรวมทั้งหมด (total) ให้ตรงกลาง */
+.score-entry-sum,
+.score-entry-total {
+  text-align: center !important;
+  vertical-align: middle !important;
+}
+
+/* เกรดให้ตรงกลาง */
+.score-entry-grade {
+  text-align: center !important;
+  vertical-align: middle !important;
+}
+
+/* ปรับ header ตัวเลข 1-10 */
+.score-entry-table thead tr:nth-child(2) th {
+  text-align: center !important;
+  vertical-align: middle !important;
+  padding: 0.5rem !important;
+}
+
+/* ✅ เพิ่มโค้ดนี้ต่อท้าย */
+@keyframes scoreEntryShake {
+  0%,100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+/* ซ่อนคอลัมน์รหัสนักเรียน (คอลัมน์ที่ 2) ทุกขนาดหน้าจอ */
+.score-entry-table td:nth-child(2),
+.score-entry-table th:nth-child(2) {
+  display: none !important;
+}
+</style>
+</head>
+<body class="score-entry-system">
+<div class="score-entry-wrapper">
+  <div class="score-entry-header">
+    <h1><i class="fas fa-graduation-cap"></i> ระบบบันทึกคะแนนนักเรียน</h1>
+    <p>ระบบจัดการคะแนนแบบครอบคลุม สำหรับการศึกษาระดับประถมศึกษา</p>
+  </div>
+
+  <div class="score-entry-control-panel">
+    <h3><i class="fas fa-cog"></i> เลือกรายวิชาเพื่อเริ่มบันทึกคะแนน</h3>
+    <div class="score-entry-controls-row">
+      <div class="form-group">
+        <label for="scoreEntryGradeSelect" class="form-label"><i class="fas fa-layer-group"></i> ระดับชั้น</label>
+        <select id="scoreEntryGradeSelect" class="form-select">
+          <option value="">-- เลือกระดับชั้น --</option>
+          <option value="ป.1">ประถมศึกษาปีที่ 1</option>
+          <option value="ป.2">ประถมศึกษาปีที่ 2</option>
+          <option value="ป.3">ประถมศึกษาปีที่ 3</option>
+          <option value="ป.4">ประถมศึกษาปีที่ 4</option>
+          <option value="ป.5">ประถมศึกษาปีที่ 5</option>
+          <option value="ป.6">ประถมศึกษาปีที่ 6</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="scoreEntryClassSelect" class="form-label"><i class="fas fa-door-open"></i> ห้องเรียน</label>
+        <select id="scoreEntryClassSelect" class="form-select" disabled>
+          <option value="">-- เลือกห้องเรียน --</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="scoreEntrySubjectSelect" class="form-label"><i class="fas fa-book"></i> รายวิชา</label>
+        <select id="scoreEntrySubjectSelect" class="form-select" disabled>
+          <option value="">-- เลือกรายวิชา --</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="score-entry-main-content">
+    <div class="score-entry-content-header">
+      <h4><i class="fas fa-table"></i> ตารางบันทึกคะแนน</h4>
+      <div id="scoreEntryCurrentSubjectInfo" class="text-end">
+        <small>เลือกรายวิชาเพื่อเริ่มบันทึกคะแนน</small>
+      </div>
+    </div>
+
+    <ul class="nav nav-tabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="scoreEntryTerm1Tab" data-bs-toggle="tab" data-bs-target="#scoreEntryTerm1" type="button" role="tab">
+          <i class="fas fa-calendar-check"></i> ภาคเรียนที่ 1
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="scoreEntryTerm2Tab" data-bs-toggle="tab" data-bs-target="#scoreEntryTerm2" type="button" role="tab">
+          <i class="fas fa-calendar-plus"></i> ภาคเรียนที่ 2
+        </button>
+      </li>
+    </ul>
+
+ <div class="p-3 pt-2 d-flex gap-2">
+  <button id="scoreEntryBtnExportYearPdf" class="btn btn-dark ms-auto" disabled>
+    <i class="fas fa-file-pdf"></i> ส่งออกรวม 2 ภาคเรียน (PDF)
+  </button>
+  
+  <!-- ✅ เพิ่มปุ่มนี้ -->
+  <button id="scoreEntryBtnExportCSV" class="btn btn-success" disabled>
+    <i class="fas fa-file-csv"></i> Export CSV
+  </button>
+</div>
+
+    <div class="tab-content">
+  <!-- ภาคเรียนที่ 1 -->
+<div class="tab-pane fade show active" id="scoreEntryTerm1" role="tabpanel">
+  <div class="score-entry-action-buttons">
+    <!-- ✅ แก้ไขปุ่มนี้ -->
+    <button class="btn btn-outline-primary btn-sm" onclick="window.ScoreEntrySystem.clearAllScores('scoreEntryTerm1')">
+      <i class="fas fa-eraser"></i> ล้างคะแนน
+    </button>
+    
+    <button id="scoreEntryBtnSaveTerm1" class="btn btn-success" disabled>
+      <i class="fas fa-save"></i> บันทึกภาคเรียนที่ 1
+    </button>
+    <span id="scoreEntryStatusTerm1"></span>
+
+    <button id="scoreEntryBtnExportTerm1Pdf" class="btn btn-outline-dark" disabled>
+      <i class="fas fa-file-pdf"></i> ส่งออกภาคเรียนที่ 1 (PDF)
+    </button>
+    <span id="scoreEntryStatusExportTerm1"></span>
+  </div>
+  <div id="scoreEntryTerm1Container" class="score-entry-table-container"></div>
+</div>
+
+<!-- ภาคเรียนที่ 2 -->
+<div class="tab-pane fade" id="scoreEntryTerm2" role="tabpanel">
+  <div class="score-entry-action-buttons">
+    <!-- ✅ แก้ไขปุ่มนี้ -->
+    <button class="btn btn-outline-primary btn-sm" onclick="window.ScoreEntrySystem.clearAllScores('scoreEntryTerm2')">
+      <i class="fas fa-eraser"></i> ล้างคะแนน
+    </button>
+    
+    <button id="scoreEntryBtnSaveTerm2" class="btn btn-success" disabled>
+      <i class="fas fa-save"></i> บันทึกภาคเรียนที่ 2
+    </button>
+    <span id="scoreEntryStatusTerm2"></span>
+
+    <button id="scoreEntryBtnExportTerm2Pdf" class="btn btn-outline-dark" disabled>
+      <i class="fas fa-file-pdf"></i> ส่งออกภาคเรียนที่ 2 (PDF)
+    </button>
+    <span id="scoreEntryStatusExportTerm2"></span>
+  </div>
+  <div id="scoreEntryTerm2Container" class="score-entry-table-container"></div>
+</div>
+</div>
+  <div class="score-entry-stats-panel">
+    <h3><i class="fas fa-chart-bar"></i> สถิติภาพรวม</h3>
+    <div class="score-entry-stats-grid">
+      <div class="score-entry-stat-card">
+        <span class="score-entry-stat-number" id="totalStudents">0</span>
+        <div class="score-entry-stat-label">นักเรียนทั้งหมด</div>
+      </div>
+      <div class="score-entry-stat-card">
+        <span class="score-entry-stat-number" id="completedScores">0</span>
+        <div class="score-entry-stat-label">บันทึกแล้ว</div>
+      </div>
+      <div class="score-entry-stat-card">
+        <span class="score-entry-stat-number" id="avgScore">0</span>
+        <div class="score-entry-stat-label">คะแนนเฉลี่ย</div>
+      </div>
+      <div class="score-entry-stat-card">
+        <span class="score-entry-stat-number" id="passRate">0%</span>
+        <div class="score-entry-stat-label">อัตราผ่าน</div>
+      </div>
+      <div class="score-entry-stat-card">
+        <span class="score-entry-stat-number" id="grade4count">0</span>
+        <div class="score-entry-stat-label">เกรด 4</div>
+      </div>
+      <div class="score-entry-stat-card">
+        <span class="score-entry-stat-number" id="gradeBelow2Count">0</span>
+        <div class="score-entry-stat-label">เกรด ต่ำกว่า 2</div>
+      </div>
+    </div>
+    <div id="scoreEntryStatusMessage" class="alert alert-info d-none mb-3" role="alert"></div>
+    <div class="score-entry-progress-bar-container" style="margin-top:10px; border-radius:10px; background:#e2e8f0; height:6px;">
+      <div class="score-entry-progress-bar" id="scoreEntryProgressBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, var(--success-color), var(--info-color)); border-radius: 10px;"></div>
+    </div>
+  </div>
+</div>
+
+<div id="scoreEntryLoadingOverlay" class="score-entry-loading-overlay d-none">
+  <div class="loading-spinner text-white text-center">
+    <div class="score-entry-spinner mx-auto mb-2"></div>
+    <div>กำลังโหลดข้อมูล...</div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  window.ScoreEntrySystem = (function() {
+    const gradeSelect = document.getElementById("scoreEntryGradeSelect");
+    const classSelect = document.getElementById("scoreEntryClassSelect");
+    const subjectSelect = document.getElementById("scoreEntrySubjectSelect");
+    const btnSaveTerm1 = document.getElementById("scoreEntryBtnSaveTerm1");
+    const btnSaveTerm2 = document.getElementById("scoreEntryBtnSaveTerm2");
+    const btnExportTerm1Pdf = document.getElementById("scoreEntryBtnExportTerm1Pdf");
+    const btnExportTerm2Pdf = document.getElementById("scoreEntryBtnExportTerm2Pdf");
+    const btnExportYearPdf = document.getElementById("scoreEntryBtnExportYearPdf");
+    const btnExportCSV = document.getElementById("scoreEntryBtnExportCSV");
+    const statusMsg = document.getElementById("scoreEntryStatusMessage");
+    const loadingOverlay = document.getElementById("scoreEntryLoadingOverlay");
+    const currentSubjectInfo = document.getElementById("scoreEntryCurrentSubjectInfo");
+    const totalStudentsEl = document.getElementById("totalStudents");
+    const completedScoresEl = document.getElementById("completedScores");
+    const averageScoreEl = document.getElementById("avgScore");
+    const passRateEl = document.getElementById("passRate");
+    const progressBar = document.getElementById("scoreEntryProgressBar");
+    const grade4El = document.getElementById("grade4count");
+    const gradeBelow2El = document.getElementById("gradeBelow2Count");
+
+    let currentData = null;
+    let debounceTimer = null;
+    
+    let assessmentConfig = {
+      midMax: null,
+      finalMax: null,
+    };
+
+    function hydrateAssessmentConfig(subject) {
+      return new Promise((resolve) => {
+        google.script.run
+          .withSuccessHandler(cfg => {
+            const mid = Number(cfg?.midMax) || 70;
+            const fin = Number(cfg?.finalMax) || 30;
+
+            assessmentConfig.midMax = mid;
+            assessmentConfig.finalMax = fin;
+
+            ['scoreEntryTerm1Container','scoreEntryTerm2Container'].forEach(cid => {
+              const wrap = document.getElementById(cid);
+              const table = wrap?.querySelector('table.score-entry-table');
+              if (!table) return;
+
+              const fullMidSpan = table.querySelector('.score-entry-full-mid');
+              if (fullMidSpan) fullMidSpan.textContent = mid;
+
+              const fullFinalSpan = table.querySelector('.score-entry-full-final');
+              if (fullFinalSpan) fullFinalSpan.textContent = fin;
+
+              table.querySelectorAll('tbody tr').forEach(row => calcRowTotal(row, false));
+            });
+
+            resolve({ midMax: mid, finalMax: fin });
+          })
+          .withFailureHandler(_err => {
+            const mid = 70, fin = 30;
+            assessmentConfig.midMax = mid;
+            assessmentConfig.finalMax = fin;
+
+            ['scoreEntryTerm1Container','scoreEntryTerm2Container'].forEach(cid => {
+              const wrap = document.getElementById(cid);
+              const table = wrap?.querySelector('table.score-entry-table');
+              if (!table) return;
+
+              const fullMidSpan = table.querySelector('.score-entry-full-mid');
+              if (fullMidSpan) fullMidSpan.textContent = mid;
+
+              const fullFinalSpan = table.querySelector('.score-entry-full-final');
+              if (fullFinalSpan) fullFinalSpan.textContent = fin;
+
+              table.querySelectorAll('tbody tr').forEach(row => calcRowTotal(row, false));
+            });
+
+            resolve({ midMax: mid, finalMax: fin, error: true });
+          })
+          .getSubjectAssessmentConfig(subject.name, subject.code, gradeSelect.value);
+      });
+    }
+
+    function showButtonStatus(statusElementId, message, type = 'saving') {
+      const statusEl = document.getElementById(statusElementId);
+      if (!statusEl) return;
+      
+      const spinner = type !== 'success' && type !== 'error' 
+        ? '<span class="score-entry-btn-spinner"></span>' 
+        : '';
+      
+      const icon = type === 'success' ? '<i class="fas fa-check-circle"></i> ' :
+                   type === 'error' ? '<i class="fas fa-exclamation-circle"></i> ' : '';
+      
+      statusEl.innerHTML = `<span class="score-entry-status-indicator ${type}">${spinner}${icon}${message}</span>`;
+      
+      if (type === 'success' || type === 'error') {
+        setTimeout(() => {
+          statusEl.innerHTML = '';
+        }, 3000);
+      }
+    }
+
+    function hideButtonStatus(statusElementId) {
+      const statusEl = document.getElementById(statusElementId);
+      if (statusEl) statusEl.innerHTML = '';
+    }
+
+    function convertGradeFormat(grade) {
+      return grade.replace(/[\/\.]/g, '');
+    }
+    
+    function generateSheetName(subjectName, grade, classNo) {
+      const cleanGrade = convertGradeFormat(grade);
+      return `${subjectName} ${cleanGrade}-${classNo}`;
+    }
+
+    function showLoading(show = true) {
+      loadingOverlay.classList.toggle("d-none", !show);
+    }
+    
+    function showStatus(message, type = "info", icon = "fas fa-info-circle") {
+      if (!statusMsg) return;
+      statusMsg.className = `alert alert-${type} mb-3`;
+      statusMsg.innerHTML = `<i class="${icon}"></i> ${message}`;
+      statusMsg.classList.remove("d-none");
+      if (type === 'success') setTimeout(() => statusMsg.classList.add("d-none"), 4000);
+    }
+    
+    function updateControls() {
+      const grade = gradeSelect.value;
+      const classNo = classSelect.value;
+      const subjectSelected = subjectSelect.value !== "";
+      classSelect.disabled = !grade;
+      subjectSelect.disabled = !(grade && classNo);
+    }
+
+    function validateScores(containerId) {
+      const container = document.getElementById(containerId);
+      if (!container) return false;
+
+      let valid = true;
+
+      const fullScoreInputs = container.querySelectorAll('.score-entry-full-score');
+      const fullScores = [...fullScoreInputs].map(i => Number(i.value || 0));
+      const fullFinalSpan = container.querySelector('.score-entry-full-final');
+      const fullFinal = fullFinalSpan ? Number(fullFinalSpan.textContent || 0) : 0;
+
+      const midMax = Number(
+        (typeof assessmentConfig?.midMax !== 'undefined' ? assessmentConfig.midMax : null)
+        ?? container.querySelector('.score-entry-full-mid')?.textContent
+        ?? 70
+      );
+
+      fullScores.forEach((score, idx) => {
+        const input = fullScoreInputs[idx];
+        if (score < 0) {
+          valid = false;
+          input.classList.add('is-invalid');
+        } else {
+          input.classList.remove('is-invalid');
+        }
+      });
+
+      container.querySelectorAll('tbody tr').forEach(row => {
+        row.querySelectorAll('.score-entry-input').forEach((input, idx) => {
+          const val = Number(input.value);
+          const maxVal = fullScores[idx] || 0;
+          if (isNaN(val) || val < 0 || val > maxVal) {
+            input.classList.add('is-invalid');
+            valid = false;
+          } else {
+            input.classList.remove('is-invalid');
+          }
+        });
+
+        const finalInput = row.querySelector('.score-entry-final-input');
+        if (finalInput) {
+          const v = Number(finalInput.value);
+          if (isNaN(v) || v < 0 || v > fullFinal) {
+            finalInput.classList.add('is-invalid');
+            valid = false;
+          } else {
+            finalInput.classList.remove('is-invalid');
+          }
+        }
+      });
+
+      return valid;
+    }
+
+    function calculateGrade(score) {
+      if (score >= 80) return "4";
+      if (score >= 75) return "3.5";
+      if (score >= 70) return "3";
+      if (score >= 65) return "2.5";
+      if (score >= 60) return "2";
+      if (score >= 55) return "1.5";
+      if (score >= 50) return "1";
+      return "0";
+    }
+    
+    function getGradeClass(grade) {
+      const gradeStr = grade.toString().replace('.', '-');
+      return `score-entry-grade-${gradeStr}`;
+    }
+
+    function calcRowTotal(row, debounce = true) {
+      const action = () => {
+        const sumCell = row.querySelector('.score-entry-sum');
+        const totalCell = row.querySelector('.score-entry-total');
+        const gradeCell = row.querySelector('.score-entry-grade');
+        if (!sumCell || !totalCell || !gradeCell) return;
+
+        const table = row.closest('table');
+        
+        const midMax = Number(assessmentConfig.midMax ?? table.querySelector('.score-entry-full-mid')?.textContent ?? 70);
+        const finMax = Number(assessmentConfig.finalMax ?? table.querySelector('.score-entry-full-final')?.textContent ?? 30);
+
+        const fullScores = [...table.querySelectorAll('.score-entry-full-score')].map(i => Number(i.value || 0));
+        const fullScoresSum = fullScores.reduce((a, b) => a + b, 0);
+
+        const items = [...row.querySelectorAll('.score-entry-input')].map(i => Number(i.value || 0));
+        const itemsSum = items.reduce((a, b) => a + b, 0);
+
+        let mid = 0;
+        if (fullScoresSum > 0 && itemsSum > 0) {
+          mid = Math.round((itemsSum / fullScoresSum) * midMax);
+        }
+
+        const finalInput = row.querySelector('.score-entry-final-input');
+        let final = Number(finalInput?.value || 0);
+
+        if (final > finMax) {
+          final = finMax;
+          if (finalInput) finalInput.value = finMax;
+        }
+        if (final < 0) {
+          final = 0;
+          if (finalInput) finalInput.value = 0;
+        }
+
+        const total = mid + final;
+        sumCell.textContent = mid;
+        totalCell.textContent = total;
+
+        const grade = calculateGrade(total);
+        const badge = gradeCell.querySelector('.score-entry-grade-badge') || (() => {
+          const b = document.createElement('span');
+          gradeCell.appendChild(b);
+          return b;
+        })();
+        badge.textContent = grade;
+        badge.className = `score-entry-grade-badge ${getGradeClass(grade)}`;
+
+        row.classList.toggle('table-danger', total < 50);
+        updateStats();
+      };
+
+      if (debounce) {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(action, 300);
+      } else {
+        action();
+      }
+    }
+
+    function updateStats() {
+      if (!currentData) {
+        totalStudentsEl.textContent = 0;
+        completedScoresEl.textContent = 0;
+        averageScoreEl.textContent = 0;
+        passRateEl.textContent = "0%";
+        grade4El.textContent = 0;
+        gradeBelow2El.textContent = 0;
+        progressBar.style.width = "0%";
+        return;
+      }
+
+      const activeTab = document.querySelector('.tab-pane.active');
+      const activeContainer = activeTab?.querySelector('.score-entry-table-container');
+      if (!activeContainer) return;
+
+      const rows = activeContainer.querySelectorAll('tbody tr');
+      let completedRows = 0;
+      let gradeCounts = { "4": 0, "0": 0, "1": 0, "1.5": 0, "2": 0, "2.5": 0, "3": 0, "3.5": 0 };
+
+      rows.forEach(row => {
+        const inputs = row.querySelectorAll('.score-entry-input, .score-entry-final-input');
+        let hasValue = false;
+        inputs.forEach(input => { if (input.value && input.value !== '') hasValue = true; });
+        if (hasValue) completedRows++;
+
+        const gradeSpan = row.querySelector('.score-entry-grade .score-entry-grade-badge');
+        if (gradeSpan) {
+          const gradeText = gradeSpan.textContent.trim();
+          if (gradeCounts.hasOwnProperty(gradeText)) gradeCounts[gradeText]++;
+        }
+      });
+
+      let totalScore = 0;
+      let validScores = 0;
+      let passCount = 0;
+
+      const totalCells = activeContainer.querySelectorAll('.score-entry-total');
+      totalCells.forEach(cell => {
+        const score = parseFloat(cell.textContent);
+        if (!isNaN(score) && score > 0) {
+          totalScore += score;
+          validScores++;
+          if (score >= 50) passCount++;
+        }
+      });
+
+      const activeTermData = activeTab.id === 'scoreEntryTerm1' ? currentData.term1 : currentData.term2;
+      const studentCount = activeTermData?.rows?.length || 0;
+
+      const averageScore = validScores > 0 ? (totalScore / validScores).toFixed(1) : 0;
+      const passRate = validScores > 0 ? ((passCount / validScores) * 100).toFixed(0) : 0;
+      const progressPercent = rows.length > 0 ? ((completedRows / rows.length) * 100).toFixed(0) : 0;
+
+      totalStudentsEl.textContent = studentCount;
+      completedScoresEl.textContent = completedRows;
+      averageScoreEl.textContent = averageScore;
+      passRateEl.textContent = `${passRate}%`;
+      progressBar.style.width = `${progressPercent}%`;
+
+      grade4El.textContent = gradeCounts["4"];
+      gradeBelow2El.textContent = gradeCounts["0"] + gradeCounts["1"] + gradeCounts["1.5"];
+    }
+function renderTermTable(containerId, termDataObj, term) {
+  const { rows: termData, fullScores = [], fullFinal = 30 } = termDataObj;
+  const container = document.getElementById(containerId);
+  if (!termData || !termData.length) {
+    container.innerHTML = '<div class="alert alert-warning">ไม่พบข้อมูลนักเรียน</div>';
+    return;
+  }
+
+  // เรียงลำดับนักเรียน: ชายก่อน แล้วตามด้วยหญิง
+  const sortedData = [...termData].sort((a, b) => {
+    const idA = parseInt(a.id) || 0;
+    const idB = parseInt(b.id) || 0;
+    const genderA = a.gender || '';
+    const genderB = b.gender || '';
+    const isMaleA = genderA.includes('ชาย');
+    const isMaleB = genderB.includes('ชาย');
+    if (isMaleA && !isMaleB) return -1;
+    if (!isMaleA && isMaleB) return 1;
+    return idA - idB;
+  });
+
+  const table = document.createElement("table");
+  table.className = "table score-entry-table mb-0";
+
+  let html = `<thead>
+    <!-- แถวที่ 1: Header หลัก -->
+    <tr>
+      <th rowspan="2" style="width:50px;">เลขที่</th>
+      <th rowspan="2" style="width:100px; display:none;">รหัส</th>
+      <th rowspan="2" style="width:200px;">ชื่อ-นามสกุล</th>
+      <th colspan="10">คะแนนตัวชี้วัดปลายทาง/ผลการเรียนรู้</th>
+      <th rowspan="2" style="width:70px;">กลางภาค</th>
+      <th rowspan="2" style="width:70px;">ปลายภาค</th>
+      <th rowspan="2" style="width:70px;">รวม</th>
+      <th rowspan="2" style="width:50px;">เกรด</th>
+    </tr>
+    <!-- แถวที่ 2: เลข 1-10 -->
+    <tr>
+      <th style="width:55px;">1</th><th style="width:55px;">2</th>
+      <th style="width:55px;">3</th><th style="width:55px;">4</th>
+      <th style="width:55px;">5</th><th style="width:55px;">6</th>
+      <th style="width:55px;">7</th><th style="width:55px;">8</th>
+      <th style="width:55px;">9</th><th style="width:55px;">10</th>
+    </tr>
+    <!-- แถวที่ 3: คะแนนเต็ม -->
+    <tr class="score-entry-fullscore-row">
+      <th colspan="2">คะแนนเต็ม</th>`;
+  
+  for(let i = 0; i < 10; i++) {
+    html += `<th><input type="number" min="0" max="100" step="0.5" class="score-entry-full-score" data-index="${i}" value="${fullScores[i] ?? ''}" style="width:50px; height:32px; font-size:0.9rem; text-align:center; border:1px solid #cbd5e1; border-radius:4px;" aria-label="คะแนนเต็มครั้งที่ ${i+1}"></th>`;
+  }
+  
+ html += `<th><span class="score-entry-full-mid" style="font-weight:700; color:#1e40af;">0</span></th>
+      <th><span class="score-entry-full-final" style="font-weight:700; color:#1e40af;">${fullFinal}</span></th>
+      <th><span class="score-entry-full-total" style="font-weight:700; color:#1e40af;">0</span></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>`;
+
+  sortedData.forEach((row, i) => {
+    html += `<tr>
+      <td style="font-weight:600;">${i+1}</td>
+      <td style="font-weight:500; color:#64748b; display:none;">${row.id || ''}</td>
+      <td class="score-entry-student-name">${row.name || ''}</td>`;
+    
+    for(let j = 0; j < 10; j++) {
+      const val = row.scores?.[j] ?? 0;
+      html += `<td><input type="number" min="0" step="0.5" class="score-entry-input" data-index="${j}" value="${val}" aria-label="คะแนนครั้งที่ ${j+1}"></td>`;
+    }
+    
+    html += `<td class="score-entry-sum">${row.mid || 0}</td>
+      <td><input type="number" min="0" step="0.5" class="score-entry-final-input" value="${row.final || 0}" aria-label="คะแนนปลายภาค"></td>
+      <td class="score-entry-total">${row.total || 0}</td>
+      <td class="score-entry-grade" aria-label="เกรดนักเรียน">
+        <span class="score-entry-grade-badge score-entry-grade-${(row.grade || "0").replace('.', '-')}">${row.grade || "0"}</span>
+      </td>
+    </tr>`;
+  });
+  
+  html += '</tbody>';
+  table.innerHTML = html;
+  container.innerHTML = '';
+  container.appendChild(table);
+
+ function updateFullScore() {
+  const table = document.querySelector('.score-entry-table');
+  if (!table) return; // ✅ เพิ่มการป้องกัน
+  
+  const fulls = [...table.querySelectorAll('.score-entry-full-score')]
+    .map(i => Number(i.value || 0));
+
+  const midCap = Number(
+    (assessmentConfig && typeof assessmentConfig.midMax !== 'undefined')
+      ? assessmentConfig.midMax
+      : fulls.reduce((a,b) => a + (b || 0), 0)
+  );
+
+  // ⭐ เปลี่ยนจาก input เป็น span
+  const fullFinalSpan = table.querySelector('.score-entry-full-final');
+  if (!fullFinalSpan) return; // ✅ เพิ่มการป้องกัน
+  
+  const fullFinalVal = Number(fullFinalSpan.textContent || 0);
+
+  const fullMidSpan   = table.querySelector('.score-entry-full-mid');
+  const fullTotalSpan = table.querySelector('.score-entry-full-total');
+
+  if (fullMidSpan)   fullMidSpan.textContent   = midCap;
+  if (fullTotalSpan) fullTotalSpan.textContent = midCap + fullFinalVal;
+
+  // ตั้งค่า max ของช่องคะแนนปลายภาคนักเรียน
+  table.querySelectorAll('tbody tr').forEach(row => {
+    row.querySelectorAll('.score-entry-input').forEach(input => {
+      const idx = Number(input.dataset.index);
+      const cap = fulls[idx] ?? 0;
+      input.max = cap;
+      if (Number(input.value) > cap) input.value = cap;
+    });
+
+    // ตั้ง max ของช่องคะแนนปลายภาคนักเรียน
+    const finalInput = row.querySelector('.score-entry-final-input');
+    if (finalInput) {
+      finalInput.max = fullFinalVal;
+      if (Number(finalInput.value) > fullFinalVal) {
+        finalInput.value = fullFinalVal;
+      }
+    }
+
+    calcRowTotal(row, false);
+  });
+}
+
+// Event listener สำหรับช่องคะแนนเต็มย่อย (1-10) เท่านั้น
+table.querySelectorAll('.score-entry-full-score').forEach(input => {
+  input.addEventListener('input', () => {
+    updateFullScore();
+    validateScores(containerId);
+  });
+});
+
+  table.querySelectorAll('tbody input').forEach(input => {
+    input.addEventListener('input', (e) => {
+      calcRowTotal(e.target.closest('tr'));
+      validateScores(containerId);
+    });
+  });
+
+  // Validate ให้รับเฉพาะตัวเลขและทศนิยม
+  table.querySelectorAll('input[type="number"]').forEach(input => {
+    input.addEventListener('input', (e) => {
+      let value = e.target.value;
+      value = value.replace(/[^\d.-]/g, '');
+      
+      const parts = value.split('.');
+      if (parts.length > 2) {
+        value = parts[0] + '.' + parts.slice(1).join('');
+      }
+      
+      e.target.value = value;
+    });
+    
+    input.addEventListener('blur', (e) => {
+      let value = parseFloat(e.target.value);
+      if (!isNaN(value)) {
+        e.target.value = Math.round(value * 10) / 10;
+      } else if (e.target.value !== '') {
+        e.target.value = 0;
+      }
+    });
+  });
+
+  // เลื่อนช่องด้วย Enter และลูกศร
+  table.querySelectorAll('tbody input, thead input').forEach((input, index, allInputs) => {
+    input.addEventListener('keydown', (e) => {
+      let nextInput = null;
+      
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        nextInput = e.shiftKey ? allInputs[index - 1] : allInputs[index + 1];
+      }
+      else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        nextInput = allInputs[index + 1];
+      }
+      else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        nextInput = allInputs[index - 1];
+      }
+      else if (e.key === 'ArrowRight' || e.key === 'Tab') {
+        if (e.key === 'Tab' && !e.shiftKey) e.preventDefault();
+        const currentRow = input.closest('tr');
+        const rowInputs = [...currentRow.querySelectorAll('input')];
+        const currentIndex = rowInputs.indexOf(input);
+        nextInput = rowInputs[currentIndex + 1] || allInputs[index + 1];
+      }
+      else if (e.key === 'ArrowLeft' || (e.key === 'Tab' && e.shiftKey)) {
+        if (e.key === 'Tab') e.preventDefault();
+        const currentRow = input.closest('tr');
+        const rowInputs = [...currentRow.querySelectorAll('input')];
+        const currentIndex = rowInputs.indexOf(input);
+        nextInput = rowInputs[currentIndex - 1] || allInputs[index - 1];
+      }
+      
+      if (nextInput) {
+        nextInput.focus();
+        nextInput.select();
+      }
+    });
+    
+    input.addEventListener('focus', (e) => e.target.select());
+  });
+
+  updateFullScore();
+
+  // บังคับคำนวณเกรดทุกแถวหลัง render
+  table.querySelectorAll('tbody tr').forEach(row => {
+    calcRowTotal(row, false);
+  });
+}
+
+
+ function saveTermData(termId) {
+  const statusId = `scoreEntryStatus${termId.charAt(0).toUpperCase() + termId.slice(1)}`;
+  const containerId = `scoreEntry${termId.charAt(0).toUpperCase() + termId.slice(1)}Container`;
+  
+  if (!validateScores(containerId)) {
+    showStatus("❌ มีคะแนนที่กรอกไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง", "danger", "fas fa-exclamation-circle");
+    showButtonStatus(statusId, "ตรวจพบข้อผิดพลาด", "error");
+    return;
+  }
+
+  const container = document.getElementById(containerId);
+  const table = container?.querySelector("table");
+  const rows = table?.querySelectorAll("tbody tr");
+  if (!rows || rows.length === 0) {
+    showStatus("ไม่พบข้อมูลในตาราง", "warning", "fas fa-exclamation-triangle");
+    showButtonStatus(statusId, "ไม่พบข้อมูล", "error");
+    return;
+  }
+
+  const grade = gradeSelect.value;
+  const classNo = classSelect.value;
+  const subjectValue = subjectSelect.value;
+  const subject = JSON.parse(subjectValue);
+  const sheetName = generateSheetName(subject.name, grade, classNo);
+
+  const fullScores = [...table.querySelectorAll('.score-entry-full-score')].map(input => Number(input.value || 0));
+  const fullFinalSpan = table.querySelector('.score-entry-full-final');
+  const fullFinal = fullFinalSpan ? Number(fullFinalSpan.textContent || 0) : 0;
+
+  const data = [...rows].map(row => {
+    const id = row.cells[1].textContent.trim();
+    const name = row.cells[2].textContent.trim();
+    const scores = [...row.querySelectorAll('.score-entry-input')].map(i => Number(i.value || 0));
+    const mid = Number(row.querySelector('.score-entry-sum').textContent || 0);
+    const final = Number(row.querySelector('.score-entry-final-input').value || 0);
+    const total = Number(row.querySelector('.score-entry-total').textContent || 0);
+    const gradeVal = row.querySelector('.score-entry-grade .score-entry-grade-badge').textContent.trim();
+    return { id, name, scores, mid, final, total, grade: gradeVal };
+  });
+
+  showLoading(true);
+  showStatus("🔄 กำลังบันทึกข้อมูล...", "info");
+  showButtonStatus(statusId, "กำลังบันทึกข้อมูล...", "saving");
+
+  google.script.run
+    .withSuccessHandler(() => {
+      const termName = termId === 'term1' ? 'ภาคเรียนที่ 1' : 'ภาคเรียนที่ 2';
+      showStatus(`✅ บันทึก${termName} เรียบร้อยแล้ว`, "success", "fas fa-check-circle");
+      showButtonStatus(statusId, "บันทึกสำเร็จ", "success");
+      showLoading(false);
+      updateStats();
+    })
+    .withFailureHandler(error => {
+      showStatus("❌ บันทึกไม่สำเร็จ: " + (error.message || error), "danger", "fas fa-exclamation-circle");
+      showButtonStatus(statusId, "บันทึกล้มเหลว", "error");
+      showLoading(false);
+    })
+    .saveScoreSheetData(sheetName, termId, data, fullScores, fullFinal);
+}
+
+// ==== [PATCH] เก็บ payload เพื่อส่งบันทึก ====
+function collectPayloadForSave() {
+  const rows = [...document.querySelectorAll('.score-row')];
+  return rows.map(rowEl => {
+    const { midTotal, finalScore, grandTotal } = computeRowTotals(rowEl); // ค่าที่คุมแล้ว
+    const items = [...rowEl.querySelectorAll('.score-item-input')].map(ip => Number(ip.value || 0));
+    return {
+      studentId: rowEl.getAttribute('data-id'),
+      scores: items,     // 10 ช่องเดิม
+      mid: midTotal,     // ✅ ถูกคุมตาม midMax แล้ว
+      final: finalScore, // ✅ ไม่เกิน finalMax
+      total: grandTotal  // ✅ mid + final
+      // grade: ให้ฝั่ง GAS คำนวณตามระบบเดิม (หรือคงที่คุณทำไว้เดิม)
+    };
+  });
+}
+
+// ==== [HOOK] ปุ่มบันทึก (ตัวอย่าง) ====
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('#btn-save-scores'); // ปรับ selector ให้ตรงกับปุ่มของคุณ
+  if (!btn) return;
+
+  const payload = collectPayloadForSave();
+
+  // ตัวอย่างเรียกใช้ฟังก์ชันเดิมของคุณ (ปรับชื่อให้ตรงระบบคุณ)
+  const sheetName = window.currentSheetName;
+  const term = window.currentTermId; // 'term1' | 'term2'
+
+  google.script.run
+    .withSuccessHandler(msg => alert(msg))
+    .withFailureHandler(err => alert('บันทึกไม่สำเร็จ: ' + err.message))
+    .saveScores(sheetName, payload); 
+    // หรือ .saveScoreSheetData(sheetName, term, payload, fullScores, fullFinal)
+});
+
+function downloadBase64Pdf(filename, base64) {
+  try {
+    // ตรวจสอบว่าได้รับข้อมูลหรือไม่
+    if (!base64 || base64.trim() === '') {
+      showStatus('❌ ไม่ได้รับข้อมูล PDF จาก Server', 'danger', 'fas fa-exclamation-circle');
+      return;
+    }
+
+    // ลบ whitespace และ newline ออก
+    base64 = base64.replace(/\s/g, '');
+    
+    // ตรวจสอบว่าเป็น Base64 ที่ถูกต้องหรือไม่
+    const base64Pattern = /^[A-Za-z0-9+/]*={0,2}$/;
+    if (!base64Pattern.test(base64)) {
+      console.error('Invalid Base64 string:', base64.substring(0, 100));
+      showStatus('❌ รูปแบบข้อมูล PDF ไม่ถูกต้อง', 'danger', 'fas fa-exclamation-circle');
+      return;
+    }
+
+    // แปลง Base64 เป็น binary
+    const byteChars = atob(base64);
+    const byteNums = new Array(byteChars.length);
+    for (let i = 0; i < byteChars.length; i++) {
+      byteNums[i] = byteChars.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNums);
+    
+    // สร้าง Blob และดาวน์โหลด
+    const blob = new Blob([byteArray], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    
+    // Cleanup
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      a.remove();
+    }, 100);
+    
+  } catch (e) {
+    console.error('Download PDF Error:', e);
+    console.error('Base64 data (first 200 chars):', base64?.substring(0, 200));
+    showStatus('❌ ไม่สามารถดาวน์โหลดไฟล์ PDF ได้: ' + e.message, 'danger', 'fas fa-exclamation-circle');
+  }
+}
+
+    function collectTermTableData(containerId) {
+      const container = document.getElementById(containerId);
+      const table = container?.querySelector('table.score-entry-table');
+      if (!table) return null;
+
+      const fullScores = [...table.querySelectorAll('.score-entry-full-score')].map(i => Number(i.value || 0));
+      const fullFinalEl = table.querySelector('.score-entry-full-final');
+      const fullFinal = fullFinalEl ? Number(fullFinalEl.textContent || 0) : 0;
+      const fullMid = fullScores.reduce((a,b)=>a+(b||0), 0);
+      const fullTotal = fullMid + fullFinal;
+
+      const rows = [...table.querySelectorAll('tbody tr')].map((tr, idx) => {
+        const id = tr.cells[1]?.textContent?.trim() || '';
+        const name = tr.cells[2]?.textContent?.trim() || '';
+        const scores = [...tr.querySelectorAll('.score-entry-input')].map(i => Number(i.value || 0));
+        const mid = Number(tr.querySelector('.score-entry-sum')?.textContent || 0);
+        const final = Number(tr.querySelector('.score-entry-final-input')?.value || 0);
+        const total = Number(tr.querySelector('.score-entry-total')?.textContent || 0);
+        const grade = tr.querySelector('.score-entry-grade .score-entry-grade-badge')?.textContent?.trim() || '0';
+        return { no: idx+1, id, name, scores, mid, final, total, grade };
+      });
+
+      return { fullScores, fullFinal, fullMid, fullTotal, rows };
+    }
+
+    function buildPdfFilename(subjectName, grade, classNo, suffix){
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = (now.getMonth()+1).toString().padStart(2,'0');
+      const d = now.getDate().toString().padStart(2,'0');
+      return `${subjectName}_${grade.replace('.', '')}-${classNo}_${suffix}_${y}${m}${d}.pdf`.replaceAll(' ', '_');
+    }
+
+    function loadData() {
+  const grade = gradeSelect.value;
+  const classNo = classSelect.value;
+  const subjectValue = subjectSelect.value;
+
+  // ตรวจสอบว่าเลือกครบไหม
+  if (!grade || !classNo || !subjectValue) {
+    showStatus("กรุณาเลือกระดับชั้น ห้องเรียน และรายวิชาให้ครบถ้วน", "warning", "fas fa-exclamation-triangle");
+    return;
+  }
+
+  let subject;
+  try {
+    subject = JSON.parse(subjectValue);
+  } catch (e) {
+    showStatus("รูปแบบข้อมูลรายวิชาไม่ถูกต้อง", "danger", "fas fa-exclamation-circle");
+    return;
+  }
+
+  const sheetName = generateSheetName(subject.name, grade, classNo);
+  
+  // ✅ 1. จำรหัสวิชาตอนที่เริ่มกดโหลดไว้ (เพื่อเช็คกันข้อมูลสลับวิชา)
+  const currentRequestSubjectCode = subject.code;
+
+  showLoading(true);
+  showStatus("กำลังโหลดข้อมูล...", "info");
+
+  google.script.run
+    .withSuccessHandler(async (data) => {
+      // ✅ 2. เช็คความปลอดภัย: ถ้าวิชาที่โหลดเสร็จ ไม่ตรงกับที่เลือกอยู่ใน Dropdown ตอนนี้ -> ให้หยุดทันที
+      const currentSelectedSubject = JSON.parse(subjectSelect.value || "{}");
+      if (currentSelectedSubject.code !== currentRequestSubjectCode) {
+        console.warn("ข้อมูลมาช้าเกินไป - ผู้ใช้เปลี่ยนวิชาไปแล้ว");
+        return; 
+      }
+
+      try {
+        // เก็บข้อมูลดิบไว้ใน state
+        currentData = data;
+
+        // วาดตารางทั้ง 2 เทอม
+        renderTermTable("scoreEntryTerm1Container", data.term1, "term1");
+        renderTermTable("scoreEntryTerm2Container", data.term2, "term2");
+
+        // ดึงคอนฟิกคะแนนจากชีตรายวิชา
+        try {
+          await hydrateAssessmentConfig(subject);
+        } catch (cfgErr) {
+          console.warn("ใช้ค่าเริ่มต้น 70/30 เนื่องจากดึงคอนฟิกไม่สำเร็จ:", cfgErr);
+        }
+
+        showStatus(`✅ โหลดข้อมูลสำเร็จ: ${subject.name} ${grade}/${classNo}`, "success", "fas fa-check-circle");
+        
+        // เปิดปุ่มต่างๆ
+        btnSaveTerm1.disabled = false;
+        btnSaveTerm2.disabled = false;
+        btnExportTerm1Pdf.disabled = false;
+        btnExportTerm2Pdf.disabled = false;
+        btnExportYearPdf.disabled = false;
+        
+        // คำนวณสถิติ
+        updateStats();
+
+        // ✅ 3. สั่งกระตุ้นให้กราฟความคืบหน้า (Progress Bar) ทำงานทันที
+        const activeTabBtn = document.querySelector('.nav-link.active');
+        if (activeTabBtn) {
+            // จำลองเหตุการณ์ว่า "แท็บถูกเปิดแสดงแล้วนะ" เพื่อให้กราฟเด้งขึ้นมา
+            activeTabBtn.dispatchEvent(new Event('shown.bs.tab', { bubbles: true }));
+        }
+
+      } catch (e) {
+        console.error(e);
+        showStatus("❌ เกิดข้อผิดพลาดระหว่างประมวลผลข้อมูล", "danger", "fas fa-exclamation-circle");
+      } finally {
+        showLoading(false);
+      }
+    })
+    .withFailureHandler((error) => {
+      showLoading(false);
+      showStatus("เกิดข้อผิดพลาด: " + (error.message || error), "danger", "fas fa-exclamation-circle");
+    })
+    .getScoreSheetData(sheetName);
+}
+
+
+    gradeSelect.addEventListener("change", () => {
+      const grade = gradeSelect.value;
+      classSelect.innerHTML = '<option value="">-- เลือกห้องเรียน --</option>';
+      subjectSelect.innerHTML = '<option value="">-- เลือกรายวิชา --</option>';
+      classSelect.disabled = true;
+      subjectSelect.disabled = true;
+      btnSaveTerm1.disabled = true;
+      btnSaveTerm2.disabled = true;
+      btnExportTerm1Pdf.disabled = true;
+      btnExportTerm2Pdf.disabled = true;
+      btnExportYearPdf.disabled  = true;
+      btnExportCSV.disabled = true;
+      if (!grade) return;
+
+      classSelect.innerHTML = '<option value="">🔄 กำลังโหลด...</option>';
+
+      google.script.run
+        .withSuccessHandler(classes => {
+          classSelect.disabled = false;
+          classSelect.innerHTML = '<option value="">-- เลือกห้องเรียน --</option>';
+          if (classes && classes.length > 0) {
+            classes.forEach(classNo => {
+              const opt = document.createElement("option");
+              opt.value = classNo;
+              opt.textContent = `ห้อง ${classNo}`;
+              classSelect.appendChild(opt);
+            });
+          } else {
+            classSelect.innerHTML = '<option value="">❌ ไม่พบห้องเรียน</option>';
+          }
+          updateControls();
+        })
+        .withFailureHandler(err => {
+          showStatus(`เกิดข้อผิดพลาดในการโหลดห้องเรียน: ${err.message || err}`, 'danger');
+        })
+        .getAvailableClasses(grade);
+    });
+
+    classSelect.addEventListener("change", () => {
+      const grade = gradeSelect.value;
+      const classNo = classSelect.value;
+      subjectSelect.innerHTML = '<option value="">-- เลือกรายวิชา --</option>';
+      subjectSelect.disabled = true;
+      btnSaveTerm1.disabled = true;
+      btnSaveTerm2.disabled = true;
+      btnExportTerm1Pdf.disabled = true;
+      btnExportTerm2Pdf.disabled = true;
+      btnExportYearPdf.disabled  = true;
+
+      // ✅ เพิ่มบรรทัดนี้: เปิดปุ่ม Export CSV เมื่อเลือกห้องแล้ว
+  if (grade && classNo) {
+    btnExportCSV.disabled = false;
+  } else {
+    btnExportCSV.disabled = true;
+  }
+
+      if (!grade || !classNo) return;
+
+      subjectSelect.innerHTML = '<option value="">🔄 กำลังโหลด...</option>';
+
+      google.script.run
+        .withSuccessHandler(subjects => {
+          subjectSelect.disabled = false;
+          subjectSelect.innerHTML = '<option value="">-- เลือกรายวิชา --</option>';
+          if (subjects && subjects.length > 0) {
+            subjects.forEach(sub => {
+              const opt = document.createElement("option");
+              opt.value = JSON.stringify(sub);
+              opt.textContent = `${sub.name} (${sub.code})`;
+              subjectSelect.appendChild(opt);
+            });
+          } else {
+            subjectSelect.innerHTML = '<option value="">❌ ไม่พบรายวิชา</option>';
+          }
+          updateControls();
+        })
+        .withFailureHandler(err => {
+          showStatus(`เกิดข้อผิดพลาดในการโหลดรายวิชา: ${err.message || err}`, 'danger');
+        })
+        .getSubjectsForGrade(grade);
+    });
+
+subjectSelect.addEventListener("change", () => {
+      // 1. อัปเดตสถานะการเลือก (เปิด/ปิดปุ่ม)
+      updateControls();
+      
+      // 2. อัปเดตข้อมูลหัวตาราง (ชื่อวิชา)
+      updateSubjectInfo();
+
+      // 3. ✅ [ส่วนที่เพิ่ม] ล้างข้อมูลเก่าออกจากหน้าจอทันที
+      // ล้างตาราง
+      document.getElementById("scoreEntryTerm1Container").innerHTML = '';
+      document.getElementById("scoreEntryTerm2Container").innerHTML = '';
+      
+      // รีเซ็ตค่าสถิติเป็น 0
+      if (totalStudentsEl) totalStudentsEl.textContent = "0";
+      if (completedScoresEl) completedScoresEl.textContent = "0";
+      if (averageScoreEl) averageScoreEl.textContent = "0";
+      if (passRateEl) passRateEl.textContent = "0%";
+      if (grade4El) grade4El.textContent = "0";
+      if (gradeBelow2El) gradeBelow2El.textContent = "0";
+      if (progressBar) progressBar.style.width = "0%";
+
+      // ซ่อนแจ้งเตือนเก่า
+      if (statusMsg) statusMsg.classList.add("d-none");
+      hideButtonStatus("scoreEntryStatusTerm1");
+      hideButtonStatus("scoreEntryStatusTerm2");
+      hideButtonStatus("scoreEntryStatusExportTerm1");
+      hideButtonStatus("scoreEntryStatusExportTerm2");
+
+      // ปิดปุ่มใช้งานชั่วคราว จนกว่าจะโหลดเสร็จ
+      btnSaveTerm1.disabled = true;
+      btnSaveTerm2.disabled = true;
+      btnExportTerm1Pdf.disabled = true;
+      btnExportTerm2Pdf.disabled = true;
+      btnExportYearPdf.disabled  = true;
+
+      // 4. เริ่มโหลดข้อมูลใหม่ (ถ้ามีการเลือกวิชา)
+      if (subjectSelect.value) {
+        loadData();
+      }
+    });
+
+    function updateSubjectInfo() {
+      const grade = gradeSelect.value;
+      const classNo = classSelect.value;
+      const subjectValue = subjectSelect.value;
+
+      if (grade && classNo && subjectValue) {
+        try {
+          const subject = JSON.parse(subjectValue);
+          currentSubjectInfo.innerHTML = `
+            <strong>${subject.name}</strong><br>
+            <small>${grade}/${classNo} | ${subject.code}</small>
+          `;
+        } catch (e) {
+          currentSubjectInfo.innerHTML = '<small>เลือกรายวิชาเพื่อเริ่มบันทึกคะแนน</small>';
+        }
+      } else {
+        currentSubjectInfo.innerHTML = '<small>เลือกรายวิชาเพื่อเริ่มบันทึกคะแนน</small>';
+      }
+    }
+
+    btnSaveTerm1.addEventListener("click", () => saveTermData("term1"));
+    btnSaveTerm2.addEventListener("click", () => saveTermData("term2"));
+    btnExportCSV.addEventListener("click", handleExportCSV);
+
+    // Export buttons (เหมือนเดิม - ผมย่อเพื่อประหยัดพื้นที่)
+    btnExportTerm1Pdf.addEventListener('click', () => exportTerm('term1'));
+    btnExportTerm2Pdf.addEventListener('click', () => exportTerm('term2'));
+    btnExportYearPdf.addEventListener('click', () => exportYear());
+
+function exportTerm(termId) {
+  const statusId = `scoreEntryStatusExport${termId.charAt(0).toUpperCase() + termId.slice(1)}`;
+  const containerId = `scoreEntry${termId.charAt(0).toUpperCase() + termId.slice(1)}Container`;
+  const termData = collectTermTableData(containerId);
+  
+  if (!termData || !termData.rows || termData.rows.length === 0) {
+    showStatus('ไม่พบข้อมูลในตาราง กรุณาโหลดข้อมูลก่อน', 'warning', 'fas fa-exclamation-triangle');
+    showButtonStatus(statusId, "ไม่พบข้อมูล", "error");
+    return;
+  }
+
+  const grade = gradeSelect.value;
+  const classNo = classSelect.value;
+  const subjectValue = subjectSelect.value;
+  
+  if (!grade || !classNo || !subjectValue) {
+    showStatus('กรุณาเลือกรายวิชาก่อนส่งออก', 'warning', 'fas fa-exclamation-triangle');
+    showButtonStatus(statusId, "กรุณาเลือกรายวิชา", "error");
+    return;
+  }
+
+  const subject = JSON.parse(subjectValue);
+  const termName = termId === 'term1' ? 'ภาคเรียนที่ 1' : 'ภาคเรียนที่ 2';
+  const filename = buildPdfFilename(subject.name, grade, classNo, termName.replace(' ', '_'));
+
+  showLoading(true);
+  showStatus(`🔄 กำลังสร้างไฟล์ PDF ${termName}...`, 'info');
+  showButtonStatus(statusId, `กำลังสร้าง PDF ${termName}...`, "exporting");
+
+  google.script.run
+    .withSuccessHandler(base64Pdf => {
+      showLoading(false);
+      if (base64Pdf && typeof base64Pdf === 'string') {
+        downloadBase64Pdf(filename, base64Pdf);
+        showStatus(`✅ ส่งออก ${termName} สำเร็จ`, 'success', 'fas fa-check-circle');
+        showButtonStatus(statusId, "ส่งออกสำเร็จ", "success");
+      } else {
+        showStatus('❌ ไม่สามารถสร้างไฟล์ PDF ได้', 'danger', 'fas fa-exclamation-circle');
+        showButtonStatus(statusId, "สร้าง PDF ล้มเหลว", "error");
+      }
+    })
+    .withFailureHandler(error => {
+      showLoading(false);
+      showStatus('❌ เกิดข้อผิดพลาด: ' + (error.message || error), 'danger', 'fas fa-exclamation-circle');
+      showButtonStatus(statusId, "เกิดข้อผิดพลาด", "error");
+    })
+    .exportScoresPdf_SingleTerm(subject.name, subject.code, grade, classNo, termId, termData);
+}
+
+function exportYear() {
+  const term1Data = collectTermTableData('scoreEntryTerm1Container');
+  const term2Data = collectTermTableData('scoreEntryTerm2Container');
+  
+  if (!term1Data || !term1Data.rows || term1Data.rows.length === 0) {
+    showStatus('ไม่พบข้อมูลภาคเรียนที่ 1', 'warning', 'fas fa-exclamation-triangle');
+    return;
+  }
+  
+  if (!term2Data || !term2Data.rows || term2Data.rows.length === 0) {
+    showStatus('ไม่พบข้อมูลภาคเรียนที่ 2', 'warning', 'fas fa-exclamation-triangle');
+    return;
+  }
+
+  const grade = gradeSelect.value;
+  const classNo = classSelect.value;
+  const subjectValue = subjectSelect.value;
+  
+  if (!grade || !classNo || !subjectValue) {
+    showStatus('กรุณาเลือกรายวิชาก่อนส่งออก', 'warning', 'fas fa-exclamation-triangle');
+    return;
+  }
+
+  const subject = JSON.parse(subjectValue);
+  const filename = buildPdfFilename(subject.name, grade, classNo, 'รวม_2_ภาคเรียน');
+
+  showLoading(true);
+  showStatus('🔄 กำลังสร้างไฟล์ PDF รวม 2 ภาคเรียน...', 'info');
+
+  google.script.run
+    .withSuccessHandler(base64Pdf => {
+      showLoading(false);
+      if (base64Pdf && typeof base64Pdf === 'string') {
+        downloadBase64Pdf(filename, base64Pdf);
+        showStatus('✅ ส่งออกรวม 2 ภาคเรียนสำเร็จ', 'success', 'fas fa-check-circle');
+      } else {
+        showStatus('❌ ไม่สามารถสร้างไฟล์ PDF ได้', 'danger', 'fas fa-exclamation-circle');
+      }
+    })
+    .withFailureHandler(error => {
+      showLoading(false);
+      showStatus('❌ เกิดข้อผิดพลาด: ' + (error.message || error), 'danger', 'fas fa-exclamation-circle');
+    })
+    .exportScoresPdf_Year(
+      subject.name,
+      subject.code,  // ⭐ เพิ่มบรรทัดนี้
+      grade,
+      classNo,
+      term1Data,
+      term2Data
+    );
+}
+
+// ========================================
+// 📤 CSV EXPORT SYSTEM (Fixed UTF-8)
+// ========================================
+
+function handleExportCSV() {
+  const grade = gradeSelect.value;
+  const classNo = classSelect.value;
+  
+  if (!grade || !classNo) {
+    showStatus('⚠️ กรุณาเลือกชั้นและห้องเรียนก่อน', 'warning', 'fas fa-exclamation-triangle');
+    return;
+  }
+  
+  showLoading(true);
+  showStatus('🔄 กำลังดึงข้อมูลคะแนนทุกวิชาจาก SCORES_WAREHOUSE...', 'info');
+  
+  google.script.run
+    .withSuccessHandler(function(result) {
+      showLoading(false);
+      
+      if (result.success) {
+        // ✅ ดาวน์โหลดโดยใช้ Base64
+        const downloaded = downloadCSVFromBase64(result.base64Content, result.filename);
+        
+        if (downloaded) {
+          showStatus(`✅ Export สำเร็จ! ไฟล์: ${result.filename}`, 'success', 'fas fa-check-circle');
+        } else {
+          showStatus('❌ ไม่สามารถดาวน์โหลดไฟล์ได้', 'danger', 'fas fa-exclamation-circle');
+        }
+      } else {
+        showStatus('❌ Export ล้มเหลว: ' + result.error, 'danger', 'fas fa-exclamation-circle');
+      }
+    })
+    .withFailureHandler(function(error) {
+      showLoading(false);
+      showStatus('❌ เกิดข้อผิดพลาด: ' + (error.message || error), 'danger', 'fas fa-exclamation-circle');
+    })
+    .handleExportClassCSV(grade, classNo);
+}
+
+// ✅ ฟังก์ชันดาวน์โหลด CSV จาก Base64 (แก้ไขแล้ว)
+function downloadCSVFromBase64(base64Content, filename) {
+  try {
+    // ลบ whitespace
+    base64Content = base64Content.replace(/\s/g, '');
+    
+    // แปลง Base64 เป็น binary
+    const binaryString = atob(base64Content);
+    const bytes = new Uint8Array(binaryString.length);
+    
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    // สร้าง Blob พร้อม UTF-8 BOM
+    const blob = new Blob([bytes], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    
+    // Cleanup
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      a.remove();
+    }, 100);
+    
+    return true;
+  } catch (e) {
+    console.error('Download CSV Error:', e);
+    return false;
+  }
+}
+
+
+return {
+      clearAllScores: function(tabId) {
+        if (confirm('คุณต้องการล้างคะแนนทั้งหมดใช่หรือไม่?')) {
+          const container = document.getElementById(`${tabId}Container`);
+          if (!container) return;
+
+          const inputs = container.querySelectorAll('.score-entry-input, .score-entry-final-input');
+          inputs.forEach(input => {
+            input.value = '';
+            input.classList.remove('is-invalid');
+          });
+
+          const totalCells = container.querySelectorAll('.score-entry-total');
+          const sumCells = container.querySelectorAll('.score-entry-sum');
+          const gradeCells = container.querySelectorAll('.score-entry-grade');
+
+          totalCells.forEach(cell => cell.textContent = '0');
+          sumCells.forEach(cell => cell.textContent = '0');
+          gradeCells.forEach(cell => {
+            cell.innerHTML = '<span class="score-entry-grade-badge score-entry-grade-0">0</span>';
+          });
+
+          updateStats();
+          showStatus('ล้างคะแนนเรียบร้อยแล้ว', 'info', 'fas fa-info-circle');
+        }
+      },
+
+      updateControls: function() {
+        updateControls();
+      }
+    };
+  })();
+
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log('🎯 Initializing Score Entry System...');
+    
+    setTimeout(() => {
+      if (typeof window.ScoreEntrySystem === 'undefined') {
+        console.error('❌ ScoreEntrySystem not loaded!');
+        return;
+      }
+      
+      if (typeof ScoreEntrySystem.updateControls !== 'function') {
+        console.error('❌ updateControls is not a function!');
+        return;
+      }
+      
+      try {
+        ScoreEntrySystem.updateControls();
+        console.log('✅ Score Entry System initialized');
+      } catch (error) {
+        console.error('❌ Initialization error:', error);
+      }
+    }, 100);
+    
+    document.addEventListener('click', function(e) {
+      const btn = e.target.closest('[data-action="clear-scores"]');
+      if (btn) {
+        const term = btn.dataset.term;
+        if (term && typeof window.ScoreEntrySystem !== 'undefined') {
+          window.ScoreEntrySystem.clearAllScores(term);
+        }
+      }
+    });
+  });
+
+  window.addEventListener('error', function(event) {
+    console.error('🔥 Global error:', event.error);
+    event.preventDefault();
+  });
+
+  window.addEventListener('unhandledrejection', function(event) {
+    console.error('🔥 Unhandled promise rejection:', event.reason);
+    event.preventDefault();
+  });
+  // ========================================
+// 📊 Progress Indicator (ติดตั้งถาวร)
+// ========================================
+(function(){
+  console.log('🚀 กำลังโหลด Progress Indicator...');
+  
+  const style = document.createElement('style');
+  style.textContent = `
+    .progress-panel {
+      background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+      padding: 1.5rem 2rem;
+      border-radius: 16px;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      border: 2px solid #e2e8f0;
+      position: relative;
+    }
+    .progress-panel::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
+    }
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.2rem;
+    }
+    .progress-title {
+      margin: 0;
+      color: #1e293b;
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+    .progress-percent {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #10b981;
+    }
+    .progress-bar-wrap {
+      width: 100%;
+      height: 28px;
+      background: #e5e7eb;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #10b981, #059669);
+      transition: width 0.5s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+    .progress-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 1rem;
+      margin-top: 1.2rem;
+    }
+    .progress-stat {
+      text-align: center;
+      padding: 1rem 0.5rem;
+      background: white;
+      border-radius: 12px;
+      border: 2px solid #f1f5f9;
+    }
+    .progress-stat-num {
+      font-size: 1.5rem;
+      font-weight: 800;
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+    .progress-stat-label {
+      font-size: 0.85rem;
+      color: #64748b;
+      font-weight: 500;
+    }
+    .stat-1 .progress-stat-num { color: #3b82f6; }
+    .stat-2 .progress-stat-num { color: #06b6d4; }
+    .stat-3 .progress-stat-num { color: #8b5cf6; }
+    .stat-4 .progress-stat-num { color: #f59e0b; }
+    .stat-5 .progress-stat-num { color: #10b981; }
+  `;
+  document.head.appendChild(style);
+  
+  const panel = document.createElement('div');
+  panel.className = 'progress-panel';
+  panel.innerHTML = `
+    <div class="progress-header">
+      <h5 class="progress-title">
+        <i class="fas fa-chart-line"></i> ความคืบหน้าการกรอกคะแนน
+      </h5>
+      <div class="progress-percent" id="progressPercent">0%</div>
+    </div>
+    
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progressBar" style="width: 0%;">
+        <span id="progressText">0/0 ช่อง</span>
+      </div>
+    </div>
+    
+    <div class="progress-stats">
+      <div class="progress-stat stat-1">
+        <span class="progress-stat-num" id="stat1">0</span>
+        <div class="progress-stat-label">
+          <i class="fas fa-users"></i> นักเรียนทั้งหมด
+        </div>
+      </div>
+      
+      <div class="progress-stat stat-2">
+        <span class="progress-stat-num" id="stat2">0</span>
+        <div class="progress-stat-label">
+          <i class="fas fa-user-check"></i> กรอกครบแล้ว
+        </div>
+      </div>
+      
+      <div class="progress-stat stat-3">
+        <span class="progress-stat-num" id="stat3">0</span>
+        <div class="progress-stat-label">
+          <i class="fas fa-check-square"></i> ช่องที่กรอกแล้ว
+        </div>
+      </div>
+      
+      <div class="progress-stat stat-4">
+        <span class="progress-stat-num" id="stat4">0</span>
+        <div class="progress-stat-label">
+          <i class="fas fa-square"></i> ช่องว่าง
+        </div>
+      </div>
+      
+      <div class="progress-stat stat-5">
+        <span class="progress-stat-num" id="stat5">-</span>
+        <div class="progress-stat-label">
+          <i class="fas fa-clock"></i> เวลาโดยประมาณ
+        </div>
+      </div>
+    </div>
+  `;
+  
+  const mainContent = document.querySelector('.score-entry-main-content');
+  if (mainContent) {
+    mainContent.parentNode.insertBefore(panel, mainContent);
+  }
+  
+  function collectData() {
+    const activeTab = document.querySelector('.tab-pane.active');
+    if (!activeTab) return null;
+    
+    const container = activeTab.querySelector('.score-entry-table-container');
+    if (!container) return null;
+    
+    const table = container.querySelector('table.score-entry-table');
+    if (!table) return null;
+    
+    const rows = table.querySelectorAll('tbody tr');
+    let totalStudents = rows.length;
+    let totalFields = 0;
+    let filledFields = 0;
+    let completedStudents = 0;
+    
+    rows.forEach(row => {
+      const inputs = row.querySelectorAll('.score-entry-input, .score-entry-final-input');
+      let studentFilled = 0;
+      
+      inputs.forEach(input => {
+        totalFields++;
+        const value = input.value?.trim();
+        if (value && value !== '' && value !== '0') {
+          filledFields++;
+          studentFilled++;
+        }
+      });
+      
+      if (studentFilled === inputs.length && inputs.length > 0) {
+        completedStudents++;
+      }
+    });
+    
+    const emptyFields = totalFields - filledFields;
+    const percent = totalFields > 0 ? Math.round((filledFields / totalFields) * 100) : 0;
+    const estimatedTime = emptyFields * 3;
+    
+    return {
+      totalStudents,
+      totalFields,
+      filledFields,
+      emptyFields,
+      completedStudents,
+      percent,
+      estimatedTime
+    };
+  }
+  
+  function updateUI() {
+    const data = collectData();
+    if (!data) return;
+    
+    document.getElementById('progressPercent').textContent = data.percent + '%';
+    
+    const bar = document.getElementById('progressBar');
+    const text = document.getElementById('progressText');
+    bar.style.width = data.percent + '%';
+    text.textContent = data.percent > 15 ? `${data.filledFields}/${data.totalFields} ช่อง` : '';
+    
+    document.getElementById('stat1').textContent = data.totalStudents;
+    document.getElementById('stat2').textContent = data.completedStudents;
+    document.getElementById('stat3').textContent = data.filledFields;
+    document.getElementById('stat4').textContent = data.emptyFields;
+    
+    const timeEl = document.getElementById('stat5');
+    if (data.emptyFields === 0) {
+      timeEl.textContent = 'เสร็จสิ้น!';
+    } else {
+      const minutes = Math.floor(data.estimatedTime / 60);
+      const seconds = data.estimatedTime % 60;
+      timeEl.textContent = minutes > 0 ? `${minutes} นาที` : `${seconds} วินาที`;
+    }
+  }
+  
+  let updateTimer = null;
+  document.addEventListener('input', function(e) {
+    if (e.target.matches('.score-entry-input, .score-entry-final-input, .score-entry-full-score')) {
+      clearTimeout(updateTimer);
+      updateTimer = setTimeout(updateUI, 500);
+    }
+  });
+  
+  document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
+    tab.addEventListener('shown.bs.tab', function() {
+      setTimeout(updateUI, 100);
+    });
+  });
+  
+  setTimeout(updateUI, 1000);
+  
+})();
+// ========================================
+// ⚡ Quick Fill Menu (Fixed Version)
+// ========================================
+(function(){
+  console.log('🚀 กำลังติดตั้ง Quick Fill Menu (Fixed)...');
+  
+  // สร้าง CSS สำหรับเมนู
+  const style = document.createElement('style');
+  style.textContent = `
+    .quick-fill-menu {
+      position: absolute;
+      background: white;
+      border: 2px solid #3b82f6;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      z-index: 10000;
+      min-width: 280px;
+      padding: 8px 0;
+      animation: menuFadeIn 0.2s ease-out;
+    }
+    
+    @keyframes menuFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .quick-fill-item {
+      padding: 12px 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.95rem;
+      color: #374151;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    
+    .quick-fill-item:last-child {
+      border-bottom: none;
+    }
+    
+    .quick-fill-item:hover {
+      background: #eff6ff;
+      color: #2563eb;
+    }
+    
+    .quick-fill-item-icon {
+      font-size: 1.2rem;
+      width: 24px;
+      text-align: center;
+    }
+    
+    .quick-fill-item-text {
+      flex: 1;
+    }
+    
+    .quick-fill-divider {
+      height: 1px;
+      background: #e5e7eb;
+      margin: 4px 0;
+    }
+  `;
+  document.head.appendChild(style);
+  
+  let currentMenu = null;
+  let currentInput = null;
+  
+  // ฟังก์ชันสร้างเมนู
+  function createQuickFillMenu(x, y, input) {
+    if (currentMenu) {
+      currentMenu.remove();
+    }
+    
+    currentInput = input;
+    const menu = document.createElement('div');
+    menu.className = 'quick-fill-menu';
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
+    
+    const options = [
+      { 
+        icon: '📋', 
+        text: 'กรอกคะแนนเต็มทั้งคอลัมน์', 
+        action: 'fillFullScore'
+      },
+      { 
+        icon: '📝', 
+        text: 'กรอกค่าเดียวกันทั้งคอลัมน์', 
+        action: 'fillSameValue'
+      },
+      { 
+        icon: '⚡', 
+        text: 'กรอกตามช่วง (สุ่ม)', 
+        action: 'fillRange'
+      },
+      { divider: true },
+      { 
+        icon: '🔄', 
+        text: 'คัดลอกจากแถวบน', 
+        action: 'copyAbove'
+      },
+      { 
+        icon: '0️⃣', 
+        text: 'เติม 0 ทั้งคอลัมน์', 
+        action: 'fillZero'
+      },
+      { divider: true },
+      { 
+        icon: '❌', 
+        text: 'ล้างคอลัมน์นี้', 
+        action: 'clearColumn',
+        danger: true
+      }
+    ];
+    
+    options.forEach(opt => {
+      if (opt.divider) {
+        const divider = document.createElement('div');
+        divider.className = 'quick-fill-divider';
+        menu.appendChild(divider);
+      } else {
+        const item = document.createElement('div');
+        item.className = 'quick-fill-item';
+        if (opt.danger) item.style.color = '#dc2626';
+        
+        item.innerHTML = `
+          <span class="quick-fill-item-icon">${opt.icon}</span>
+          <span class="quick-fill-item-text">${opt.text}</span>
+        `;
+        
+        item.addEventListener('click', () => {
+          handleQuickFill(opt.action, input);
+          menu.remove();
+          currentMenu = null;
+        });
+        
+        menu.appendChild(item);
+      }
+    });
+    
+    document.body.appendChild(menu);
+    currentMenu = menu;
+    
+    // ปรับตำแหน่งถ้าเกินขอบจอ
+    const rect = menu.getBoundingClientRect();
+    if (rect.right > window.innerWidth) {
+      menu.style.left = (x - rect.width) + 'px';
+    }
+    if (rect.bottom > window.innerHeight) {
+      menu.style.top = (y - rect.height) + 'px';
+    }
+  }
+  
+  // ฟังก์ชัน trigger การคำนวณ (แทนการเรียก calcRowTotal)
+  function triggerCalculation(input) {
+    // สร้าง event เพื่อให้ระบบเดิมคำนวณเอง
+    const event = new Event('input', { bubbles: true });
+    input.dispatchEvent(event);
+  }
+  
+  // ฟังก์ชันจัดการ Quick Fill
+  function handleQuickFill(action, input) {
+    const table = input.closest('table');
+    const columnIndex = parseInt(input.dataset.index);
+    const rows = table.querySelectorAll('tbody tr');
+    
+    switch(action) {
+      case 'fillFullScore':
+        const fullScoreInputs = table.querySelectorAll('.score-entry-full-score');
+        const fullScore = parseFloat(fullScoreInputs[columnIndex]?.value || 0);
+        
+        if (fullScore > 0) {
+          let count = 0;
+          rows.forEach(row => {
+            const cellInput = row.querySelectorAll('.score-entry-input')[columnIndex];
+            if (cellInput) {
+              cellInput.value = fullScore;
+              triggerCalculation(cellInput);
+              count++;
+            }
+          });
+          showNotification(`✅ กรอกคะแนนเต็ม ${fullScore} ให้ ${count} คน`);
+        } else {
+          showNotification('⚠️ กรุณาตั้งคะแนนเต็มก่อน', 'warning');
+        }
+        break;
+        
+      case 'fillSameValue':
+        const value = prompt('กรอกคะแนนที่ต้องการ:', '10');
+        if (value !== null && value !== '') {
+          const numValue = parseFloat(value);
+          if (!isNaN(numValue) && numValue >= 0) {
+            let count = 0;
+            rows.forEach(row => {
+              const cellInput = row.querySelectorAll('.score-entry-input')[columnIndex];
+              if (cellInput) {
+                cellInput.value = numValue;
+                triggerCalculation(cellInput);
+                count++;
+              }
+            });
+            showNotification(`✅ กรอกคะแนน ${numValue} ให้ ${count} คน`);
+          } else {
+            showNotification('⚠️ กรุณากรอกตัวเลขที่ถูกต้อง', 'warning');
+          }
+        }
+        break;
+        
+      case 'fillRange':
+        const range = prompt('กรอกช่วงคะแนน (เช่น 8-10):', '8-10');
+        if (range && range.includes('-')) {
+          const parts = range.split('-').map(s => parseFloat(s.trim()));
+          const min = parts[0];
+          const max = parts[1];
+          
+          if (!isNaN(min) && !isNaN(max) && min <= max) {
+            let count = 0;
+            rows.forEach(row => {
+              const cellInput = row.querySelectorAll('.score-entry-input')[columnIndex];
+              if (cellInput) {
+                const randomScore = (Math.random() * (max - min) + min).toFixed(1);
+                cellInput.value = randomScore;
+                triggerCalculation(cellInput);
+                count++;
+              }
+            });
+            showNotification(`✅ กรอกคะแนนสุ่ม ${min}-${max} ให้ ${count} คน`);
+          } else {
+            showNotification('⚠️ รูปแบบไม่ถูกต้อง (ใช้เช่น 8-10)', 'warning');
+          }
+        }
+        break;
+        
+      case 'copyAbove':
+        const currentRow = input.closest('tr');
+        const prevRow = currentRow.previousElementSibling;
+        
+        // ตรวจสอบว่าไม่ใช่แถวคะแนนเต็ม
+        if (prevRow && !prevRow.classList.contains('score-entry-fullscore-row')) {
+          const prevValue = prevRow.querySelectorAll('.score-entry-input')[columnIndex]?.value;
+          if (prevValue !== undefined && prevValue !== '') {
+            input.value = prevValue;
+            triggerCalculation(input);
+            showNotification(`✅ คัดลอกจากแถวบน: ${prevValue}`);
+          } else {
+            showNotification('⚠️ ไม่มีค่าในแถวบน', 'warning');
+          }
+        } else {
+          showNotification('⚠️ ไม่มีแถวด้านบนให้คัดลอก', 'warning');
+        }
+        break;
+        
+      case 'fillZero':
+        if (confirm('ต้องการเติม 0 ทั้งคอลัมน์นี้ใช่หรือไม่?')) {
+          let count = 0;
+          rows.forEach(row => {
+            const cellInput = row.querySelectorAll('.score-entry-input')[columnIndex];
+            if (cellInput) {
+              cellInput.value = 0;
+              triggerCalculation(cellInput);
+              count++;
+            }
+          });
+          showNotification(`✅ เติม 0 ให้ ${count} คน`);
+        }
+        break;
+        
+      case 'clearColumn':
+        if (confirm('ต้องการล้างคะแนนคอลัมน์นี้ใช่หรือไม่?')) {
+          let count = 0;
+          rows.forEach(row => {
+            const cellInput = row.querySelectorAll('.score-entry-input')[columnIndex];
+            if (cellInput) {
+              cellInput.value = '';
+              triggerCalculation(cellInput);
+              count++;
+            }
+          });
+          showNotification(`✅ ล้างคอลัมน์เรียบร้อย (${count} ช่อง)`);
+        }
+        break;
+    }
+  }
+  
+  // ฟังก์ชันแสดง Notification
+  function showNotification(message, type = 'success') {
+    const colors = {
+      success: { bg: '#d1fae5', border: '#10b981', color: '#065f46' },
+      warning: { bg: '#fef3c7', border: '#f59e0b', color: '#92400e' },
+      error: { bg: '#fee2e2', border: '#ef4444', color: '#991b1b' }
+    };
+    
+    const style = colors[type];
+    
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 16px 24px;
+      background: ${style.bg};
+      border: 2px solid ${style.border};
+      color: ${style.color};
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      z-index: 10001;
+      font-weight: 600;
+      animation: slideIn 0.3s ease-out;
+      max-width: 400px;
+      font-size: 1rem;
+    `;
+    
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      notification.style.animation = 'slideOut 0.3s ease-out';
+      setTimeout(() => notification.remove(), 300);
+    }, 3000);
+  }
+  
+  // เพิ่ม animation
+  const animStyle = document.createElement('style');
+  animStyle.textContent = `
+    @keyframes slideIn {
+      from { transform: translateX(400px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideOut {
+      from { transform: translateX(0); opacity: 1; }
+      to { transform: translateX(400px); opacity: 0; }
+    }
+  `;
+  document.head.appendChild(animStyle);
+  
+  // Event Listener สำหรับคลิกขวา
+  document.addEventListener('contextmenu', function(e) {
+    if (e.target.matches('.score-entry-input')) {
+      e.preventDefault();
+      createQuickFillMenu(e.pageX, e.pageY, e.target);
+    }
+  });
+  
+  // ปิดเมนูเมื่อคลิกที่อื่น
+  document.addEventListener('click', function(e) {
+    if (currentMenu && !currentMenu.contains(e.target)) {
+      currentMenu.remove();
+      currentMenu = null;
+    }
+  });
+  
+  // Keyboard Shortcut: Ctrl+D = Copy Above
+  document.addEventListener('keydown', function(e) {
+    const activeElement = document.activeElement;
+    
+    if (activeElement && activeElement.matches('.score-entry-input')) {
+      if (e.ctrlKey && e.key === 'd') {
+        e.preventDefault();
+        handleQuickFill('copyAbove', activeElement);
+      }
+    }
+  });
+  
+  console.log('✅ Quick Fill Menu (Fixed) ติดตั้งสำเร็จ!');
+  console.log('ℹ️ คลิกขวาที่ช่องคะแนนเพื่อเปิดเมนู');
+  
+})();
+// ========================================
+// 📋 Copy/Paste from Excel
+// ========================================
+(function(){
+  console.log('🚀 กำลังติดตั้ง Copy/Paste from Excel...');
+  
+  // ฟังก์ชัน trigger การคำนวณ
+  function triggerCalculation(input) {
+    const event = new Event('input', { bubbles: true });
+    input.dispatchEvent(event);
+  }
+  
+  // ฟังก์ชันแสดง Toast Notification
+  function showToast(message, type = 'success', duration = 3000) {
+    const colors = {
+      success: { bg: '#d1fae5', border: '#10b981', color: '#065f46', icon: '✅' },
+      warning: { bg: '#fef3c7', border: '#f59e0b', color: '#92400e', icon: '⚠️' },
+      error: { bg: '#fee2e2', border: '#ef4444', color: '#991b1b', icon: '❌' },
+      info: { bg: '#dbeafe', border: '#3b82f6', color: '#1e40af', icon: 'ℹ️' }
+    };
+    
+    const style = colors[type];
+    
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      padding: 16px 24px;
+      background: ${style.bg};
+      border: 2px solid ${style.border};
+      color: ${style.color};
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      z-index: 10002;
+      font-weight: 600;
+      font-size: 1rem;
+      animation: slideInRight 0.3s ease-out;
+      max-width: 400px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    `;
+    
+    toast.innerHTML = `
+      <span style="font-size: 1.3rem;">${style.icon}</span>
+      <span>${message}</span>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+      toast.style.animation = 'slideOutRight 0.3s ease-out';
+      setTimeout(() => toast.remove(), 300);
+    }, duration);
+  }
+  
+  // เพิ่ม CSS Animations
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes slideInRight {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+    
+    @keyframes slideOutRight {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+    }
+    
+    .paste-highlight {
+      background: #fef3c7 !important;
+      animation: pulseHighlight 1s ease-in-out;
+    }
+    
+    @keyframes pulseHighlight {
+      0%, 100% { background: #fef3c7; }
+      50% { background: #fde047; }
+    }
+  `;
+  document.head.appendChild(style);
+  
+  // ฟังก์ชันจัดการ Paste
+  function handlePaste(e) {
+    // ตรวจสอบว่าอยู่ในช่องคะแนนหรือไม่
+    if (!e.target.matches('.score-entry-input, .score-entry-final-input')) {
+      return;
+    }
+    
+    e.preventDefault();
+    
+    // รับข้อมูลจาก clipboard
+    const clipboardData = e.clipboardData || window.clipboardData;
+    const pastedText = clipboardData.getData('text');
+    
+    if (!pastedText) {
+      showToast('ไม่มีข้อมูลใน clipboard', 'warning');
+      return;
+    }
+    
+    // แยกข้อมูลเป็นแถวและคอลัมน์
+    const rows = pastedText.trim().split('\n').filter(row => row.trim());
+    
+    // หาตำแหน่งเริ่มต้น
+    const startCell = e.target;
+    const startRow = startCell.closest('tr');
+    const table = startCell.closest('table');
+    const allRows = [...table.querySelectorAll('tbody tr')];
+    const startRowIndex = allRows.indexOf(startRow);
+    
+    // หาคอลัมน์เริ่มต้น
+    let startColIndex = -1;
+    if (startCell.matches('.score-entry-input')) {
+      startColIndex = parseInt(startCell.dataset.index);
+    } else if (startCell.matches('.score-entry-final-input')) {
+      startColIndex = 10; // คอลัมน์ปลายภาค
+    }
+    
+    if (startColIndex === -1) {
+      showToast('ไม่สามารถระบุตำแหน่งได้', 'error');
+      return;
+    }
+    
+    let cellsUpdated = 0;
+    let rowsUpdated = 0;
+    
+    // วางข้อมูล
+    rows.forEach((rowData, rowOffset) => {
+      const targetRowIndex = startRowIndex + rowOffset;
+      const targetRow = allRows[targetRowIndex];
+      
+      if (!targetRow) return;
+      
+      // แยกข้อมูลในแถว (รองรับทั้ง Tab และ comma)
+      const cells = rowData.split(/\t|,/).map(cell => cell.trim());
+      let rowHasData = false;
+      
+      cells.forEach((cellValue, colOffset) => {
+        const targetColIndex = startColIndex + colOffset;
+        
+        // หา input ที่ตำแหน่งนั้น
+        let targetInput;
+        if (targetColIndex < 10) {
+          const inputs = targetRow.querySelectorAll('.score-entry-input');
+          targetInput = inputs[targetColIndex];
+        } else if (targetColIndex === 10) {
+          targetInput = targetRow.querySelector('.score-entry-final-input');
+        }
+        
+        if (targetInput) {
+          // แปลงค่า
+          let numValue = parseFloat(cellValue.replace(/,/g, ''));
+          
+          // ถ้าไม่ใช่ตัวเลข แต่เป็นช่องว่าง ให้เว้นไว้
+          if (isNaN(numValue)) {
+            if (cellValue === '' || cellValue === '-') {
+              targetInput.value = '';
+            }
+          } else {
+            targetInput.value = numValue;
+            cellsUpdated++;
+            rowHasData = true;
+            
+            // เพิ่ม highlight effect
+            targetInput.classList.add('paste-highlight');
+            setTimeout(() => {
+              targetInput.classList.remove('paste-highlight');
+            }, 1000);
+          }
+          
+          // Trigger การคำนวณ
+          triggerCalculation(targetInput);
+        }
+      });
+      
+      if (rowHasData) {
+        rowsUpdated++;
+      }
+    });
+    
+    if (cellsUpdated > 0) {
+      showToast(`✅ Paste สำเร็จ! ${cellsUpdated} ช่อง (${rowsUpdated} แถว)`, 'success');
+      console.log(`📊 Paste: ${cellsUpdated} cells, ${rowsUpdated} rows`);
+    } else {
+      showToast('⚠️ ไม่มีข้อมูลที่สามารถวางได้', 'warning');
+    }
+  }
+  
+  // เพิ่ม Event Listener
+  document.addEventListener('paste', handlePaste);
+  
+  // แสดง Hint สำหรับการใช้งาน
+  const hintPanel = document.createElement('div');
+  hintPanel.id = 'pasteHintPanel';
+  hintPanel.style.cssText = `
+    position: fixed;
+    bottom: 120px;
+    right: 20px;
+    padding: 16px 20px;
+    background: rgba(59, 130, 246, 0.95);
+    color: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    z-index: 9997;
+    font-size: 0.9rem;
+    font-weight: 500;
+    max-width: 300px;
+    display: none;
+    animation: slideInRight 0.3s ease-out;
+  `;
+  
+  hintPanel.innerHTML = `
+    <div style="display: flex; align-items: start; gap: 12px;">
+      <span style="font-size: 1.5rem;">💡</span>
+      <div>
+        <div style="font-weight: 700; margin-bottom: 6px;">Paste from Excel</div>
+        <div style="font-size: 0.85rem; opacity: 0.9; line-height: 1.4;">
+          1. คัดลอกจาก Excel<br>
+          2. คลิกที่ช่องเริ่มต้น<br>
+          3. กด Ctrl+V
+        </div>
+      </div>
+      <button onclick="this.parentElement.parentElement.style.display='none'" 
+              style="background: none; border: none; color: white; cursor: pointer; font-size: 1.2rem; padding: 0; margin-left: auto;">×</button>
+    </div>
+  `;
+  
+  document.body.appendChild(hintPanel);
+  
+  // แสดง hint ครั้งแรก
+  setTimeout(() => {
+    hintPanel.style.display = 'block';
+    
+    // ซ่อนอัตโนมัติหลัง 8 วินาที
+    setTimeout(() => {
+      hintPanel.style.display = 'none';
+    }, 8000);
+  }, 3000);
+  
+  // เพิ่มปุ่มแสดง hint อีกครั้ง
+  const hintButton = document.createElement('button');
+  hintButton.innerHTML = '📋';
+  hintButton.title = 'วิธีใช้ Copy/Paste';
+  hintButton.style.cssText = `
+    position: fixed;
+    bottom: 120px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.3rem;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    z-index: 9996;
+    transition: all 0.2s ease;
+  `;
+  
+  hintButton.onmouseover = () => {
+    hintButton.style.transform = 'scale(1.1)';
+    hintButton.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.5)';
+  };
+  
+  hintButton.onmouseout = () => {
+    hintButton.style.transform = 'scale(1)';
+    hintButton.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.4)';
+  };
+  
+  hintButton.onclick = () => {
+    if (hintPanel.style.display === 'none') {
+      hintPanel.style.display = 'block';
+    } else {
+      hintPanel.style.display = 'none';
+    }
+  };
+  hintButton.style.display = 'none'; // ← เพิ่มบรรทัดนี้
+  document.body.appendChild(hintButton);
+  document.body.appendChild(hintButton);
+  
+  console.log('✅ Copy/Paste from Excel ติดตั้งสำเร็จ!');
+  console.log('ℹ️ Copy จาก Excel แล้ว Paste (Ctrl+V) ในช่องคะแนน');
+  
+})();
+// ========================================
+// ↩️ Undo/Redo System
+// ========================================
+(function(){
+  console.log('🚀 กำลังติดตั้ง Undo/Redo System...');
+  
+  // State Management
+  const undoManager = {
+    history: [],
+    currentIndex: -1,
+    maxHistory: 50,
+    isRestoring: false
+  };
+  
+  // ฟังก์ชัน trigger การคำนวณ
+  function triggerCalculation(input) {
+    const event = new Event('input', { bubbles: true });
+    input.dispatchEvent(event);
+  }
+  
+  // ฟังก์ชันเก็บ State ปัจจุบัน
+  function captureState() {
+    const activeTab = document.querySelector('.tab-pane.active');
+    if (!activeTab) return null;
+    
+    const container = activeTab.querySelector('.score-entry-table-container');
+    if (!container) return null;
+    
+    const table = container.querySelector('table.score-entry-table');
+    if (!table) return null;
+    
+    const state = {
+      termId: activeTab.id,
+      timestamp: Date.now(),
+      data: []
+    };
+    
+    // เก็บค่าทุกช่อง input
+    const inputs = table.querySelectorAll('.score-entry-input, .score-entry-final-input, .score-entry-full-score');
+    inputs.forEach(input => {
+      state.data.push({
+        selector: getInputSelector(input),
+        value: input.value
+      });
+    });
+    
+    return state;
+  }
+  
+  // สร้าง selector สำหรับ input
+  function getInputSelector(input) {
+    const row = input.closest('tr');
+    const table = input.closest('table');
+    const allRows = [...table.querySelectorAll('tr')];
+    const rowIndex = allRows.indexOf(row);
+    
+    let colInfo = '';
+    if (input.classList.contains('score-entry-input')) {
+      colInfo = `input[data-index="${input.dataset.index}"]`;
+    } else if (input.classList.contains('score-entry-final-input')) {
+      colInfo = '.score-entry-final-input';
+    } else if (input.classList.contains('score-entry-full-score')) {
+      colInfo = `.score-entry-full-score[data-index="${input.dataset.index}"]`;
+    }
+    
+    return { rowIndex, colInfo };
+  }
+  
+  // ฟังก์ชัน restore state
+  function restoreState(state) {
+    if (!state) return;
+    
+    undoManager.isRestoring = true;
+    
+    // ตรวจสอบว่าอยู่ใน tab ที่ถูกต้อง
+    const targetTab = document.getElementById(state.termId);
+    if (!targetTab || !targetTab.classList.contains('active')) {
+      showNotification('⚠️ กรุณาเปลี่ยนไปยังแท็บที่ถูกต้อง', 'warning');
+      undoManager.isRestoring = false;
+      return;
+    }
+    
+    const container = targetTab.querySelector('.score-entry-table-container');
+    if (!container) {
+      undoManager.isRestoring = false;
+      return;
+    }
+    
+    const table = container.querySelector('table.score-entry-table');
+    if (!table) {
+      undoManager.isRestoring = false;
+      return;
+    }
+    
+    const allRows = [...table.querySelectorAll('tr')];
+    let changedCount = 0;
+    
+    // Restore ค่าทุกช่อง
+    state.data.forEach(item => {
+      const row = allRows[item.selector.rowIndex];
+      if (!row) return;
+      
+      const input = row.querySelector(item.selector.colInfo);
+      if (input && input.value !== item.value) {
+        input.value = item.value;
+        triggerCalculation(input);
+        changedCount++;
+        
+        // เพิ่ม highlight effect
+        input.classList.add('undo-highlight');
+        setTimeout(() => {
+          input.classList.remove('undo-highlight');
+        }, 500);
+      }
+    });
+    
+    undoManager.isRestoring = false;
+    
+    if (changedCount > 0) {
+      console.log(`✅ Restored ${changedCount} values`);
+    }
+  }
+  
+  // ฟังก์ชันบันทึก state
+  function saveState() {
+    if (undoManager.isRestoring) return;
+    
+    const state = captureState();
+    if (!state) return;
+    
+    // ลบ states ที่อยู่หลัง currentIndex
+    undoManager.history = undoManager.history.slice(0, undoManager.currentIndex + 1);
+    
+    // เพิ่ม state ใหม่
+    undoManager.history.push(state);
+    undoManager.currentIndex++;
+    
+    // จำกัดจำนวน history
+    if (undoManager.history.length > undoManager.maxHistory) {
+      undoManager.history.shift();
+      undoManager.currentIndex--;
+    }
+    
+    updateUndoRedoButtons();
+  }
+  
+  // ฟังก์ชัน Undo
+  function undo() {
+    if (undoManager.currentIndex <= 0) {
+      showNotification('⚠️ ไม่มีการเปลี่ยนแปลงให้ย้อนกลับ', 'warning', 2000);
+      return;
+    }
+    
+    undoManager.currentIndex--;
+    const state = undoManager.history[undoManager.currentIndex];
+    restoreState(state);
+    updateUndoRedoButtons();
+    showNotification('↩️ ย้อนกลับสำเร็จ', 'info', 2000);
+  }
+  
+  // ฟังก์ชัน Redo
+  function redo() {
+    if (undoManager.currentIndex >= undoManager.history.length - 1) {
+      showNotification('⚠️ ไม่มีการเปลี่ยนแปลงให้ทำซ้ำ', 'warning', 2000);
+      return;
+    }
+    
+    undoManager.currentIndex++;
+    const state = undoManager.history[undoManager.currentIndex];
+    restoreState(state);
+    updateUndoRedoButtons();
+    showNotification('↪️ ทำซ้ำสำเร็จ', 'info', 2000);
+  }
+  
+  // อัปเดตสถานะปุ่ม
+  function updateUndoRedoButtons() {
+    const undoBtn = document.getElementById('undoBtn');
+    const redoBtn = document.getElementById('redoBtn');
+    
+    if (undoBtn) {
+      undoBtn.disabled = undoManager.currentIndex <= 0;
+      undoBtn.style.opacity = undoBtn.disabled ? '0.5' : '1';
+    }
+    
+    if (redoBtn) {
+      redoBtn.disabled = undoManager.currentIndex >= undoManager.history.length - 1;
+      redoBtn.style.opacity = redoBtn.disabled ? '0.5' : '1';
+    }
+    
+    // อัปเดตข้อความสถานะ
+    const statusText = document.getElementById('undoRedoStatus');
+    if (statusText) {
+      const total = undoManager.history.length;
+      const current = undoManager.currentIndex + 1;
+      statusText.textContent = `${current}/${total}`;
+    }
+  }
+  
+  // ฟังก์ชันแสดง notification
+  function showNotification(message, type = 'info', duration = 3000) {
+    const colors = {
+      success: { bg: '#d1fae5', border: '#10b981', color: '#065f46' },
+      warning: { bg: '#fef3c7', border: '#f59e0b', color: '#92400e' },
+      error: { bg: '#fee2e2', border: '#ef4444', color: '#991b1b' },
+      info: { bg: '#dbeafe', border: '#3b82f6', color: '#1e40af' }
+    };
+    
+    const style = colors[type];
+    
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+      position: fixed;
+      top: 140px;
+      right: 20px;
+      padding: 12px 20px;
+      background: ${style.bg};
+      border: 2px solid ${style.border};
+      color: ${style.color};
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 10003;
+      font-weight: 600;
+      font-size: 0.9rem;
+      animation: slideInRight 0.3s ease-out;
+    `;
+    
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      notification.style.animation = 'slideOutRight 0.3s ease-out';
+      setTimeout(() => notification.remove(), 300);
+    }, duration);
+  }
+  
+  // สร้าง UI Panel
+  const panel = document.createElement('div');
+  panel.style.cssText = `
+    position: fixed;
+    bottom: 170px;
+    right: 20px;
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    z-index: 9995;
+    display: none;
+    gap: 8px;
+    align-items: center;
+  `;
+  
+  panel.innerHTML = `
+    <button id="undoBtn" title="Undo (Ctrl+Z)" style="
+      width: 36px;
+      height: 36px;
+      border: 2px solid #3b82f6;
+      background: white;
+      color: #3b82f6;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    ">↩️</button>
+    
+    <button id="redoBtn" title="Redo (Ctrl+Y)" style="
+      width: 36px;
+      height: 36px;
+      border: 2px solid #3b82f6;
+      background: white;
+      color: #3b82f6;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    ">↪️</button>
+    
+    <div id="undoRedoStatus" style="
+      font-size: 0.8rem;
+      color: #6b7280;
+      font-weight: 600;
+      min-width: 40px;
+      text-align: center;
+    ">0/0</div>
+  `;
+  
+  document.body.appendChild(panel);
+  
+  // Event Listeners สำหรับปุ่ม
+  document.getElementById('undoBtn').addEventListener('click', undo);
+  document.getElementById('redoBtn').addEventListener('click', redo);
+  
+  // Hover effects
+  ['undoBtn', 'redoBtn'].forEach(id => {
+    const btn = document.getElementById(id);
+    btn.addEventListener('mouseenter', function() {
+      if (!this.disabled) {
+        this.style.background = '#3b82f6';
+        this.style.color = 'white';
+        this.style.transform = 'scale(1.1)';
+      }
+    });
+    btn.addEventListener('mouseleave', function() {
+      this.style.background = 'white';
+      this.style.color = '#3b82f6';
+      this.style.transform = 'scale(1)';
+    });
+  });
+  
+  // เพิ่ม CSS สำหรับ highlight
+  const style = document.createElement('style');
+  style.textContent = `
+    .undo-highlight {
+      background: #bfdbfe !important;
+      animation: undoPulse 0.5s ease-in-out;
+    }
+    
+    @keyframes undoPulse {
+      0%, 100% { background: #bfdbfe; }
+      50% { background: #3b82f6; }
+    }
+  `;
+  document.head.appendChild(style);
+  
+  // Keyboard Shortcuts
+  document.addEventListener('keydown', function(e) {
+    // Ctrl+Z = Undo
+    if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      undo();
+    }
+    
+    // Ctrl+Y หรือ Ctrl+Shift+Z = Redo
+    if ((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key === 'z')) {
+      e.preventDefault();
+      redo();
+    }
+  });
+  
+  // บันทึก state เมื่อมีการเปลี่ยนแปลง
+  let saveTimer = null;
+  document.addEventListener('input', function(e) {
+    if (e.target.matches('.score-entry-input, .score-entry-final-input, .score-entry-full-score')) {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        saveState();
+      }, 1000); // รอ 1 วินาทีหลังหยุดพิมพ์
+    }
+  });
+  
+  // บันทึก initial state
+  setTimeout(() => {
+    saveState();
+    updateUndoRedoButtons();
+  }, 2000);
+  
+  console.log('✅ Undo/Redo System ติดตั้งสำเร็จ!');
+  console.log('ℹ️ กด Ctrl+Z เพื่อย้อนกลับ, Ctrl+Y เพื่อทำซ้ำ');
+  
+})();
+// ========================================
+// 📱 MOBILE FIX V2 + COMPACT HEADER
+// ========================================
+(function(){
+  const style = document.createElement('style');
+  style.id = 'mobileFix';
+  style.textContent = `
+    @media (max-width: 768px) {
+      
+      /* ===== HEADER กระชับ ===== */
+      .score-entry-header {
+        display: block !important;
+        padding: 0.8rem 0.6rem !important;
+        margin-bottom: 0.5rem !important;
+        border-radius: 0 !important;
+      }
+      
+      .score-entry-header h1 {
+        font-size: 1.1rem !important;
+        margin-bottom: 0.2rem !important;
+      }
+      
+      .score-entry-header p {
+        font-size: 0.7rem !important;
+        margin: 0 !important;
+        display: block !important;
+      }
+      
+      /* ลด Padding */
+      body, .score-entry-system {
+        font-size: 12px !important;
+      }
+      
+      .score-entry-wrapper {
+        padding: 0 !important;
+      }
+      
+      .score-entry-control-panel,
+      .score-entry-main-content,
+      .score-entry-stats-panel,
+      .progress-panel {
+        padding: 0.5rem !important;
+        margin-bottom: 0.5rem !important;
+        border-radius: 8px !important;
+      }
+      
+      /* Control Panel */
+      .score-entry-control-panel h3 {
+        font-size: 0.85rem !important;
+        margin-bottom: 0.5rem !important;
+      }
+      
+      .score-entry-controls-row {
+        grid-template-columns: 1fr !important;
+        gap: 0.4rem !important;
+      }
+      
+      .form-label {
+        font-size: 0.75rem !important;
+        margin-bottom: 0.2rem !important;
+      }
+      
+      .form-select {
+        font-size: 13px !important;
+        height: 38px !important;
+        padding: 0.5rem !important;
+      }
+      
+      /* Progress */
+      .progress-title {
+        font-size: 0.85rem !important;
+      }
+      
+      .progress-percent {
+        font-size: 1.2rem !important;
+      }
+      
+      .progress-bar-wrap {
+        height: 20px !important;
+      }
+      
+      .progress-stats {
+        grid-template-columns: repeat(4, 1fr) !important;
+        gap: 0.3rem !important;
+        margin-top: 0.5rem !important;
+      }
+      
+      .progress-stat {
+        padding: 0.4rem 0.2rem !important;
+      }
+      
+      .progress-stat-num {
+        font-size: 0.9rem !important;
+      }
+      
+      .progress-stat-label {
+        font-size: 0.6rem !important;
+      }
+      
+      /* Main Content */
+      .score-entry-content-header {
+        padding: 0.6rem 0.8rem !important;
+      }
+      
+      .score-entry-content-header h4 {
+        font-size: 0.85rem !important;
+      }
+      
+      /* Tabs */
+      .nav-tabs .nav-link {
+        font-size: 0.75rem !important;
+        padding: 0.5rem 0.6rem !important;
+      }
+      
+      /* Action Buttons */
+      .score-entry-action-buttons {
+        padding: 0.4rem !important;
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 0.3rem !important;
+      }
+      
+      .score-entry-action-buttons .btn {
+        width: 100% !important;
+        font-size: 0.7rem !important;
+        padding: 0.4rem !important;
+        min-height: 32px !important;
+      }
+      
+      /* ตาราง */
+      .score-entry-table-container {
+        padding: 0.3rem !important;
+      }
+      
+      .score-entry-table {
+        min-width: 480px !important;
+        font-size: 0.7rem !important;
+      }
+      
+      /* ซ่อนคอลัมน์ */
+      .score-entry-table td:nth-child(1),
+      .score-entry-table th:nth-child(1),
+      .score-entry-table td:nth-child(2),
+      .score-entry-table th:nth-child(2) {
+        display: none !important;
+      }
+      
+      /* ชื่อนักเรียน */
+      .score-entry-student-name {
+        min-width: 60px !important;
+        max-width: 75px !important;
+        font-size: 0.65rem !important;
+        padding: 0.25rem 0.2rem !important;
+      }
+      
+      /* Header ตาราง */
+      .score-entry-table thead th {
+        padding: 0.25rem 0.15rem !important;
+        font-size: 0.65rem !important;
+      }
+      
+      .score-entry-table tbody td {
+        padding: 0.2rem 0.1rem !important;
+      }
+      
+      /* Input */
+      .score-entry-input,
+      .score-entry-final-input {
+        width: 30px !important;
+        height: 28px !important;
+        font-size: 0.75rem !important;
+      }
+      
+      .score-entry-input:focus,
+      .score-entry-final-input:focus {
+        font-size: 16px !important;
+      }
+      
+      .score-entry-full-score {
+        width: 30px !important;
+        height: 26px !important;
+        font-size: 0.7rem !important;
+      }
+      
+      /* คะแนน */
+      .score-entry-sum,
+      .score-entry-total {
+        font-size: 0.75rem !important;
+      }
+      
+      /* เกรด */
+      .score-entry-grade-badge {
+        width: 20px !important;
+        height: 20px !important;
+        font-size: 0.6rem !important;
+      }
+      
+      /* Sticky Header */
+      .score-entry-table thead {
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 100 !important;
+      }
+      
+      /* Stats */
+      .score-entry-stats-panel h3 {
+        font-size: 0.85rem !important;
+        margin-bottom: 0.5rem !important;
+      }
+      
+      .score-entry-stats-grid {
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 0.3rem !important;
+      }
+      
+      .score-entry-stat-card {
+        padding: 0.5rem 0.3rem !important;
+      }
+      
+      .score-entry-stat-number {
+        font-size: 1rem !important;
+      }
+      
+      .score-entry-stat-label {
+        font-size: 0.6rem !important;
+      }
+      
+      /* Scroll Indicator */
+      .score-entry-table-container::after {
+        content: '⬅ เลื่อน ➡';
+        position: sticky;
+        right: 0;
+        bottom: 0;
+        background: rgba(59, 130, 246, 0.9);
+        color: white;
+        padding: 3px 8px;
+        font-size: 0.65rem;
+        border-radius: 4px 0 0 0;
+        pointer-events: none;
+      }
+      
+      /* ซ่อนส่วนไม่จำเป็น */
+      .p-3.pt-2.d-flex.gap-2,
+      button[title="วิธีใช้ Copy/Paste"],
+      .mobile-hamburger-btn,
+      .mobile-slide-menu,
+      .mobile-menu-overlay {
+        display: none !important;
+      }
+    }
+    
+    /* จอเล็กมาก */
+    @media (max-width: 375px) {
+      .score-entry-header h1 {
+        font-size: 1rem !important;
+      }
+      
+      .score-entry-table {
+        min-width: 450px !important;
+      }
+      
+      .score-entry-input,
+      .score-entry-final-input {
+        width: 28px !important;
+      }
+      
+      .progress-stats,
+      .score-entry-stats-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+      }
+    }
+  `;
+  
+  const old = document.getElementById('mobileFix');
+  if (old) old.remove();
+  
+  document.head.appendChild(style);
+  console.log('✅ Mobile V2 + Header Active!');
+})();
+
+
+// ========================================
+// 💾 Offline Mode (Final Feature!)
+// ========================================
+(function(){
+  console.log('🚀 กำลังติดตั้ง Offline Mode...');
+  
+  const STORAGE_PREFIX = 'scoreEntry_offline_';
+  let isOnline = navigator.onLine;
+  let pendingSyncData = [];
+  
+  // ฟังก์ชันสร้าง Storage Key
+  function getStorageKey(grade, classNo, subject, termId) {
+    return `${STORAGE_PREFIX}${grade}_${classNo}_${subject}_${termId}`;
+  }
+  
+  // ฟังก์ชันบันทึกข้อมูลในเครื่อง
+  function saveToLocalStorage(key, data) {
+    try {
+      const payload = {
+        data: data,
+        timestamp: Date.now(),
+        synced: false
+      };
+      localStorage.setItem(key, JSON.stringify(payload));
+      return true;
+    } catch (e) {
+      console.error('LocalStorage Error:', e);
+      showOfflineNotification('⚠️ เต็มพื้นที่เก็บข้อมูล', 'warning');
+      return false;
+    }
+  }
+  
+  // ฟังก์ชันโหลดข้อมูลจากเครื่อง
+  function loadFromLocalStorage(key) {
+    try {
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        const payload = JSON.parse(stored);
+        return payload.data;
+      }
+    } catch (e) {
+      console.error('Load Error:', e);
+    }
+    return null;
+  }
+  
+  // ฟังก์ชันดึงข้อมูลที่ยังไม่ sync
+  function getPendingSyncKeys() {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key.startsWith(STORAGE_PREFIX)) {
+        try {
+          const payload = JSON.parse(localStorage.getItem(key));
+          if (!payload.synced) {
+            keys.push(key);
+          }
+        } catch (e) {
+          console.error('Parse Error:', e);
+        }
+      }
+    }
+    return keys;
+  }
+  
+  // ฟังก์ชันแสดงสถานะ
+  function updateOnlineStatus() {
+  isOnline = navigator.onLine;
+  
+  const statusPanel = document.getElementById('offlineStatusPanel');
+  
+  if (statusPanel) {
+    if (isOnline) {
+      // เช็คว่ามีข้อมูลที่ต้อง sync ไหม
+      const pendingKeys = getPendingSyncKeys();
+      if (pendingKeys.length > 0) {
+        statusPanel.innerHTML = '🔄';
+        statusPanel.title = `ออนไลน์ - มี ${pendingKeys.length} รายการรอ Sync (คลิกเพื่อ Sync)`;
+        statusPanel.style.borderColor = '#f59e0b';
+        showOfflineNotification(`📡 กลับมาออนไลน์! มี ${pendingKeys.length} รายการรอ Sync`, 'info', 3000);
+      } else {
+        statusPanel.innerHTML = '🟢';
+        statusPanel.title = 'ออนไลน์ - ทุกอย่างพร้อม';
+        statusPanel.style.borderColor = '#10b981';
+      }
+    } else {
+      statusPanel.innerHTML = '🟠';
+      statusPanel.title = 'ออฟไลน์ - ข้อมูลจะบันทึกในเครื่อง';
+      statusPanel.style.borderColor = '#f59e0b';
+      showOfflineNotification('📡 ออฟไลน์ - ข้อมูลจะบันทึกในเครื่อง', 'warning', 3000);
+    }
+  }
+}
+  
+  // ฟังก์ชัน Sync ข้อมูล
+  function syncOfflineData() {
+    const pendingKeys = getPendingSyncKeys();
+    
+    if (pendingKeys.length === 0) {
+      showOfflineNotification('✅ ไม่มีข้อมูลที่ต้อง Sync', 'success');
+      return;
+    }
+    
+    if (!isOnline) {
+      showOfflineNotification('⚠️ ไม่สามารถ Sync ได้ - ออฟไลน์อยู่', 'warning');
+      return;
+    }
+    
+    showOfflineNotification(`🔄 กำลัง Sync ${pendingKeys.length} รายการ...`, 'info');
+    
+    let synced = 0;
+    let failed = 0;
+    
+    pendingKeys.forEach((key, index) => {
+      setTimeout(() => {
+        try {
+          const payload = JSON.parse(localStorage.getItem(key));
+          
+          // กดปุ่มบันทึกของระบบเดิม
+          const activeTab = document.querySelector('.tab-pane.active');
+          if (activeTab) {
+            const isterm1 = activeTab.id === 'scoreEntryTerm1';
+            const saveButton = document.getElementById(isterm1 ? 'scoreEntryBtnSaveTerm1' : 'scoreEntryBtnSaveTerm2');
+            
+            if (saveButton && !saveButton.disabled) {
+              saveButton.click();
+              
+              // ทำเครื่องหมายว่า sync แล้ว
+              payload.synced = true;
+              localStorage.setItem(key, JSON.stringify(payload));
+              synced++;
+            } else {
+              failed++;
+            }
+          }
+        } catch (e) {
+          console.error('Sync Error:', e);
+          failed++;
+        }
+        
+        // แสดงผลลัพธ์เมื่อเสร็จ
+        if (index === pendingKeys.length - 1) {
+          setTimeout(() => {
+            if (synced > 0) {
+              showOfflineNotification(`✅ Sync สำเร็จ ${synced} รายการ`, 'success');
+            }
+            if (failed > 0) {
+              showOfflineNotification(`⚠️ Sync ล้มเหลว ${failed} รายการ`, 'warning');
+            }
+            updateOnlineStatus();
+          }, 1000);
+        }
+      }, index * 500);
+    });
+  }
+  
+  // ฟังก์ชันแสดง Notification
+  function showOfflineNotification(message, type = 'info', duration = 3000) {
+    const colors = {
+      success: { bg: '#d1fae5', border: '#10b981', color: '#065f46', icon: '✅' },
+      warning: { bg: '#fef3c7', border: '#f59e0b', color: '#92400e', icon: '⚠️' },
+      error: { bg: '#fee2e2', border: '#ef4444', color: '#991b1b', icon: '❌' },
+      info: { bg: '#dbeafe', border: '#3b82f6', color: '#1e40af', icon: 'ℹ️' }
+    };
+    
+    const style = colors[type];
+    
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+      position: fixed;
+      top: 200px;
+      right: 20px;
+      padding: 14px 20px;
+      background: ${style.bg};
+      border: 2px solid ${style.border};
+      color: ${style.color};
+      border-radius: 10px;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+      z-index: 10005;
+      font-weight: 600;
+      font-size: 0.95rem;
+      animation: slideInRight 0.3s ease-out;
+      max-width: 350px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    `;
+    
+    notification.innerHTML = `
+      <span style="font-size: 1.2rem;">${style.icon}</span>
+      <span>${message}</span>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      notification.style.animation = 'slideOutRight 0.3s ease-out';
+      setTimeout(() => notification.remove(), 300);
+    }, duration);
+  }
+  
+  // สร้าง Status Panel (ปุ่มไอคอนเล็ก)
+
+  
+  // เพิ่ม CSS
+  const style = document.createElement('style');
+style.textContent = `
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+`;
+document.head.appendChild(style);
+  
+  // Event Listeners
+  // ฟังการเปลี่ยนแปลงสถานะออนไลน์/ออฟไลน์
+  window.addEventListener('online', updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
+  
+  // Hook เข้าไปในระบบบันทึกเดิม
+  const originalSaveButton1 = document.getElementById('scoreEntryBtnSaveTerm1');
+  const originalSaveButton2 = document.getElementById('scoreEntryBtnSaveTerm2');
+  
+  function hookSaveButton(button, termId) {
+    if (!button) return;
+    
+    button.addEventListener('click', function() {
+      // ถ้าออฟไลน์ ให้บันทึกในเครื่อง
+      if (!isOnline) {
+        setTimeout(() => {
+          const gradeSelect = document.getElementById('scoreEntryGradeSelect');
+          const classSelect = document.getElementById('scoreEntryClassSelect');
+          const subjectSelect = document.getElementById('scoreEntrySubjectSelect');
+          
+          if (gradeSelect && classSelect && subjectSelect && subjectSelect.value) {
+            const grade = gradeSelect.value;
+            const classNo = classSelect.value;
+            const subject = JSON.parse(subjectSelect.value);
+            
+            const containerId = `scoreEntry${termId.charAt(0).toUpperCase() + termId.slice(1)}Container`;
+            const container = document.getElementById(containerId);
+            const table = container?.querySelector('table');
+            
+            if (table) {
+              const data = {
+                grade: grade,
+                classNo: classNo,
+                subject: subject,
+                timestamp: Date.now()
+              };
+              
+              const key = getStorageKey(grade, classNo, subject.code, termId);
+              if (saveToLocalStorage(key, data)) {
+                showOfflineNotification('💾 บันทึกในเครื่องสำเร็จ (ออฟไลน์)', 'success');
+              }
+            }
+          }
+        }, 500);
+      }
+    });
+  }
+  
+  hookSaveButton(originalSaveButton1, 'term1');
+  hookSaveButton(originalSaveButton2, 'term2');
+  
+  // ตรวจสอบสถานะเริ่มต้น
+  updateOnlineStatus();
+  
+  // แสดงจำนวนข้อมูลที่เก็บไว้
+  const storedCount = getPendingSyncKeys().length;
+  if (storedCount > 0) {
+    console.log(`📦 พบข้อมูลที่เก็บไว้: ${storedCount} รายการ`);
+  }
+  
+  // เพิ่มข้อมูลในคอนโซล
+  window.offlineManager = {
+    getStorageInfo: function() {
+      const keys = getPendingSyncKeys();
+      console.log('=== Offline Storage Info ===');
+      console.log(`Total pending: ${keys.length}`);
+      keys.forEach((key, i) => {
+        const payload = JSON.parse(localStorage.getItem(key));
+        console.log(`${i+1}. ${key}`);
+        console.log(`   Timestamp: ${new Date(payload.timestamp).toLocaleString()}`);
+        console.log(`   Synced: ${payload.synced}`);
+      });
+    },
+    clearStorage: function() {
+      const keys = Object.keys(localStorage).filter(k => k.startsWith(STORAGE_PREFIX));
+      keys.forEach(k => localStorage.removeItem(k));
+      console.log(`✅ ล้างข้อมูล ${keys.length} รายการ`);
+      updateOnlineStatus();
+    },
+    syncNow: syncOfflineData
+  };
+  
+  console.log('✅ Offline Mode ติดตั้งสำเร็จ!');
+  console.log('ℹ️ พิมพ์ offlineManager.getStorageInfo() เพื่อดูข้อมูลที่เก็บไว้');
+  console.log('ℹ️ พิมพ์ offlineManager.syncNow() เพื่อ Sync ทันที');
+
+})();
+
+</script>
+</body>
+</html>

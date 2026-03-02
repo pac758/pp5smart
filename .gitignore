@@ -1,0 +1,9 @@
+*.rar
+*.zip
+*.csv
+*.pdf
+*.ps1
+*.txt
+school-management-system/
+node_modules/
+.DS_Store

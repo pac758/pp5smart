@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>เข้าสู่ระบบ - ระบบ ปพ.5 ออนไลน์</title>
+  <script>
+  // ตรวจ IE / old browser ที่ไม่รองรับ
+  (function(){
+    var ua = navigator.userAgent || '';
+    var isIE = !!window.MSInputMethodContext || !!document.documentMode || ua.indexOf('MSIE ') > -1 || ua.indexOf('Trident/') > -1;
+    if (isIE) {
+      document.write('<div style="font-family:Sarabun,sans-serif;text-align:center;padding:60px 20px;background:#fff3cd;min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;"><h1 style="color:#856404;">⚠️ เบราว์เซอร์ไม่รองรับ</h1><p style="font-size:18px;color:#856404;max-width:500px;">Internet Explorer ไม่รองรับระบบนี้<br>กรุณาใช้ <b>Google Chrome</b>, <b>Microsoft Edge</b> หรือ <b>Firefox</b></p><p style="margin-top:20px;"><a href="https://www.google.com/chrome/" style="display:inline-block;padding:12px 32px;background:#1a73e8;color:#fff;text-decoration:none;border-radius:8px;font-size:16px;">ดาวน์โหลด Google Chrome</a></p></div>');
+      document.close();
+    }
+  })();
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+    }
+    .login-container {
+      background: white;
+      border-radius: 15px;
+      padding: 40px;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 420px;
+      text-align: center;
+      animation: fadeIn 0.5s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .header h1 {
+      margin: 0 0 10px;
+      color: #333;
+      font-weight: 600;
+      font-size: 1.5rem;
+    }
+    #school-logo {
+      max-height: 80px;
+      margin: 0 auto 15px;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    #school-logo.loaded {
+      display: block;
+      opacity: 1;
+    }
+    .logo-placeholder {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 15px;
+      background: linear-gradient(45deg, #f0f0f0, #e0e0e0);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: #999;
+      text-align: center;
+      line-height: 1.2;
+      opacity: 0.6;
+    }
+    #school-name {
+      min-height: 24px;
+      color: #555;
+      font-weight: 400;
+      margin-bottom: 20px;
+    }
+    .loading-text { color: #999; font-size: 14px; }
+    .form-group { text-align: left; margin-bottom: 18px; position: relative; }
+    label { display: block; margin-bottom: 8px; color: #333; font-weight: 500; }
+    input[type="text"], input[type="password"] {
+      width: 100%; padding: 12px; border: 2px solid #e1e8ed; border-radius: 10px;
+      font-size: 16px; box-sizing: border-box; transition: border-color 0.2s ease;
+    }
+    input[type="text"]:focus, input[type="password"]:focus { outline: none; border-color: #667eea; }
+    .toggle-pass {
+      position: absolute; right: 10px; top: 40px; border: none; background: transparent;
+      color: #667eea; cursor: pointer; font-size: 13px; padding: 4px 6px; border-radius: 6px;
+    }
+    .toggle-pass:hover { background: rgba(102, 126, 234, 0.08); }
+    .caps-warn {
+      display: none; color: #e74c3c; font-size: 12px; margin-top: 6px;
+    }
+    .btn {
+      width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white; border: none; border-radius: 10px; font-size: 16px; cursor: pointer;
+      font-weight: bold; transition: transform 0.1s ease, box-shadow 0.2s ease;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .loading { display: none; text-align: center; margin-top: 10px; font-size: 14px; color: #444; }
+    .loading-spinner {
+      display: inline-block; width: 14px; height: 14px; border: 2px solid #f3f3f3;
+      border-top: 2px solid #667eea; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    .forgot-password-link {
+      display: block;
+      text-align: center;
+      margin-top: 15px;
+      padding: 10px;
+      font-size: 14px;
+    }
+    .forgot-password-link a {
+      color: #667eea;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      font-weight: 500;
+    }
+    .forgot-password-link a:hover {
+      color: #764ba2;
+      text-decoration: underline;
+    }
+
+    .footer { margin-top: 18px; text-align: right; font-size: 13px; color: #555; opacity: 0.85; }
+    .footer img { height: 24px; vertical-align: middle; margin-right: 6px; }
+
+    /* Alert boxes */
+    .alert {
+      border-radius: 10px; padding: 10px 12px; text-align: left; font-size: 14px; margin-bottom: 10px;
+    }
+    .alert-error { background: #fdecea; color: #b52b27; border: 1px solid #f5c6cb; }
+    .alert-ok    { background: #edf7ed; color: #1e7e34; border: 1px solid #c3e6cb; }
+    .alert-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+
+    /* Offline warning */
+    .offline {
+      display: none; margin: 10px 0 0; font-size: 13px;
+      background: #fff3cd; color: #8a6d3b; border: 1px solid #ffeeba; padding: 8px 10px; border-radius: 8px;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="header">
+      <div id="logo-placeholder" class="logo-placeholder">
+        📚<br>โลโก้<br>โรงเรียน
+      </div>
+      <img id="school-logo" src="" alt="โลโก้โรงเรียน" />
+      <h1>ระบบ ปพ.5 ออนไลน์</h1>
+      <p id="school-name" class="loading-text">กำลังโหลดข้อมูลโรงเรียน...</p>
+    </div>
+
+    <!-- แจ้งเตือนออฟไลน์ -->
+    <div id="offlineWarn" class="offline">⚠️ คุณออฟไลน์อยู่ ขณะนี้ไม่สามารถเข้าสู่ระบบได้</div>
+
+    <!-- กล่องข้อความสถานะ -->
+    <div id="errorBox" class="alert alert-error" style="display:none"></div>
+    <div id="okBox" class="alert alert-ok" style="display:none"></div>
+
+    <form id="loginForm" novalidate>
+      <div class="form-group">
+        <label for="username">ชื่อผู้ใช้:</label>
+        <input type="text" id="username" required autocomplete="username" />
+      </div>
+
+      <div class="form-group">
+        <label for="password">รหัสผ่าน:</label>
+        <input type="password" id="password" required autocomplete="current-password" />
+        <button type="button" id="togglePass" class="toggle-pass" aria-pressed="false">แสดง</button>
+        <div id="capsWarn" class="caps-warn">⚠️ Caps Lock เปิดอยู่</div>
+      </div>
+
+      <button type="submit" class="btn" id="loginBtn">เข้าสู่ระบบ</button>
+      <div id="loading" class="loading">
+        <span class="loading-spinner"></span>กำลังเข้าสู่ระบบ...
+      </div>
+
+      <div class="forgot-password-link">
+        <a href="#" id="forgotLink" class="text-muted">ลืมรหัสผ่าน?</a>
+      </div>
+
+      <div class="footer">
+        <img src="https://lh5.googleusercontent.com/d/1V4ffm54Gl9akSeqADzmEYRD-4HwMODn0"
+             alt="KRUTUANG" onerror="this.style.display='none';">
+        Powered by Kru PTHK
+      </div>
+    </form>
+  </div>
+
+  <script>
+(() => {
+  // ============================================================
+  // 🛠️ UTILITIES
+  // ============================================================
+  const $ = sel => document.querySelector(sel);
+  const on = (el, evt, fn) => el && el.addEventListener(evt, fn, {passive:false});
+  const text = (el, t) => { if(el) el.textContent = t; };
+  const show = (el, disp='block') => { if(el) el.style.display = disp; };
+  const hide = el => { if(el) el.style.display='none'; };
+
+  // ✅ Safe localStorage operations
+  const storage = {
+    set: (k,v) => { try { localStorage.setItem(k,v); } catch(_){} },
+    get: (k) => { try { return localStorage.getItem(k); } catch(_){ return null; } },
+    remove: (k) => { try { localStorage.removeItem(k); } catch(_){} },
+    clear: () => { try { localStorage.clear(); } catch(_){} }
+  };
+
+
+  // ============================================================
+  // 🔐 TOKEN-BASED SESSION CHECK
+  // ============================================================
+  
+  /**
+   * ✅ ตรวจสอบว่ามี session ที่ valid อยู่หรือไม่
+   */
+  function checkExistingSession() {
+    const isLoggedIn = storage.get('loggedIn') === 'true';
+    const username = storage.get('username');
+    const authToken = storage.get('authToken');
+    
+    // ไม่มี session
+    if (!isLoggedIn || !username || !authToken) {
+      return;
+    }
+
+    // มี session -> ตรวจสอบ token กับ server
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      google.script.run
+        .withSuccessHandler((result) => {
+          if (result && result.valid) {
+            // Token ยังใช้ได้ -> redirect ไป dashboard
+            console.log('✅ Valid session found, redirecting...');
+            redirectToDashboard();
+          } else {
+            // Token หมดอายุ -> ล้าง session
+            console.log('⚠️ Token expired:', result?.reason);
+            clearSession();
+          }
+        })
+        .withFailureHandler((err) => {
+          console.warn('Token validation failed:', err);
+          // Error -> ให้ลอง redirect ไปก่อน (graceful degradation)
+          redirectToDashboard();
+        })
+        .validateToken(authToken);
+    } else {
+      // ไม่มี google.script.run -> redirect เลย
+      redirectToDashboard();
+    }
+  }
+
+  /**
+   * ✅ ล้าง session ทั้งหมด
+   */
+  function clearSession() {
+    storage.clear();
+    console.log('🗑️ Session cleared');
+  }
+
+  /**
+   * ✅ แก้ exec URL ให้รองรับ multi-account browser
+   * document.referrer = parent frame URL ซึ่งมี /u/N/ ครบ
+   */
+  function fixExecUrl(serverUrl) {
+    try {
+      var ref = document.referrer || '';
+      // ดึง base URL จาก referrer (parent frame) ซึ่งมี /u/N/ ครบ
+      if (ref) {
+        var refBase = ref.split('?')[0];
+        // แปลง /dev เป็น /exec เสมอ (เพราะ /dev เฉพาะ editor)
+        refBase = refBase.replace(/\/dev$/, '/exec');
+        if (refBase.endsWith('/exec')) {
+          if (serverUrl) {
+            var m = serverUrl.match(/\/s\/([^\/]+)\/exec/);
+            if (m && refBase.includes(m[1])) return refBase;
+          }
+          return refBase;
+        }
+      }
+    } catch(_) {}
+    return serverUrl || '';
+  }
+
+  /**
+   * ✅ Redirect ไป dashboard
+   */
+  function redirectToDashboard() {
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      google.script.run
+        .withSuccessHandler(function(url) {
+          var base = fixExecUrl(url);
+          if (base) {
+            window.location.replace(base + '?page=dashboard');
+          } else {
+            window.location.replace(window.location.href.split('?')[0] + '?page=dashboard');
+          }
+        })
+        .withFailureHandler(function() {
+          var base = fixExecUrl('');
+          if (base) {
+            window.location.replace(base + '?page=dashboard');
+          } else {
+            window.location.replace(window.location.href.split('?')[0] + '?page=dashboard');
+          }
+        })
+        .getDeploymentUrl();
+    } else {
+      var base = fixExecUrl('');
+      if (base) {
+        window.location.replace(base + '?page=dashboard');
+      } else {
+        window.location.replace(window.location.href.split('?')[0] + '?page=dashboard');
+      }
+    }
+  }
+
+  // ============================================================
+  // 🚀 INITIALIZATION
+  // ============================================================
+  
+  document.addEventListener('DOMContentLoaded', init);
+
+  function init() {
+    // เคลียร์ session ที่ไม่สมบูรณ์
+    const isLoggedIn = storage.get("loggedIn") === "true";
+    const username = storage.get("username");
+    if (isLoggedIn && !username) {
+      clearSession();
+    }
+
+    // ✅ ตรวจสอบ session ที่มีอยู่
+    checkExistingSession();
+
+    // เตรียม UI
+    loadFromCache();
+    loadSchoolDataFromServer();
+    setupFormHandlers();
+    watchNetwork();
+  }
+
+  // ============================================================
+  // 🏫 SCHOOL DATA / LOGO
+  // ============================================================
+
+  function loadFromCache() {
+    const name = storage.get("schoolName");
+    if (name && name !== 'null') {
+      const el = $("#school-name");
+      text(el, name);
+      el && el.classList.remove('loading-text');
+    }
+    const cachedLogo = storage.get("schoolLogoUrl");
+    if (cachedLogo && /^https?:\/\//.test(cachedLogo)) showLogo(cachedLogo);
+  }
+
+  function loadSchoolDataFromServer() {
+    if (!(typeof google !== 'undefined' && google.script && google.script.run)) {
+      console.warn('google.script.run not available');
+      showDataLoadError('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+      return;
+    }
+    google.script.run
+      .withSuccessHandler(handleGlobalSettings)
+      .withFailureHandler(err => {
+        console.error('Load settings failed:', err);
+        showDataLoadError('ไม่สามารถโหลดข้อมูลโรงเรียนได้');
+      })
+      .getGlobalSettings(false);
+  }
+
+  function handleGlobalSettings(settings) {
+    if (!settings || typeof settings !== 'object') {
+      showDataLoadError('ข้อมูลการตั้งค่าไม่ถูกต้อง');
+      return;
+    }
+
+    if (settings.__meta) {
+      console.log('ℹ️ Login settings meta:', settings.__meta);
+      if (settings.__meta.source === 'default') {
+        showDataLoadError('ยังอ่านค่าการตั้งค่าจากชีตไม่ได้ (กำลังใช้ค่าเริ่มต้น)');
+        return;
+      }
+    }
+
+    const schoolName = settings['ชื่อโรงเรียน'] || settings['schoolName'] || 'ระบบ ปพ.5 ออนไลน์';
+    text($("#school-name"), schoolName);
+    $("#school-name").classList.remove('loading-text');
+    cacheSchoolData(schoolName, settings);
+    
+    // โหลดโลโก้
+    const keys = [
+      'loginLogo',
+      'schoolLogo',
+      'logoDataUrl',
+      'logo',
+      'logoUrl_lh3',
+      'logoUrl_uc',
+      'logoUrl_backup1',
+      'logoUrl_backup2',
+      'logoUrl_backup3',
+      'logoUrl_backup4'
+    ];
+    for (const k of keys) {
+      const url = settings[k];
+      if (url && typeof url === 'string' && /^https?:\/\//.test(url)) {
+        tryLoadLogo(url, keys, settings, keys.indexOf(k));
+        return;
+      }
+    }
+    hideLogo();
+  }
+
+  function tryLoadLogo(url, keys, settings, idx) {
+    const img = $("#school-logo");
+    img.onload = () => showLogo(url);
+    img.onerror = () => {
+      const next = idx + 1;
+      if (next < keys.length) {
+        const u2 = settings[keys[next]];
+        if (u2 && /^https?:\/\//.test(u2)) { tryLoadLogo(u2, keys, settings, next); return; }
+      }
+      hideLogo();
+    };
+    img.src = url;
+  }
+
+  function showLogo(url) {
+    const img = $("#school-logo");
+    const ph = $("#logo-placeholder");
+    if (url) img.src = url;
+    img.classList.add('loaded');
+    if (ph) ph.style.display = 'none';
+  }
+
+  function hideLogo() {
+    const img = $("#school-logo");
+    const ph = $("#logo-placeholder");
+    img.classList.remove('loaded');
+    if (ph) ph.style.display = 'flex';
+  }
+
+  function cacheSchoolData(schoolName, settings) {
+    storage.set("schoolName", schoolName);
+    const logoUrl = settings['loginLogo'] || settings['logoDataUrl'] || settings['logo'] || '';
+    if (logoUrl) storage.set("schoolLogoUrl", logoUrl);
+  }
+
+  function showDataLoadError(msg) {
+    const el = $("#school-name");
+    if (!el) return;
+    el.innerHTML = '<span class="error-message">' + msg + '</span>' +
+                   '<button class="retry-btn" id="retryBtn" style="margin-left:8px;">ลองใหม่</button>';
+    on($("#retryBtn"), 'click', () => {
+      text(el, 'กำลังโหลดข้อมูลโรงเรียน...'); 
+      el.classList.add('loading-text');
+      loadSchoolDataFromServer();
+    });
+  }
+
+  // ============================================================
+  // 📝 FORM / LOGIN
+  // ============================================================
+
+  function setupFormHandlers() {
+    const form = $("#loginForm");
+    const btn = $("#loginBtn");
+    const pass = $("#password");
+    const tgl = $("#togglePass");
+    const caps = $("#capsWarn");
+
+    on(form, 'submit', e => {
+      e.preventDefault();
+      doLogin();
+    });
+
+    on(tgl, 'click', () => {
+      const visible = pass.type === 'text';
+      pass.type = visible ? 'password' : 'text';
+      tgl.textContent = visible ? 'แสดง' : 'ซ่อน';
+      tgl.setAttribute('aria-pressed', String(!visible));
+      pass.focus();
+    });
+
+    const capsUpdate = e => {
+      if (!caps) return;
+      const isOn = e.getModifierState && e.getModifierState('CapsLock');
+      caps.style.display = isOn ? 'block' : 'none';
+    };
+    on(pass, 'keydown', capsUpdate);
+    on(pass, 'keyup', capsUpdate);
+
+    on($("#forgotLink"), 'click', e => {
+      e.preventDefault();
+      goToForgotPassword();
+    });
+
+    on(btn, 'click', e => {
+      if (btn.disabled) e.preventDefault();
+    });
+  }
+
+  function setBusy(busy) {
+    $("#loginBtn").disabled = !!busy;
+    $("#loading").style.display = busy ? 'block' : 'none';
+  }
+
+  function showError(msg) {
+    hide($("#okBox")); 
+    const el = $("#errorBox");
+    el.innerHTML = msg; 
+    show(el);
+  }
+
+  function showOK(msg) {
+    hide($("#errorBox")); 
+    const el = $("#okBox");
+    el.innerHTML = msg; 
+    show(el);
+  }
+
+  function doLogin() {
+    const username = $("#username").value.trim();
+    const password = $("#password").value.trim();
+
+    hide($("#errorBox")); 
+    hide($("#okBox"));
+
+    if (!username || !password) {
+      showError('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน');
+      return;
+    }
+
+    if (!(typeof google !== 'undefined' && google.script && google.script.run)) {
+      showError('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณารีเฟรชหน้าเว็บ');
+      return;
+    }
+
+    setBusy(true);
+
+    const watchdog = setTimeout(() => {
+      setBusy(false);
+      showError('การเชื่อมต่อใช้เวลานานกว่าปกติ กรุณาลองใหม่อีกครั้ง');
+    }, 20000);
+
+    google.script.run
+      .withSuccessHandler(result => {
+        clearTimeout(watchdog);
+        setBusy(false);
+
+        if (result && result.success) {
+          showOK('เข้าสู่ระบบสำเร็จ กำลังเปลี่ยนหน้า...');
+          
+          // ✅ บันทึก session ลง localStorage
+          storage.set("loggedIn", "true");
+          storage.set("username", result.username || "");
+          storage.set("role", result.role || "");
+          storage.set("firstName", result.firstName || "");
+          storage.set("lastName", result.lastName || "");
+          storage.set("displayName", result.fullName || result.username || "");
+          if (result.className) storage.set("className", result.className);
+          
+          // ✅ [CRITICAL] บันทึก Auth Token
+          if (result.authToken) {
+            storage.set("authToken", result.authToken);
+          }
+
+          redirectToDashboard();
+        } else {
+          showError((result && result.message) ? result.message : "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
+        }
+      })
+      .withFailureHandler(err => {
+        clearTimeout(watchdog);
+        setBusy(false);
+        console.error('Login error:', err);
+        showError('เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง');
+      })
+      .verifyLogin(username, password);
+  }
+
+  // ============================================================
+  // 🔑 FORGOT PASSWORD
+  // ============================================================
+
+  function goToForgotPassword(ev) {
+    if (ev) ev.preventDefault();
+
+    var goForgot = function(base) {
+      window.location.replace(base + '?page=forgot_password');
+    };
+
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      var done = false;
+      var to = setTimeout(function() {
+        if (!done) { done = true; goForgot(fixExecUrl('')); }
+      }, 2000);
+
+      google.script.run
+        .withSuccessHandler(function(url) {
+          if (done) return; done = true; clearTimeout(to);
+          goForgot(fixExecUrl(url));
+        })
+        .withFailureHandler(function() {
+          if (done) return; done = true; clearTimeout(to);
+          goForgot(fixExecUrl(''));
+        })
+        .getDeploymentUrl();
+    } else {
+      goForgot(fixExecUrl(''));
+    }
+    return false;
+  }
+
+  window.goToForgotPassword = goToForgotPassword;
+
+  // ============================================================
+  // 🌐 NETWORK STATUS
+  // ============================================================
+
+  function watchNetwork() {
+    const warn = $("#offlineWarn");
+    const update = () => warn.style.display = navigator.onLine ? 'none' : 'block';
+    update();
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
+  }
+})();
+  </script>
+</body>
+</html>

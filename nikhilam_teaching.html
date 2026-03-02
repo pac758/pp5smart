@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>เวทคณิต ป.1-3 — ฝึกทำข้อสอบ</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Sarabun',sans-serif;background:#f0f2f5;min-height:100vh;color:#1e293b}
+.container{max-width:880px;margin:0 auto;padding:16px}
+
+  /* Header */
+  .hero {
+    background: #fff; border-radius: 24px; padding: 30px;
+    text-align: center; margin-bottom: 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  }
+  .hero h1 { font-size: 2rem; color: #4f46e5; margin-bottom: 8px; }
+  .hero .subtitle { font-size: 1.1rem; color: #64748b; }
+  .hero .emoji { font-size: 3rem; margin-bottom: 10px; }
+
+  /* Card */
+  .card {
+    background: #fff; border-radius: 20px; padding: 28px;
+    margin-bottom: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+    animation: fadeUp 0.5s ease;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .card h2 {
+    font-size: 1.3rem; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .step-num {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff; width: 36px; height: 36px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 1.1rem; flex-shrink: 0;
+  }
+
+  /* Visual boxes */
+  .visual-box {
+    background: #f8fafc; border: 2px dashed #cbd5e1;
+    border-radius: 16px; padding: 24px; text-align: center;
+    margin: 16px 0; font-size: 1.8rem; font-weight: 700;
+    position: relative;
+  }
+  .num-big { font-size: 3rem; color: #4f46e5; letter-spacing: 8px; }
+  .num-red { color: #ef4444; }
+  .num-green { color: #10b981; }
+  .num-blue { color: #3b82f6; }
+  .num-orange { color: #f97316; }
+
+  .arrow-down {
+    text-align: center; font-size: 2rem; color: #8b5cf6;
+    margin: 8px 0; animation: bounce 1s infinite;
+  }
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(6px); }
+  }
+
+  /* Split box */
+  .split-box {
+    display: flex; justify-content: center; align-items: center;
+    gap: 0; margin: 16px auto; max-width: 360px;
+  }
+  .split-left, .split-right {
+    padding: 16px 28px; font-size: 2.5rem; font-weight: 700;
+    border: 3px solid; text-align: center; min-width: 100px;
+  }
+  .split-left {
+    background: #ede9fe; border-color: #8b5cf6; color: #6d28d9;
+    border-radius: 16px 0 0 16px; border-right: none;
+  }
+  .split-right {
+    background: #fef3c7; border-color: #f59e0b; color: #d97706;
+    border-radius: 0 16px 16px 0;
+  }
+  .split-label {
+    font-size: 0.8rem; font-weight: 500; margin-top: 4px;
+    letter-spacing: 0;
+  }
+
+  /* Calc row */
+  .calc-row {
+    display: flex; align-items: center; justify-content: center;
+    gap: 12px; margin: 12px 0; font-size: 1.5rem; font-weight: 600;
+    flex-wrap: wrap;
+  }
+  .calc-box {
+    background: #f0fdf4; border: 2px solid #86efac; border-radius: 12px;
+    padding: 10px 18px; color: #166534;
+  }
+  .calc-op { color: #8b5cf6; font-size: 1.8rem; }
+
+  /* Result */
+  .result-box {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #fff; border-radius: 16px; padding: 20px;
+    text-align: center; font-size: 1.4rem; font-weight: 700;
+    margin: 16px 0; box-shadow: 0 8px 20px rgba(16,185,129,0.3);
+  }
+  .result-box .big { font-size: 2.2rem; }
+
+  /* Interactive */
+  .practice-area {
+    background: linear-gradient(135deg, #fef3c7, #fff7ed);
+    border: 2px solid #fbbf24; border-radius: 16px;
+    padding: 24px; text-align: center;
+  }
+  .practice-area h3 { color: #92400e; margin-bottom: 16px; font-size: 1.2rem; }
+  .input-row {
+    display: flex; align-items: center; justify-content: center;
+    gap: 12px; margin: 12px 0; flex-wrap: wrap;
+  }
+  .input-row input {
+    width: 100px; padding: 12px; font-size: 1.5rem; font-weight: 700;
+    text-align: center; border: 3px solid #d1d5db; border-radius: 12px;
+    outline: none; transition: border-color 0.2s;
+  }
+  .input-row input:focus { border-color: #8b5cf6; }
+  .input-row span { font-size: 1.5rem; font-weight: 700; color: #6b7280; }
+  .btn {
+    padding: 12px 32px; font-size: 1.1rem; font-weight: 700;
+    border: none; border-radius: 12px; cursor: pointer;
+    transition: all 0.2s; margin: 8px;
+  }
+  .btn-primary { background: #6366f1; color: #fff; }
+  .btn-primary:hover { background: #4f46e5; transform: scale(1.05); }
+  .btn-success { background: #10b981; color: #fff; }
+  .btn-success:hover { background: #059669; }
+  .btn-orange { background: #f97316; color: #fff; }
+  .btn-orange:hover { background: #ea580c; }
+
+  .feedback {
+    margin-top: 12px; padding: 12px; border-radius: 12px;
+    font-size: 1.1rem; font-weight: 600; display: none;
+  }
+  .feedback.correct { display: block; background: #d1fae5; color: #065f46; }
+  .feedback.wrong { display: block; background: #fee2e2; color: #991b1b; }
+
+  /* Tip */
+  .tip-box {
+    background: #eff6ff; border-left: 4px solid #3b82f6;
+    border-radius: 0 12px 12px 0; padding: 14px 18px;
+    margin: 12px 0; font-size: 0.95rem; color: #1e40af;
+  }
+  .tip-box strong { color: #1d4ed8; }
+
+  /* Table */
+  .dev-table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+  .dev-table th, .dev-table td {
+    padding: 10px 14px; text-align: center; border: 2px solid #e2e8f0;
+  }
+  .dev-table th { background: #6366f1; color: #fff; font-size: 1rem; }
+  .dev-table td { font-size: 1.3rem; font-weight: 700; }
+  .dev-table tr:nth-child(even) { background: #f8fafc; }
+
+  /* Steps animation */
+  .step-hidden { display: none; }
+  .step-visible { display: block; animation: fadeUp 0.4s ease; }
+
+  @media (max-width: 600px) {
+    .hero h1 { font-size: 1.5rem; }
+    .num-big { font-size: 2.2rem; }
+    .split-left, .split-right { font-size: 1.8rem; padding: 12px 20px; }
+    .calc-row { font-size: 1.2rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="emoji">🧮✨</div>
+    <h1>เวทคณิต: หารแบบนิขิลัม</h1>
+    <p class="subtitle">หารเลข 3 หลัก ด้วยเลข 2 หลัก — ง่ายนิดเดียว!</p>
+  </div>
+
+  <!-- ===== ส่วนที่ 1: แนะนำ ===== -->
+  <div class="card">
+    <h2><span class="step-num">💡</span> นิขิลัม คืออะไร?</h2>
+    <p style="font-size:1.1rem; line-height:1.8;">
+      เป็นวิธีหารเลขแบบ <strong>ลัด</strong> ของชาวอินเดีย<br>
+      ใช้ได้ดีเมื่อ <strong>ตัวหารใกล้ 100</strong> เช่น 89, 91, 96, 97, 98, 99
+    </p>
+    <div class="tip-box">
+      <strong>🔑 หลักสำคัญ:</strong> หา "ส่วนต่าง" ของตัวหารกับ 100 แล้วใช้ "คูณ-บวก" แทนการหาร!
+    </div>
+  </div>
+
+  <!-- ===== ส่วนที่ 2: ตารางส่วนต่าง ===== -->
+  <div class="card">
+    <h2><span class="step-num">📋</span> ตาราง "ส่วนต่าง" ที่ต้องจำ</h2>
+    <p style="margin-bottom:12px;">100 - ตัวหาร = ส่วนต่าง (จำตัวนี้ไว้ใช้คำนวณ)</p>
+    <table class="dev-table">
+      <tr><th>ตัวหาร</th><th>100 - ? = ส่วนต่าง</th><th>ส่วนต่าง</th></tr>
+      <tr><td>99</td><td>100 - 99</td><td class="num-green">1</td></tr>
+      <tr><td>98</td><td>100 - 98</td><td class="num-green">2</td></tr>
+      <tr><td>97</td><td>100 - 97</td><td class="num-green">3</td></tr>
+      <tr><td>96</td><td>100 - 96</td><td class="num-green">4</td></tr>
+      <tr><td>93</td><td>100 - 93</td><td class="num-green">7</td></tr>
+      <tr><td>91</td><td>100 - 91</td><td class="num-green">9</td></tr>
+      <tr><td>89</td><td>100 - 89</td><td class="num-green">11</td></tr>
+      <tr><td>88</td><td>100 - 88</td><td class="num-green">12</td></tr>
+    </table>
+  </div>
+
+  <!-- ===== ส่วนที่ 3: สอนทีละขั้น ===== -->
+  <div class="card">
+    <h2><span class="step-num">📖</span> ตัวอย่าง: 432 ÷ 97 ทำยังไง?</h2>
+
+    <div id="demo1">
+      <!-- Step 1 -->
+      <div class="demo-step" id="d1s1">
+        <h3 style="color:#6d28d9; margin:12px 0;">ขั้นที่ 1: หาส่วนต่าง</h3>
+        <div class="visual-box">
+          <div style="font-size:1.2rem; color:#64748b; margin-bottom:8px;">ตัวหารของเรา</div>
+          <div class="num-big">97</div>
+          <div class="arrow-down">⬇️</div>
+          <div style="font-size:1.2rem;">100 - 97 = <span class="num-green" style="font-size:2.5rem;">3</span></div>
+          <div style="font-size:1rem; color:#64748b; margin-top:8px;">ส่วนต่าง = <strong>3</strong> (จำไว้!)</div>
+        </div>
+        <div style="text-align:center; margin-top:16px;">
+          <button class="btn btn-primary" onclick="showStep('d1s2')">ขั้นต่อไป ➡️</button>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="demo-step step-hidden" id="d1s2">
+        <h3 style="color:#d97706; margin:12px 0;">ขั้นที่ 2: แบ่งตัวตั้งเป็น 2 ส่วน</h3>
+        <div class="visual-box">
+          <div style="font-size:1rem; color:#64748b; margin-bottom:8px;">ตัวตั้ง 432 → แบ่งเป็น "ตัวหน้า" กับ "ตัวหลัง 2 ตัว"</div>
+          <div class="num-big" style="letter-spacing:4px;">
+            <span style="border-bottom:4px solid #8b5cf6;">4</span>
+            <span style="color:#cbd5e1; margin:0 4px;">|</span>
+            <span style="border-bottom:4px solid #f59e0b;">32</span>
+          </div>
+        </div>
+        <div class="split-box">
+          <div class="split-left">4<div class="split-label">🟣 ผลหาร</div></div>
+          <div class="split-right">32<div class="split-label">🟡 เศษ (ยังไม่เสร็จ)</div></div>
+        </div>
+        <div class="tip-box">
+          <strong>💡 วิธีจำ:</strong> ตัดเลขหน้าออกมา 1 ตัว → นั่นคือ "ผลหาร" ส่วนที่เหลือ 2 ตัว → เอาไปคำนวณต่อ
+        </div>
+        <div style="text-align:center; margin-top:16px;">
+          <button class="btn btn-primary" onclick="showStep('d1s3')">ขั้นต่อไป ➡️</button>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="demo-step step-hidden" id="d1s3">
+        <h3 style="color:#059669; margin:12px 0;">ขั้นที่ 3: คูณแล้วบวก!</h3>
+        <div class="visual-box" style="border-color:#86efac;">
+          <div style="font-size:1rem; color:#64748b; margin-bottom:12px;">เอา "ผลหาร" × "ส่วนต่าง" แล้วบวกกับ "เศษเดิม"</div>
+          <div class="calc-row">
+            <span class="num-blue" style="font-size:2rem;">4</span>
+            <span class="calc-op">×</span>
+            <span class="num-green" style="font-size:2rem;">3</span>
+            <span class="calc-op">=</span>
+            <div class="calc-box">12</div>
+          </div>
+          <div class="arrow-down">⬇️ เอา 12 ไปบวกกับเศษเดิม</div>
+          <div class="calc-row">
+            <span class="num-orange" style="font-size:2rem;">32</span>
+            <span class="calc-op">+</span>
+            <span class="num-green" style="font-size:2rem;">12</span>
+            <span class="calc-op">=</span>
+            <div class="calc-box" style="font-size:2rem; background:#d1fae5;">44</div>
+          </div>
+        </div>
+        <div style="text-align:center; margin-top:16px;">
+          <button class="btn btn-primary" onclick="showStep('d1s4')">ขั้นต่อไป ➡️</button>
+        </div>
+      </div>
+
+      <!-- Step 4 -->
+      <div class="demo-step step-hidden" id="d1s4">
+        <h3 style="color:#dc2626; margin:12px 0;">ขั้นที่ 4: ตรวจคำตอบ!</h3>
+        <div class="visual-box" style="border-color:#fca5a5;">
+          <div style="font-size:1rem; color:#64748b; margin-bottom:8px;">เศษ 44 น้อยกว่า ตัวหาร 97 ไหม?</div>
+          <div class="calc-row">
+            <span class="num-orange" style="font-size:2.5rem;">44</span>
+            <span style="font-size:2rem; color:#10b981;">＜</span>
+            <span class="num-red" style="font-size:2.5rem;">97</span>
+          </div>
+          <div style="font-size:1.2rem; color:#10b981; margin-top:8px;">✅ น้อยกว่า! ใช้ได้เลย!</div>
+        </div>
+        <div class="result-box">
+          <div>🎉 คำตอบ</div>
+          <div class="big">432 ÷ 97 = <u>4</u> เศษ <u>44</u></div>
+          <div style="font-size:1rem; margin-top:8px; opacity:0.9;">ตรวจ: 97 × 4 + 44 = 388 + 44 = 432 ✅</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ตัวอย่างที่ 2: เศษเกิน ===== -->
+  <div class="card">
+    <h2><span class="step-num">⚠️</span> ถ้าเศษ ≥ ตัวหาร ทำไง? (713 ÷ 89)</h2>
+
+    <div id="demo2">
+      <div class="demo-step" id="d2s1">
+        <div class="visual-box">
+          <div style="font-size:1rem; color:#64748b;">ส่วนต่าง: 100 - 89 = <strong class="num-green">11</strong></div>
+          <div style="margin:12px 0;">แบ่ง: <span class="num-blue" style="font-size:2rem;">7</span> | <span class="num-orange" style="font-size:2rem;">13</span></div>
+          <div class="calc-row">
+            <span>7 × 11 = 77</span>
+            <span class="calc-op">→</span>
+            <span>13 + 77 = <strong class="num-red" style="font-size:1.8rem;">90</strong></span>
+          </div>
+        </div>
+        <div class="visual-box" style="border-color:#fca5a5; background:#fff5f5;">
+          <div style="font-size:1.1rem; color:#dc2626;">😱 เศษ 90 มากกว่า ตัวหาร 89!</div>
+          <div class="arrow-down" style="color:#dc2626;">⬇️ ต้องปรับ!</div>
+          <div style="font-size:1.1rem;">
+            <strong>ผลหาร +1:</strong> 7 + 1 = <span class="num-blue" style="font-size:2rem;">8</span><br>
+            <strong>เศษ ลบตัวหาร:</strong> 90 - 89 = <span class="num-green" style="font-size:2rem;">1</span>
+          </div>
+        </div>
+        <div class="result-box">
+          <div>🎉 คำตอบ</div>
+          <div class="big">713 ÷ 89 = <u>8</u> เศษ <u>1</u></div>
+          <div style="font-size:1rem; margin-top:8px; opacity:0.9;">ตรวจ: 89 × 8 + 1 = 712 + 1 = 713 ✅</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tip-box">
+      <strong>🔑 กฎง่ายๆ:</strong> ถ้าเศษ ≥ ตัวหาร → <strong>ผลหาร +1</strong> แล้ว <strong>เศษ ลบตัวหาร</strong>
+    </div>
+  </div>
+
+  <!-- ===== สรุป 4 ขั้นตอน ===== -->
+  <div class="card" style="background:linear-gradient(135deg,#ede9fe,#faf5ff);">
+    <h2><span class="step-num">📝</span> สรุป 4 ขั้นตอน (จำง่าย!)</h2>
+    <div style="font-size:1.15rem; line-height:2.2;">
+      <div><span class="step-num" style="width:30px;height:30px;font-size:0.9rem;">1</span> <strong>หาส่วนต่าง</strong> → 100 ลบ ตัวหาร</div>
+      <div><span class="step-num" style="width:30px;height:30px;font-size:0.9rem;">2</span> <strong>แบ่งตัวตั้ง</strong> → ตัวหน้า | 2 ตัวหลัง</div>
+      <div><span class="step-num" style="width:30px;height:30px;font-size:0.9rem;">3</span> <strong>คูณแล้วบวก</strong> → (ตัวหน้า × ส่วนต่าง) + 2 ตัวหลัง = เศษ</div>
+      <div><span class="step-num" style="width:30px;height:30px;font-size:0.9rem;">4</span> <strong>ตรวจเศษ</strong> → ถ้าเศษ ≥ ตัวหาร → ผลหาร+1, เศษ-ตัวหาร</div>
+    </div>
+  </div>
+
+  <!-- ===== ฝึกทำ ===== -->
+  <div class="card">
+    <h2><span class="step-num">🎮</span> ลองทำเอง!</h2>
+
+    <div class="practice-area" id="practiceArea">
+      <h3 id="questionText">กำลังสร้างโจทย์...</h3>
+      <div class="input-row">
+        <div>
+          <div style="font-size:0.85rem; color:#92400e; margin-bottom:4px;">ผลหาร</div>
+          <input type="number" id="ansQ" placeholder="?" min="0" max="99">
+        </div>
+        <span>เศษ</span>
+        <div>
+          <div style="font-size:0.85rem; color:#92400e; margin-bottom:4px;">เศษ</div>
+          <input type="number" id="ansR" placeholder="?" min="0" max="99">
+        </div>
+      </div>
+      <div>
+        <button class="btn btn-success" onclick="checkAnswer()">✅ ตรวจคำตอบ</button>
+        <button class="btn btn-orange" onclick="showHint()">💡 ดูวิธีทำ</button>
+        <button class="btn btn-primary" onclick="newQuestion()">🔄 โจทย์ใหม่</button>
+      </div>
+      <div id="feedback" class="feedback"></div>
+      <div id="hintArea" style="display:none; margin-top:12px; text-align:left;"></div>
+      <div id="scoreBoard" style="margin-top:16px; font-size:1.1rem; font-weight:600; color:#6d28d9;">
+        ✅ ถูก: <span id="scoreCorrect">0</span> | ❌ ผิด: <span id="scoreWrong">0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div style="text-align:center; color:rgba(255,255,255,0.7); padding:20px; font-size:0.9rem;">
+    🧮 สื่อการสอนเวทคณิต — นิขิลัม (Nikhilam Division)<br>
+    สำหรับนักเรียนระดับชั้น ป.3
+  </div>
+
+</div>
+
+<script>
+// === Step-by-step demo ===
+function showStep(id) {
+  const el = document.getElementById(id);
+  if (el) {
+    el.classList.remove('step-hidden');
+    el.classList.add('step-visible');
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+// === Practice ===
+let currentQ = {};
+let scoreCorrect = 0, scoreWrong = 0;
+
+const divisors = [89, 91, 92, 93, 94, 95, 96, 97, 98, 99];
+
+function newQuestion() {
+  const divisor = divisors[Math.floor(Math.random() * divisors.length)];
+  const quotient = Math.floor(Math.random() * 7) + 2; // 2-8
+  const remainder = Math.floor(Math.random() * (divisor - 1)) + 1; // 1 to divisor-1
+  const dividend = divisor * quotient + remainder;
+
+  if (dividend < 100 || dividend > 999) return newQuestion();
+
+  currentQ = { dividend, divisor, quotient, remainder, deviation: 100 - divisor };
+
+  document.getElementById('questionText').innerHTML =
+    '🤔 <span style="font-size:1.8rem;font-weight:700;color:#6d28d9;">' + dividend + ' ÷ ' + divisor + '</span> = ?';
+  document.getElementById('ansQ').value = '';
+  document.getElementById('ansR').value = '';
+  document.getElementById('feedback').className = 'feedback';
+  document.getElementById('feedback').textContent = '';
+  document.getElementById('hintArea').style.display = 'none';
+}
+
+function checkAnswer() {
+  const q = parseInt(document.getElementById('ansQ').value);
+  const r = parseInt(document.getElementById('ansR').value);
+  const fb = document.getElementById('feedback');
+
+  if (isNaN(q) || isNaN(r)) {
+    fb.className = 'feedback wrong';
+    fb.textContent = '⚠️ กรุณาใส่คำตอบให้ครบทั้งผลหารและเศษ';
+    return;
+  }
+
+  if (q === currentQ.quotient && r === currentQ.remainder) {
+    fb.className = 'feedback correct';
+    fb.textContent = '🎉 ถูกต้อง! เก่งมาก! ' + currentQ.dividend + ' ÷ ' + currentQ.divisor + ' = ' + q + ' เศษ ' + r;
+    scoreCorrect++;
+  } else {
+    fb.className = 'feedback wrong';
+    fb.textContent = '❌ ลองใหม่นะ! คำตอบที่ถูกคือ ' + currentQ.quotient + ' เศษ ' + currentQ.remainder;
+    scoreWrong++;
+  }
+
+  document.getElementById('scoreCorrect').textContent = scoreCorrect;
+  document.getElementById('scoreWrong').textContent = scoreWrong;
+}
+
+function showHint() {
+  const q = currentQ;
+  const firstDigit = Math.floor(q.dividend / 100);
+  const lastTwo = q.dividend % 100;
+  const product = firstDigit * q.deviation;
+  const rawRemainder = lastTwo + product;
+  const needAdjust = rawRemainder >= q.divisor;
+
+  let html = '<div style="background:#fff;border-radius:12px;padding:16px;border:2px solid #fbbf24;">';
+  html += '<strong>📝 วิธีทำ ' + q.dividend + ' ÷ ' + q.divisor + '</strong><br><br>';
+  html += '1️⃣ ส่วนต่าง: 100 - ' + q.divisor + ' = <strong style="color:#10b981;">' + q.deviation + '</strong><br>';
+  html += '2️⃣ แบ่ง: <strong style="color:#6d28d9;">' + firstDigit + '</strong> | <strong style="color:#d97706;">' + (lastTwo < 10 ? '0' + lastTwo : lastTwo) + '</strong><br>';
+  html += '3️⃣ คูณ: ' + firstDigit + ' × ' + q.deviation + ' = ' + product + '<br>';
+  html += '4️⃣ บวก: ' + lastTwo + ' + ' + product + ' = <strong>' + rawRemainder + '</strong><br>';
+
+  if (needAdjust) {
+    html += '⚠️ ' + rawRemainder + ' ≥ ' + q.divisor + ' → ปรับ!<br>';
+    html += '   ผลหาร: ' + firstDigit + ' + 1 = <strong style="color:#6d28d9;">' + q.quotient + '</strong><br>';
+    html += '   เศษ: ' + rawRemainder + ' - ' + q.divisor + ' = <strong style="color:#d97706;">' + q.remainder + '</strong><br>';
+  } else {
+    html += '✅ ' + rawRemainder + ' < ' + q.divisor + ' → ใช้ได้!<br>';
+    html += '   ผลหาร = <strong style="color:#6d28d9;">' + q.quotient + '</strong>, เศษ = <strong style="color:#d97706;">' + q.remainder + '</strong><br>';
+  }
+
+  html += '<br>🎯 <strong>' + q.dividend + ' ÷ ' + q.divisor + ' = ' + q.quotient + ' เศษ ' + q.remainder + '</strong>';
+  html += '</div>';
+
+  document.getElementById('hintArea').innerHTML = html;
+  document.getElementById('hintArea').style.display = 'block';
+}
+
+// Init
+newQuestion();
+</script>
+</body>
+</html>
