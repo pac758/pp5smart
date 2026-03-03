@@ -157,7 +157,7 @@ function generatePp5CoverHtml(data) {
       ${logoDataUri ? `<img src="${logoDataUri}" alt="โลโก้โรงเรียน">` : ''}
     </div>
     <div class="header">
-      <h2 style="margin: 0;">แบบบันทึกผลการการเรียนประจำรายวิชา (ปพ.5)</h2>
+      <h2 style="margin: 0;">แบบรายงานผลการพัฒนาคุณภาพผู้เรียน (ปพ.5)</h2>
       <div style="font-size: 16pt;">${settings['ชื่อโรงเรียน'] || 'โรงเรียน'}</div>
       <div style="font-size: 14pt;">${settings['ที่อยู่โรงเรียน'] || ''}</div>
       <div style="font-size: 14pt;">ปีการศึกษา ${settings['ปีการศึกษา'] || ''}</div>

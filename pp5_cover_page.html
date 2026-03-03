@@ -105,7 +105,7 @@
   <div class="card p-4 bg-white">
     <h4 class="mb-4 text-primary">
       <i class="bi bi-file-earmark-bar-graph me-2"></i>
-      สร้าง PDF ปก ปพ.5 รวมวิชา
+      แบบรายงานผลการพัฒนาคุณภาพผู้เรียน (ปพ.5)
     </h4>
     
     <!-- API Status Check -->
@@ -137,7 +137,7 @@
     <div class="d-grid">
       <button id="exportBtn" class="btn btn-success btn-lg" disabled>
         <i class="bi bi-file-earmark-pdf me-2"></i>
-        สร้าง PDF ปก ปพ.5
+        สร้าง PDF ปพ.5
       </button>
     </div>
     
@@ -396,7 +396,7 @@
         // รีเซ็ตสถานะ
         window.PP5App.processing = false;
         btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-file-earmark-pdf me-2"></i>สร้าง PDF ปก ปพ.5'; // ✅ กลับเป็นปกติ
+        btn.innerHTML = '<i class="bi bi-file-earmark-pdf me-2"></i>สร้าง PDF ปพ.5'; // ✅ กลับเป็นปกติ
         
         if (loadingOverlay) {
           loadingOverlay.style.display = 'none';

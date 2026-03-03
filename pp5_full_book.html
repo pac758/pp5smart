@@ -104,6 +104,33 @@
       </select>
     </div>
 
+    <div style="margin-top: 1rem; margin-bottom: 0.5rem;">
+      <label class="pp5fb-label">เลือกส่วนที่ต้องการสร้าง</label>
+      <div style="display:flex; flex-direction:column; gap:8px; margin-top:6px;">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px 12px; border:2px solid #e2e8f0; border-radius:10px; transition:all 0.2s;">
+          <input type="checkbox" id="pp5fb_part1" checked style="width:18px;height:18px;accent-color:#6366f1;">
+          <div>
+            <div style="font-weight:600;color:#334155;">📋 ส่วนที่ 1: ปก + ข้อมูลนักเรียน + เวลาเรียน</div>
+            <div style="font-size:0.78rem;color:#94a3b8;">ปกหน้า, รายชื่อ, ผู้ปกครอง, สรุปเวลาเรียน, เช็คชื่อรายเดือน</div>
+          </div>
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px 12px; border:2px solid #e2e8f0; border-radius:10px; transition:all 0.2s;">
+          <input type="checkbox" id="pp5fb_part2" checked style="width:18px;height:18px;accent-color:#6366f1;">
+          <div>
+            <div style="font-weight:600;color:#334155;">📊 ส่วนที่ 2: คะแนน/เกรดรายวิชา</div>
+            <div style="font-size:0.78rem;color:#94a3b8;">ผลการเรียนแต่ละวิชา (คะแนน, เกรด)</div>
+          </div>
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px 12px; border:2px solid #e2e8f0; border-radius:10px; transition:all 0.2s;">
+          <input type="checkbox" id="pp5fb_part3" checked style="width:18px;height:18px;accent-color:#6366f1;">
+          <div>
+            <div style="font-weight:600;color:#334155;">📝 ส่วนที่ 3: ผลการประเมิน</div>
+            <div style="font-size:0.78rem;color:#94a3b8;">คุณลักษณะ, กิจกรรม, อ่าน คิดวิเคราะห์ เขียน</div>
+          </div>
+        </label>
+      </div>
+    </div>
+
     <button id="pp5fbBtn" class="pp5fb-btn pp5fb-btn-primary" onclick="pp5fb_generate()">
       <i class="bi bi-file-earmark-pdf"></i> สร้าง ปพ.5 รวมเล่ม (PDF)
     </button>
@@ -192,18 +219,32 @@
       return;
     }
 
+    var parts = {
+      part1: document.getElementById('pp5fb_part1').checked,
+      part2: document.getElementById('pp5fb_part2').checked,
+      part3: document.getElementById('pp5fb_part3').checked
+    };
+    if (!parts.part1 && !parts.part2 && !parts.part3) {
+      pp5fb_showStatus('กรุณาเลือกอย่างน้อย 1 ส่วน', 'error');
+      return;
+    }
+
+    var partNames = [];
+    if (parts.part1) partNames.push('ปก+เวลาเรียน');
+    if (parts.part2) partNames.push('คะแนนรายวิชา');
+    if (parts.part3) partNames.push('ผลประเมิน');
+
     var btn = document.getElementById('pp5fbBtn');
     btn.disabled = true;
-    btn.innerHTML = '<span class="pp5fb-spinner"></span> กำลังสร้าง ปพ.5 รวมเล่ม...';
+    btn.innerHTML = '<span class="pp5fb-spinner"></span> กำลังสร้าง...';
 
-    pp5fb_showStatus('⏳ กำลังสร้าง ปพ.5 รวมเล่ม อาจใช้เวลา 1-3 นาที กรุณารอ...', 'info');
+    pp5fb_showStatus('⏳ กำลังสร้าง: ' + partNames.join(', ') + ' กรุณารอ...', 'info');
     pp5fb_showChecklist(true);
     pp5fb_setStep(1, 'active');
     pp5fb_showProgressBar(true);
     pp5fb_updateProgressBar(0, '');
 
     if (typeof google !== 'undefined' && google.script && google.script.run) {
-      // เริ่ม poll progress ทุก 2 วินาที
       pp5fb_startPolling();
 
       google.script.run
@@ -214,7 +255,7 @@
 
           pp5fb_updateProgressBar(100, 'เสร็จสมบูรณ์!');
           for (var i = 1; i <= 5; i++) pp5fb_setStep(i, 'done');
-          pp5fb_showStatus('✅ สร้าง ปพ.5 รวมเล่มสำเร็จ! <a href="' + url + '" target="_blank" style="font-weight:700; color:#166534;">📥 เปิด PDF</a>', 'success');
+          pp5fb_showStatus('✅ สร้างสำเร็จ! <a href="' + url + '" target="_blank" style="font-weight:700; color:#166534;">📥 เปิด PDF</a>', 'success');
         })
         .withFailureHandler(function(err) {
           pp5fb_stopPolling();
@@ -222,7 +263,7 @@
           btn.innerHTML = '<i class="bi bi-file-earmark-pdf"></i> สร้าง ปพ.5 รวมเล่ม (PDF)';
           pp5fb_showStatus('❌ ' + (err.message || err), 'error');
         })
-        .exportPp5FullBookSheets(grade, classNo);
+        .exportPp5FullBookSheets(grade, classNo, JSON.stringify(parts));
     } else {
       btn.disabled = false;
       btn.innerHTML = '<i class="bi bi-file-earmark-pdf"></i> สร้าง ปพ.5 รวมเล่ม (PDF)';

@@ -321,7 +321,7 @@ function pp5book_coverHtml_(meta, studentCount, subjectSummary, reading, attribu
     + '<div class="cover-page">'
     + '<div class="page-header">'
     + logoHtml
-    + '<h2>แบบบันทึกผลการเรียนประจำรายวิชา (ปพ.5)</h2>'
+    + '<h2>แบบรายงานผลการพัฒนาคุณภาพผู้เรียน (ปพ.5)</h2>'
     + '<h3>' + (meta.schoolName || '') + '</h3>'
     + '<h3>' + (meta.settings['ที่อยู่โรงเรียน'] || '') + '</h3>'
     + '<h3>ปีการศึกษา ' + meta.academicYear + '</h3>'

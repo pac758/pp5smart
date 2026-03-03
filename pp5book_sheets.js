@@ -243,13 +243,13 @@ function pp5s_coverDoc_(meta, studentCount, subjectSummary, reading, attributes,
   // --- หัวเรื่อง ---
   var h1;
   if (!usedFirstPara) {
-    firstPara.setText('แบบบันทึกผลการเรียนประจำรายวิชา (ปพ.5)');
+    firstPara.setText('แบบรายงานผลการพัฒนาคุณภาพผู้เรียน (ปพ.5)');
     firstPara.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
     stylePara(firstPara, 18, true);
     firstPara.setLineSpacing(1.0).setSpacingBefore(2).setSpacingAfter(1);
     h1 = firstPara;
   } else {
-    h1 = body.appendParagraph('แบบบันทึกผลการเรียนประจำรายวิชา (ปพ.5)');
+    h1 = body.appendParagraph('แบบรายงานผลการพัฒนาคุณภาพผู้เรียน (ปพ.5)');
     h1.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
     stylePara(h1, 18, true);
     h1.setLineSpacing(1.0).setSpacingBefore(2).setSpacingAfter(1);
@@ -294,9 +294,20 @@ function pp5s_coverDoc_(meta, studentCount, subjectSummary, reading, attributes,
   var numSubjects = sorted.length;
   var gradeTable = body.appendTable();
 
-  var hdrRow = gradeTable.appendTableRow();
-  ['ที่', 'ชื่อวิชา', '4', '3.5', '3', '2.5', '2', '1.5', '1', '0'].forEach(function(h) {
-    var cell = hdrRow.appendTableCell(h);
+  // แถวที่ 1: ที่, ชื่อวิชา, "ระดับผลการเรียนรายวิชา (คน)"
+  var hdrRow1 = gradeTable.appendTableRow();
+  ['ที่', 'ชื่อวิชา', 'ระดับผลการเรียนรายวิชา (คน)', '', '', '', '', '', '', ''].forEach(function(h) {
+    var cell = hdrRow1.appendTableCell(h);
+    styleCell(cell, 12, true);
+    cell.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    cell.setBackgroundColor('#f0f0f0');
+    cell.setPaddingTop(1).setPaddingBottom(1).setPaddingLeft(1).setPaddingRight(1);
+  });
+
+  // แถวที่ 2: 4 3.5 3 2.5 2 1.5 1 0
+  var hdrRow2 = gradeTable.appendTableRow();
+  ['', '', '4', '3.5', '3', '2.5', '2', '1.5', '1', '0'].forEach(function(h) {
+    var cell = hdrRow2.appendTableCell(h);
     styleCell(cell, 12, true);
     cell.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
     cell.setBackgroundColor('#f0f0f0');
@@ -322,7 +333,7 @@ function pp5s_coverDoc_(meta, studentCount, subjectSummary, reading, attributes,
 
   // ลบ default row 0 (appendTable สร้าง row ว่าง 1 แถว)
   try {
-    if (gradeTable.getNumRows() > (numSubjects + 1) && gradeTable.getRow(0).getNumCells() <= 1) {
+    if (gradeTable.getNumRows() > (numSubjects + 2) && gradeTable.getRow(0).getNumCells() <= 1) {
       gradeTable.removeRow(0);
     }
   } catch (e) {}
@@ -430,7 +441,36 @@ function pp5s_coverDoc_(meta, studentCount, subjectSummary, reading, attributes,
 
   // --- Export Doc เป็น PDF ---
   doc.saveAndClose();
-  var docFile = DriveApp.getFileById(doc.getId());
+
+  // Merge cells หัวตาราง gradeTable ด้วย Docs API
+  var docId = doc.getId();
+  try {
+    var docData = Docs.Documents.get(docId);
+    var tables = [];
+    docData.body.content.forEach(function(el) {
+      if (el.table) tables.push(el);
+    });
+    // gradeTable = ตารางแรกที่มี 10+ columns
+    var mergeReqs = [];
+    for (var ti = 0; ti < tables.length; ti++) {
+      var tbl = tables[ti].table;
+      if (tbl.columns >= 10 && tbl.rows >= 3) {
+        var tsi = tables[ti].startIndex;
+        // แถว 1 (row 0): merge col 2-9 เป็น "ระดับผลการเรียนรายวิชา (คน)"
+        mergeReqs.push({ mergeTableCells: { tableRange: { tableCellLocation: { tableStartLocation: { index: tsi }, rowIndex: 0, columnIndex: 2 }, rowSpan: 1, columnSpan: 8 } } });
+        // แถว 1-2 (row 0-1): merge col 0 เป็น "ที่"
+        mergeReqs.push({ mergeTableCells: { tableRange: { tableCellLocation: { tableStartLocation: { index: tsi }, rowIndex: 0, columnIndex: 0 }, rowSpan: 2, columnSpan: 1 } } });
+        // แถว 1-2 (row 0-1): merge col 1 เป็น "ชื่อวิชา"
+        mergeReqs.push({ mergeTableCells: { tableRange: { tableCellLocation: { tableStartLocation: { index: tsi }, rowIndex: 0, columnIndex: 1 }, rowSpan: 2, columnSpan: 1 } } });
+        break;
+      }
+    }
+    if (mergeReqs.length > 0) {
+      Docs.Documents.batchUpdate({ requests: mergeReqs }, docId);
+    }
+  } catch (me) { Logger.log('Cover merge: ' + me.message); }
+
+  var docFile = DriveApp.getFileById(docId);
   var pdfBlob = docFile.getAs('application/pdf');
   try { docFile.setTrashed(true); } catch (e) {}
   Logger.log('✅ ปก (Google Doc → PDF)');
@@ -906,7 +946,9 @@ function pp5s_yearScore_(ss, meta, sheetInfo, scoreData) {
 
   r += 2;
   // ลงชื่อ
-  sheet.getRange(r, 1, 1, 4).merge().setValue('ลงชื่อ...............................................ครูผู้สอน\n(..............................................)\nตำแหน่ง ครู')
+  var subjectTeacher = sheetInfo.teacherName || '';
+  var teacherLine = subjectTeacher ? '(' + subjectTeacher + ')' : '(..............................................)';
+  sheet.getRange(r, 1, 1, 4).merge().setValue('ลงชื่อ...............................................ครูผู้สอน\n' + teacherLine + '\nตำแหน่ง ครู')
     .setFontFamily('Sarabun').setFontSize(12).setHorizontalAlignment('center').setVerticalAlignment('top').setFontWeight('normal').setWrap(true);
   sheet.getRange(r, 5, 1, 5).merge().setValue('ลงชื่อ...............................................ผู้อำนวยการ\n(' + (meta.directorName || '..............................................') + ')\n' + (meta.directorTitle || 'ผู้อำนวยการสถานศึกษา'))
     .setFontFamily('Sarabun').setFontSize(12).setHorizontalAlignment('center').setVerticalAlignment('top').setFontWeight('normal').setWrap(true);
@@ -1183,11 +1225,214 @@ function pp5s_readThinkWrite_(ss, meta, subjectScoreStudents) {
 
 
 // ============================================================
-// 🚀 MAIN: สร้าง ปพ.5 รวมเล่ม (Google Sheets → PDF)
+// � ส่วนที่ 4D: สรุปเวลาเรียน ปีการศึกษา (รายเดือน ภาค1+2 รวมปี ร้อยละ)
 // ============================================================
-async function exportPp5FullBookSheets(grade, classNo) {
+function pp5s_yearlyAttendanceSummary_(ss, meta, students, cachedMonthlyData) {
+  var sheet = ss.insertSheet('สรุปเวลาเรียนปี');
+  var r = 1;
+  var academicYear = Number(meta.academicYear);
+  var yearCE = academicYear - 543;
+  cachedMonthlyData = cachedMonthlyData || {};
+
+  // เดือนภาค 1 (พ.ค.-ต.ค.) + ภาค 2 (พ.ย.-มี.ค.)
+  var sem1Months = [
+    { m: 5, y: yearCE, label: 'พ.ค.' },
+    { m: 6, y: yearCE, label: 'มิ.ย.' },
+    { m: 7, y: yearCE, label: 'ก.ค.' },
+    { m: 8, y: yearCE, label: 'ส.ค.' },
+    { m: 9, y: yearCE, label: 'ก.ย.' },
+    { m: 10, y: yearCE, label: 'ต.ค.' }
+  ];
+  var sem2Months = [
+    { m: 11, y: yearCE, label: 'พ.ย.' },
+    { m: 12, y: yearCE, label: 'ธ.ค.' },
+    { m: 1, y: yearCE + 1, label: 'ม.ค.' },
+    { m: 2, y: yearCE + 1, label: 'ก.พ.' },
+    { m: 3, y: yearCE + 1, label: 'มี.ค.' }
+  ];
+  var allMonths = sem1Months.concat(sem2Months);
+
+  // ใช้ cachedMonthlyData ที่ดึงไว้แล้ว (ไม่ต้องเรียก API ซ้ำ)
+  var monthlyDataMap = {};
+  students.forEach(function(s) {
+    var sid = String(s.student_id || s.studentId || s.id || '').trim();
+    monthlyDataMap[sid] = { months: {}, sem1: 0, sem2: 0, total: 0 };
+  });
+
+  allMonths.forEach(function(mo, moIdx) {
+    var monthKey = mo.m + '_' + mo.y;
+    var mData = cachedMonthlyData[monthKey];
+    if (mData && mData.length > 0) {
+      mData.forEach(function(stuData) {
+        var sid = String(stuData.studentId || '').trim();
+        if (monthlyDataMap[sid]) {
+          var present = stuData.present || 0;
+          monthlyDataMap[sid].months[monthKey] = present;
+          if (moIdx < 6) {
+            monthlyDataMap[sid].sem1 += present;
+          } else {
+            monthlyDataMap[sid].sem2 += present;
+          }
+          monthlyDataMap[sid].total += present;
+          if (!monthlyDataMap[sid].totalDays) monthlyDataMap[sid].totalDays = 0;
+          monthlyDataMap[sid].totalDays += (present + (stuData.leave || 0) + (stuData.absent || 0));
+        }
+      });
+    }
+  });
+
+  // คอลัมน์: เลขที่, ชื่อ-นามสกุล, พ.ค.(ปี), มิ.ย., ก.ค., ส.ค., ก.ย., ต.ค., รวมภาค1, พ.ย., ธ.ค., ม.ค., ก.พ., มี.ค., รวมภาค2, รวมทั้งปี, ร้อยละ
+  var numCols = 17;
+
+  // โลโก้ (totalWidth = 28+160+35*6+35+35*5+35+35+45 = 723)
+  sheet.setRowHeight(r, 55);
+  sheet.getRange(r, 1, 1, numCols).merge().setHorizontalAlignment('center').setVerticalAlignment('middle');
+  pp5s_insertLogo_(sheet, r, 1, meta.logoDataUri, 45, 723);
+  r++;
+
+  // หัวเรื่อง
+  sheet.getRange(r, 1, 1, numCols).merge();
+  sheet.getRange(r, 1).setValue('สรุปเวลาเรียน ปีการศึกษา ' + meta.academicYear)
+    .setFontFamily('Sarabun').setFontSize(16).setFontWeight('bold').setHorizontalAlignment('center');
+  sheet.setRowHeight(r, 28);
+  r++;
+
+  sheet.getRange(r, 1, 1, numCols).merge();
+  sheet.getRange(r, 1).setValue('ชั้น ' + meta.gradeFullName + ' ห้อง ' + meta.classNo)
+    .setFontFamily('Sarabun').setFontSize(14).setFontWeight('bold').setHorizontalAlignment('center');
+  sheet.setRowHeight(r, 26);
+  r++;
+
+  // Header Row 1: กลุ่มภาคเรียน
+  var hdr1 = sheet.getRange(r, 1, 1, numCols);
+  // เลขที่
+  sheet.getRange(r, 1).setValue('เลข\nที่');
+  // ชื่อ-นามสกุล
+  sheet.getRange(r, 2).setValue('ชื่อ-นามสกุล');
+  // ภาคเรียนที่ 1
+  sheet.getRange(r, 3, 1, 6).merge().setValue('ภาคเรียนที่ 1');
+  // รวมภาค 1
+  sheet.getRange(r, 9).setValue('รวม\nภาค\n1');
+  // ภาคเรียนที่ 2
+  sheet.getRange(r, 10, 1, 5).merge().setValue('ภาคเรียนที่ 2');
+  // รวมภาค 2
+  sheet.getRange(r, 15).setValue('รวม\nภาค\n2');
+  // รวมทั้งปี
+  sheet.getRange(r, 16).setValue('รวม\nทั้ง\nปี');
+  // ร้อยละ
+  sheet.getRange(r, 17).setValue('ร้อยละ');
+  pp5s_headerStyle_(sheet.getRange(r, 1, 1, numCols), 10);
+  sheet.getRange(r, 1, 1, numCols).setWrap(true);
+  sheet.setRowHeight(r, 36);
+  r++;
+
+  // Header Row 2: ชื่อเดือน + ปี
+  var monthLabels = [];
+  sem1Months.forEach(function(mo) { monthLabels.push(mo.label + '\n' + (mo.y + 543)); });
+  // ข้ามรวมภาค1
+  sem2Months.forEach(function(mo) { monthLabels.push(mo.label + '\n' + (mo.y + 543)); });
+
+  sheet.getRange(r, 1).setValue('');
+  sheet.getRange(r, 2).setValue('');
+  for (var mi = 0; mi < 6; mi++) {
+    sheet.getRange(r, 3 + mi).setValue(monthLabels[mi]);
+  }
+  sheet.getRange(r, 9).setValue('');
+  for (var mi2 = 0; mi2 < 5; mi2++) {
+    sheet.getRange(r, 10 + mi2).setValue(monthLabels[6 + mi2]);
+  }
+  sheet.getRange(r, 15).setValue('');
+  sheet.getRange(r, 16).setValue('');
+  sheet.getRange(r, 17).setValue('');
+
+  // merge เลขที่ + ชื่อ กับ row ก่อนหน้า
+  sheet.getRange(r - 1, 1, 2, 1).merge();
+  sheet.getRange(r - 1, 2, 2, 1).merge();
+  sheet.getRange(r - 1, 9, 2, 1).merge();
+  sheet.getRange(r - 1, 15, 2, 1).merge();
+  sheet.getRange(r - 1, 16, 2, 1).merge();
+  sheet.getRange(r - 1, 17, 2, 1).merge();
+
+  pp5s_headerStyle_(sheet.getRange(r, 1, 1, numCols), 9);
+  sheet.getRange(r, 1, 1, numCols).setWrap(true);
+  sheet.setRowHeight(r, 30);
+  r++;
+
+  // Data rows
+  students.forEach(function(stu, idx) {
+    var sid = String(stu.student_id || stu.studentId || stu.id || '').trim();
+    var name = String(stu.title || '') + String(stu.firstname || '') + ' ' + String(stu.lastname || '');
+    name = name.trim();
+    var data = monthlyDataMap[sid] || { months: {}, sem1: 0, sem2: 0, total: 0, totalDays: 0 };
+
+    var vals = [idx + 1, name];
+    // ภาค 1 (6 เดือน)
+    sem1Months.forEach(function(mo) {
+      var key = mo.m + '_' + mo.y;
+      vals.push(data.months[key] || 0);
+    });
+    vals.push(data.sem1); // รวมภาค1
+
+    // ภาค 2 (5 เดือน)
+    sem2Months.forEach(function(mo) {
+      var key = mo.m + '_' + mo.y;
+      vals.push(data.months[key] || 0);
+    });
+    vals.push(data.sem2); // รวมภาค2
+    vals.push(data.total); // รวมทั้งปี
+
+    var totalDays = data.totalDays || 0;
+    var pct = totalDays > 0 ? ((data.total / totalDays) * 100).toFixed(1) + '%' : '0.0%';
+    vals.push(pct);
+
+    var row = sheet.getRange(r, 1, 1, numCols);
+    row.setValues([vals]);
+    pp5s_baseStyle_(row, 11);
+    sheet.getRange(r, 2).setHorizontalAlignment('left');
+    sheet.getRange(r, 1).setHorizontalAlignment('center');
+    for (var ci = 3; ci <= numCols; ci++) sheet.getRange(r, ci).setHorizontalAlignment('center');
+    sheet.setRowHeight(r, 22);
+    r++;
+  });
+
+  // ตั้งค่าความกว้างคอลัมน์
+  sheet.setColumnWidth(1, 28);
+  sheet.setColumnWidth(2, 160);
+  for (var c = 3; c <= 8; c++) sheet.setColumnWidth(c, 35);
+  sheet.setColumnWidth(9, 35);
+  for (var c2 = 10; c2 <= 14; c2++) sheet.setColumnWidth(c2, 35);
+  sheet.setColumnWidth(15, 35);
+  sheet.setColumnWidth(16, 35);
+  sheet.setColumnWidth(17, 45);
+
+  // border ทั้งหมด
+  var dataRange = sheet.getRange(4, 1, r - 4, numCols);
+  dataRange.setBorder(true, true, true, true, true, true);
+
+  return sheet;
+}
+
+
+// ============================================================
+// � MAIN: สร้าง ปพ.5 รวมเล่ม (Google Sheets → PDF)
+// ============================================================
+async function exportPp5FullBookSheets(grade, classNo, parts) {
   try {
-    Logger.log('📖 เริ่มสร้าง ปพ.5 รวมเล่ม (Sheets→PDF): ' + grade + '/' + classNo);
+    // default: สร้างทุกส่วน ถ้าไม่ส่ง parts มา
+    // parts อาจเป็น JSON string จาก frontend
+    if (typeof parts === 'string') {
+      try { parts = JSON.parse(parts); } catch (e) { parts = null; }
+    }
+    if (!parts || typeof parts !== 'object') {
+      parts = { part1: true, part2: true, part3: true };
+    }
+    // normalize: แปลง truthy/falsy เป็น boolean จริงๆ
+    parts = {
+      part1: parts.part1 === true || parts.part1 === 'true',
+      part2: parts.part2 === true || parts.part2 === 'true',
+      part3: parts.part3 === true || parts.part3 === 'true'
+    };
+    Logger.log('📖 เริ่มสร้าง ปพ.5 (Sheets→PDF): ' + grade + '/' + classNo + ' parts=' + JSON.stringify(parts));
     pp5fb_setProgress_(0, 1, 'เริ่มต้น...');
     grade = String(grade || '').trim();
     classNo = String(classNo || '').trim();
@@ -1210,32 +1455,59 @@ async function exportPp5FullBookSheets(grade, classNo) {
     if (!students || students.length === 0) throw new Error('ไม่พบนักเรียนในชั้น ' + grade + ' ห้อง ' + classNo);
     pp5fb_setProgress_(5, 1, 'พบนักเรียน ' + students.length + ' คน');
 
-    pp5fb_setProgress_(8, 2, 'ดึงคะแนนทุกวิชา...');
-    var scoreSheets = getExistingScoreSheets();
-    var cleanGrade = grade.replace(/[\/\.]/g, '');
-    var classScoreSheets = scoreSheets.filter(function(s) {
-      var sheetGrade = String(s.grade).trim().replace(/[\/\.]/g, '');
-      return (sheetGrade === cleanGrade || sheetGrade === grade) && String(s.classNo).trim() === classNo;
-    });
+    // ดึงข้อมูลเฉพาะส่วนที่เลือก
+    var scoreSheets = [], classScoreSheets = [];
+    var subjectTeacherMap = {};
+    if (parts.part1 || parts.part2) {
+      pp5fb_setProgress_(8, 2, 'ดึงคะแนนทุกวิชา...');
+      scoreSheets = getExistingScoreSheets();
+      var cleanGrade = grade.replace(/[\/\.]/g, '');
+      classScoreSheets = scoreSheets.filter(function(s) {
+        var sheetGrade = String(s.grade).trim().replace(/[\/\.]/g, '');
+        return (sheetGrade === cleanGrade || sheetGrade === grade) && String(s.classNo).trim() === classNo;
+      });
 
-    pp5fb_setProgress_(12, 3, 'ดึงเวลาเรียน...');
+      // ดึงชื่อครูผู้สอนจากชีต "รายวิชา" (คอลัมน์ F)
+      try {
+        var subjectSheet = SS().getSheetByName('รายวิชา');
+        if (subjectSheet) {
+          var subData = subjectSheet.getDataRange().getValues();
+          for (var si = 1; si < subData.length; si++) {
+            var subCode = String(subData[si][1] || '').trim(); // B: รหัสวิชา
+            var subTeacher = String(subData[si][5] || '').trim(); // F: ครูผู้สอน
+            if (subCode && subTeacher) {
+              subjectTeacherMap[subCode] = subTeacher;
+            }
+          }
+        }
+      } catch (e) { Logger.log('⚠️ ดึงครูผู้สอนจากรายวิชา: ' + e.message); }
+
+      // แนบชื่อครูเข้า sheetInfo
+      classScoreSheets.forEach(function(si) {
+        si.teacherName = subjectTeacherMap[String(si.subjectCode || '').trim()] || '';
+      });
+    }
+
     var attendance1 = [], attendance2 = [];
-    try { attendance1 = getSemesterAttendanceSummary(grade, classNo, 1, Number(academicYear)); } catch (e) {}
-    try { attendance2 = getSemesterAttendanceSummary(grade, classNo, 2, Number(academicYear)); } catch (e) {}
+    if (parts.part1) {
+      pp5fb_setProgress_(12, 3, 'ดึงเวลาเรียน...');
+      try { attendance1 = getSemesterAttendanceSummary(grade, classNo, 1, Number(academicYear)); } catch (e) {}
+      try { attendance2 = getSemesterAttendanceSummary(grade, classNo, 2, Number(academicYear)); } catch (e) {}
+    }
 
-    pp5fb_setProgress_(16, 4, 'ดึงข้อมูลการประเมิน...');
     var charData = [], actData = [], rtwSummary = {}, attrSummary = {}, actSummary = {};
-    try { charData = getStudentsForCharacteristic(grade, classNo); } catch (e) {}
-    try { actData = getStudentsForActivity(grade, classNo); } catch (e) {}
-    try { rtwSummary = getReadingSummary(grade, classNo); } catch (e) {}
-    try { attrSummary = getAttributeSummary(grade, classNo); } catch (e) {}
-    try { actSummary = getActivitySummary(grade, classNo); } catch (e) {}
-
     var subjectScoreStudents = [];
-    try { subjectScoreStudents = getStudentsForSubjectScore(grade, classNo); } catch (e) {}
-
     var subjectSummary = [];
-    try { subjectSummary = getSubjectScoreSummary(grade, classNo); } catch (e) {}
+    if (parts.part1 || parts.part3) {
+      pp5fb_setProgress_(16, 4, 'ดึงข้อมูลการประเมิน...');
+      try { charData = getStudentsForCharacteristic(grade, classNo); } catch (e) {}
+      try { actData = getStudentsForActivity(grade, classNo); } catch (e) {}
+      try { rtwSummary = getReadingSummary(grade, classNo); } catch (e) {}
+      try { attrSummary = getAttributeSummary(grade, classNo); } catch (e) {}
+      try { actSummary = getActivitySummary(grade, classNo); } catch (e) {}
+      try { subjectScoreStudents = getStudentsForSubjectScore(grade, classNo); } catch (e) {}
+      try { subjectSummary = getSubjectScoreSummary(grade, classNo); } catch (e) {}
+    }
 
     var meta = {
       grade: grade, classNo: classNo, gradeFullName: gradeFullName,
@@ -1254,48 +1526,53 @@ async function exportPp5FullBookSheets(grade, classNo) {
     var startTime = new Date();
     Logger.log('⏱ เริ่ม: ' + startTime.toISOString());
 
-    // ส่วนที่ 1: ปก (สร้างด้วย Google Doc → PDF blob)
-    pp5fb_setProgress_(22, 5, 'สร้างหน้าปก...');
+    // ======= ส่วนที่ 1: ปก + ข้อมูลนักเรียน + เวลาเรียน =======
     var coverPdfBlob = null;
-    try {
-      coverPdfBlob = pp5s_coverDoc_(meta, students.length, subjectSummary, rtwSummary, attrSummary, actSummary);
-      Logger.log('📄 coverPdfBlob: ' + (coverPdfBlob ? coverPdfBlob.getBytes().length + ' bytes' : 'NULL'));
-    } catch (e) { Logger.log('❌ ปก ERROR: ' + e.message + '\n' + e.stack); }
+    var defaultSheetDeleted = false;
+    if (parts.part1) {
+      pp5fb_setProgress_(22, 5, 'สร้างหน้าปก...');
+      try {
+        coverPdfBlob = pp5s_coverDoc_(meta, students.length, subjectSummary, rtwSummary, attrSummary, actSummary);
+        Logger.log('📄 coverPdfBlob: ' + (coverPdfBlob ? coverPdfBlob.getBytes().length + ' bytes' : 'NULL'));
+      } catch (e) { Logger.log('❌ ปก ERROR: ' + e.message + '\n' + e.stack); }
 
-    // ส่วนที่ 2: รายชื่อ
-    pp5fb_setProgress_(26, 5, 'สร้างตารางรายชื่อนักเรียน...');
-    try {
-      pp5s_studentList_(tempSS, meta, students);
-      Logger.log('✅ รายชื่อ');
-    } catch (e) { Logger.log('⚠️ รายชื่อ: ' + e.message); }
+      pp5fb_setProgress_(26, 5, 'สร้างตารางรายชื่อนักเรียน...');
+      try {
+        pp5s_studentList_(tempSS, meta, students);
+        Logger.log('✅ รายชื่อ');
+      } catch (e) { Logger.log('⚠️ รายชื่อ: ' + e.message); }
 
-    // --- ลบ default sheet ทันทีหลังมี sheet แรก (รายชื่อ) ---
-    try {
-      var sheets0 = tempSS.getSheets();
-      for (var di = sheets0.length - 1; di >= 0; di--) {
-        if (sheets0[di].getName() !== 'รายชื่อ' && tempSS.getSheets().length > 1) {
-          Logger.log('🗑️ ลบ default sheet: ' + sheets0[di].getName());
-          tempSS.deleteSheet(sheets0[di]);
+      // --- ลบ default sheet ทันทีหลังมี sheet แรก ---
+      try {
+        var sheets0 = tempSS.getSheets();
+        for (var di = sheets0.length - 1; di >= 0; di--) {
+          if (sheets0[di].getName() !== 'รายชื่อ' && tempSS.getSheets().length > 1) {
+            Logger.log('🗑️ ลบ default sheet: ' + sheets0[di].getName());
+            tempSS.deleteSheet(sheets0[di]);
+          }
         }
-      }
-    } catch (e) { Logger.log('⚠️ ลบ default: ' + e.message); }
+        defaultSheetDeleted = true;
+      } catch (e) { Logger.log('⚠️ ลบ default: ' + e.message); }
 
-    // ส่วนที่ 3: ผู้ปกครอง
-    pp5fb_setProgress_(30, 5, 'สร้างตารางผู้ปกครอง...');
-    try {
-      pp5s_parentInfo_(tempSS, meta, students);
-      Logger.log('✅ ผู้ปกครอง');
-    } catch (e) { Logger.log('⚠️ ผู้ปกครอง: ' + e.message); }
+      pp5fb_setProgress_(30, 5, 'สร้างตารางผู้ปกครอง...');
+      try {
+        pp5s_parentInfo_(tempSS, meta, students);
+        Logger.log('✅ ผู้ปกครอง');
+      } catch (e) { Logger.log('⚠️ ผู้ปกครอง: ' + e.message); }
+    } else {
+      Logger.log('⏭ ข้ามส่วนที่ 1 (ปก+เวลาเรียน)');
+    }
 
     // ส่วนที่ 4A: สรุปเวลาเรียน
-    pp5fb_setProgress_(34, 5, 'สร้างสรุปเวลาเรียน...');
-    try {
-      pp5s_attendanceSummary_(tempSS, meta, students, attendance1, attendance2);
-      Logger.log('✅ สรุปเวลาเรียน');
-    } catch (e) { Logger.log('⚠️ สรุปเวลาเรียน: ' + e.message); }
+    if (parts.part1) {
+      pp5fb_setProgress_(34, 5, 'สร้างสรุปเวลาเรียน...');
+      try {
+        pp5s_attendanceSummary_(tempSS, meta, students, attendance1, attendance2);
+        Logger.log('✅ สรุปเวลาเรียน');
+      } catch (e) { Logger.log('⚠️ สรุปเวลาเรียน: ' + e.message); }
 
-    // ส่วนที่ 4B+4C: เช็คชื่อรายวัน + สรุปรายเดือน (สลับทีละเดือน: daily → monthly)
-    pp5fb_setProgress_(38, 5, 'สร้างเวลาเรียนรายเดือน...');
+      // ส่วนที่ 4B+4C: เช็คชื่อรายวัน + สรุปรายเดือน
+      pp5fb_setProgress_(38, 5, 'สร้างเวลาเรียนรายเดือน...');
     try {
       var yearCE = Number(academicYear) - 543;
       var acadMonths = [
@@ -1311,6 +1588,9 @@ async function exportPp5FullBookSheets(grade, classNo) {
         { m: 2, y: yearCE + 1, name: 'กุมภาพันธ์', m0: 1 },
         { m: 3, y: yearCE + 1, name: 'มีนาคม', m0: 2 }
       ];
+
+      // เก็บ monthly data ไว้ใช้ซ้ำกับสรุปเวลาเรียนปี
+      var cachedMonthlyData = {};
 
       // สร้างสลับ: เช็คชื่อรายวัน (daily) → สรุปรายเดือน (monthly) ในแต่ละเดือน
       acadMonths.forEach(function(mo, moIdx) {
@@ -1330,6 +1610,7 @@ async function exportPp5FullBookSheets(grade, classNo) {
         try {
           var mData = getMonthlyAttendanceSummary(grade, classNo, mo.y, mo.m);
           if (mData && mData.length > 0) {
+            cachedMonthlyData[mo.m + '_' + mo.y] = mData;
             var monthInfo = { month: mo.m, year: mo.y, name: mo.name, yearBE: mo.y + 543, data: mData };
             pp5s_monthlyAttendance_(tempSS, meta, students, [monthInfo]);
             Logger.log('✅ สรุปเดือน ' + mo.name);
@@ -1338,7 +1619,32 @@ async function exportPp5FullBookSheets(grade, classNo) {
       });
     } catch (e) { Logger.log('⚠️ เวลาเรียน: ' + e.message); }
 
+      // ส่วนที่ 4D: สรุปเวลาเรียนปีการศึกษา (รายเดือน ภาค1+2 รวมปี ร้อยละ)
+      pp5fb_setProgress_(54, 5, 'สร้างสรุปเวลาเรียนรายปี...');
+      try {
+        pp5s_yearlyAttendanceSummary_(tempSS, meta, students, cachedMonthlyData);
+        Logger.log('✅ สรุปเวลาเรียนรายปี');
+      } catch (e) { Logger.log('⚠️ สรุปเวลาเรียนรายปี: ' + e.message); }
+    } // end parts.part1 เวลาเรียน
+
+    // ลบ default sheet (ถ้ายังไม่ได้ลบ)
+    if (!defaultSheetDeleted) {
+      try {
+        var sheets0b = tempSS.getSheets();
+        if (sheets0b.length > 1) {
+          for (var di2 = sheets0b.length - 1; di2 >= 0; di2--) {
+            if (sheets0b[di2].getName() === 'Sheet1' && tempSS.getSheets().length > 1) {
+              tempSS.deleteSheet(sheets0b[di2]);
+              break;
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
+    // ======= ส่วนที่ 2: คะแนนรายวิชา =======
     // ส่วนที่ 5: คะแนนรายวิชา
+    if (parts.part2) {
     pp5fb_setProgress_(55, 5, 'สร้างผลการเรียนรายวิชา...');
     _sortBySubjectName(classScoreSheets, 'subjectName');
 
@@ -1360,27 +1666,35 @@ async function exportPp5FullBookSheets(grade, classNo) {
         if (scoreSheet) Logger.log('✅ วิชา: ' + subName);
       } catch (e) { Logger.log('⚠️ วิชา ' + sheetInfo.subjectName + ': ' + e.message); }
     });
+    } else {
+      Logger.log('⏭ ข้ามส่วนที่ 2 (คะแนนรายวิชา)');
+    }
 
+    // ======= ส่วนที่ 3: ผลการประเมิน =======
     // ส่วนที่ 6: คุณลักษณะ
-    pp5fb_setProgress_(78, 5, 'สร้างตารางคุณลักษณะ...');
-    try {
-      pp5s_characteristic_(tempSS, meta, charData);
-      Logger.log('✅ คุณลักษณะ');
-    } catch (e) { Logger.log('⚠️ คุณลักษณะ: ' + e.message); }
+    if (parts.part3) {
+      pp5fb_setProgress_(78, 5, 'สร้างตารางคุณลักษณะ...');
+      try {
+        pp5s_characteristic_(tempSS, meta, charData);
+        Logger.log('✅ คุณลักษณะ');
+      } catch (e) { Logger.log('⚠️ คุณลักษณะ: ' + e.message); }
 
-    // ส่วนที่ 7: กิจกรรม
-    pp5fb_setProgress_(82, 5, 'สร้างตารางกิจกรรม...');
-    try {
-      pp5s_activity_(tempSS, meta, actData);
-      Logger.log('✅ กิจกรรม');
-    } catch (e) { Logger.log('⚠️ กิจกรรม: ' + e.message); }
+      // ส่วนที่ 7: กิจกรรม
+      pp5fb_setProgress_(82, 5, 'สร้างตารางกิจกรรม...');
+      try {
+        pp5s_activity_(tempSS, meta, actData);
+        Logger.log('✅ กิจกรรม');
+      } catch (e) { Logger.log('⚠️ กิจกรรม: ' + e.message); }
 
-    // ส่วนที่ 8: อ่าน คิดวิเคราะห์ เขียน
-    pp5fb_setProgress_(85, 5, 'สร้างตารางอ่านคิดเขียน...');
-    try {
-      pp5s_readThinkWrite_(tempSS, meta, subjectScoreStudents);
-      Logger.log('✅ อ่านคิดเขียน');
-    } catch (e) { Logger.log('⚠️ อ่านคิดเขียน: ' + e.message); }
+      // ส่วนที่ 8: อ่าน คิดวิเคราะห์ เขียน
+      pp5fb_setProgress_(85, 5, 'สร้างตารางอ่านคิดเขียน...');
+      try {
+        pp5s_readThinkWrite_(tempSS, meta, subjectScoreStudents);
+        Logger.log('✅ อ่านคิดเขียน');
+      } catch (e) { Logger.log('⚠️ อ่านคิดเขียน: ' + e.message); }
+    } else {
+      Logger.log('⏭ ข้ามส่วนที่ 3 (ผลการประเมิน)');
+    }
 
     // --- Log sheets ทั้งหมดก่อน export ---
     var allSheets = tempSS.getSheets();
