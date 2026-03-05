@@ -11,7 +11,19 @@
  **************************************/
 
 /**************************************
- * 📦 Helpers (ใช้ของ Code.gs ที่มีอยู่)
+ * � Password Hashing (SHA-256)
+ **************************************/
+function hashPassword_(password) {
+  var raw = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(password), Utilities.Charset.UTF_8);
+  return raw.map(function(b) { return ('0' + ((b < 0 ? b + 256 : b)).toString(16)).slice(-2); }).join('');
+}
+
+function isHashed_(value) {
+  return /^[a-f0-9]{64}$/.test(String(value || '').trim());
+}
+
+/**************************************
+ * �📦 Helpers (ใช้ของ Code.gs ที่มีอยู่)
  **************************************/
 function __normalizeHeaderKey__(s){
   return String(s||'').trim().toLowerCase().replace(/[^a-z0-9]+/g,'');
@@ -98,10 +110,20 @@ function verifyLogin(username, password){
     var fnIdx   = __idx__(map, ['firstname','first name','ชื่อ','ชื่อจริง'], 3);
     var lnIdx   = __idx__(map, ['lastname','last name','นามสกุล'], 4);
 
-    // เทียบแบบปลอดภัยขึ้น (กันช่องว่างและชนิดข้อมูล)
+    // เทียบรหัสผ่าน: รองรับทั้ง hash (SHA-256) และ plain text เดิม
     var pwCell = String(row[pwIdx] == null ? '' : row[pwIdx]).trim();
     var pwIn   = String(password).trim();
-    if (pwCell !== pwIn)
+    var matched = false;
+    if (isHashed_(pwCell)) {
+      matched = (pwCell === hashPassword_(pwIn));
+    } else {
+      matched = (pwCell === pwIn);
+      // auto-migrate: อัปเกรดเป็น hash อัตโนมัติเมื่อ login สำเร็จ
+      if (matched && pwIn) {
+        try { rec.sheet.getRange(rec.rowIndex, pwIdx + 1).setValue(hashPassword_(pwIn)); } catch(e) {}
+      }
+    }
+    if (!matched)
       return { success:false, message:'รหัสผ่านไม่ถูกต้อง' };
 
     var fn = String(row[fnIdx]||'').trim();
@@ -136,7 +158,7 @@ function changePassword(username, oldPassword, newPassword){
     var check = verifyLogin(username, oldPassword); if (!check.success) return { success:false, message:'รหัสผ่านเก่าไม่ถูกต้อง' };
     var rec = getUserRecordByUsername_(username); if (!rec) return { success:false, message:'ไม่พบผู้ใช้ในระบบ' };
     var pwIdx = __idx__(rec.map, ['password','pass','pwd'], 1);
-    rec.sheet.getRange(rec.rowIndex, pwIdx+1).setValue(newPassword);
+    rec.sheet.getRange(rec.rowIndex, pwIdx+1).setValue(hashPassword_(newPassword));
     return { success:true, message:'เปลี่ยนรหัสผ่านสำเร็จ' };
   } catch(e){ return { success:false, message:'เกิดข้อผิดพลาด: '+e.message }; }
 }
@@ -145,10 +167,10 @@ function resetUserPasswordAdmin(payload){
   try{
     var username = payload && payload.username; var newPassword = payload && payload.newPassword;
     if (!username || !newPassword) return { success:false, message:'กรุณากรอกข้อมูลให้ครบถ้วน' };
-    if (String(newPassword).length < 4) return { success:false, message:'รหัสผ่านต้องมีอย่างน้อย 4 ตัวอักษร' };
+    if (String(newPassword).length < 6) return { success:false, message:'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร' };
     var rec = getUserRecordByUsername_(username); if (!rec) return { success:false, message:'ไม่พบชื่อผู้ใช้นี้ในระบบ' };
     var pwIdx = __idx__(rec.map, ['password','pass','pwd'], 1);
-    rec.sheet.getRange(rec.rowIndex, pwIdx+1).setValue(newPassword);
+    rec.sheet.getRange(rec.rowIndex, pwIdx+1).setValue(hashPassword_(newPassword));
     return { success:true, message:'รีเซ็ตรหัสผ่านสำหรับ '+username+' สำเร็จ' };
   } catch(e){ return { success:false, message:'เกิดข้อผิดพลาด: '+e.message }; }
 }

@@ -285,7 +285,7 @@ function createScoreSheet(subjectCode, subjectName, hour, grade, classNo) {
     sheet.getRange(4, 3).setValue("คะแนนเต็ม").setFontWeight("bold").setBackground("#FFF3CD");
 
     // ใส่ข้อมูลนักเรียน
-    const studentRows = students.map((s, i) => [i + 1, s.id, s.name]);
+    const studentRows = students.map((s, i) => [i + 1, s.id, (s.name || ((s.title || '') + (s.firstname || '') + ' ' + (s.lastname || '')).trim())]);
     sheet.getRange(5, 1, studentRows.length, 3).setValues(studentRows);
     
     // ใส่สีพื้นหลังให้แถวนักเรียนแต่ละคน

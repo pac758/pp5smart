@@ -391,7 +391,7 @@ function generateScoresSummaryHTML(data) {
       <tr>
         <th rowspan="2">ที่</th>
         <th rowspan="2">ชื่อ-นามสกุล</th>
-        <th colspan="${subjects.length}" class="subject-header">รายวิชา</th>
+        <th colspan="${Math.max(1, subjects.length)}" class="subject-header">รายวิชา</th>
         <th rowspan="2">เฉลี่ย</th>
       </tr>
       <tr>${subjectHeaders}</tr>

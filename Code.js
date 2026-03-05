@@ -42,11 +42,11 @@ function SS() {
 function escapeHtml(text) {
   if (!text) return '';
   return String(text)
-    .replace(/&/g, '&​amp;')
-    .replace(/</g, '&​lt;')
-    .replace(/>/g, '&​gt;')
-    .replace(/"/g, '&​quot;')
-    .replace(/'/g, '&​#039;');
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 function findColumn(headers, possibleNames) {
@@ -363,17 +363,21 @@ function serveMainApp() {
   }
 }
 
+function escapeJs_(str) {
+  return String(str || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/'/g, "\\'").replace(/</g, '\\x3c').replace(/>/g, '\\x3e');
+}
+
 function serveMainAppWithSession_(session) {
   try {
     var output = HtmlService.createHtmlOutputFromFile("spa_main_menu");
     var sessionScript = '<script>' +
       'localStorage.setItem("loggedIn","true");' +
-      'localStorage.setItem("username","' + (session.username || '') + '");' +
-      'localStorage.setItem("role","' + (session.role || 'teacher') + '");' +
-      'localStorage.setItem("displayName","' + (session.displayName || session.username || '') + '");' +
-      'localStorage.setItem("firstName","' + (session.firstName || '') + '");' +
-      'localStorage.setItem("lastName","' + (session.lastName || '') + '");' +
-      'console.log("✅ Session injected from server for: ' + (session.username || '') + '");' +
+      'localStorage.setItem("username","' + escapeJs_(session.username) + '");' +
+      'localStorage.setItem("role","' + escapeJs_(session.role || 'teacher') + '");' +
+      'localStorage.setItem("displayName","' + escapeJs_(session.displayName || session.username) + '");' +
+      'localStorage.setItem("firstName","' + escapeJs_(session.firstName) + '");' +
+      'localStorage.setItem("lastName","' + escapeJs_(session.lastName) + '");' +
+      'console.log("✅ Session injected from server for: ' + escapeJs_(session.username) + '");' +
       '</script>';
     output.append(sessionScript);
     output.setTitle("ระบบจัดการนักเรียน ปพ.5")

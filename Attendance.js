@@ -63,27 +63,28 @@ function getMonthsInAcademicYear(academicYearBE) {
  * ✅ ดึงรายชื่อนักเรียนสำหรับเช็คชื่อ (ใช้โค้ดเดิมที่ทำงานได้)
  */
 function getStudentsForAttendance(grade, classNo) {
-  const sheet = SS().getSheetByName("Students");
-  const data = sheet.getDataRange().getValues();
-  const result = [];
+  const sheet = SS().getSheetByName("Students");
+  if (!sheet) throw new Error('ไม่พบชีต "Students" กรุณาตรวจสอบว่ามีชีตนักเรียนในระบบ');
+  const data = sheet.getDataRange().getValues();
+  const result = [];
 
-  console.log(`🔍 getStudentsForAttendance: ${grade} ห้อง ${classNo}`);
+  console.log(`🔍 getStudentsForAttendance: ${grade} ห้อง ${classNo}`);
 
-  for (let i = 1; i < data.length; i++) {
-    const row = data[i];
-    if (String(row[5]).trim() === grade && String(row[6]).trim() === classNo) {
-      const student = {
-        id: String(row[0]).trim(),       // student_id
-        title: row[2] || '',             // title
-        firstname: row[3] || '',         // firstname
-        lastname: row[4] || '',          // lastname
-        grade: String(row[5]).trim(),    // grade
-        classNo: String(row[6]).trim()   // class_no
-      };
-      
-      result.push(student);
-    }
-  }
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (String(row[5]).trim() === grade && String(row[6]).trim() === classNo) {
+      const student = {
+        id: String(row[0]).trim(),          // student_id
+        title: row[2] || '',          // title
+        firstname: row[3] || '',          // firstname
+        lastname: row[4] || '',          // lastname
+        grade: String(row[5]).trim(),          // grade
+        classNo: String(row[6]).trim()          // class_no
+      };
+      
+      result.push(student);
+    }
+  }
 
   // --- 👇 เพิ่มโค้ดเรียงลำดับนักเรียนตามรหัส (id) ตรงนี้ ---
   result.sort((a, b) => {
@@ -103,7 +104,7 @@ function getStudentsForAttendance(grade, classNo) {
  * @param {string} grade - ระดับชั้น
  * @param {string} classNo - ห้อง
  * @param {number} year - ปี ค.ศ.
- * @param {number} month - เดือน (0-11)
+ * @param {number} month - เดือน (0-indexed: 0=ม.ค., 4=พ.ค., 11=ธ.ค.) ⚠️ ต่างจาก getMonthlyAttendanceSummary ที่ใช้ 1-indexed
  * @returns {Object} ข้อมูลการเช็คชื่อที่บันทึกไว้
  */
 function getSavedAttendance(grade, classNo, year, month) {
