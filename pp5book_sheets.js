@@ -1417,7 +1417,7 @@ function pp5s_gradesSummary_(ss, meta, students, warehouseData, subjectList) {
 // ============================================================
 // 📄 ส่วนที่ 10: สรุปผลการประเมินรวม (อ่านคิดเขียน + คุณลักษณะ + กิจกรรม)
 // ============================================================
-function pp5s_assessmentSummary_(ss, meta, students, rtwSummary, attrSummary, actSummary) {
+function pp5s_assessmentSummary_(ss, meta, students, charData, actData, subjectScoreStudents) {
   if (!students || students.length === 0) return null;
 
   var sheet = ss.insertSheet('สรุปผลประเมิน');
@@ -1450,25 +1450,54 @@ function pp5s_assessmentSummary_(ss, meta, students, rtwSummary, attrSummary, ac
   sheet.setRowHeight(r, 30);
   r++;
 
-  // --- สร้าง lookup maps ---
-  var rtwMap = {};
-  if (rtwSummary && rtwSummary.students) {
-    rtwSummary.students.forEach(function(s) {
-      rtwMap[String(s.studentId || s.id || '').trim()] = s.result || s.summary || '-';
-    });
-  }
-  var attrMap = {};
-  if (attrSummary && attrSummary.students) {
-    attrSummary.students.forEach(function(s) {
-      attrMap[String(s.studentId || s.id || '').trim()] = s.result || s.summary || '-';
-    });
-  }
+  // --- สร้าง lookup maps จากข้อมูลรายคน ---
+  // 1. คุณลักษณะอันพึงประสงค์ (charData: scores[0..7] → avg → ผล)
+  var charMap = {};
+  (charData || []).forEach(function(s) {
+    var sid = String(s.studentId || s.id || '').trim();
+    var scores = s.scores || [];
+    var validScores = scores.filter(function(v) { return v !== '' && !isNaN(v); }).map(Number);
+    if (validScores.length === 8) {
+      var sum = 0;
+      for (var k = 0; k < validScores.length; k++) sum += validScores[k];
+      var avg = sum / 8;
+      charMap[sid] = avg >= 2.5 ? 'ดีเยี่ยม' : avg >= 2.0 ? 'ดี' : avg >= 1.0 ? 'ผ่าน' : 'ปรับปรุง';
+    } else if (validScores.length > 0) {
+      charMap[sid] = 'ผ่าน';
+    } else {
+      charMap[sid] = '-';
+    }
+  });
+
+  // 2. กิจกรรมพัฒนาผู้เรียน (actData: activities → overall)
   var actMap = {};
-  if (actSummary && actSummary.students) {
-    actSummary.students.forEach(function(s) {
-      actMap[String(s.studentId || s.id || '').trim()] = s.result || s.summary || '-';
+  (actData || []).forEach(function(s) {
+    var sid = String(s.studentId || s.id || '').trim();
+    var act = s.activities || {};
+    var scores = [act.guidance, act.scout, act.club, act.social];
+    var allPass = true;
+    scores.forEach(function(v) {
+      if (v === 'มผ' || v === 'ไม่ผ่าน' || v === '0') allPass = false;
     });
-  }
+    actMap[sid] = act.overall || (allPass ? 'ผ่าน' : 'ไม่ผ่าน');
+  });
+
+  // 3. อ่าน คิด เขียน (subjectScoreStudents: scores → avg → ผล)
+  var rtwMap = {};
+  (subjectScoreStudents || []).forEach(function(s) {
+    var sid = String(s.studentId || s.id || '').trim();
+    var sc = s.scores || {};
+    var vals = [sc.thai, sc.math, sc.science, sc.social, sc.health, sc.art, sc.work, sc.english].map(function(v) { return Number(v) || 0; });
+    var sum = 0;
+    var hasData = false;
+    for (var k = 0; k < vals.length; k++) { sum += vals[k]; if (vals[k] > 0) hasData = true; }
+    if (hasData) {
+      var avg = sum / vals.length;
+      rtwMap[sid] = avg >= 3 ? 'ดีเยี่ยม' : avg >= 2 ? 'ดี' : avg >= 1 ? 'ผ่าน' : 'ปรับปรุง';
+    } else {
+      rtwMap[sid] = '-';
+    }
+  });
 
   // --- ข้อมูลนักเรียน ---
   students.forEach(function(s, i) {
@@ -1477,13 +1506,13 @@ function pp5s_assessmentSummary_(ss, meta, students, rtwSummary, attrSummary, ac
     if (!fullName.trim() && s.name) fullName = s.name;
 
     var rtw = rtwMap[sid] || '-';
-    var attr = attrMap[sid] || '-';
+    var attr = charMap[sid] || '-';
     var act = actMap[sid] || '-';
 
-    // สรุปรวม: "ผ่าน" ถ้าทุกหมวดผ่าน
+    // สรุปรวม: "ผ่าน" ถ้าทุกหมวดไม่ใช่ค่าว่าง/ปรับปรุง/ไม่ผ่าน
     var isPass = true;
     [rtw, attr, act].forEach(function(v) {
-      var vl = String(v).trim().toLowerCase();
+      var vl = String(v).trim();
       if (vl === '-' || vl === '' || vl === 'มผ' || vl === 'ไม่ผ่าน' || vl === 'ปรับปรุง') isPass = false;
     });
     var overall = isPass ? 'ผ่าน' : 'ไม่ผ่าน';
@@ -2004,7 +2033,7 @@ async function exportPp5FullBookSheets(grade, classNo, parts) {
       // ส่วนที่ 10: สรุปผลการประเมินรวม
       pp5fb_setProgress_(89, 5, 'สร้างตารางสรุปผลประเมิน...');
       try {
-        pp5s_assessmentSummary_(tempSS, meta, students, rtwSummary, attrSummary, actSummary);
+        pp5s_assessmentSummary_(tempSS, meta, students, charData, actData, subjectScoreStudents);
         Logger.log('✅ สรุปผลประเมิน');
       } catch (e) { Logger.log('⚠️ สรุปผลประเมิน: ' + e.message); }
     } else {
