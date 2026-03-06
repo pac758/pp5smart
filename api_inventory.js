@@ -1,5 +1,11 @@
-const fs = require('fs');
-const path = require('path');
+// api_inventory.js — Node.js utility script (ไม่ใช้ใน GAS)
+// ไฟล์นี้เป็น script สำหรับรันบน Node.js เท่านั้น ไม่ได้ใช้ใน Google Apps Script
+// ดูรายละเอียดใน api_inventory.md
+if (typeof require === 'undefined') {
+  // GAS environment — skip execution
+} else {
+var fs = require('fs');
+var path = require('path');
 
 function walk(dir, exts) {
   const out = [];
@@ -402,3 +408,4 @@ function main() {
 }
 
 main();
+} // end if (typeof require !== 'undefined')
