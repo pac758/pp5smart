@@ -1225,7 +1225,305 @@ function pp5s_readThinkWrite_(ss, meta, subjectScoreStudents) {
 
 
 // ============================================================
-// � ส่วนที่ 4D: สรุปเวลาเรียน ปีการศึกษา (รายเดือน ภาค1+2 รวมปี ร้อยละ)
+// 📄 ส่วนที่ 9: สรุปผลการเรียนรายวิชา (เกรดทุกวิชา + GPA + อันดับ)
+// ============================================================
+function pp5s_gradesSummary_(ss, meta, students, warehouseData, subjectList) {
+  if (!students || students.length === 0) return null;
+  if (!warehouseData || warehouseData.length === 0) return null;
+
+  var sheet = ss.insertSheet('สรุปผลการเรียน');
+  var r = 1;
+  var grade = meta.grade;
+  var classNo = meta.classNo;
+
+  // --- สร้าง creditMap / typeMap จากชีตรายวิชา ---
+  var creditMap = {}, typeMap = {};
+  (subjectList || []).forEach(function(s) {
+    var code = String(s['รหัสวิชา'] || '').trim();
+    if (code) {
+      creditMap[code] = parseFloat(s['ชั่วโมง/ปี']) || 1;
+      typeMap[code] = String(s['ประเภทวิชา'] || 'พื้นฐาน').trim();
+    }
+  });
+
+  // --- กรองเฉพาะชั้น/ห้องนี้ ---
+  var classRows = warehouseData.filter(function(row) {
+    return String(row['grade'] || '').trim() === grade && String(row['class_no'] || '').trim() === classNo;
+  });
+
+  // --- หาวิชาทั้งหมด (ไม่รวมกิจกรรม) เรียงตาม coverOrder ---
+  var subjectSet = {};
+  classRows.forEach(function(row) {
+    var code = String(row['subject_code'] || row['subjectCode'] || '').trim();
+    var name = String(row['subject_name'] || '').trim();
+    var subType = typeMap[code] || 'พื้นฐาน';
+    if (subType === 'กิจกรรม') return;
+    if (name && !subjectSet[name]) {
+      subjectSet[name] = code;
+    }
+  });
+
+  var coverOrder = ['ภาษาไทย','คณิตศาสตร์','วิทยาศาสตร์','สังคมศึกษา','ประวัติศาสตร์','สุขศึกษา','ศิลปะ','การงาน','ภาษาอังกฤษ','หน้าที่พลเมือง'];
+  var subjectNames = Object.keys(subjectSet).sort(function(a, b) {
+    var ia = -1, ib = -1;
+    for (var k = 0; k < coverOrder.length; k++) {
+      if (a.indexOf(coverOrder[k]) !== -1) ia = k;
+      if (b.indexOf(coverOrder[k]) !== -1) ib = k;
+    }
+    if (ia === -1) ia = 999;
+    if (ib === -1) ib = 999;
+    return ia - ib;
+  });
+
+  var numSubjects = subjectNames.length;
+  var numCols = 3 + numSubjects + 2; // ที่, รหัส, ชื่อ, ...วิชา..., GPA, อันดับ
+
+  // --- คำนวณเกรดรายนักเรียน ---
+  var studentGradeMap = {}; // studentId -> { subjectName: grade, gpa: x, rank: y }
+  var studentGroups = {};
+  classRows.forEach(function(row) {
+    var sid = String(row['studentId'] || row['student_id'] || '').trim();
+    if (!studentGroups[sid]) studentGroups[sid] = [];
+    studentGroups[sid].push(row);
+  });
+
+  // คำนวณ GPA ของแต่ละคน
+  var gpaList = [];
+  Object.keys(studentGroups).forEach(function(sid) {
+    var scores = studentGroups[sid];
+    var totCredits = 0, totGradePoints = 0;
+    var gradeBySubject = {};
+
+    scores.forEach(function(subject) {
+      var code = String(subject['subject_code'] || subject['subjectCode'] || '').trim();
+      var name = String(subject['subject_name'] || '').trim();
+      var subType = typeMap[code] || 'พื้นฐาน';
+      if (subType === 'กิจกรรม') return;
+
+      var credits = creditMap[code] || 1;
+      var gpa = 0;
+      var finalGrade = parseFloat(subject['final_grade'] || subject['grade_result'] || '');
+      if (!isNaN(finalGrade)) {
+        gpa = finalGrade;
+      } else {
+        var avg = parseFloat(subject['average'] || subject['total'] || 0);
+        if (avg >= 80) gpa = 4; else if (avg >= 75) gpa = 3.5; else if (avg >= 70) gpa = 3;
+        else if (avg >= 65) gpa = 2.5; else if (avg >= 60) gpa = 2; else if (avg >= 55) gpa = 1.5;
+        else if (avg >= 50) gpa = 1; else gpa = 0;
+      }
+
+      if (name) gradeBySubject[name] = gpa;
+      totCredits += credits;
+      totGradePoints += gpa * credits;
+    });
+
+    var gpaVal = totCredits > 0 ? totGradePoints / totCredits : 0;
+    studentGradeMap[sid] = { grades: gradeBySubject, gpa: gpaVal };
+    gpaList.push({ id: sid, gpa: gpaVal });
+  });
+
+  // คำนวณอันดับ
+  gpaList.sort(function(a, b) { return b.gpa - a.gpa; });
+  gpaList.forEach(function(item, idx) {
+    if (studentGradeMap[item.id]) {
+      studentGradeMap[item.id].rank = idx + 1;
+    }
+  });
+
+  // --- โลโก้ ---
+  sheet.setRowHeight(r, 60);
+  sheet.getRange(r, 1, 1, numCols).merge().setHorizontalAlignment('center').setVerticalAlignment('middle');
+  pp5s_insertLogo_(sheet, r, 1, meta.logoDataUri, 50, 580);
+  r++;
+
+  // --- หัวเรื่อง ---
+  sheet.getRange(r, 1, 1, numCols).merge();
+  sheet.getRange(r, 1).setValue('แบบสรุปผลการเรียนรู้ตามกลุ่มสาระการเรียนรู้')
+    .setFontFamily('Sarabun').setFontSize(14).setFontWeight('bold').setHorizontalAlignment('center');
+  sheet.setRowHeight(r, 28);
+  r++;
+
+  sheet.getRange(r, 1, 1, numCols).merge();
+  sheet.getRange(r, 1).setValue(meta.schoolName + ' | ชั้น' + meta.gradeFullName + '/' + meta.classNo + ' | ปีการศึกษา ' + meta.academicYear)
+    .setFontFamily('Sarabun').setFontSize(11).setHorizontalAlignment('center').setFontWeight('normal');
+  sheet.setRowHeight(r, 22);
+  r++;
+
+  // --- Header: ที่ | รหัส | ชื่อ-สกุล | วิชา... | GPA | อันดับ ---
+  var hdr = ['ที่', 'รหัส', 'ชื่อ-นามสกุล'];
+  subjectNames.forEach(function(name) {
+    // ชื่อย่อ: ตัดให้สั้นถ้ายาวเกิน
+    var short = name.length > 8 ? name.substring(0, 8) : name;
+    hdr.push(short);
+  });
+  hdr.push('GPA');
+  hdr.push('อันดับ');
+  sheet.getRange(r, 1, 1, numCols).setValues([hdr]);
+  pp5s_headerStyle_(sheet.getRange(r, 1, 1, numCols), 9);
+  // หมุนชื่อวิชาเป็นแนวตั้ง
+  if (numSubjects > 0) {
+    sheet.getRange(r, 4, 1, numSubjects).setTextRotation(90).setVerticalAlignment('bottom');
+  }
+  sheet.getRange(r, 4 + numSubjects, 1, 2).setTextRotation(90).setVerticalAlignment('bottom');
+  sheet.setRowHeight(r, 110);
+  r++;
+
+  // --- ข้อมูลนักเรียน ---
+  students.forEach(function(s, i) {
+    var sid = String(s.id || s.studentId || '').trim();
+    var fullName = (s.title || '') + (s.firstname || '') + ' ' + (s.lastname || '');
+    if (!fullName.trim() && s.name) fullName = s.name;
+    var info = studentGradeMap[sid] || { grades: {}, gpa: 0, rank: '-' };
+
+    var rowData = [i + 1, sid, fullName.trim()];
+    subjectNames.forEach(function(subName) {
+      var g = info.grades[subName];
+      rowData.push(g !== undefined ? g : '-');
+    });
+    rowData.push(info.gpa ? info.gpa.toFixed(2) : '-');
+    rowData.push(info.rank || '-');
+
+    sheet.getRange(r, 1, 1, numCols).setValues([rowData]);
+    pp5s_baseStyle_(sheet.getRange(r, 1, 1, numCols), 10);
+    sheet.getRange(r, 1, 1, 2).setHorizontalAlignment('center');
+    sheet.getRange(r, 4, 1, numSubjects + 2).setHorizontalAlignment('center');
+    sheet.getRange(r, 1, 1, numCols).setBorder(true, true, true, true, true, true);
+    sheet.setRowHeight(r, 22);
+    r++;
+  });
+
+  // --- ลงชื่อ ---
+  r += 2;
+  var halfCols = Math.max(Math.floor(numCols / 2), 3);
+  sheet.getRange(r, 1, 1, halfCols).merge().setValue('ลงชื่อ...............................................ครูประจำชั้น\n(' + (meta.teacherName || '...............................................') + ')\nตำแหน่ง ครู')
+    .setFontFamily('Sarabun').setFontSize(11).setHorizontalAlignment('center').setVerticalAlignment('top').setFontWeight('normal').setWrap(true);
+  sheet.getRange(r, halfCols + 1, 1, numCols - halfCols).merge().setValue('ลงชื่อ...............................................ผู้อำนวยการ\n(' + (meta.directorName || '...............................................') + ')\n' + (meta.directorTitle || 'ผู้อำนวยการสถานศึกษา'))
+    .setFontFamily('Sarabun').setFontSize(11).setHorizontalAlignment('center').setVerticalAlignment('top').setFontWeight('normal').setWrap(true);
+  sheet.setRowHeight(r, 70);
+
+  // --- ปรับขนาดคอลัมน์ ---
+  sheet.setColumnWidth(1, 24);   // ที่
+  sheet.setColumnWidth(2, 50);   // รหัส
+  sheet.setColumnWidth(3, 130);  // ชื่อ
+  var subColWidth = numSubjects > 0 ? Math.max(30, Math.min(40, Math.floor(340 / numSubjects))) : 40;
+  for (var c = 4; c <= 3 + numSubjects; c++) sheet.setColumnWidth(c, subColWidth);
+  sheet.setColumnWidth(4 + numSubjects, 36);  // GPA
+  sheet.setColumnWidth(5 + numSubjects, 36);  // อันดับ
+
+  return sheet;
+}
+
+
+// ============================================================
+// 📄 ส่วนที่ 10: สรุปผลการประเมินรวม (อ่านคิดเขียน + คุณลักษณะ + กิจกรรม)
+// ============================================================
+function pp5s_assessmentSummary_(ss, meta, students, rtwSummary, attrSummary, actSummary) {
+  if (!students || students.length === 0) return null;
+
+  var sheet = ss.insertSheet('สรุปผลประเมิน');
+  var r = 1;
+  var numCols = 6; // ที่, ชื่อ, อ่านคิดเขียน, คุณลักษณะ, กิจกรรม, สรุป
+
+  // --- โลโก้ ---
+  sheet.setRowHeight(r, 60);
+  sheet.getRange(r, 1, 1, numCols).merge().setHorizontalAlignment('center').setVerticalAlignment('middle');
+  pp5s_insertLogo_(sheet, r, 1, meta.logoDataUri, 50, 580);
+  r++;
+
+  // --- หัวเรื่อง ---
+  sheet.getRange(r, 1, 1, numCols).merge();
+  sheet.getRange(r, 1).setValue('แบบสรุปผลการประเมินคุณลักษณะอันพึงประสงค์ การอ่านคิดเขียน และกิจกรรมพัฒนาผู้เรียน')
+    .setFontFamily('Sarabun').setFontSize(13).setFontWeight('bold').setHorizontalAlignment('center').setWrap(true);
+  sheet.setRowHeight(r, 36);
+  r++;
+
+  sheet.getRange(r, 1, 1, numCols).merge();
+  sheet.getRange(r, 1).setValue(meta.schoolName + ' | ชั้น' + meta.gradeFullName + '/' + meta.classNo + ' | ปีการศึกษา ' + meta.academicYear)
+    .setFontFamily('Sarabun').setFontSize(11).setHorizontalAlignment('center').setFontWeight('normal');
+  sheet.setRowHeight(r, 22);
+  r++;
+
+  // --- Header ---
+  var hdr = ['ที่', 'ชื่อ-นามสกุล', 'อ่าน คิด เขียน', 'คุณลักษณะอันพึงประสงค์', 'กิจกรรมพัฒนาผู้เรียน', 'สรุปผลประเมิน'];
+  sheet.getRange(r, 1, 1, numCols).setValues([hdr]);
+  pp5s_headerStyle_(sheet.getRange(r, 1, 1, numCols), 10);
+  sheet.setRowHeight(r, 30);
+  r++;
+
+  // --- สร้าง lookup maps ---
+  var rtwMap = {};
+  if (rtwSummary && rtwSummary.students) {
+    rtwSummary.students.forEach(function(s) {
+      rtwMap[String(s.studentId || s.id || '').trim()] = s.result || s.summary || '-';
+    });
+  }
+  var attrMap = {};
+  if (attrSummary && attrSummary.students) {
+    attrSummary.students.forEach(function(s) {
+      attrMap[String(s.studentId || s.id || '').trim()] = s.result || s.summary || '-';
+    });
+  }
+  var actMap = {};
+  if (actSummary && actSummary.students) {
+    actSummary.students.forEach(function(s) {
+      actMap[String(s.studentId || s.id || '').trim()] = s.result || s.summary || '-';
+    });
+  }
+
+  // --- ข้อมูลนักเรียน ---
+  students.forEach(function(s, i) {
+    var sid = String(s.id || s.studentId || '').trim();
+    var fullName = (s.title || '') + (s.firstname || '') + ' ' + (s.lastname || '');
+    if (!fullName.trim() && s.name) fullName = s.name;
+
+    var rtw = rtwMap[sid] || '-';
+    var attr = attrMap[sid] || '-';
+    var act = actMap[sid] || '-';
+
+    // สรุปรวม: "ผ่าน" ถ้าทุกหมวดผ่าน
+    var isPass = true;
+    [rtw, attr, act].forEach(function(v) {
+      var vl = String(v).trim().toLowerCase();
+      if (vl === '-' || vl === '' || vl === 'มผ' || vl === 'ไม่ผ่าน' || vl === 'ปรับปรุง') isPass = false;
+    });
+    var overall = isPass ? 'ผ่าน' : 'ไม่ผ่าน';
+
+    var rowData = [i + 1, fullName.trim(), rtw, attr, act, overall];
+    sheet.getRange(r, 1, 1, numCols).setValues([rowData]);
+    pp5s_baseStyle_(sheet.getRange(r, 1, 1, numCols), 11);
+    sheet.getRange(r, 1).setHorizontalAlignment('center');
+    sheet.getRange(r, 3, 1, 4).setHorizontalAlignment('center');
+    sheet.getRange(r, 1, 1, numCols).setBorder(true, true, true, true, true, true);
+    // เน้นสีแดงถ้าไม่ผ่าน
+    if (!isPass) {
+      sheet.getRange(r, 6).setFontColor('#dc2626').setFontWeight('bold');
+    }
+    sheet.setRowHeight(r, 24);
+    r++;
+  });
+
+  // --- ลงชื่อ ---
+  r += 2;
+  sheet.getRange(r, 1, 1, 3).merge().setValue('ลงชื่อ...............................................ครูประจำชั้น\n(' + (meta.teacherName || '...............................................') + ')\nตำแหน่ง ครู')
+    .setFontFamily('Sarabun').setFontSize(11).setHorizontalAlignment('center').setVerticalAlignment('top').setFontWeight('normal').setWrap(true);
+  sheet.getRange(r, 4, 1, 3).merge().setValue('ลงชื่อ...............................................ผู้อำนวยการ\n(' + (meta.directorName || '...............................................') + ')\n' + (meta.directorTitle || 'ผู้อำนวยการสถานศึกษา'))
+    .setFontFamily('Sarabun').setFontSize(11).setHorizontalAlignment('center').setVerticalAlignment('top').setFontWeight('normal').setWrap(true);
+  sheet.setRowHeight(r, 70);
+
+  // --- ปรับขนาดคอลัมน์ ---
+  sheet.setColumnWidth(1, 28);   // ที่
+  sheet.setColumnWidth(2, 170);  // ชื่อ
+  sheet.setColumnWidth(3, 95);   // อ่านคิดเขียน
+  sheet.setColumnWidth(4, 95);   // คุณลักษณะ
+  sheet.setColumnWidth(5, 95);   // กิจกรรม
+  sheet.setColumnWidth(6, 80);   // สรุป
+
+  return sheet;
+}
+
+
+// ============================================================
+// 📄 ส่วนที่ 4D: สรุปเวลาเรียน ปีการศึกษา (รายเดือน ภาค1+2 รวมปี ร้อยละ)
 // ============================================================
 function pp5s_yearlyAttendanceSummary_(ss, meta, students, cachedMonthlyData) {
   var sheet = ss.insertSheet('สรุปเวลาเรียนปี');
@@ -1498,6 +1796,7 @@ async function exportPp5FullBookSheets(grade, classNo, parts) {
     var charData = [], actData = [], rtwSummary = {}, attrSummary = {}, actSummary = {};
     var subjectScoreStudents = [];
     var subjectSummary = [];
+    var warehouseData = [], subjectListData = [];
     if (parts.part1 || parts.part3) {
       pp5fb_setProgress_(16, 4, 'ดึงข้อมูลการประเมิน...');
       try { charData = getStudentsForCharacteristic(grade, classNo); } catch (e) {}
@@ -1507,6 +1806,8 @@ async function exportPp5FullBookSheets(grade, classNo, parts) {
       try { actSummary = getActivitySummary(grade, classNo); } catch (e) {}
       try { subjectScoreStudents = getStudentsForSubjectScore(grade, classNo); } catch (e) {}
       try { subjectSummary = getSubjectScoreSummary(grade, classNo); } catch (e) {}
+      try { warehouseData = _readSheetToObjects('SCORES_WAREHOUSE'); } catch (e) { Logger.log('⚠️ SCORES_WAREHOUSE: ' + e.message); }
+      try { subjectListData = _readSheetToObjects('รายวิชา'); } catch (e) { Logger.log('⚠️ รายวิชา: ' + e.message); }
     }
 
     var meta = {
@@ -1692,6 +1993,20 @@ async function exportPp5FullBookSheets(grade, classNo, parts) {
         pp5s_readThinkWrite_(tempSS, meta, subjectScoreStudents);
         Logger.log('✅ อ่านคิดเขียน');
       } catch (e) { Logger.log('⚠️ อ่านคิดเขียน: ' + e.message); }
+
+      // ส่วนที่ 9: สรุปผลการเรียนรวม (เกรดทุกวิชา + GPA + อันดับ)
+      pp5fb_setProgress_(87, 5, 'สร้างตารางสรุปผลการเรียน...');
+      try {
+        pp5s_gradesSummary_(tempSS, meta, students, warehouseData, subjectListData);
+        Logger.log('✅ สรุปผลการเรียน');
+      } catch (e) { Logger.log('⚠️ สรุปผลการเรียน: ' + e.message); }
+
+      // ส่วนที่ 10: สรุปผลการประเมินรวม
+      pp5fb_setProgress_(89, 5, 'สร้างตารางสรุปผลประเมิน...');
+      try {
+        pp5s_assessmentSummary_(tempSS, meta, students, rtwSummary, attrSummary, actSummary);
+        Logger.log('✅ สรุปผลประเมิน');
+      } catch (e) { Logger.log('⚠️ สรุปผลประเมิน: ' + e.message); }
     } else {
       Logger.log('⏭ ข้ามส่วนที่ 3 (ผลการประเมิน)');
     }
