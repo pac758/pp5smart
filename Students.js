@@ -113,6 +113,149 @@ function getAvailableClasses_DEBUG(grade) {
   }
 }
 
+function saveStudentData(data) {
+  try {
+    data = data || {};
+    const studentData = {
+      student_id: String(data.studentCode || '').trim(),
+      id_card: String(data.nationalId || '').trim(),
+      title: String(data.prefix || '').trim(),
+      firstname: String(data.firstName || '').trim(),
+      lastname: String(data.lastName || '').trim(),
+      grade: String(data.grade || '').trim(),
+      class_no: String(data.classroom || '').trim(),
+      gender: String(data.gender || '').trim(),
+      birthdate: String(data.birthdate || '').trim(),
+      weight: String(data.weight || '').trim(),
+      height: String(data.height || '').trim(),
+      photo_url: String(data.photoUrl || '').trim(),
+      address: String(data.address || '').trim(),
+      father_name: String(data.fatherName || '').trim(),
+      father_lastname: String(data.fatherLastname || '').trim(),
+      mother_name: String(data.motherName || '').trim(),
+      mother_lastname: String(data.motherLastname || '').trim(),
+      academic_year: String(data.academicYear || '').trim()
+    };
+
+    if (!studentData.student_id || !studentData.firstname || !studentData.lastname) {
+      throw new Error('กรุณากรอกข้อมูลที่จำเป็น: รหัสนักเรียน, ชื่อ, นามสกุล');
+    }
+
+    const result = addStudent(studentData);
+    if (result && result.success) {
+      try {
+        // เติมข้อมูลเพิ่มเติมลงคอลัมน์ที่มีอยู่ (ถ้าชีตมี header รองรับ)
+        const ss = SS();
+        const sheet = ss.getSheetByName('Students');
+        if (sheet) {
+          const values = sheet.getDataRange().getValues();
+          const headers = values[0] || [];
+          const col = {};
+          headers.forEach((h, i) => {
+            const key = String(h || '').trim();
+            if (key) col[key] = i;
+          });
+
+          // หาแถวที่เพิ่งเพิ่ม (จาก student_id)
+          const idIdx = col['student_id'];
+          if (idIdx != null) {
+            let rowIndex = -1;
+            for (let r = values.length - 1; r >= 1; r--) {
+              if (String(values[r][idIdx] || '').trim() === studentData.student_id) {
+                rowIndex = r + 1;
+                break;
+              }
+            }
+            if (rowIndex > 0) {
+              const updates = {
+                birthdate: studentData.birthdate,
+                weight: studentData.weight,
+                height: studentData.height,
+                photo_url: studentData.photo_url,
+                address: studentData.address,
+                father_name: studentData.father_name,
+                father_lastname: studentData.father_lastname,
+                mother_name: studentData.mother_name,
+                mother_lastname: studentData.mother_lastname,
+                academic_year: studentData.academic_year
+              };
+              Object.keys(updates).forEach((k) => {
+                if (col[k] != null) {
+                  sheet.getRange(rowIndex, col[k] + 1).setValue(updates[k]);
+                }
+              });
+            }
+          }
+        }
+      } catch (_e) {
+        // ignore optional enrich
+      }
+      return result.message || 'เพิ่มนักเรียนเรียบร้อยแล้ว';
+    }
+    return (result && result.message) || 'ไม่สามารถเพิ่มนักเรียนได้';
+  } catch (e) {
+    throw new Error(e.message || String(e));
+  }
+}
+
+function updateStudentInline(studentData) {
+  try {
+    studentData = studentData || {};
+    const id = String(studentData.id || '').trim();
+    if (!id) throw new Error('ไม่พบรหัสนักเรียน');
+
+    const ss = SS();
+    const sheet = ss.getSheetByName('Students');
+    if (!sheet) throw new Error('ไม่พบชีต Students');
+
+    const values = sheet.getDataRange().getValues();
+    if (!values || values.length < 2) throw new Error('ไม่มีข้อมูลในชีต Students');
+
+    const headers = values[0] || [];
+    const col = {};
+    headers.forEach((h, i) => {
+      const key = String(h || '').trim();
+      if (key) col[key] = i;
+    });
+
+    const idIdx = col['student_id'];
+    if (idIdx == null) throw new Error('ไม่พบคอลัมน์ student_id');
+
+    let rowIndex = -1;
+    for (let r = 1; r < values.length; r++) {
+      if (String(values[r][idIdx] || '').trim() === id) {
+        rowIndex = r + 1;
+        break;
+      }
+    }
+    if (rowIndex < 0) throw new Error('ไม่พบข้อมูลนักเรียน');
+
+    const updates = {
+      firstname: String(studentData.firstname || '').trim(),
+      lastname: String(studentData.lastname || '').trim(),
+      grade: String(studentData.grade || '').trim(),
+      class_no: String(studentData.classNo || '').trim(),
+      gender: String(studentData.gender || '').trim(),
+      birthdate: String(studentData.birthdate || '').trim(),
+      weight: String(studentData.weight || '').trim(),
+      height: String(studentData.height || '').trim()
+    };
+
+    Object.keys(updates).forEach((k) => {
+      if (col[k] != null && updates[k] !== '') {
+        sheet.getRange(rowIndex, col[k] + 1).setValue(updates[k]);
+      } else if (col[k] != null && (k === 'weight' || k === 'height')) {
+        // allow clearing numeric
+        sheet.getRange(rowIndex, col[k] + 1).setValue(updates[k]);
+      }
+    });
+
+    return 'บันทึกข้อมูลเรียบร้อยแล้ว';
+  } catch (e) {
+    throw new Error(e.message || String(e));
+  }
+}
+
 /**
  * ✅ ดึงรายชื่อนักเรียนในชั้นและห้องที่เลือก
  */

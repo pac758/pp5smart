@@ -59,6 +59,71 @@ function getMonthsInAcademicYear(academicYearBE) {
   ];
 }
 
+function setupNewAcademicYear() {
+  try {
+    var yearRaw = '';
+    try {
+      if (typeof S_getAcademicYear === 'function') {
+        yearRaw = S_getAcademicYear();
+      }
+    } catch (_e) {}
+
+    if (!yearRaw) {
+      try {
+        if (typeof S_getGlobalSettings === 'function') {
+          var s = S_getGlobalSettings(true) || {};
+          yearRaw = s['ปีการศึกษา'] || s['academicYear'] || '';
+        }
+      } catch (_e2) {}
+    }
+
+    var academicYearBE = parseInt(String(yearRaw || '').replace(/[^0-9]/g, ''), 10);
+    if (!academicYearBE || isNaN(academicYearBE)) {
+      throw new Error('ไม่พบปีการศึกษาใน global_settings');
+    }
+
+    var ss = SS();
+    var months = getMonthsInAcademicYear(academicYearBE);
+    var monthNames = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+    var thaiWeekdaysShort = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+
+    var created = [];
+    var skipped = [];
+
+    months.forEach(function(info) {
+      var sheetName = monthNames[info.month - 1] + String(info.yearCE + 543);
+      var sheet = ss.getSheetByName(sheetName);
+      if (sheet) {
+        skipped.push(sheetName);
+        return;
+      }
+
+      sheet = ss.insertSheet(sheetName);
+      var daysInMonth = new Date(info.yearCE, info.month, 0).getDate();
+
+      var headers = ["เลขที่", "รหัส", "ชื่อ-สกุล"];
+      for (var d = 1; d <= daysInMonth; d++) {
+        var dt = new Date(info.yearCE, info.month - 1, d);
+        headers.push(String(d) + ' ' + thaiWeekdaysShort[dt.getDay()]);
+      }
+      headers.push("มา", "ลา", "ขาด");
+
+      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+      created.push(sheetName);
+    });
+
+    return [
+      'ปีการศึกษา: ' + academicYearBE,
+      'สร้างใหม่: ' + created.length + ' ชีต',
+      created.length ? ('- ' + created.join(', ')) : '',
+      'มีอยู่แล้ว: ' + skipped.length + ' ชีต'
+    ].filter(function(x){ return x; }).join('\n');
+  } catch (e) {
+    throw new Error('setupNewAcademicYear: ' + (e.message || String(e)));
+  }
+}
+
 /**
  * ✅ ดึงรายชื่อนักเรียนสำหรับเช็คชื่อ (ใช้โค้ดเดิมที่ทำงานได้)
  */
