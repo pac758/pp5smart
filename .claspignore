@@ -4,4 +4,7 @@
 !*.gs
 !*.html
 
+api_inventory.js
+api_inventory.md
+
 !appsscript.json
