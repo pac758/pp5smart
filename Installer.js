@@ -315,7 +315,225 @@ function migrateExistingSchool() {
 }
 
 // ============================================================
-// �� RESET (ใช้เฉพาะ Admin เท่านั้น)
+// 📅 SWITCH ACADEMIC YEAR — เปลี่ยนปีการศึกษา
+// ============================================================
+
+/**
+ * เปลี่ยนปีการศึกษา:
+ * 1. Copy Spreadsheet ปัจจุบันเป็น archive
+ * 2. ล้างข้อมูลรายปี (คะแนน, ประเมิน, เวลาเรียน, ความเห็นครู)
+ * 3. ลบชีตคะแนนรายวิชา (dynamic sheets)
+ * 4. อัปเดตปีการศึกษาใน global_settings
+ * 
+ * @param {number} newYear - ปีการศึกษาใหม่ (พ.ศ.)
+ * @param {Object} options - ตัวเลือกเพิ่มเติม
+ * @returns {Object} ผลลัพธ์
+ */
+function switchAcademicYear(newYear, options) {
+  options = options || {};
+  var keepStudents = options.keepStudents !== false; // default: เก็บนักเรียนไว้
+  var keepSubjects = options.keepSubjects !== false; // default: เก็บรายวิชาไว้
+
+  try {
+    if (!newYear || isNaN(newYear)) {
+      return { success: false, message: 'กรุณาระบุปีการศึกษาใหม่' };
+    }
+    newYear = Number(newYear);
+
+    var ss = SS();
+    var oldSettings = S_getGlobalSettings(false);
+    var oldYear = oldSettings['ปีการศึกษา'] || 'ไม่ทราบ';
+    var schoolName = oldSettings['ชื่อโรงเรียน'] || 'โรงเรียน';
+
+    Logger.log('📅 เริ่มเปลี่ยนปีการศึกษา: ' + oldYear + ' → ' + newYear);
+
+    // ============ ขั้นที่ 1: Copy Spreadsheet เป็น archive ============
+    Logger.log('📦 กำลัง archive spreadsheet...');
+    var archiveName = schoolName + ' — ข้อมูลปีการศึกษา ' + oldYear + ' (สำรอง ' + Utilities.formatDate(new Date(), 'Asia/Bangkok', 'dd-MM-yyyy HH:mm') + ')';
+    var originalFile = DriveApp.getFileById(ss.getId());
+    var parentFolders = originalFile.getParents();
+    var targetFolder = parentFolders.hasNext() ? parentFolders.next() : DriveApp.getRootFolder();
+
+    // สร้างโฟลเดอร์ archive ถ้ายังไม่มี
+    var archiveFolderName = 'Archive_ปีการศึกษา';
+    var archiveFolder = null;
+    var subFolders = targetFolder.getFoldersByName(archiveFolderName);
+    if (subFolders.hasNext()) {
+      archiveFolder = subFolders.next();
+    } else {
+      archiveFolder = targetFolder.createFolder(archiveFolderName);
+    }
+
+    var copiedFile = originalFile.makeCopy(archiveName, archiveFolder);
+    var archiveUrl = copiedFile.getUrl();
+    Logger.log('✅ Archive สำเร็จ: ' + archiveName);
+    Logger.log('📎 URL: ' + archiveUrl);
+
+    // ============ ขั้นที่ 2: ล้างข้อมูลรายปี ============
+    Logger.log('🧹 กำลังล้างข้อมูลรายปี...');
+    var sheetsToClean = [
+      'SCORES_WAREHOUSE',
+      'การประเมินอ่านคิดเขียน',
+      'การประเมินคุณลักษณะ',
+      'การประเมินกิจกรรมพัฒนาผู้เรียน',
+      'การประเมินสมรรถนะ',
+      'AttendanceLog',
+      'ความเห็นครู'
+    ];
+
+    var cleanedCount = 0;
+    sheetsToClean.forEach(function(name) {
+      var sheet = ss.getSheetByName(name);
+      if (sheet && sheet.getLastRow() > 1) {
+        sheet.deleteRows(2, sheet.getLastRow() - 1);
+        cleanedCount++;
+        Logger.log('  🗑️ ล้าง: ' + name);
+      }
+    });
+
+    // ============ ขั้นที่ 3: ลบชีตคะแนนรายวิชา (dynamic) ============
+    Logger.log('🗑️ กำลังลบชีตคะแนนรายวิชา...');
+    var systemSheets = [
+      'global_settings', 'Users', 'Students', 'รายวิชา',
+      'SCORES_WAREHOUSE', 'Holidays', 'HomeroomTeachers',
+      'การประเมินอ่านคิดเขียน', 'การประเมินคุณลักษณะ',
+      'การประเมินกิจกรรมพัฒนาผู้เรียน', 'การประเมินสมรรถนะ',
+      'AttendanceLog', 'ความเห็นครู'
+    ];
+    var prefixSkip = ['BACKUP_', 'Template_', 'TMP_'];
+
+    var deletedSheets = 0;
+    var allSheets = ss.getSheets();
+    // ต้องเก็บอย่างน้อย 1 sheet ไว้
+    for (var i = allSheets.length - 1; i >= 0; i--) {
+      var sheetName = allSheets[i].getName();
+      // ข้ามชีตระบบ
+      if (systemSheets.indexOf(sheetName) !== -1) continue;
+      // ข้ามชีตที่ขึ้นต้นด้วย prefix พิเศษ
+      var skipThis = false;
+      prefixSkip.forEach(function(p) { if (sheetName.indexOf(p) === 0) skipThis = true; });
+      if (skipThis) continue;
+      // ต้องเหลืออย่างน้อย 1 sheet
+      if (ss.getSheets().length <= 1) break;
+      try {
+        ss.deleteSheet(allSheets[i]);
+        deletedSheets++;
+        Logger.log('  🗑️ ลบชีต: ' + sheetName);
+      } catch (e) {
+        Logger.log('  ⚠️ ลบชีตไม่ได้: ' + sheetName + ' — ' + e.message);
+      }
+    }
+
+    // ============ ขั้นที่ 4: อัปเดต settings ============
+    Logger.log('⚙️ อัปเดตปีการศึกษา...');
+    var settingsSheet = ss.getSheetByName('global_settings');
+    if (settingsSheet) {
+      var data = settingsSheet.getDataRange().getValues();
+      var now = new Date().toISOString();
+      for (var r = 0; r < data.length; r++) {
+        var key = String(data[r][0]).trim();
+        if (key === 'ปีการศึกษา' || key === 'academicYear') {
+          settingsSheet.getRange(r + 1, 2).setValue(String(newYear));
+          settingsSheet.getRange(r + 1, 3).setValue(now);
+        }
+        if (key === 'ภาคเรียน' || key === 'semester') {
+          settingsSheet.getRange(r + 1, 2).setValue('1');
+          settingsSheet.getRange(r + 1, 3).setValue(now);
+        }
+      }
+    }
+
+    // ล้าง cache
+    try { S_clearSettingsCache(); } catch (e) {}
+
+    var summary = {
+      success: true,
+      message: 'เปลี่ยนปีการศึกษาสำเร็จ: ' + oldYear + ' → ' + newYear,
+      archiveName: archiveName,
+      archiveUrl: archiveUrl,
+      sheetsCleared: cleanedCount,
+      scoreSheetDeleted: deletedSheets,
+      newYear: newYear,
+      oldYear: oldYear
+    };
+
+    Logger.log('✅ เปลี่ยนปีการศึกษาสำเร็จ!');
+    Logger.log(JSON.stringify(summary, null, 2));
+    return summary;
+
+  } catch (e) {
+    Logger.log('❌ switchAcademicYear error: ' + e.message + '\n' + e.stack);
+    return { success: false, message: 'เกิดข้อผิดพลาด: ' + e.message };
+  }
+}
+
+/**
+ * ดูข้อมูลก่อนเปลี่ยนปี (preview) ไม่ทำอะไรจริง
+ * @returns {Object} สรุปข้อมูลที่จะถูกล้าง
+ */
+function previewSwitchAcademicYear() {
+  try {
+    var ss = SS();
+    var settings = S_getGlobalSettings(false);
+    var currentYear = settings['ปีการศึกษา'] || 'ไม่ทราบ';
+
+    // นับข้อมูลในชีตที่จะล้าง
+    var sheetsToClean = [
+      'SCORES_WAREHOUSE',
+      'การประเมินอ่านคิดเขียน',
+      'การประเมินคุณลักษณะ',
+      'การประเมินกิจกรรมพัฒนาผู้เรียน',
+      'การประเมินสมรรถนะ',
+      'AttendanceLog',
+      'ความเห็นครู'
+    ];
+
+    var dataCounts = [];
+    sheetsToClean.forEach(function(name) {
+      var sheet = ss.getSheetByName(name);
+      var rows = sheet ? Math.max(0, sheet.getLastRow() - 1) : 0;
+      dataCounts.push({ sheet: name, rows: rows });
+    });
+
+    // นับชีตคะแนนรายวิชาที่จะลบ
+    var systemSheets = [
+      'global_settings', 'Users', 'Students', 'รายวิชา',
+      'SCORES_WAREHOUSE', 'Holidays', 'HomeroomTeachers',
+      'การประเมินอ่านคิดเขียน', 'การประเมินคุณลักษณะ',
+      'การประเมินกิจกรรมพัฒนาผู้เรียน', 'การประเมินสมรรถนะ',
+      'AttendanceLog', 'ความเห็นครู'
+    ];
+    var prefixSkip = ['BACKUP_', 'Template_', 'TMP_'];
+    var scoreSheets = [];
+    ss.getSheets().forEach(function(sheet) {
+      var name = sheet.getName();
+      if (systemSheets.indexOf(name) !== -1) return;
+      var skip = false;
+      prefixSkip.forEach(function(p) { if (name.indexOf(p) === 0) skip = true; });
+      if (skip) return;
+      scoreSheets.push(name);
+    });
+
+    // นับนักเรียน
+    var studentsSheet = ss.getSheetByName('Students');
+    var studentCount = studentsSheet ? Math.max(0, studentsSheet.getLastRow() - 1) : 0;
+
+    return {
+      success: true,
+      currentYear: currentYear,
+      suggestedNewYear: Number(currentYear) + 1 || '',
+      studentCount: studentCount,
+      dataCounts: dataCounts,
+      scoreSheets: scoreSheets,
+      totalDataRows: dataCounts.reduce(function(sum, d) { return sum + d.rows; }, 0)
+    };
+  } catch (e) {
+    return { success: false, message: e.message };
+  }
+}
+
+// ============================================================
+// 🔄 RESET (ใช้เฉพาะ Admin เท่านั้น)
 // ============================================================
 
 function resetSetup() {

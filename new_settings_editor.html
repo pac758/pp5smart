@@ -97,6 +97,43 @@
       </div>
     </div>
 
+    <!-- เปลี่ยนปีการศึกษา -->
+    <div class="row g-4 mt-1">
+      <div class="col-12">
+        <div class="card shadow-sm border-warning">
+          <div class="card-header bg-warning text-dark">
+            <i class="bi bi-calendar-event"></i> เปลี่ยนปีการศึกษา
+          </div>
+          <div class="card-body">
+            <p class="text-muted mb-3" style="font-size:0.9rem;">
+              ระบบจะ <strong>สำรอง Spreadsheet ทั้งไฟล์</strong> ไว้ในโฟลเดอร์ Archive แล้วล้างข้อมูลคะแนน/ประเมิน/เวลาเรียน เพื่อเริ่มต้นปีการศึกษาใหม่
+              <br>ข้อมูลนักเรียน, รายวิชา, ผู้ใช้ จะ <strong>ยังคงอยู่</strong>
+            </p>
+            <div id="switchPreview" class="mb-3" style="display:none;">
+              <div class="alert alert-info py-2 mb-2" id="previewInfo"></div>
+            </div>
+            <div class="row align-items-end">
+              <div class="col-auto">
+                <label class="form-label fw-bold">ปีการศึกษาใหม่ (พ.ศ.)</label>
+                <input type="number" id="newAcademicYear" class="form-control" style="width:140px;" />
+              </div>
+              <div class="col-auto">
+                <button id="previewSwitchBtn" class="btn btn-outline-warning">
+                  <i class="bi bi-eye"></i> ดูข้อมูลก่อนเปลี่ยน
+                </button>
+              </div>
+              <div class="col-auto">
+                <button id="switchYearBtn" class="btn btn-danger" disabled>
+                  <i class="bi bi-arrow-repeat"></i> เปลี่ยนปีการศึกษา
+                </button>
+              </div>
+            </div>
+            <div id="switchStatus" class="mt-3"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ปุ่มบันทึก + สถานะ -->
     <div class="mt-4 text-center">
       <button id="saveBtn" class="btn btn-primary btn-lg px-5">
@@ -277,11 +314,105 @@ if (typeof window.SettingsEditor === 'undefined') {
                 .saveSystemSettings(settingsData);
         },
 
+        // ----- Academic Year Switch -----
+        setSwitchStatus: function(html, type) {
+            var el = this.$('switchStatus');
+            if (el) el.innerHTML = html ? '<div class="alert alert-' + (type || 'info') + ' py-2 mb-0">' + html + '</div>' : '';
+        },
+
+        previewSwitch: function() {
+            var self = this;
+            self.setSwitchStatus('<span class="spinner-border spinner-border-sm me-2"></span>กำลังดึงข้อมูล...', 'info');
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    if (!result || !result.success) {
+                        self.setSwitchStatus('เกิดข้อผิดพลาด: ' + (result && result.message || 'ไม่ทราบ'), 'danger');
+                        return;
+                    }
+                    var el = self.$('newAcademicYear');
+                    if (el && !el.value) el.value = result.suggestedNewYear;
+
+                    var lines = [];
+                    lines.push('<strong>ปีการศึกษาปัจจุบัน:</strong> ' + result.currentYear);
+                    lines.push('<strong>นักเรียน:</strong> ' + result.studentCount + ' คน (จะไม่ถูกลบ)');
+                    lines.push('<strong>ข้อมูลที่จะล้าง:</strong>');
+                    (result.dataCounts || []).forEach(function(d) {
+                        if (d.rows > 0) lines.push('&nbsp;&nbsp;• ' + d.sheet + ': ' + d.rows + ' แถว');
+                    });
+                    if (result.scoreSheets && result.scoreSheets.length > 0) {
+                        lines.push('<strong>ชีตคะแนนที่จะลบ (' + result.scoreSheets.length + '):</strong>');
+                        result.scoreSheets.forEach(function(name) {
+                            lines.push('&nbsp;&nbsp;• ' + name);
+                        });
+                    }
+                    lines.push('<strong>รวมข้อมูลที่จะล้าง:</strong> ' + result.totalDataRows + ' แถว + ' + (result.scoreSheets ? result.scoreSheets.length : 0) + ' ชีต');
+
+                    var previewEl = self.$('switchPreview');
+                    var infoEl = self.$('previewInfo');
+                    if (previewEl) previewEl.style.display = 'block';
+                    if (infoEl) infoEl.innerHTML = lines.join('<br>');
+
+                    var switchBtn = self.$('switchYearBtn');
+                    if (switchBtn) switchBtn.disabled = false;
+                    self.setSwitchStatus('');
+                })
+                .withFailureHandler(function(err) {
+                    self.setSwitchStatus('เกิดข้อผิดพลาด: ' + (err && err.message || err), 'danger');
+                })
+                .previewSwitchAcademicYear();
+        },
+
+        doSwitchYear: function() {
+            var self = this;
+            var newYear = self.$('newAcademicYear') ? self.$('newAcademicYear').value : '';
+            if (!newYear) {
+                self.setSwitchStatus('กรุณาระบุปีการศึกษาใหม่', 'warning');
+                return;
+            }
+            if (!confirm('⚠️ ยืนยันเปลี่ยนปีการศึกษาเป็น ' + newYear + '?\n\nระบบจะ:\n1. สำรอง Spreadsheet ทั้งไฟล์\n2. ล้างข้อมูลคะแนน/ประเมิน/เวลาเรียน\n3. ลบชีตคะแนนรายวิชา\n4. อัปเดตปีการศึกษา\n\nข้อมูลนักเรียน+รายวิชา+ผู้ใช้จะยังคงอยู่')) {
+                return;
+            }
+
+            var switchBtn = self.$('switchYearBtn');
+            var origHTML = switchBtn.innerHTML;
+            switchBtn.disabled = true;
+            switchBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>กำลังเปลี่ยนปี...';
+            self.setSwitchStatus('<span class="spinner-border spinner-border-sm me-2"></span>กำลังสำรองข้อมูลและเปลี่ยนปีการศึกษา... อาจใช้เวลา 1-3 นาที', 'info');
+
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    switchBtn.innerHTML = origHTML;
+                    if (!result || !result.success) {
+                        switchBtn.disabled = false;
+                        self.setSwitchStatus('เกิดข้อผิดพลาด: ' + (result && result.message || 'ไม่ทราบ'), 'danger');
+                        return;
+                    }
+                    var msg = '<strong>✅ ' + result.message + '</strong><br>';
+                    msg += '📦 Archive: <a href="' + result.archiveUrl + '" target="_blank">เปิดไฟล์สำรอง</a><br>';
+                    msg += '🧹 ล้างข้อมูล: ' + result.sheetsCleared + ' ชีต | ลบชีตคะแนน: ' + result.scoreSheetDeleted + ' ชีต';
+                    self.setSwitchStatus(msg, 'success');
+
+                    // รีโหลดข้อมูลหน้า settings
+                    setTimeout(function() { self.initializeSettingsPage(); }, 1000);
+                })
+                .withFailureHandler(function(err) {
+                    switchBtn.disabled = false;
+                    switchBtn.innerHTML = origHTML;
+                    self.setSwitchStatus('เกิดข้อผิดพลาด: ' + (err && err.message || err), 'danger');
+                })
+                .switchAcademicYear(Number(newYear));
+        },
+
         // ----- Init Function -----
         init: function() {
             console.log('🚀 Initializing Settings Editor page...');
             
             this.$('saveBtn').onclick = this.saveSettings.bind(this);
+            
+            var previewBtn = this.$('previewSwitchBtn');
+            if (previewBtn) previewBtn.onclick = this.previewSwitch.bind(this);
+            var switchBtn = this.$('switchYearBtn');
+            if (switchBtn) switchBtn.onclick = this.doSwitchYear.bind(this);
             
             let logoTimeout;
             this.$('logoFileId').oninput = () => {
