@@ -621,9 +621,25 @@
       if (State.isLoadingStudents && State.lastLoadedKey === key) return;
 
       try {
+        // Clear previous loading timeout
+        if (State.loadingTimeout) {
+          clearTimeout(State.loadingTimeout);
+          State.loadingTimeout = null;
+        }
+
         State.isLoadingStudents = true;
         State.lastLoadedKey = key;
         showStatusMessage('⏳ กำลังโหลดข้อมูล...', 'loading');
+
+        // Set timeout to prevent infinite loading
+        State.loadingTimeout = setTimeout(() => {
+          if (token === dailyLoadRequestToken) {
+            State.isLoadingStudents = false;
+            State.lastLoadedKey = null;
+            showStatusMessage('⚠️ หมดเวลาโหลดข้อมูล กรุณาลองใหม่', 'error');
+            setTimeout(hideStatusMessage, 3000);
+          }
+        }, State.LOADING_TIMEOUT);
 
         const d = DateUtils.parseLocalDate(date);
         
@@ -665,6 +681,12 @@
         updateSummary();
       } finally {
         if (token === dailyLoadRequestToken) {
+            // Clear loading timeout
+            if (State.loadingTimeout) {
+              clearTimeout(State.loadingTimeout);
+              State.loadingTimeout = null;
+            }
+            
             State.isLoadingStudents = false;
             State.lastLoadedKey = null;
             setTimeout(hideStatusMessage, 2000);
