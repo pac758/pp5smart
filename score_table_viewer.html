@@ -2569,9 +2569,12 @@ window.ScoreEntrySystem = (function() {
         const r2 = rows2.find(r => r.id === r1.id) || rows2[idx] || {};
         const avgScores = [];
         for (let j = 0; j < 9; j++) {
-          const s1 = Number(r1.scores?.[j]) || 0;
-          const s2 = Number(r2.scores?.[j]) || 0;
-          avgScores.push(Math.round(((s1 + s2) / 2) * 100) / 100);
+          const s1v = Number(r1.scores?.[j]) || 0;
+          const s2v = Number(r2.scores?.[j]) || 0;
+          const avg = Math.round(((s1v + s2v) / 2) * 100) / 100;
+          const maxFull = displayFullScores[j] || 0;
+          // ถ้า full=0 (ไม่มีการประเมิน) → แสดง 0; ถ้ามี → cap ไม่เกิน max
+          avgScores.push(maxFull > 0 ? Math.min(avg, maxFull) : 0);
         }
 
         // ✅ เฉลี่ย midTotal ที่ scale แล้ว (ไม่คำนวณจาก raw scores ใหม่ เพราะ 2 ภาคอาจมี fullScores ต่างกัน)
