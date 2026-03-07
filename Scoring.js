@@ -2875,10 +2875,71 @@ function migrateScoresFromBackup() {
 }
 
 /**
+ * 🔍 Debug: dump ข้อมูลแถว 4 (คะแนนเต็ม) และแถว 5 (นักเรียนคนแรก) ของทุกชีตคะแนน
+ * ใช้ดูว่าข้อมูลอยู่ที่ column ไหนจริง — ไม่แก้ไขข้อมูล
+ * เรียกจาก Apps Script Editor → Run → debugScoreSheetData
+ */
+function debugScoreSheetData() {
+  var ss = SS();
+  var sheets = ss.getSheets();
+  var skipNames = ['Students','Teachers','Users','รายวิชา','Settings','Holidays','Attendance',
+       'Dashboard','Backup','Log','Template'];
+  var found = 0;
+
+  sheets.forEach(function(sheet) {
+    var name = sheet.getName();
+    if (skipNames.some(function(s){ return name === s; })) return;
+    if (name.startsWith('_')) return;
+    
+    var data = sheet.getDataRange().getValues();
+    if (data.length < 5) return;
+    
+    var row3 = data[2] || [];
+    var isScoreSheet = (String(row3[0]).includes('ลำดับ') || String(row3[1]).includes('เลข'));
+    if (!isScoreSheet) return;
+    found++;
+
+    // แถว 3 header
+    var headerStr = '';
+    for (var c = 0; c < Math.min(row3.length, 22); c++) {
+      headerStr += String.fromCharCode(65+c) + '=' + String(row3[c] || '') + ' | ';
+    }
+    Logger.log('=== ' + name + ' (rows: ' + data.length + ') ===');
+    Logger.log('  Header(row3): ' + headerStr);
+    
+    // แถว 4 fullScore
+    var fullRow = data[3] || [];
+    var fullStr = '';
+    for (var c = 0; c < Math.min(fullRow.length, 38); c++) {
+      var v = fullRow[c];
+      if (v !== '' && v !== null && v !== undefined && v !== 0) {
+        fullStr += String.fromCharCode(65+c) + '(' + c + ')=' + v + ' | ';
+      }
+    }
+    Logger.log('  FullScore(row4): ' + fullStr);
+    
+    // แถว 5 student 1
+    var row5 = data[4] || [];
+    var stuStr = '';
+    for (var c = 0; c < Math.min(row5.length, 38); c++) {
+      var v = row5[c];
+      if (v !== '' && v !== null && v !== undefined && v !== 0) {
+        stuStr += String.fromCharCode(65+c) + '(' + c + ')=' + v + ' | ';
+      }
+    }
+    Logger.log('  Student1(row5): ' + stuStr);
+  });
+  
+  Logger.log('พบชีตคะแนน ' + found + ' ชีต');
+  return 'พบชีตคะแนน ' + found + ' ชีต — ดูรายละเอียดใน Execution Log';
+}
+
+/**
  * 🔧 ซ่อมชีตคะแนนทั้งหมดที่ถูก save ด้วย offset ผิด (+2)
  * ข้อมูลเดิมอยู่ที่ col 5-20 (term1) และ 21-36 (term2)
  * ต้องย้ายมาที่ col 3-18 (term1) และ 19-34 (term2)
  * 
+ * ⚠️ รัน debugScoreSheetData() ก่อน เพื่อตรวจว่าข้อมูลอยู่ที่ col ไหน
  * เรียกจาก Apps Script Editor → Run → repairScoreSheetOffset
  */
 function repairScoreSheetOffset() {
@@ -2886,41 +2947,22 @@ function repairScoreSheetOffset() {
   var sheets = ss.getSheets();
   var repaired = 0;
   var log = [];
+  var skipNames = ['Students','Teachers','Users','รายวิชา','Settings','Holidays','Attendance',
+       'Dashboard','Backup','Log','Template'];
 
-  // ชีตคะแนนมี header แถว 3 = "ลำดับ","เลขประจำตัว","ชื่อ - สกุล",...
   sheets.forEach(function(sheet) {
     var name = sheet.getName();
-    // ข้ามชีตระบบ
-    if (['Students','Teachers','Users','รายวิชา','Settings','Holidays','Attendance',
-         'Dashboard','Backup','Log'].some(function(s){ return name === s || name.startsWith('_'); })) return;
+    if (skipNames.some(function(s){ return name === s; })) return;
+    if (name.startsWith('_')) return;
     
     var data = sheet.getDataRange().getValues();
-    if (data.length < 5) return; // ต้องมีอย่างน้อย header + fullscore + 1 student
+    if (data.length < 5) return;
     
-    // ตรวจว่าเป็นชีตคะแนน: แถว 3 (index 2) ต้องมี "ลำดับ" หรือ "เลขประจำตัว"
     var row3 = data[2] || [];
     var isScoreSheet = (String(row3[0]).includes('ลำดับ') || String(row3[1]).includes('เลข'));
     if (!isScoreSheet) return;
 
-    // ตรวจว่าข้อมูลถูก save ด้วย offset ผิดหรือไม่
-    // ถ้า col 5 (F) มีค่าคะแนนเต็มในแถว 4 แต่ col 3 (D) ว่างหรือเป็น 0 → น่าจะ offset ผิด
-    var fullRow = data[3] || []; // แถว 4 (index 3) = คะแนนเต็ม
-    var col3val = fullRow[3]; // D = ควรมี fullScore s1
-    var col5val = fullRow[5]; // F = ถ้า offset ผิด จะมี fullScore s1 ตรงนี้
-    
-    var needsRepair = false;
-    // ถ้า col 5 มีค่า >0 และ col 3 ว่างหรือ 0 → offset ผิด
-    if (Number(col5val) > 0 && (!col3val || Number(col3val) === 0)) {
-      needsRepair = true;
-    }
-    
-    if (!needsRepair) {
-      // ตรวจอีกแบบ: ถ้า col 3 มีค่าแต่ดูผิดปกติ (เช่น เป็นค่าที่มากเกินไป เทียบกับ col 5)
-      // ข้ามไป — ชีตนี้อาจถูกซ่อมแล้วหรือไม่ได้ corrupt
-      return;
-    }
-    
-    Logger.log('🔧 Repairing: ' + name + ' (col5=' + col5val + ', col3=' + col3val + ')');
+    Logger.log('🔧 Repairing: ' + name);
     
     // 16 columns per term: s1,s2,s3,s4,sum14,s5,makeup,s6,s7,s8,s9,sum69,midTotal,s10,total,grade
     // Offset ผิด: term1 อยู่ที่ col 5-20, term2 อยู่ที่ col 21-36
