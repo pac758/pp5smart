@@ -2551,20 +2551,18 @@ window.ScoreEntrySystem = (function() {
       const rows1 = t1.rows || [];
       const rows2 = t2.rows || [];
 
-      // เฉลี่ยคะแนนเต็ม 9 ช่อง
+      // ใช้คะแนนเต็มของภาค 1 สำหรับแสดงผล (ไม่เฉลี่ย — ควรเหมือนกันทั้ง 2 ภาค)
       const fs1 = t1.fullScores || [];
       const fs2 = t2.fullScores || [];
-      const avgFullScores = [];
+      const displayFullScores = [];
       for (let i = 0; i < 9; i++) {
-        const v1 = Number(fs1[i]) || 0;
-        const v2 = Number(fs2[i]) || 0;
-        avgFullScores.push(Math.round(((v1 + v2) / 2) * 100) / 100);
+        // ใช้ term1 เป็นหลัก ถ้าเป็น 0 ใช้ term2
+        displayFullScores.push(Number(fs1[i]) || Number(fs2[i]) || 0);
       }
 
       // ดึง assessmentConfig สำหรับแปลงสัดส่วน
       const midMax = Number(assessmentConfig.midMax ?? 70);
       const finMax = Number(assessmentConfig.finalMax ?? 30);
-      const avgFullScoresSum = avgFullScores.reduce((a, b) => a + b, 0);
 
       // จับคู่นักเรียนจาก term1 (ใช้ term1 เป็นหลัก)
       const combinedRows = rows1.map((r1, idx) => {
@@ -2576,12 +2574,11 @@ window.ScoreEntrySystem = (function() {
           avgScores.push(Math.round(((s1 + s2) / 2) * 100) / 100);
         }
 
-        // คำนวณ mid จากสัดส่วน: (คะแนนดิบเฉลี่ย / คะแนนเต็มเฉลี่ย) * midMax
-        const avgItemsSum = avgScores.reduce((a, b) => a + b, 0);
-        let avgMid = 0;
-        if (avgFullScoresSum > 0 && avgItemsSum > 0) {
-          avgMid = Math.round((avgItemsSum / avgFullScoresSum) * midMax * 100) / 100;
-        }
+        // ✅ เฉลี่ย midTotal ที่ scale แล้ว (ไม่คำนวณจาก raw scores ใหม่ เพราะ 2 ภาคอาจมี fullScores ต่างกัน)
+        const mid1 = Number(r1.mid) || 0;
+        const mid2 = Number(r2.mid) || 0;
+        let avgMid = Math.round(((mid1 + mid2) / 2) * 100) / 100;
+        if (avgMid > midMax) avgMid = midMax;
 
         // ปลายภาคเฉลี่ย — clamp ไม่เกิน finMax
         let avgFinal = Math.round(((Number(r1.final) || 0) + (Number(r2.final) || 0)) / 2 * 100) / 100;
@@ -2646,27 +2643,25 @@ window.ScoreEntrySystem = (function() {
           <th class="col-student-code"></th>
           <th></th>`;
 
-      // คะแนนเต็ม: s1-s4
+      // คะแนนเต็ม: s1-s4 (ใช้ term1 full scores)
       for (let i = 0; i < 4; i++) {
-        html += '<th style="text-align:center; font-weight:700; color:#2e7d32;">' + avgFullScores[i] + '</th>';
+        html += '<th style="text-align:center; font-weight:700; color:#2e7d32;">' + displayFullScores[i] + '</th>';
       }
-      var afSum14 = avgFullScores[0]+avgFullScores[1]+avgFullScores[2]+avgFullScores[3];
-      html += '<th style="font-weight:700; color:#2e7d32;">' + afSum14 + '</th>';
+      var dfSum14 = displayFullScores[0]+displayFullScores[1]+displayFullScores[2]+displayFullScores[3];
+      html += '<th style="font-weight:700; color:#2e7d32;">' + dfSum14 + '</th>';
       // s5
-      html += '<th style="text-align:center; font-weight:700; color:#e65100;">' + avgFullScores[4] + '</th>';
+      html += '<th style="text-align:center; font-weight:700; color:#e65100;">' + displayFullScores[4] + '</th>';
       // s6-s9
       for (let i = 5; i < 9; i++) {
-        html += '<th style="text-align:center; font-weight:700; color:#1565c0;">' + avgFullScores[i] + '</th>';
+        html += '<th style="text-align:center; font-weight:700; color:#1565c0;">' + displayFullScores[i] + '</th>';
       }
-      var afSum69 = avgFullScores[5]+avgFullScores[6]+avgFullScores[7]+avgFullScores[8];
-      html += '<th style="font-weight:700; color:#1565c0;">' + afSum69 + '</th>';
-      var afMidTotal = afSum14 + avgFullScores[4] + afSum69;
-      html += '<th style="font-weight:700; color:#7b1fa2;">' + afMidTotal + '</th>';
-      // ปลายภาค — ใช้ finMax จาก assessmentConfig
-      var avgFinMax = Number(assessmentConfig.finalMax ?? 30);
-      var avgMidMax = Number(assessmentConfig.midMax ?? 70);
-      html += '<th style="font-weight:700; color:#f57f17;">' + avgFinMax + '</th>';
-      html += '<th style="font-weight:700; color:#c62828;">' + (avgMidMax + avgFinMax) + '</th>';
+      var dfSum69 = displayFullScores[5]+displayFullScores[6]+displayFullScores[7]+displayFullScores[8];
+      html += '<th style="font-weight:700; color:#1565c0;">' + dfSum69 + '</th>';
+      // รวมระหว่างภาค — แสดง midMax (70) เพราะ avgMid คำนวณเทียบ midMax
+      html += '<th style="font-weight:700; color:#7b1fa2;">' + midMax + '</th>';
+      // ปลายภาค
+      html += '<th style="font-weight:700; color:#f57f17;">' + finMax + '</th>';
+      html += '<th style="font-weight:700; color:#c62828;">' + (midMax + finMax) + '</th>';
       html += '<th></th></tr></thead><tbody>';
 
       sortedData.forEach((row, i) => {
