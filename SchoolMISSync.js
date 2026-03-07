@@ -105,7 +105,8 @@ function importFromSchoolMIS(csvContent, sheetName, term) {
       // บันทึกคะแนน
       var row = rowIndex + 1; // +1 เพราะ getRange เริ่มที่ 1
       
-      // SchoolMIS มี 9 ครั้ง — ตรง 1:1 กับโครงสร้างใหม่
+      // scores[0-7] = ครั้ง1-4, ครั้ง5, ครั้ง6-8 → scoreSlots[0-7]
+      // scores[8] = ครั้ง10ปลายภาค → scoreSlots[8] = s9
       var slots = cols.scoreSlots;
       var scoresCount = Math.min(csvRow.scores.length, slots.length);
       
@@ -116,12 +117,12 @@ function importFromSchoolMIS(csvContent, sheetName, term) {
         }
       }
 
-      // คำนวณรวมก่อนกลางภาค (1-4)
+      // คำนวณรวมก่อนกลางภาค (ครั้ง1-4)
       var sum14 = 0;
       for (var k = 0; k < 4; k++) sum14 += Number(csvRow.scores[k]) || 0;
       sheet.getRange(row, cols.sum14 + 1).setValue(sum14);
 
-      // คำนวณรวมหลังกลางภาค (6-8)
+      // คำนวณรวมหลังกลางภาค (ครั้ง6-8) — scores[5-7]
       var sum68 = 0;
       for (var k = 5; k < 8; k++) sum68 += Number(csvRow.scores[k]) || 0;
       sheet.getRange(row, cols.sum68 + 1).setValue(sum68);
@@ -131,7 +132,7 @@ function importFromSchoolMIS(csvContent, sheetName, term) {
         sheet.getRange(row, cols.midTotal + 1).setValue(csvRow.midtermTotal);
       }
       
-      // ครั้งที่ 9 (ปลายภาค) — อยู่ใน scores[8] แล้ว
+      // ปลายภาค (ครั้ง10) อยู่ใน scores[8] → s9 แล้ว (ผ่าน scoreSlots loop)
       
       // รวมทั้งหมด
       if (csvRow.total !== null && csvRow.total !== undefined) {
@@ -203,6 +204,9 @@ function parseSchoolMISCsv(csvContent) {
         idCard: (cols[cfg.ID_CARD] || '').trim(),
         firstname: (cols[cfg.FIRSTNAME] || '').trim(),
         lastname: (cols[cfg.LASTNAME] || '').trim(),
+        // SchoolMIS มี 10 ครั้ง (1-9 + ปลายภาค) แต่ pp5smart มี 9 ครั้ง (1-8 + ปลายภาค)
+        // scores[0-7] = ครั้ง1-4, ครั้ง5(กลางภาค), ครั้ง6-8
+        // scores[8] = ครั้ง10ปลายภาค (FINAL_SCORE) → ใส่ช่อง s9 ของ pp5smart
         scores: [
           parseNumberSync_(cols[cfg.SCORE_1]),
           parseNumberSync_(cols[cfg.SCORE_2]),
@@ -212,8 +216,9 @@ function parseSchoolMISCsv(csvContent) {
           parseNumberSync_(cols[cfg.SCORE_6]),
           parseNumberSync_(cols[cfg.SCORE_7]),
           parseNumberSync_(cols[cfg.SCORE_8]),
-          parseNumberSync_(cols[cfg.SCORE_9])
+          parseNumberSync_(cols[cfg.FINAL_SCORE])  // ครั้งที่10ปลายภาค → pp5smart s9
         ],
+        score9SchoolMIS: parseNumberSync_(cols[cfg.SCORE_9]),  // ครั้งที่9 ของ SchoolMIS (pp5smart ไม่มีช่อง)
         makeupMid: parseNumberSync_(cols[cfg.MAKEUP_MID]),
         midtermTotal: parseNumberSync_(cols[cfg.MIDTERM_TOTAL]),
         finalScore: parseNumberSync_(cols[cfg.FINAL_SCORE]),
@@ -288,7 +293,7 @@ function exportToSchoolMIS(sheetName, term) {
       // หา idCard จาก Students sheet
       var idCard = studentIdCardMap[studentId] || '';
       
-      // ดึงคะแนน 9 ช่อง ตรง 1:1 กับ SchoolMIS
+      // ดึงคะแนนจาก pp5smart scoreSlots (9 ช่อง: s1-s8 + s9=ปลายภาค)
       var slots = cols.scoreSlots;
       var scores = [];
       for (var j = 0; j < slots.length; j++) {
@@ -300,12 +305,14 @@ function exportToSchoolMIS(sheetName, term) {
       var sum5_9 = row[cols.sum68] || '';
       
       var midtermTotal = row[cols.midTotal] || '';
-      var finalScore = row[cols.s9] || '';  // ครั้งที่ 9 = ปลายภาค
+      var finalScore = row[cols.s9] || '';  // pp5smart s9 = ปลายภาค → SchoolMIS ครั้ง10ปลายภาค
       var total = row[cols.total] || '';
       var grade = row[cols.grade] || '';
       var makeup = row[cols.makeup] || '';
       
-      // สร้างแถว CSV ตามรูปแบบ SchoolMIS (ตรง 1:1)
+      // สร้างแถว CSV ตามรูปแบบ SchoolMIS (21 คอลัมน์)
+      // pp5smart ไม่มี "ครั้งที่ 9" ของ SchoolMIS → ส่งค่าว่าง
+      // pp5smart s9 (ปลายภาค) → SchoolMIS "ครั้งที่10ปลายภาค"
       var csvRow = [
         i - 3,              // ที่ (ลำดับ)
         studentId,          // รหัสนักเรียน
@@ -322,10 +329,10 @@ function exportToSchoolMIS(sheetName, term) {
         scores[5],          // ครั้งที่ 6
         scores[6],          // ครั้งที่ 7
         scores[7],          // ครั้งที่ 8
-        scores[8],          // ครั้งที่ 9
-        sum5_9,             // รวม (6-8)
+        '',                 // ครั้งที่ 9 (pp5smart ไม่มีช่องนี้)
+        sum5_9,             // รวม (5-9)
         midtermTotal,       // รวมระหว่างภาค
-        finalScore,         // ครั้งที่9 ปลายภาค
+        finalScore,         // ครั้งที่10ปลายภาค ← pp5smart s9
         total,              // ทั้งหมด
         grade               // เกรด
       ];
@@ -523,7 +530,9 @@ function exportToSchoolMIS_Average(sheetName) {
       var sum1_4 = sumScoresSync_(avgScores.slice(0, 4));
       var sum5_9 = sumScoresSync_(avgScores.slice(5, 8));
       
-      // สร้างแถว CSV ตามรูปแบบ SchoolMIS (ตรง 1:1)
+      // สร้างแถว CSV ตามรูปแบบ SchoolMIS (21 คอลัมน์)
+      // pp5smart ไม่มี "ครั้งที่ 9" ของ SchoolMIS → ส่งค่าว่าง
+      // pp5smart s9 (ปลายภาค) → SchoolMIS "ครั้งที่10ปลายภาค"
       var csvRow = [
         i - 3,                // ที่ (ลำดับ)
         studentId,            // รหัสนักเรียน
@@ -540,10 +549,10 @@ function exportToSchoolMIS_Average(sheetName) {
         avgScores[5] || '',   // ครั้งที่ 6
         avgScores[6] || '',   // ครั้งที่ 7
         avgScores[7] || '',   // ครั้งที่ 8
-        avgScores[8] || '',   // ครั้งที่ 9
-        sum5_9,               // รวม (6-8)
+        '',                   // ครั้งที่ 9 (pp5smart ไม่มีช่องนี้)
+        sum5_9,               // รวม (5-9)
         avgMid,               // รวมระหว่างภาค
-        avgFinal,             // ครั้งที่9 ปลายภาค
+        avgFinal,             // ครั้งที่10ปลายภาค ← pp5smart s9
         avgTotal,             // ทั้งหมด
         avgGrade              // เกรด
       ];
