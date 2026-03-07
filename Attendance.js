@@ -135,8 +135,19 @@ function getStudentsForAttendance(grade, classNo) {
 
   console.log(`🔍 getStudentsForAttendance: ${grade} ห้อง ${classNo}`);
 
+  // หา index ของ status column
+  const headers = data[0];
+  const statusCol = headers.indexOf ? headers.indexOf('status') : -1;
+
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
+
+    // กรองนักเรียนที่จำหน่าย/ย้ายออก/พ้นสภาพ
+    if (statusCol !== -1) {
+      const st = String(row[statusCol] || '').trim();
+      if (st === 'จำหน่าย' || st === 'ย้ายออก' || st === 'พ้นสภาพ') continue;
+    }
+
     if (String(row[5]).trim() === grade && String(row[6]).trim() === classNo) {
       const student = {
         id: String(row[0]).trim(),          // student_id

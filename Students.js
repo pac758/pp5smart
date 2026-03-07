@@ -287,11 +287,19 @@ function getStudentsByClass(grade, classNo) {
       return [];
     }
     
+    const statusIdx = headers.indexOf("status");
+
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
       const rowGrade = String(row[colIndexes.grade] || '').trim();
       const rowClass = String(row[colIndexes.classNo] || '').trim();
-      
+
+      // กรองนักเรียนที่จำหน่าย/ย้ายออก/พ้นสภาพ
+      if (statusIdx !== -1) {
+        const st = String(row[statusIdx] || '').trim();
+        if (st === 'จำหน่าย' || st === 'ย้ายออก' || st === 'พ้นสภาพ') continue;
+      }
+
       if (rowGrade === grade && rowClass === classNo) {
         result.push({
           id: String(row[colIndexes.id] || "").trim(),
