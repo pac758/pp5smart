@@ -435,129 +435,99 @@ function exportToSchoolMIS_Average(sheetName) {
     Logger.log('=== เริ่มส่งออกเฉลี่ย 2 ภาค ไป SchoolMIS ===');
     Logger.log('ชีตต้นทาง: ' + sheetName);
     
-    // 1. เปิดชีต
+    // 1. ใช้ getScoreSheetData ดึง term1/term2 ที่ detect layout ถูกแล้ว
+    var scoreData = getScoreSheetData(sheetName);
+    var t1 = scoreData.term1;
+    var t2 = scoreData.term2;
+    var rows1 = t1.rows || [];
+    var rows2 = t2.rows || [];
+    
+    // 2. ดึง assessmentConfig
+    var cfg = getAssessmentConfigFromSheet_(sheetName);
+    var midMax = cfg.midMax;
+    var finMax = cfg.finalMax;
+    
+    // 3. ดึง idCard จาก Students sheet
     var ss = SS();
-    var sheet = ss.getSheetByName(sheetName);
-    
-    if (!sheet) {
-      throw new Error('ไม่พบชีต: ' + sheetName);
-    }
-    
-    // 2. ดึงข้อมูล + detect layout อัตโนมัติ
-    var data = sheet.getDataRange().getValues();
-    var sheetLayout = detectSheetLayout_(sheet);
-    var cols1 = sheetLayout.term1;
-    var cols2 = sheetLayout.term2;
-    Logger.log('📐 Export Average layout: ' + sheetLayout.layout + ' for ' + sheetName);
-    
-    // 3. ดึงข้อมูลนักเรียนจากชีต Students เพื่อเอา idCard
     var studentsSheet = ss.getSheetByName('Students');
     var studentsData = studentsSheet ? studentsSheet.getDataRange().getValues() : [];
     var studentIdCardMap = buildStudentIdCardMapSync_(studentsData);
     
     // 4. สร้าง CSV content
     var csvLines = [];
-    
-    // Header
     csvLines.push(SCHOOLMIS_CONFIG.csvHeaders.join(','));
     
-    // Data rows (เริ่มจากแถวที่ 5, index 4)
-    for (var i = 4; i < data.length; i++) {
-      var row = data[i];
+    // 5. Loop นักเรียนจาก term1 เป็นหลัก คำนวณ avg เหมือน frontend renderCombinedTable
+    for (var idx = 0; idx < rows1.length; idx++) {
+      var r1 = rows1[idx];
+      // จับคู่ term2 โดย id
+      var r2 = null;
+      for (var k = 0; k < rows2.length; k++) {
+        if (rows2[k].id === r1.id) { r2 = rows2[k]; break; }
+      }
+      if (!r2) r2 = rows2[idx] || {};
       
-      // ข้ามแถวว่าง
-      if (!row[1]) continue;
-      
-      var studentId = String(row[1]).trim();
-      var fullName = String(row[2]).trim();
+      var studentId = String(r1.id || '').trim();
+      var fullName = String(r1.name || '').trim();
       var nameParts = splitThaiNameSync_(fullName);
       var idCard = studentIdCardMap[studentId] || '';
       
-      // ดึงคะแนนทั้ง 2 ภาค แล้วเฉลี่ย (ใช้ scoreSlots — รองรับ -1 สำหรับ s9 ที่ไม่มี)
-      var slots1 = cols1.scoreSlots;
-      var slots2 = cols2.scoreSlots;
-      
-      // 🔍 Debug: log student แรก
-      if (i === 4) {
-        Logger.log('🔍 DEBUG Export Avg Student1: id=' + studentId);
-        Logger.log('  slots1=' + JSON.stringify(slots1));
-        Logger.log('  slots2=' + JSON.stringify(slots2));
-        Logger.log('  cols1: midTotal=' + cols1.midTotal + ' s10=' + cols1.s10 + ' total=' + cols1.total + ' grade=' + cols1.grade);
-        Logger.log('  cols2: midTotal=' + cols2.midTotal + ' s10=' + cols2.s10 + ' total=' + cols2.total + ' grade=' + cols2.grade);
-        for (var d = 0; d < slots1.length; d++) {
-          var v1 = slots1[d] >= 0 ? row[slots1[d]] : 'N/A';
-          var v2 = slots2[d] >= 0 ? row[slots2[d]] : 'N/A';
-          Logger.log('  slot[' + d + ']: col1=' + slots1[d] + '→' + v1 + ' | col2=' + slots2[d] + '→' + v2);
-        }
-        Logger.log('  mid1=row[' + cols1.midTotal + ']=' + row[cols1.midTotal] + ' | mid2=row[' + cols2.midTotal + ']=' + row[cols2.midTotal]);
-        Logger.log('  fin1=row[' + cols1.s10 + ']=' + row[cols1.s10] + ' | fin2=row[' + cols2.s10 + ']=' + row[cols2.s10]);
-        Logger.log('  tot1=row[' + cols1.total + ']=' + row[cols1.total] + ' | tot2=row[' + cols2.total + ']=' + row[cols2.total]);
-      }
+      // เฉลี่ย scores (9 ช่อง: s1-s4, s5, s6-s8, s9)
+      var sc1 = r1.scores || [];
+      var sc2 = r2.scores || [];
       var avgScores = [];
-      for (var j = 0; j < slots1.length; j++) {
-        if (slots1[j] < 0 || slots2[j] < 0) { avgScores.push(''); continue; }
-        var s1 = Number(row[slots1[j]]) || 0;
-        var s2 = Number(row[slots2[j]]) || 0;
-        var hasT1 = (row[slots1[j]] !== '' && row[slots1[j]] !== null && row[slots1[j]] !== undefined);
-        var hasT2 = (row[slots2[j]] !== '' && row[slots2[j]] !== null && row[slots2[j]] !== undefined);
-        if (hasT1 && hasT2) {
-          avgScores.push(Math.round(((s1 + s2) / 2) * 100) / 100);
-        } else if (hasT1) {
-          avgScores.push(s1);
-        } else if (hasT2) {
-          avgScores.push(s2);
-        } else {
-          avgScores.push('');
-        }
+      for (var j = 0; j < 9; j++) {
+        var v1 = Number(sc1[j]) || 0;
+        var v2 = Number(sc2[j]) || 0;
+        var has1 = (v1 > 0);
+        var has2 = (v2 > 0);
+        if (has1 && has2) avgScores.push(Math.round(((v1 + v2) / 2) * 100) / 100);
+        else if (has1) avgScores.push(v1);
+        else if (has2) avgScores.push(v2);
+        else avgScores.push('');
       }
       
-      // เฉลี่ยรวมระหว่างภาค
-      var mid1 = Number(row[cols1.midTotal]) || 0;
-      var mid2 = Number(row[cols2.midTotal]) || 0;
-      var hasMid1 = (row[cols1.midTotal] !== '' && row[cols1.midTotal] !== null && row[cols1.midTotal] !== undefined);
-      var hasMid2 = (row[cols2.midTotal] !== '' && row[cols2.midTotal] !== null && row[cols2.midTotal] !== undefined);
+      // เฉลี่ย mid, final, total
+      var mid1 = Number(r1.mid) || 0;
+      var mid2 = Number(r2.mid) || 0;
       var avgMid = '';
-      if (hasMid1 && hasMid2) avgMid = Math.round(((mid1 + mid2) / 2) * 100) / 100;
-      else if (hasMid1) avgMid = mid1;
-      else if (hasMid2) avgMid = mid2;
+      if (mid1 > 0 && mid2 > 0) avgMid = Math.round(((mid1 + mid2) / 2) * 100) / 100;
+      else if (mid1 > 0) avgMid = mid1;
+      else if (mid2 > 0) avgMid = mid2;
+      if (avgMid !== '' && avgMid > midMax) avgMid = midMax;
       
-      // เฉลี่ยครั้งที่ 10 (ปลายภาค)
-      var fin1 = Number(row[cols1.s10]) || 0;
-      var fin2 = Number(row[cols2.s10]) || 0;
-      var hasFin1 = (row[cols1.s10] !== '' && row[cols1.s10] !== null && row[cols1.s10] !== undefined);
-      var hasFin2 = (row[cols2.s10] !== '' && row[cols2.s10] !== null && row[cols2.s10] !== undefined);
+      var fin1 = Number(r1.final) || 0;
+      var fin2 = Number(r2.final) || 0;
       var avgFinal = '';
-      if (hasFin1 && hasFin2) avgFinal = Math.round(((fin1 + fin2) / 2) * 100) / 100;
-      else if (hasFin1) avgFinal = fin1;
-      else if (hasFin2) avgFinal = fin2;
+      if (fin1 > 0 && fin2 > 0) avgFinal = Math.round(((fin1 + fin2) / 2) * 100) / 100;
+      else if (fin1 > 0) avgFinal = fin1;
+      else if (fin2 > 0) avgFinal = fin2;
+      if (avgFinal !== '' && avgFinal > finMax) avgFinal = finMax;
       
-      // เฉลี่ยรวมทั้งหมด
-      var tot1 = Number(row[cols1.total]) || 0;
-      var tot2 = Number(row[cols2.total]) || 0;
-      var hasTot1 = (row[cols1.total] !== '' && row[cols1.total] !== null && row[cols1.total] !== undefined);
-      var hasTot2 = (row[cols2.total] !== '' && row[cols2.total] !== null && row[cols2.total] !== undefined);
       var avgTotal = '';
-      if (hasTot1 && hasTot2) avgTotal = Math.round(((tot1 + tot2) / 2) * 100) / 100;
-      else if (hasTot1) avgTotal = tot1;
-      else if (hasTot2) avgTotal = tot2;
+      if (avgMid !== '' || avgFinal !== '') {
+        avgTotal = Math.round(((Number(avgMid) || 0) + (Number(avgFinal) || 0)) * 100) / 100;
+      }
       
-      // เฉลี่ยเกรด
-      var g1 = Number(row[cols1.grade]) || 0;
-      var g2 = Number(row[cols2.grade]) || 0;
-      var hasG1 = (row[cols1.grade] !== '' && row[cols1.grade] !== null && row[cols1.grade] !== undefined);
-      var hasG2 = (row[cols2.grade] !== '' && row[cols2.grade] !== null && row[cols2.grade] !== undefined);
       var avgGrade = '';
-      if (hasG1 && hasG2) avgGrade = Math.round(((g1 + g2) / 2) * 100) / 100;
-      else if (hasG1) avgGrade = g1;
-      else if (hasG2) avgGrade = g2;
+      if (avgTotal !== '' && avgTotal > 0) {
+        avgGrade = calculateFinalGrade(avgTotal);
+      }
       
-      // คำนวณรวม (1-4) และ (6-9) จากค่าเฉลี่ย
+      // sum (1-4) และ (6-9)
       var sum1_4 = sumScoresSync_(avgScores.slice(0, 4));
       var sum5_9 = sumScoresSync_(avgScores.slice(5, 9));
       
-      // สร้างแถว CSV ตามรูปแบบ SchoolMIS (21 คอลัมน์) — ตรง 1:1
+      // Debug student แรก
+      if (idx === 0) {
+        Logger.log('🔍 Student1: ' + studentId + ' ' + fullName);
+        Logger.log('  scores_avg=' + JSON.stringify(avgScores));
+        Logger.log('  mid=' + avgMid + ' fin=' + avgFinal + ' total=' + avgTotal + ' grade=' + avgGrade);
+      }
+      
+      // สร้างแถว CSV ตามรูปแบบ SchoolMIS (21 คอลัมน์)
       var csvRow = [
-        i - 3,                // ที่ (ลำดับ)
+        idx + 1,              // ที่ (ลำดับ)
         studentId,            // รหัสนักเรียน
         idCard,               // เลข ปชช.
         nameParts.firstname,  // ชื่อ
@@ -567,7 +537,7 @@ function exportToSchoolMIS_Average(sheetName) {
         avgScores[2] || '',   // ครั้งที่ 3
         avgScores[3] || '',   // ครั้งที่ 4
         sum1_4,               // รวม (1-4)
-        avgScores[4] || '',   // ครั้งที่ 5 (กลางภาค)
+        avgScores[4] || '',   // ครั้งที่ 5
         '',                   // แก้ตัวกลางภาค
         avgScores[5] || '',   // ครั้งที่ 6
         avgScores[6] || '',   // ครั้งที่ 7
@@ -586,7 +556,6 @@ function exportToSchoolMIS_Average(sheetName) {
     
     var csvContent = csvLines.join('\n');
     
-    // 5. บันทึกเป็นไฟล์ใน Drive
     var fileName = sheetName + '_เฉลี่ย2ภาค_SchoolMIS_' + Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyyMMdd_HHmmss') + '.csv';
     var bom = '\uFEFF';
     var csvWithBom = bom + csvContent;

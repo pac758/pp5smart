@@ -1714,7 +1714,7 @@ function executeExport() {
       .withFailureHandler(function(error) {
         showSyncStatus('เกิดข้อผิดพลาด: ' + (error.message || error), 'error');
       })
-      .exportToSchoolMIS_Average_Base64(sheetName);
+      .exportToSchoolMIS_Base64(sheetName, term);
   } catch (e) {
     showSyncStatus('เกิดข้อผิดพลาด: ' + e.message, 'error');
   }
