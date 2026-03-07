@@ -598,11 +598,17 @@
         }
     }
 
+    // Debounce เพื่อป้องกัน grade+class change event ยิง loadDailyStudents 2 ครั้งติดกัน
+    let _autoLoadTimer = null;
     function tryAutoLoadDaily() {
-      const date = document.getElementById('attendanceDate').value;
-      const grade = document.getElementById('gradeSelect').value;
-      const classNo = document.getElementById('classSelect').value;
-      if (date && grade && classNo) loadDailyStudents();
+      if (_autoLoadTimer) clearTimeout(_autoLoadTimer);
+      _autoLoadTimer = setTimeout(function() {
+        _autoLoadTimer = null;
+        const date = document.getElementById('attendanceDate').value;
+        const grade = document.getElementById('gradeSelect').value;
+        const classNo = document.getElementById('classSelect').value;
+        if (date && grade && classNo) loadDailyStudents();
+      }, 150); // รอ 150ms ให้ event ทั้งหมด fire เสร็จก่อน
     }
 
     // --- Core Functions ---
@@ -618,12 +624,6 @@
       if (!Validator.isValidDateFormat(date) || !Validator.isValidGrade(grade) || !Validator.isValidClassNo(classNo)) return;
 
       const key = `${grade}-${classNo}-${date}`;
-      
-      // ป้องกันการโหลดซ้ำ key เดียวกันที่กำลังโหลดอยู่
-      if (State.isLoadingStudents && State.lastLoadedKey === key) {
-        console.log('⚠️ Already loading same key:', key);
-        return;
-      }
 
       try {
         // Force clear previous loading state (ยกเลิก request เก่าทันที)
