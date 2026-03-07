@@ -8,21 +8,17 @@
 const INSTALLER_VERSION = '1.0.0';
 
 // Sheet names ที่ต้องสร้างใน Spreadsheet ใหม่
-const REQUIRED_SHEETS = [
+// ชีตถาวร (ไม่ขึ้นกับปี)
+const PERMANENT_SHEETS = [
   'global_settings',
   'Users',
   'Students',
   'รายวิชา',
-  'SCORES_WAREHOUSE',
   'Holidays',
-  'HomeroomTeachers',
-  'การประเมินอ่านคิดเขียน',
-  'การประเมินคุณลักษณะ',
-  'การประเมินกิจกรรมพัฒนาผู้เรียน',
-  'การประเมินสมรรถนะ',
-  'AttendanceLog',
-  'ความเห็นครู'
+  'HomeroomTeachers'
 ];
+// ชีตรายปี — จะสร้างด้วยชื่อ baseName_ปี (Plan B)
+// S_YEARLY_SHEETS อยู่ใน settings_unified.js
 
 // ============================================================
 // 🔍 CHECK: ระบบถูกติดตั้งแล้วหรือยัง
@@ -46,13 +42,20 @@ function getSetupStatus() {
       return { installed: false, message: 'ยังไม่ได้ตั้งค่าชื่อโรงเรียน' };
     }
     
-    // ตรวจสอบชีทที่จำเป็นอื่นๆ
-    const requiredSheets = ['Students', 'Users', 'รายวิชา', 'SCORES_WAREHOUSE'];
-    const existingSheets = ss.getSheets().map(s => s.getName());
-    const missing = requiredSheets.filter(name => !existingSheets.includes(name));
+    // ตรวจสอบชีทที่จำเป็น (รองรับชื่อชีตรายปี Plan B)
+    var requiredPermanent = ['Students', 'Users', 'รายวิชา'];
+    var existingSheets = ss.getSheets().map(function(s) { return s.getName(); });
+    var missing = requiredPermanent.filter(function(name) { return !existingSheets.includes(name); });
+    
+    // ตรวจชีตรายปี — อนุญาตทั้งชื่อเดิมและชื่อ + suffix ปี
+    var yearlyBases = (typeof S_YEARLY_SHEETS !== 'undefined') ? S_YEARLY_SHEETS : ['SCORES_WAREHOUSE'];
+    yearlyBases.forEach(function(base) {
+      var found = existingSheets.some(function(n) { return n === base || n.indexOf(base + '_') === 0; });
+      if (!found) missing.push(base);
+    });
     
     if (missing.length > 0) {
-      return { installed: false, message: `ขาดชีทที่จำเป็น: ${missing.join(', ')}` };
+      return { installed: false, message: 'ขาดชีทที่จำเป็น: ' + missing.join(', ') };
     }
     
     // ตรวจสอบข้อมูลนักเรียน
@@ -179,15 +182,31 @@ function createSchoolSpreadsheet_(formData) {
 
 function setupSheets_(ss, formData) {
   // ลบ Sheet1 เดิม (default)
-  const defaultSheet = ss.getSheetByName('Sheet1') || ss.getSheetByName('แผ่น1');
+  var defaultSheet = ss.getSheetByName('Sheet1') || ss.getSheetByName('แผ่น1');
+  var academicYear = String(formData.academicYear || '');
 
-  // สร้าง Sheets ทั้งหมด
-  REQUIRED_SHEETS.forEach(function(name) {
-    let sheet = ss.getSheetByName(name);
+  // 1. สร้างชีตถาวร
+  PERMANENT_SHEETS.forEach(function(name) {
+    var sheet = ss.getSheetByName(name);
     if (!sheet) {
       sheet = ss.insertSheet(name);
     }
     setupSheetHeaders_(sheet, name, formData);
+  });
+
+  // 2. สร้างชีตรายปี — ใช้ชื่อ baseName_ปี (Plan B)
+  var yearlyBases = (typeof S_YEARLY_SHEETS !== 'undefined') ? S_YEARLY_SHEETS : [
+    'SCORES_WAREHOUSE', 'การประเมินอ่านคิดเขียน', 'การประเมินคุณลักษณะ',
+    'การประเมินกิจกรรมพัฒนาผู้เรียน', 'การประเมินสมรรถนะ',
+    'AttendanceLog', 'ความเห็นครู'
+  ];
+  yearlyBases.forEach(function(baseName) {
+    var sheetName = academicYear ? baseName + '_' + academicYear : baseName;
+    var sheet = ss.getSheetByName(sheetName);
+    if (!sheet) {
+      sheet = ss.insertSheet(sheetName);
+    }
+    setupSheetHeaders_(sheet, baseName, formData);
   });
 
   // ลบ default sheet
@@ -203,17 +222,19 @@ function setupSheetHeaders_(sheet, sheetName, formData) {
     'รายวิชา': [['ชั้น','รหัสวิชา','ชื่อวิชา','ชั่วโมง/ปี','ประเภทวิชา','ครูผู้สอน','คะแนนระหว่างปี','คะแนนปลายปี']],
     'Holidays': [['date','description','type']],
     'global_settings': [['key','value','updatedAt']],
-    'SCORES_WAREHOUSE': [['studentId','subjectCode','subjectName','grade','class_no','semester','academicYear','score1','score2','score3','midterm','final','total','gradeResult','teacherUsername','updatedAt']],
+    'SCORES_WAREHOUSE': [['student_id','grade','class_no','subject_code','subject_name','subject_type','hours','term1_total','term2_total','average','final_grade','sheet_name','academic_year','updated_at']],
     'HomeroomTeachers': [['grade','classNo','teacherName']],
     'การประเมินอ่านคิดเขียน': [['รหัสนักเรียน','ชื่อ-นามสกุล','ชั้น','ห้อง','ภาษาไทย','คณิตศาสตร์','วิทยาศาสตร์','สังคมศึกษา','สุขศึกษา','ศิลปะ','การงาน','ภาษาอังกฤษ','สรุปผลการประเมิน','วันที่บันทึก','ผู้บันทึก']],
     'การประเมินคุณลักษณะ': [['รหัสนักเรียน','ชื่อ-นามสกุล','ชั้น','ห้อง','รักชาติ_ศาสน์_กษัตริย์','ซื่อสัตย์สุจริต','มีวินัย','ใฝ่เรียนรู้','อยู่อย่างพอเพียง','มุ่งมั่นในการทำงาน','รักความเป็นไทย','มีจิตสาธารณะ','คะแนนรวม','คะแนนเฉลี่ย','ผลการประเมิน','วันที่บันทึก','ผู้บันทึก']],
     'การประเมินกิจกรรมพัฒนาผู้เรียน': [['รหัสนักเรียน','ชื่อ-นามสกุล','ชั้น','ห้อง','กิจกรรมแนะแนว','ลูกเสือ_เนตรนารี','ชุมนุม','เพื่อสังคมและสาธารณประโยชน์','รวมกิจกรรม','วันที่บันทึก','ผู้บันทึก']],
     'การประเมินสมรรถนะ': [['รหัสนักเรียน','ชื่อ-นามสกุล','ชั้น','ห้อง']],
-    'AttendanceLog': [['timestamp','student_id','grade','classNo','date','status','recorder']],
-    'ความเห็นครู': [['รหัสนักเรียน','ชื่อ-นามสกุล','ชั้น','ห้อง','ความเห็น','วันที่บันทึก','ผู้บันทึก']]
+    'AttendanceLog': [['timestamp','date','grade','class','updated_count','user_email','details']],
+    'ความเห็นครู': [['รหัสนักเรียน','ชื่อ-นามสกุล','ชั้น','ห้อง','ความเห็นครู','วันที่บันทึก','ผู้บันทึก']]
   };
 
-  const headers = headerMap[sheetName];
+  // ใช้ baseName เป็น key (ไม่ใช่ชื่อชีตจริงที่อาจมี suffix ปี)
+  var baseName = sheetName.replace(/_\d{4}$/, '');
+  var headers = headerMap[baseName];
   if (headers) {
     sheet.getRange(1, 1, 1, headers[0].length).setValues(headers);
     sheet.getRange(1, 1, 1, headers[0].length)
