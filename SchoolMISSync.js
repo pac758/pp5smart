@@ -304,7 +304,7 @@ function exportToSchoolMIS(sheetName, term) {
       var slots = cols.scoreSlots;
       var scores = [];
       for (var j = 0; j < slots.length; j++) {
-        scores.push(slots[j] >= 0 ? (row[slots[j]] || '') : '');
+        scores.push(slots[j] >= 0 ? (row[slots[j]] || 0) : 0);
       }
       
       // รวม (1-4) และ (6-9) อ่านจากชีตโดยตรง
@@ -484,7 +484,7 @@ function exportToSchoolMIS_Average(sheetName) {
         if (has1 && has2) avgScores.push(Math.round(((v1 + v2) / 2) * 100) / 100);
         else if (has1) avgScores.push(v1);
         else if (has2) avgScores.push(v2);
-        else avgScores.push('');
+        else avgScores.push(0);
       }
       
       // เฉลี่ย mid, final, total
