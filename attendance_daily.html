@@ -618,17 +618,25 @@
       if (!Validator.isValidDateFormat(date) || !Validator.isValidGrade(grade) || !Validator.isValidClassNo(classNo)) return;
 
       const key = `${grade}-${classNo}-${date}`;
-      if (State.isLoadingStudents && State.lastLoadedKey === key) return;
+      
+      // ป้องกันการโหลดซ้ำ key เดียวกันที่กำลังโหลดอยู่
+      if (State.isLoadingStudents && State.lastLoadedKey === key) {
+        console.log('⚠️ Already loading same key:', key);
+        return;
+      }
 
       try {
-        // Clear previous loading timeout
+        // Force clear previous loading state (ยกเลิก request เก่าทันที)
         if (State.loadingTimeout) {
           clearTimeout(State.loadingTimeout);
           State.loadingTimeout = null;
         }
-
+        
+        // Reset state ทันทีเมื่อเริ่ม load ใหม่
         State.isLoadingStudents = true;
         State.lastLoadedKey = key;
+        
+        console.log('🔄 Loading students:', key);
         showStatusMessage('⏳ กำลังโหลดข้อมูล...', 'loading');
 
         // Set timeout to prevent infinite loading
@@ -648,13 +656,22 @@
             google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)
                 .getStudentsForAttendance(grade, classNo);
         });
-        if (token !== dailyLoadRequestToken) return;
+        
+        // ถ้า token ไม่ตรง แสดงว่ามี request ใหม่แล้ว → ยกเลิก request นี้
+        if (token !== dailyLoadRequestToken) {
+          console.log('❌ Request cancelled (new request started):', key);
+          return;
+        }
 
         const saved = await new Promise((resolve) => {
             google.script.run.withSuccessHandler(resolve).withFailureHandler(() => resolve({records:{}}))
                 .getSavedAttendance(grade, classNo, d.getFullYear(), d.getMonth());
         });
-        if (token !== dailyLoadRequestToken) return;
+        
+        if (token !== dailyLoadRequestToken) {
+          console.log('❌ Request cancelled (new request started):', key);
+          return;
+        }
 
         const records = saved?.records || {};
         window.dailyStudents = (list || []).map(s => {
@@ -689,8 +706,11 @@
             
             State.isLoadingStudents = false;
             State.lastLoadedKey = null;
+            console.log('✅ Loading complete, state cleared:', key);
             setTimeout(hideStatusMessage, 2000);
             updateEmptyState();
+        } else {
+            console.log('⚠️ Skipped state cleanup (outdated request):', key);
         }
       }
     }
