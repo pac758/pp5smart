@@ -1778,18 +1778,26 @@
         }
       }
 
-      // สร้าง dropdown ปีแบบ dynamic
+      // สร้าง dropdown ปีแบบ dynamic (เริ่มที่ 2568 ไปข้างหน้า 10 ปี)
       function fillYearDropdown() {
         const yearSelect = document.getElementById('table-year');
         const currentYear = new Date().getFullYear() + 543; // ปี พ.ศ. ปัจจุบัน
+        const startYear = 2568; // ปีเริ่มต้นของระบบ
+        const endYear = startYear + 10; // ไปข้างหน้า 10 ปี
         
-        // สร้างตัวเลือกจากปีปัจจุบันย้อนหลัง 5 ปี
-        for (let i = 0; i <= 5; i++) {
-          const year = currentYear - i;
+        // สร้างตัวเลือกจาก 2568 ถึง 2578
+        for (let year = startYear; year <= endYear; year++) {
           const option = document.createElement('option');
           option.value = year;
           option.textContent = year;
-          if (i === 0) option.selected = true; // เลือกปีปัจจุบันเป็นค่าเริ่มต้น
+          // เลือกปีปัจจุบันเป็นค่าเริ่มต้น (ถ้าอยู่ในช่วง)
+          if (year === currentYear && currentYear >= startYear && currentYear <= endYear) {
+            option.selected = true;
+          } else if (currentYear < startYear && year === startYear) {
+            option.selected = true; // ถ้าปีปัจจุบันน้อยกว่า 2568 ให้เลือก 2568
+          } else if (currentYear > endYear && year === endYear) {
+            option.selected = true; // ถ้าปีปัจจุบันมากกว่า 2578 ให้เลือก 2578
+          }
           yearSelect.appendChild(option);
         }
       }
