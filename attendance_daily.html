@@ -608,7 +608,7 @@
         const grade = document.getElementById('gradeSelect').value;
         const classNo = document.getElementById('classSelect').value;
         if (date && grade && classNo) loadDailyStudents();
-      }, 150); // รอ 150ms ให้ event ทั้งหมด fire เสร็จก่อน
+      }, 300); // รอ 300ms ให้ event ทั้งหมด fire เสร็จก่อน
     }
 
     // --- Core Functions ---
@@ -697,20 +697,22 @@
         renderDailyStudents();
         updateSummary();
       } finally {
+        // Clear loading timeout
+        if (State.loadingTimeout) {
+          clearTimeout(State.loadingTimeout);
+          State.loadingTimeout = null;
+        }
+
+        // Always clear loading state — request ใหม่จะ set state ใหม่เองอยู่แล้ว
+        State.isLoadingStudents = false;
+        State.lastLoadedKey = null;
+
         if (token === dailyLoadRequestToken) {
-            // Clear loading timeout
-            if (State.loadingTimeout) {
-              clearTimeout(State.loadingTimeout);
-              State.loadingTimeout = null;
-            }
-            
-            State.isLoadingStudents = false;
-            State.lastLoadedKey = null;
             console.log('✅ Loading complete, state cleared:', key);
             setTimeout(hideStatusMessage, 2000);
             updateEmptyState();
         } else {
-            console.log('⚠️ Skipped state cleanup (outdated request):', key);
+            console.log('⚠️ Outdated request finished:', key);
         }
       }
     }
