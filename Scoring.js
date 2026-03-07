@@ -2875,6 +2875,160 @@ function migrateScoresFromBackup() {
 }
 
 /**
+ * 🔧 ซ่อมชีตคะแนนทั้งหมดที่ถูก save ด้วย offset ผิด (+2)
+ * ข้อมูลเดิมอยู่ที่ col 5-20 (term1) และ 21-36 (term2)
+ * ต้องย้ายมาที่ col 3-18 (term1) และ 19-34 (term2)
+ * 
+ * เรียกจาก Apps Script Editor → Run → repairScoreSheetOffset
+ */
+function repairScoreSheetOffset() {
+  var ss = SS();
+  var sheets = ss.getSheets();
+  var repaired = 0;
+  var log = [];
+
+  // ชีตคะแนนมี header แถว 3 = "ลำดับ","เลขประจำตัว","ชื่อ - สกุล",...
+  sheets.forEach(function(sheet) {
+    var name = sheet.getName();
+    // ข้ามชีตระบบ
+    if (['Students','Teachers','Users','รายวิชา','Settings','Holidays','Attendance',
+         'Dashboard','Backup','Log'].some(function(s){ return name === s || name.startsWith('_'); })) return;
+    
+    var data = sheet.getDataRange().getValues();
+    if (data.length < 5) return; // ต้องมีอย่างน้อย header + fullscore + 1 student
+    
+    // ตรวจว่าเป็นชีตคะแนน: แถว 3 (index 2) ต้องมี "ลำดับ" หรือ "เลขประจำตัว"
+    var row3 = data[2] || [];
+    var isScoreSheet = (String(row3[0]).includes('ลำดับ') || String(row3[1]).includes('เลข'));
+    if (!isScoreSheet) return;
+
+    // ตรวจว่าข้อมูลถูก save ด้วย offset ผิดหรือไม่
+    // ถ้า col 5 (F) มีค่าคะแนนเต็มในแถว 4 แต่ col 3 (D) ว่างหรือเป็น 0 → น่าจะ offset ผิด
+    var fullRow = data[3] || []; // แถว 4 (index 3) = คะแนนเต็ม
+    var col3val = fullRow[3]; // D = ควรมี fullScore s1
+    var col5val = fullRow[5]; // F = ถ้า offset ผิด จะมี fullScore s1 ตรงนี้
+    
+    var needsRepair = false;
+    // ถ้า col 5 มีค่า >0 และ col 3 ว่างหรือ 0 → offset ผิด
+    if (Number(col5val) > 0 && (!col3val || Number(col3val) === 0)) {
+      needsRepair = true;
+    }
+    
+    if (!needsRepair) {
+      // ตรวจอีกแบบ: ถ้า col 3 มีค่าแต่ดูผิดปกติ (เช่น เป็นค่าที่มากเกินไป เทียบกับ col 5)
+      // ข้ามไป — ชีตนี้อาจถูกซ่อมแล้วหรือไม่ได้ corrupt
+      return;
+    }
+    
+    Logger.log('🔧 Repairing: ' + name + ' (col5=' + col5val + ', col3=' + col3val + ')');
+    
+    // 16 columns per term: s1,s2,s3,s4,sum14,s5,makeup,s6,s7,s8,s9,sum69,midTotal,s10,total,grade
+    // Offset ผิด: term1 อยู่ที่ col 5-20, term2 อยู่ที่ col 21-36
+    // Offset ถูก: term1 อยู่ที่ col 3-18, term2 อยู่ที่ col 19-34
+    
+    // ดึง assessment config เพื่อ recalc midTotal/total/grade
+    var cfg = getAssessmentConfigFromSheet_(name);
+    var midMax = cfg.midMax;
+    var finMax = cfg.finalMax;
+    
+    var lastRow = sheet.getLastRow();
+    
+    // --- Repair term1: shift col 5-20 → col 3-18 ---
+    for (var r = 4; r <= lastRow; r++) { // แถว 4 (fullScore) + แถว 5+ (students)
+      var rowData = sheet.getRange(r, 1, 1, 37).getValues()[0]; // อ่านทั้งแถว
+      
+      // อ่านจาก col ผิด (5-20, 0-indexed)
+      var wrongT1 = [];
+      for (var c = 5; c <= 20; c++) {
+        wrongT1.push(rowData[c]);
+      }
+      // เขียนไปที่ col ถูก (3-18, 0-indexed → getRange col 4-19, 1-indexed)
+      for (var c = 0; c < 16; c++) {
+        sheet.getRange(r, 3 + c + 1).setValue(wrongT1[c]); // col 3+c (0-indexed) → getRange 3+c+1
+      }
+      
+      // อ่านจาก col ผิด term2 (21-36, 0-indexed)
+      var wrongT2 = [];
+      for (var c = 21; c <= 36; c++) {
+        wrongT2.push(rowData[c]);
+      }
+      // เขียนไปที่ col ถูก term2 (19-34, 0-indexed → getRange col 20-35, 1-indexed)
+      for (var c = 0; c < 16; c++) {
+        sheet.getRange(r, 19 + c + 1).setValue(wrongT2[c]); // col 19+c (0-indexed) → getRange 19+c+1
+      }
+      
+      // Clear col ที่เหลือ (35-36 เดิมอาจมีข้อมูล corrupt)
+      sheet.getRange(r, 36).setValue(''); // col 35 (0-indexed) → getRange 36
+      sheet.getRange(r, 37).setValue(''); // col 36 (0-indexed) → getRange 37
+    }
+    
+    // --- Recalculate midTotal, total, grade, yearAvg for students ---
+    for (var r = 5; r <= lastRow; r++) {
+      var rowData = sheet.getRange(r, 1, 1, 37).getValues()[0];
+      if (!rowData[1]) continue; // skip empty rows
+      
+      // Term1 recalc
+      var t1scores = [rowData[3],rowData[4],rowData[5],rowData[6],rowData[8],rowData[10],rowData[11],rowData[12],rowData[13]];
+      var t1fullRow = sheet.getRange(4, 1, 1, 37).getValues()[0];
+      var t1fulls = [t1fullRow[3],t1fullRow[4],t1fullRow[5],t1fullRow[6],t1fullRow[8],t1fullRow[10],t1fullRow[11],t1fullRow[12],t1fullRow[13]];
+      var t1fullSum = t1fulls.reduce(function(a,b){ return a + (Number(b)||0); }, 0);
+      
+      var t1sum14 = (Number(rowData[3])||0)+(Number(rowData[4])||0)+(Number(rowData[5])||0)+(Number(rowData[6])||0);
+      var t1sum69 = (Number(rowData[10])||0)+(Number(rowData[11])||0)+(Number(rowData[12])||0)+(Number(rowData[13])||0);
+      sheet.getRange(r, 8).setValue(t1sum14);  // sum14 col7 → getRange 8
+      sheet.getRange(r, 15).setValue(t1sum69); // sum69 col14 → getRange 15
+      
+      var t1itemsSum = t1scores.reduce(function(a,b){ return a + (Number(b)||0); }, 0);
+      var t1mid = (t1fullSum > 0 && t1itemsSum > 0) ? Math.round((t1itemsSum / t1fullSum) * midMax) : 0;
+      var t1s10 = Number(rowData[16]) || 0;
+      var t1total = t1mid + t1s10;
+      sheet.getRange(r, 16).setValue(t1mid);   // midTotal col15 → getRange 16
+      sheet.getRange(r, 18).setValue(t1total); // total col17 → getRange 18
+      sheet.getRange(r, 19).setValue(calculateFinalGrade(t1total)); // grade col18 → getRange 19
+      
+      // Term2 recalc
+      var t2scores = [rowData[19],rowData[20],rowData[21],rowData[22],rowData[24],rowData[26],rowData[27],rowData[28],rowData[29]];
+      var t2fullRow = sheet.getRange(4, 1, 1, 37).getValues()[0];
+      var t2fulls = [t2fullRow[19],t2fullRow[20],t2fullRow[21],t2fullRow[22],t2fullRow[24],t2fullRow[26],t2fullRow[27],t2fullRow[28],t2fullRow[29]];
+      var t2fullSum = t2fulls.reduce(function(a,b){ return a + (Number(b)||0); }, 0);
+      
+      var t2sum14 = (Number(rowData[19])||0)+(Number(rowData[20])||0)+(Number(rowData[21])||0)+(Number(rowData[22])||0);
+      var t2sum69 = (Number(rowData[26])||0)+(Number(rowData[27])||0)+(Number(rowData[28])||0)+(Number(rowData[29])||0);
+      sheet.getRange(r, 24).setValue(t2sum14); // sum14 col23 → getRange 24
+      sheet.getRange(r, 31).setValue(t2sum69); // sum69 col30 → getRange 31
+      
+      var t2itemsSum = t2scores.reduce(function(a,b){ return a + (Number(b)||0); }, 0);
+      var t2mid = (t2fullSum > 0 && t2itemsSum > 0) ? Math.round((t2itemsSum / t2fullSum) * midMax) : 0;
+      var t2s10 = Number(rowData[32]) || 0;
+      var t2total = t2mid + t2s10;
+      sheet.getRange(r, 32).setValue(t2mid);   // midTotal col31 → getRange 32
+      sheet.getRange(r, 34).setValue(t2total); // total col33 → getRange 34
+      sheet.getRange(r, 35).setValue(calculateFinalGrade(t2total)); // grade col34 → getRange 35
+      
+      // Year average
+      var avg = 0, fg = '';
+      if (t1total > 0 && t2total > 0) {
+        avg = Math.round((t1total + t2total) / 2);
+        fg = calculateFinalGrade(avg);
+      } else if (t1total > 0 || t2total > 0) {
+        avg = t1total > 0 ? t1total : t2total;
+        fg = calculateFinalGrade(avg);
+      }
+      sheet.getRange(r, 36).setValue(avg);  // yearAvg col35 → getRange 36
+      sheet.getRange(r, 37).setValue(fg);   // yearGrade col36 → getRange 37
+    }
+    
+    log.push(name);
+    repaired++;
+    Logger.log('  ✅ Repaired: ' + name);
+  });
+  
+  var msg = '✅ ซ่อมชีตสำเร็จ ' + repaired + ' ชีต: ' + log.join(', ');
+  Logger.log(msg);
+  return msg;
+}
+
+/**
  * ย้ายคะแนนเต็มของ 1 เทอม (แถว 4)
  */
 function migrateTermFullScores_(targetSheet, bFullRow, oldCols, newCols) {
