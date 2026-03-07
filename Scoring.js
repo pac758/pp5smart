@@ -3093,6 +3093,128 @@ function recalcAllScoreSheets() {
 }
 
 /**
+ * 🔧 Restore คะแนนปลายภาค (s10) จาก BACKUP sheets
+ * 
+ * BACKUP layout: term1 s10 = col O(14), term2 s10 = col ](28)
+ * ชีตปัจจุบัน old15 layout: term1 s10 = col P(15), term2 s10 = col 30
+ * 
+ * Match นักเรียนโดย studentId (col B = col 1)
+ * จากนั้นรัน recalcAllScoreSheets() เพื่อ recalc total/grade/yearAvg
+ */
+function restoreS10FromBackup() {
+  var ss = SS();
+  var sheets = ss.getSheets();
+  var restored = 0;
+  var log = [];
+  
+  // สร้าง map ของ BACKUP sheets: "BACKUP_ชื่อวิชา ป3-1" → sheet
+  var backupMap = {};
+  sheets.forEach(function(s) {
+    var name = s.getName();
+    if (name.startsWith('BACKUP_')) {
+      var targetName = name.substring(7); // ตัด "BACKUP_" ออก
+      backupMap[targetName] = s;
+    }
+  });
+  
+  Logger.log('📦 BACKUP sheets: ' + Object.keys(backupMap).length);
+  
+  var skipNames = ['Students','Teachers','Users','รายวิชา','Settings','Holidays','Attendance',
+       'Dashboard','Backup','Log','Template'];
+  
+  sheets.forEach(function(sheet) {
+    var name = sheet.getName();
+    if (skipNames.some(function(s){ return name === s; })) return;
+    if (name.startsWith('_')) return;
+    if (name.startsWith('BACKUP')) return;
+    
+    var data = sheet.getDataRange().getValues();
+    if (data.length < 5) return;
+    
+    var row3 = data[2] || [];
+    var isScoreSheet = (String(row3[0]).includes('ลำดับ') || String(row3[1]).includes('เลข'));
+    if (!isScoreSheet) return;
+    
+    // ตรวจว่าเป็น old15 layout
+    var sheetLayout = detectSheetLayout_(sheet);
+    if (sheetLayout.layout !== 'old15') {
+      Logger.log('⏩ Skip (new16): ' + name);
+      return;
+    }
+    
+    // หา BACKUP sheet ที่ตรงกัน
+    var backup = backupMap[name];
+    if (!backup) {
+      Logger.log('⚠️ No BACKUP for: ' + name);
+      return;
+    }
+    
+    var backupData = backup.getDataRange().getValues();
+    if (backupData.length < 5) return;
+    
+    // สร้าง map: studentId → { t1s10, t2s10 } จาก BACKUP
+    // BACKUP layout: term1 s10 = col 14 (O), term2 s10 = col 28 (])
+    var backupS10Map = {};
+    for (var i = 4; i < backupData.length; i++) {
+      var bRow = backupData[i];
+      var studentId = String(bRow[1] || '').trim();
+      if (!studentId) continue;
+      
+      var t1s10 = bRow[14]; // col O = คะแนนปลายภาค term1
+      var t2s10 = bRow[28]; // col ] = คะแนนปลายภาค term2
+      
+      // ตรวจว่าเป็นค่าคะแนนจริง (ไม่ใช่ว่าง)
+      backupS10Map[studentId] = {
+        t1s10: (t1s10 !== '' && t1s10 !== null && t1s10 !== undefined) ? Number(t1s10) : null,
+        t2s10: (t2s10 !== '' && t2s10 !== null && t2s10 !== undefined) ? Number(t2s10) : null
+      };
+    }
+    
+    Logger.log('🔧 Restoring s10 for: ' + name + ' (BACKUP students: ' + Object.keys(backupS10Map).length + ')');
+    
+    // old15 layout: term1 s10 = col 15, term2 s10 = col 30
+    var t1s10Col = sheetLayout.term1.s10; // = 15
+    var t2s10Col = sheetLayout.term2.s10; // = 30
+    
+    var count = 0;
+    for (var r = 5; r <= sheet.getLastRow(); r++) {
+      var rowData = data[r - 1];
+      if (!rowData || !rowData[1]) continue;
+      
+      var studentId = String(rowData[1]).trim();
+      var backup = backupS10Map[studentId];
+      if (!backup) continue;
+      
+      // Restore term1 s10
+      if (backup.t1s10 !== null && backup.t1s10 >= 0) {
+        sheet.getRange(r, t1s10Col + 1).setValue(backup.t1s10);
+      }
+      
+      // Restore term2 s10
+      if (backup.t2s10 !== null && backup.t2s10 >= 0) {
+        sheet.getRange(r, t2s10Col + 1).setValue(backup.t2s10);
+      }
+      
+      count++;
+    }
+    
+    // Restore fullScore row (row 4) — s10 fullScore = finMax จากชีตรายวิชา
+    var cfg = getAssessmentConfigFromSheet_(name);
+    sheet.getRange(4, t1s10Col + 1).setValue(cfg.finalMax);
+    sheet.getRange(4, t2s10Col + 1).setValue(cfg.finalMax);
+    
+    log.push(name + '(' + count + ')');
+    restored++;
+    Logger.log('  ✅ Restored ' + count + ' students: ' + name);
+  });
+  
+  var msg = '✅ Restore s10 สำเร็จ ' + restored + ' ชีต: ' + log.join(', ');
+  Logger.log(msg);
+  Logger.log('⚠️ ต้องรัน recalcAllScoreSheets() ต่อเพื่อ recalc total/grade/yearAvg');
+  return msg;
+}
+
+/**
  * ย้ายคะแนนเต็มของ 1 เทอม (แถว 4)
  */
 function migrateTermFullScores_(targetSheet, bFullRow, oldCols, newCols) {
