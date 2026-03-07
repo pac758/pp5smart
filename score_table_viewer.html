@@ -1979,6 +1979,7 @@ window.ScoreEntrySystem = (function() {
     const gradeBelow2El = document.getElementById("gradeBelow2Count");
 
     let currentData = null;
+    let loadDataRequestId = 0;
     
     let assessmentConfig = {
       midMax: 70,
@@ -2785,16 +2786,15 @@ window.ScoreEntrySystem = (function() {
       }
 
       const sheetName = generateSheetName(subject.name, grade, classNo);
-      const currentRequestSubjectCode = subject.code;
+      const thisRequestId = ++loadDataRequestId;
 
       showLoading(true);
       showStatus("กำลังโหลดข้อมูล...", "info");
 
       google.script.run
         .withSuccessHandler(async (data) => {
-          const currentSelectedSubject = JSON.parse(subjectSelect.value || "{}");
-          if (currentSelectedSubject.code !== currentRequestSubjectCode) {
-            console.warn("ข้อมูลมาช้าเกินไป - ผู้ใช้เปลี่ยนวิชาไปแล้ว");
+          if (thisRequestId !== loadDataRequestId) {
+            console.warn("ข้อมูลมาช้าเกินไป - มี request ใหม่แล้ว (req " + thisRequestId + " vs " + loadDataRequestId + ")");
             return;
           }
 
@@ -2845,6 +2845,7 @@ window.ScoreEntrySystem = (function() {
     // Event Listeners
     gradeSelect.addEventListener("change", () => {
       const grade = gradeSelect.value;
+      lastClassChangeKey = '';
       classSelect.innerHTML = '<option value="">-- เลือกห้องเรียน --</option>';
       subjectSelect.innerHTML = '<option value="">-- เลือกรายวิชา --</option>';
       classSelect.disabled = true;
@@ -2881,9 +2882,14 @@ window.ScoreEntrySystem = (function() {
         .getAvailableClasses(grade);
     });
 
+    let lastClassChangeKey = '';
     classSelect.addEventListener("change", () => {
       const grade = gradeSelect.value;
       const classNo = classSelect.value;
+      const changeKey = grade + '|' + classNo;
+      if (changeKey === lastClassChangeKey) return;
+      lastClassChangeKey = changeKey;
+
       subjectSelect.innerHTML = '<option value="">-- เลือกรายวิชา --</option>';
       subjectSelect.disabled = true;
       btnSaveTerm1.disabled = true;
@@ -2913,6 +2919,11 @@ window.ScoreEntrySystem = (function() {
               opt.textContent = `${sub.name} (${sub.code})`;
               subjectSelect.appendChild(opt);
             });
+            // auto-select วิชาแรกแล้วเรียก loadData
+            if (subjects.length >= 1) {
+              subjectSelect.selectedIndex = 1;
+              subjectSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            }
           } else {
             subjectSelect.innerHTML = '<option value="">❌ ไม่พบรายวิชา</option>';
           }
