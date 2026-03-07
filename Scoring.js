@@ -2952,15 +2952,15 @@ function debugScoreSheetData() {
 }
 
 /**
- * 🔧 ซ่อมชีต old15 ที่ถูก save ด้วย new16 layout
+ * 🔧 คำนวณคะแนนใหม่ทุกชีต — ใช้ detectSheetLayout_ อ่าน raw scores ตาม layout จริง
+ * แล้ว recalculate: sum14, sum69, midTotal, total, grade, yearAvg
  * 
- * สาเหตุ: ชีตเก่ามี 15 col/term (ไม่มี s9 แยก) แต่โค้ดเดิมใช้ 16 col/term
- * ทำให้ข้อมูล col 13+ ของ term1 เลื่อนผิด และ term2 ทั้งหมดเลื่อนไป 1 col
+ * ✅ ปลอดภัย: ไม่ shift ข้อมูล อ่าน raw scores (s1-s8, s10) ที่อยู่ถูก col แล้ว
+ * ✅ รันซ้ำได้โดยไม่เสียหาย (idempotent)
  * 
- * ⚠️ รัน debugScoreSheetData() ก่อน เพื่อยืนยันว่าข้อมูลเป็นแบบนี้จริง
- * เรียกจาก Apps Script Editor → Run → repairScoreSheetOffset
+ * เรียกจาก Apps Script Editor → Run → recalcAllScoreSheets
  */
-function repairScoreSheetOffset() {
+function recalcAllScoreSheets() {
   var ss = SS();
   var sheets = ss.getSheets();
   var repaired = 0;
@@ -2981,129 +2981,95 @@ function repairScoreSheetOffset() {
     var isScoreSheet = (String(row3[0]).includes('ลำดับ') || String(row3[1]).includes('เลข'));
     if (!isScoreSheet) return;
     
-    // ตรวจว่าเป็น old15 layout (col N(13) = "รวม") — ซ่อมเฉพาะ old15
-    var colN = String(row3[13] || '').trim();
-    if (colN.indexOf('ครั้งที่9') >= 0 || colN.indexOf('ครั้งที่ 9') >= 0) {
-      Logger.log('⏩ Skip (new16 layout): ' + name);
-      return; // ชีตใหม่ไม่ต้องซ่อม
-    }
-
-    Logger.log('🔧 Repairing old15 sheet: ' + name);
+    // ใช้ detectSheetLayout_ อ่าน layout จริง
+    var sheetLayout = detectSheetLayout_(sheet);
+    Logger.log('🔧 Recalc: ' + name + ' (layout=' + sheetLayout.layout + ')');
     
-    // ดึง assessment config เพื่อ recalc midTotal/total/grade
     var cfg = getAssessmentConfigFromSheet_(name);
     var midMax = cfg.midMax;
     var finMax = cfg.finalMax;
     
     var lastRow = sheet.getLastRow();
     
-    // === ซ่อมทุกแถว (แถว 4 = fullScore, แถว 5+ = students) ===
-    for (var r = 4; r <= lastRow; r++) {
-      var rowData = sheet.getRange(r, 1, 1, 38).getValues()[0];
+    // --- recalc ทั้ง term1 และ term2 ---
+    var terms = ['term1', 'term2'];
+    for (var ti = 0; ti < terms.length; ti++) {
+      var cols = sheetLayout[terms[ti]];
       
-      // --- Term1: s1-s8 อยู่ถูกแล้ว (col 3-12), ปัญหาเริ่มจาก col 13 ---
-      // ข้อมูลปัจจุบัน (เขียนด้วย new16):
-      //   col 13 = s9 value (ค่า 0 หรือ s9 ที่ไม่มี)
-      //   col 14 = sum69 (เขียนด้วย new16)
-      //   col 15 = midTotal (เขียนด้วย new16) ← ต้องย้ายไป col 14
-      //   col 16 = s10 (เขียนด้วย new16) ← ต้องย้ายไป col 15
-      //   col 17 = total (เขียนด้วย new16) ← recalc
-      //   col 18 = grade (เขียนด้วย new16) ← recalc
+      // === fullScore row (แถว 4) ===
+      var fullRow = data[3] || [];
+      var scoreIdxs = [cols.s1, cols.s2, cols.s3, cols.s4, cols.s5, cols.s6, cols.s7, cols.s8];
+      if (cols.s9 >= 0) scoreIdxs.push(cols.s9);
       
-      var t1_midTotal = rowData[15]; // midTotal ที่ถูกเขียนไว้ที่ col 15
-      var t1_s10 = rowData[16];      // s10 ที่ถูกเขียนไว้ที่ col 16
+      // recalc fullScore sums
+      var fs14 = (Number(fullRow[cols.s1])||0)+(Number(fullRow[cols.s2])||0)+(Number(fullRow[cols.s3])||0)+(Number(fullRow[cols.s4])||0);
+      sheet.getRange(4, cols.sum14 + 1).setValue(fs14);
       
-      // --- Term2: ทั้งหมดเลื่อนไป 1 col (new16 term2 เริ่ม col 19, old15 เริ่ม col 18) ---
-      // อ่านข้อมูล term2 จาก col ที่ new16 เขียนไว้ (col 19-34)
-      var t2_s1    = rowData[19];
-      var t2_s2    = rowData[20];
-      var t2_s3    = rowData[21];
-      var t2_s4    = rowData[22];
-      var t2_sum14 = rowData[23]; // sum14 ที่ new16 เขียน
-      var t2_s5    = rowData[24];
-      var t2_makeup= rowData[25];
-      var t2_s6    = rowData[26];
-      var t2_s7    = rowData[27];
-      var t2_s8    = rowData[28];
-      // col 29 = s9 (ไม่มีใน old15)
-      // col 30 = sum69 (new16)
-      var t2_midTotal = rowData[31]; // midTotal ที่ new16 เขียนไว้ที่ col 31
-      var t2_s10      = rowData[32]; // s10 ที่ new16 เขียนไว้ที่ col 32
-      // col 33 = total (new16), col 34 = grade (new16)
+      var fs69 = (Number(fullRow[cols.s6])||0)+(Number(fullRow[cols.s7])||0)+(Number(fullRow[cols.s8])||0);
+      if (cols.s9 >= 0) fs69 += (Number(fullRow[cols.s9])||0);
+      sheet.getRange(4, cols.sum69 + 1).setValue(fs69);
       
-      // === เขียน Term1 ลง old15 layout ===
-      // col 3-12: s1-s8, sum14, s5, makeup → ถูกแล้ว ไม่ต้องแก้
-      // col 13 (sum69): recalc จาก s6(10)+s7(11)+s8(12)
-      var t1_sum69_calc = (Number(rowData[10])||0) + (Number(rowData[11])||0) + (Number(rowData[12])||0);
-      sheet.getRange(r, 14).setValue(t1_sum69_calc); // col 13 → getRange 14
-      // col 14 (midTotal)
-      sheet.getRange(r, 15).setValue(t1_midTotal);   // col 14 → getRange 15
-      // col 15 (s10)
-      sheet.getRange(r, 16).setValue(t1_s10);        // col 15 → getRange 16
+      // เขียน midMax, finMax, totalMax ลง fullScore row
+      sheet.getRange(4, cols.midTotal + 1).setValue(midMax);
+      sheet.getRange(4, cols.s10 + 1).setValue(finMax);
+      sheet.getRange(4, cols.total + 1).setValue(midMax + finMax);
       
-      // === เขียน Term2 ลง old15 layout (shift ซ้าย 1 col: col 19→18, 20→19, ...) ===
-      sheet.getRange(r, 19).setValue(t2_s1);     // col 18 → getRange 19
-      sheet.getRange(r, 20).setValue(t2_s2);     // col 19 → getRange 20
-      sheet.getRange(r, 21).setValue(t2_s3);     // col 20 → getRange 21
-      sheet.getRange(r, 22).setValue(t2_s4);     // col 21 → getRange 22
-      // col 22 (sum14): recalc
-      var t2_sum14_calc = (Number(t2_s1)||0) + (Number(t2_s2)||0) + (Number(t2_s3)||0) + (Number(t2_s4)||0);
-      sheet.getRange(r, 23).setValue(t2_sum14_calc); // col 22 → getRange 23
-      sheet.getRange(r, 24).setValue(t2_s5);     // col 23 → getRange 24
-      sheet.getRange(r, 25).setValue(t2_makeup); // col 24 → getRange 25
-      sheet.getRange(r, 26).setValue(t2_s6);     // col 25 → getRange 26
-      sheet.getRange(r, 27).setValue(t2_s7);     // col 26 → getRange 27
-      sheet.getRange(r, 28).setValue(t2_s8);     // col 27 → getRange 28
-      // col 28 (sum69): recalc จาก s6+s7+s8
-      var t2_sum69_calc = (Number(t2_s6)||0) + (Number(t2_s7)||0) + (Number(t2_s8)||0);
-      sheet.getRange(r, 29).setValue(t2_sum69_calc); // col 28 → getRange 29
-      // col 29 (midTotal)
-      sheet.getRange(r, 30).setValue(t2_midTotal);   // col 29 → getRange 30
-      // col 30 (s10)
-      sheet.getRange(r, 31).setValue(t2_s10);        // col 30 → getRange 31
+      // fullScoresSum สำหรับ scale midTotal
+      // scoreIdxs = [s1,s2,s3,s4,s5,s6,s7,s8,(s9)] → มีทุก score items แล้ว
+      var fullScoresSum = 0;
+      for (var fi = 0; fi < scoreIdxs.length; fi++) {
+        fullScoresSum += Number(fullRow[scoreIdxs[fi]]) || 0;
+      }
+      
+      // === students (แถว 5+) ===
+      for (var r = 5; r <= lastRow; r++) {
+        var rowData = data[r - 1]; // data[0] = row 1
+        if (!rowData || !rowData[1]) continue;
+        
+        // อ่าน raw scores ตาม cols ที่ถูก
+        var s1 = Number(rowData[cols.s1]) || 0;
+        var s2 = Number(rowData[cols.s2]) || 0;
+        var s3 = Number(rowData[cols.s3]) || 0;
+        var s4 = Number(rowData[cols.s4]) || 0;
+        var s5 = Number(rowData[cols.s5]) || 0;
+        var s6 = Number(rowData[cols.s6]) || 0;
+        var s7 = Number(rowData[cols.s7]) || 0;
+        var s8 = Number(rowData[cols.s8]) || 0;
+        var s9 = (cols.s9 >= 0) ? (Number(rowData[cols.s9]) || 0) : 0;
+        var s10 = Number(rowData[cols.s10]) || 0;
+        
+        // recalc sums
+        var sum14 = s1 + s2 + s3 + s4;
+        var sum69 = s6 + s7 + s8 + s9;
+        sheet.getRange(r, cols.sum14 + 1).setValue(sum14);
+        sheet.getRange(r, cols.sum69 + 1).setValue(sum69);
+        
+        // recalc midTotal: (rawSum / fullScoresSum) * midMax
+        var rawSum = s1 + s2 + s3 + s4 + s5 + s6 + s7 + s8 + s9;
+        var midTotal = 0;
+        if (fullScoresSum > 0 && rawSum > 0) {
+          midTotal = Math.round((rawSum / fullScoresSum) * midMax);
+        }
+        sheet.getRange(r, cols.midTotal + 1).setValue(midTotal);
+        
+        // s10 (ปลายภาค) — ไม่แก้ไข, ใช้ค่าที่อ่านมาจาก col ที่ถูก
+        // (ไม่ต้อง setValue เพราะอยู่ถูก col แล้ว)
+        
+        // recalc total & grade
+        var total = midTotal + s10;
+        sheet.getRange(r, cols.total + 1).setValue(total);
+        sheet.getRange(r, cols.grade + 1).setValue(calculateFinalGrade(total));
+      }
     }
     
-    // === Recalculate total, grade, yearAvg สำหรับ students (แถว 5+) ===
-    // อ่าน fullScore row ก่อน
-    var fullRow = sheet.getRange(4, 1, 1, 35).getValues()[0];
-    
-    // fullScore row: เขียน midMax, finMax, totalMax ลง old15 col ที่ถูก
-    sheet.getRange(4, 15).setValue(midMax);           // col 14 (midTotal fullScore)
-    sheet.getRange(4, 16).setValue(finMax);            // col 15 (s10 fullScore)
-    sheet.getRange(4, 17).setValue(midMax + finMax);   // col 16 (total fullScore)
-    sheet.getRange(4, 30).setValue(midMax);            // col 29 (t2 midTotal fullScore)
-    sheet.getRange(4, 31).setValue(finMax);            // col 30 (t2 s10 fullScore)
-    sheet.getRange(4, 32).setValue(midMax + finMax);   // col 31 (t2 total fullScore)
-    
-    // recalc sum14 fullScore
-    var t1fs14 = (Number(fullRow[3])||0)+(Number(fullRow[4])||0)+(Number(fullRow[5])||0)+(Number(fullRow[6])||0);
-    sheet.getRange(4, 8).setValue(t1fs14); // col 7 (sum14 fullScore)
-    
+    // === Year average ===
+    var t1cols = sheetLayout.term1;
+    var t2cols = sheetLayout.term2;
     for (var r = 5; r <= lastRow; r++) {
-      var rowData = sheet.getRange(r, 1, 1, 35).getValues()[0];
-      if (!rowData[1]) continue;
+      // อ่าน total ที่เพิ่ง recalc (ต้องอ่านจาก sheet เพราะ data เป็น snapshot เก่า)
+      var t1total = Number(sheet.getRange(r, t1cols.total + 1).getValue()) || 0;
+      var t2total = Number(sheet.getRange(r, t2cols.total + 1).getValue()) || 0;
       
-      // Term1: recalc sum14
-      var t1sum14 = (Number(rowData[3])||0)+(Number(rowData[4])||0)+(Number(rowData[5])||0)+(Number(rowData[6])||0);
-      sheet.getRange(r, 8).setValue(t1sum14); // col 7 → getRange 8
-      
-      // Term1: recalc total & grade
-      var t1mid = Number(rowData[14]) || 0; // midTotal อยู่ col 14 แล้ว (เพิ่งเขียนไว้)
-      // ต้องอ่านใหม่เพราะเพิ่งเขียน
-      t1mid = Number(sheet.getRange(r, 15).getValue()) || 0;
-      var t1s10 = Number(sheet.getRange(r, 16).getValue()) || 0;
-      var t1total = t1mid + t1s10;
-      sheet.getRange(r, 17).setValue(t1total);  // col 16 (total) → getRange 17
-      sheet.getRange(r, 18).setValue(calculateFinalGrade(t1total)); // col 17 (grade) → getRange 18
-      
-      // Term2: recalc total & grade
-      var t2mid = Number(sheet.getRange(r, 30).getValue()) || 0;  // col 29 → getRange 30
-      var t2s10 = Number(sheet.getRange(r, 31).getValue()) || 0;  // col 30 → getRange 31
-      var t2total = t2mid + t2s10;
-      sheet.getRange(r, 32).setValue(t2total);  // col 31 (total) → getRange 32
-      sheet.getRange(r, 33).setValue(calculateFinalGrade(t2total)); // col 32 (grade) → getRange 33
-      
-      // Year average (col 33, 34 ใน old15)
       var avg = 0, fg = '';
       if (t1total > 0 && t2total > 0) {
         avg = Math.round((t1total + t2total) / 2);
@@ -3112,16 +3078,16 @@ function repairScoreSheetOffset() {
         avg = t1total > 0 ? t1total : t2total;
         fg = calculateFinalGrade(avg);
       }
-      sheet.getRange(r, 34).setValue(avg);  // col 33 (yearAvg) → getRange 34
-      sheet.getRange(r, 35).setValue(fg);   // col 34 (yearGrade) → getRange 35
+      sheet.getRange(r, sheetLayout.yearAvgCol + 1).setValue(avg);
+      sheet.getRange(r, sheetLayout.yearGradeCol + 1).setValue(fg);
     }
     
     log.push(name);
     repaired++;
-    Logger.log('  ✅ Repaired: ' + name);
+    Logger.log('  ✅ Done: ' + name);
   });
   
-  var msg = '✅ ซ่อมชีตสำเร็จ ' + repaired + ' ชีต: ' + log.join(', ');
+  var msg = '✅ คำนวณใหม่สำเร็จ ' + repaired + ' ชีต: ' + log.join(', ');
   Logger.log(msg);
   return msg;
 }
