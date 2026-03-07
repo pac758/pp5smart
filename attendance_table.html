@@ -484,9 +484,7 @@
           <label class="form-label">ปี</label>
           <select id="table-year" class="form-select">
             <option value="">เลือกปี</option>
-            <option>2568</option>
-            <option>2569</option>
-            <option>2570</option>
+            <!-- จะถูกสร้าง dynamic ใน JS -->
           </select>
         </div>
         <div class="col-md-3 col-12">
@@ -1780,14 +1778,32 @@
         }
       }
 
+      // สร้าง dropdown ปีแบบ dynamic
+      function fillYearDropdown() {
+        const yearSelect = document.getElementById('table-year');
+        const currentYear = new Date().getFullYear() + 543; // ปี พ.ศ. ปัจจุบัน
+        
+        // สร้างตัวเลือกจากปีปัจจุบันย้อนหลัง 5 ปี
+        for (let i = 0; i <= 5; i++) {
+          const year = currentYear - i;
+          const option = document.createElement('option');
+          option.value = year;
+          option.textContent = year;
+          if (i === 0) option.selected = true; // เลือกปีปัจจุบันเป็นค่าเริ่มต้น
+          yearSelect.appendChild(option);
+        }
+      }
+
       // Initialize
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() {
+          fillYearDropdown();
           initializeEventListeners();
           setDefaultDate();
           checkFormComplete();
         });
       } else {
+        fillYearDropdown();
         initializeEventListeners();
         setDefaultDate();
         checkFormComplete();

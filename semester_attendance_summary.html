@@ -653,24 +653,23 @@
     return thaiMonths[monthNumber] || '';
   }
 
-  // ===== UI ส่วนปีการศึกษา (3 ปีการศึกษา: 2568-2570) =====
+  // ===== UI ส่วนปีการศึกษา (dynamic: ปีปัจจุบันย้อนหลัง 5 ปี) =====
   function fillYearSelect() {
     const yearSel = document.getElementById('yearSelect');
     yearSel.innerHTML = '';
     
-    // เริ่มจากปี 2568 และให้เลือกได้ 3 ปีการศึกษา
-    const startYear = 2568;
-    const endYear = 2570; // 2568, 2569, 2570
+    // สร้างตัวเลือกจากปีปัจจุบันย้อนหลัง 5 ปี
+    const currentAcademicYear = getCurrentAcademicYear();
     
-    for (let y = startYear; y <= endYear; y++) {
+    for (let i = 0; i <= 5; i++) {
+      const year = currentAcademicYear - i;
       const opt = document.createElement('option');
-      opt.value = y;
-      opt.textContent = y;
+      opt.value = year;
+      opt.textContent = year;
       yearSel.appendChild(opt);
     }
     
     // ตั้งค่าเริ่มต้นเป็นปีการศึกษาปัจจุบัน
-    const currentAcademicYear = getCurrentAcademicYear();
     yearSel.value = currentAcademicYear;
     
     // เมื่อเปลี่ยนปีการศึกษา ให้อัพเดทช่วงเดือนที่เลือกได้
