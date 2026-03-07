@@ -286,12 +286,11 @@ function exportToSchoolMIS(sheetName, term) {
       // ข้ามแถวว่าง
       if (!row[1]) continue;
       
-      var studentId = String(row[1]).trim(); // เลขประจำตัว (B)
-      var firstName = String(row[3] || '').trim();  // ชื่อ (D)
-      var lastName = String(row[4] || '').trim();   // นามสกุล (E)
+      var studentId = String(row[1]).trim(); // เลขประจำตัว
+      var fullName = String(row[2]).trim();  // ชื่อ-นามสกุล
       
-      // ใช้ชื่อ-นามสกุลจากคอลัมน์แยก
-      var nameParts = { firstname: firstName, lastname: lastName };
+      // แยกชื่อ-นามสกุล
+      var nameParts = splitThaiNameSync_(fullName);
       
       // หา idCard จาก Students sheet
       var idCard = studentIdCardMap[studentId] || '';
@@ -463,9 +462,8 @@ function exportToSchoolMIS_Average(sheetName) {
       if (!row[1]) continue;
       
       var studentId = String(row[1]).trim();
-      var firstName = String(row[3] || '').trim();  // ชื่อ (D)
-      var lastName = String(row[4] || '').trim();   // นามสกุล (E)
-      var nameParts = { firstname: firstName, lastname: lastName };
+      var fullName = String(row[2]).trim();
+      var nameParts = splitThaiNameSync_(fullName);
       var idCard = studentIdCardMap[studentId] || '';
       
       // ดึงคะแนนทั้ง 2 ภาค แล้วเฉลี่ย (ใช้ scoreSlots 9 ช่อง)
@@ -775,37 +773,37 @@ function compareWithSchoolMIS(csvContent, sheetName, term) {
 function getTermColumnsSync_(term) {
   // โครงสร้างตาม SchoolMIS (16 คอลัมน์ต่อภาค)
   // Per term: s1-s4, sum14, s5, makeup, s6-s9, sum69, midTotal, s10, total, grade
-  // ชีตมี 5 คอลัมน์ header: A(0)=ที่, B(1)=รหัส, C(2)=เลขปชช, D(3)=ชื่อ, E(4)=นามสกุล
-  // term1 เริ่มที่ F(col 5), term2 เริ่มที่ V(col 21)
+  // ชีตมี 3 คอลัมน์ header: A(0)=ลำดับ, B(1)=เลขประจำตัว, C(2)=ชื่อ-สกุล
+  // term1 เริ่มที่ D(col 3), term2 เริ่มที่ T(col 19)
   if (term === 'term1') {
     return {
-      s1: 5, s2: 6, s3: 7, s4: 8, sum14: 9,
-      s5: 10, makeup: 11,
-      s6: 12, s7: 13, s8: 14, s9: 15, sum69: 16,
-      midTotal: 17,
-      s10: 18,
-      total: 19,
-      grade: 20,
+      s1: 3, s2: 4, s3: 5, s4: 6, sum14: 7,
+      s5: 8, makeup: 9,
+      s6: 10, s7: 11, s8: 12, s9: 13, sum69: 14,
+      midTotal: 15,
+      s10: 16,
+      total: 17,
+      grade: 18,
       // scoreSlots: 10 ช่อง ตรง 1:1 กับ SchoolMIS ครั้งที่1-9 + ครั้งที่10ปลายภาค
-      scoreSlots: [5, 6, 7, 8, 10, 12, 13, 14, 15, 18],
+      scoreSlots: [3, 4, 5, 6, 8, 10, 11, 12, 13, 16],
       scoresCount: 10,
-      mid: 17,
-      final: 18
+      mid: 15,
+      final: 16
     };
   } else {
     return {
-      s1: 21, s2: 22, s3: 23, s4: 24, sum14: 25,
-      s5: 26, makeup: 27,
-      s6: 28, s7: 29, s8: 30, s9: 31, sum69: 32,
-      midTotal: 33,
-      s10: 34,
-      total: 35,
-      grade: 36,
+      s1: 19, s2: 20, s3: 21, s4: 22, sum14: 23,
+      s5: 24, makeup: 25,
+      s6: 26, s7: 27, s8: 28, s9: 29, sum69: 30,
+      midTotal: 31,
+      s10: 32,
+      total: 33,
+      grade: 34,
       // scoreSlots: 10 ช่อง ตรง 1:1 กับ SchoolMIS ครั้งที่1-9 + ครั้งที่10ปลายภาค
-      scoreSlots: [21, 22, 23, 24, 26, 28, 29, 30, 31, 34],
+      scoreSlots: [19, 20, 21, 22, 24, 26, 27, 28, 29, 32],
       scoresCount: 10,
-      mid: 33,
-      final: 34
+      mid: 31,
+      final: 32
     };
   }
 }
@@ -823,8 +821,8 @@ function buildStudentMapSync_(sheetData) {
   // เริ่มจากแถวที่ 5 (index 4)
   for (var i = 4; i < sheetData.length; i++) {
     var row = sheetData[i];
-    var code = String(row[1] || '').trim();  // เลขประจำตัว (B)
-    var name = (String(row[3] || '') + ' ' + String(row[4] || '')).trim();  // ชื่อ+นามสกุล (D+E)
+    var code = String(row[1] || '').trim();  // เลขประจำตัว
+    var name = String(row[2] || '').trim();  // ชื่อ-สกุล
     
     if (code) {
       map.byCode[code] = i;

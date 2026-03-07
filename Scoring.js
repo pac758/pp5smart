@@ -710,28 +710,28 @@ function saveScoreSheetData(sheetName, term, studentScores, fullScores, fullFina
     //   13:  ครั้งที่ 10 (ปลายภาค)
     //   14:  รวมทั้งหมด
     //   15:  เกรด
-    // ✅ ชีตมี 5 คอลัมน์ header: A(0)=ที่, B(1)=รหัส, C(2)=เลขปชช, D(3)=ชื่อ, E(4)=นามสกุล
-    // term1 เริ่มที่ F(col 5), term2 เริ่มที่ V(col 21)
+    // ✅ ชีตมี 3 คอลัมน์ header: A(0)=ลำดับ, B(1)=เลขประจำตัว, C(2)=ชื่อ-สกุล
+    // term1 เริ่มที่ D(col 3), term2 เริ่มที่ T(col 19)
     const termCols = {
       term1: { 
-        start: 5,           // F
-        s1: 5, s2: 6, s3: 7, s4: 8, sum14: 9,
-        s5: 10, makeup: 11,
-        s6: 12, s7: 13, s8: 14, s9: 15, sum69: 16,
-        midTotal: 17,
-        s10: 18,
-        total: 19,
-        grade: 20
+        start: 3,           // D
+        s1: 3, s2: 4, s3: 5, s4: 6, sum14: 7,
+        s5: 8, makeup: 9,
+        s6: 10, s7: 11, s8: 12, s9: 13, sum69: 14,
+        midTotal: 15,
+        s10: 16,
+        total: 17,
+        grade: 18
       },
       term2: { 
-        start: 21,          // V
-        s1: 21, s2: 22, s3: 23, s4: 24, sum14: 25,
-        s5: 26, makeup: 27,
-        s6: 28, s7: 29, s8: 30, s9: 31, sum69: 32,
-        midTotal: 33,
-        s10: 34,
-        total: 35,
-        grade: 36
+        start: 19,          // T
+        s1: 19, s2: 20, s3: 21, s4: 22, sum14: 23,
+        s5: 24, makeup: 25,
+        s6: 26, s7: 27, s8: 28, s9: 29, sum69: 30,
+        midTotal: 31,
+        s10: 32,
+        total: 33,
+        grade: 34
       }
     };
     
@@ -821,9 +821,9 @@ function saveScoreSheetData(sheetName, term, studentScores, fullScores, fullFina
         finalGradeVal = calculateFinalGrade(average);
       }
 
-      // บันทึกคะแนนเฉลี่ยที่ AL (col index 37 → getRange col 38) และเกรดที่ AM (col index 38 → getRange col 39)
-      sheet.getRange(row, 38).setValue(average);
-      sheet.getRange(row, 39).setValue(finalGradeVal);
+      // บันทึกคะแนนเฉลี่ยที่ AJ (col index 35 → getRange col 36) และเกรดที่ AK (col index 36 → getRange col 37)
+      sheet.getRange(row, 36).setValue(average);
+      sheet.getRange(row, 37).setValue(finalGradeVal);
     });
 
     return "บันทึกคะแนนเรียบร้อย พร้อมคำนวณเกรดเฉลี่ย";
@@ -859,26 +859,26 @@ function getScoreSheetData(sheetName) {
     const data = sheet.getDataRange().getValues();
     const startRow = 5;
 
-    // ✅ ชีตมี 5 คอลัมน์ header: A(0)=ที่, B(1)=รหัส, C(2)=เลขปชช, D(3)=ชื่อ, E(4)=นามสกุล
-    // term1 เริ่มที่ F(col 5), term2 เริ่มที่ V(col 21)
+    // ✅ ชีตมี 3 คอลัมน์ header: A(0)=ลำดับ, B(1)=เลขประจำตัว, C(2)=ชื่อ-สกุล
+    // term1 เริ่มที่ D(col 3), term2 เริ่มที่ T(col 19)
     const termCols = {
       term1: { 
-        s1: 5, s2: 6, s3: 7, s4: 8, sum14: 9,
-        s5: 10, makeup: 11,
-        s6: 12, s7: 13, s8: 14, s9: 15, sum69: 16,
-        midTotal: 17,
-        s10: 18,
-        total: 19,
-        grade: 20
+        s1: 3, s2: 4, s3: 5, s4: 6, sum14: 7,
+        s5: 8, makeup: 9,
+        s6: 10, s7: 11, s8: 12, s9: 13, sum69: 14,
+        midTotal: 15,
+        s10: 16,
+        total: 17,
+        grade: 18
       },
       term2: { 
-        s1: 21, s2: 22, s3: 23, s4: 24, sum14: 25,
-        s5: 26, makeup: 27,
-        s6: 28, s7: 29, s8: 30, s9: 31, sum69: 32,
-        midTotal: 33,
-        s10: 34,
-        total: 35,
-        grade: 36
+        s1: 19, s2: 20, s3: 21, s4: 22, sum14: 23,
+        s5: 24, makeup: 25,
+        s6: 26, s7: 27, s8: 28, s9: 29, sum69: 30,
+        midTotal: 31,
+        s10: 32,
+        total: 33,
+        grade: 34
       }
     };
 
@@ -903,8 +903,7 @@ function getScoreSheetData(sheetName) {
         
         rows.push({ 
           id: row[1], 
-          name: String(row[3] || '') + ' ' + String(row[4] || ''), 
-          gender: '', 
+          name: row[2], 
           scores, 
           mid, 
           final: final_, 
@@ -917,16 +916,16 @@ function getScoreSheetData(sheetName) {
       return { fullScores, fullFinal, rows };
     }
 
-    // ดึงข้อมูลสรุปรวม 2 ภาค (คอลัมน์ AL-AM, index 37-38)
+    // ดึงข้อมูลสรุปรวม 2 ภาค (คอลัมน์ AJ-AK, index 35-36)
     var yearSummary = [];
     for (var yi = startRow - 1; yi < data.length; yi++) {
       var yRow = data[yi];
       if (!yRow[1] || !yRow[2]) continue;
       yearSummary.push({
         id: yRow[1],
-        name: String(yRow[3] || '') + ' ' + String(yRow[4] || ''),
-        yearAvg: yRow[37] !== undefined && yRow[37] !== '' ? Number(yRow[37]) || 0 : 0,
-        yearGrade: String(yRow[38] || '')
+        name: yRow[2],
+        yearAvg: yRow[35] !== undefined && yRow[35] !== '' ? Number(yRow[35]) || 0 : 0,
+        yearGrade: String(yRow[36] || '')
       });
     }
 
