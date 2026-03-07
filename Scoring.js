@@ -658,20 +658,24 @@ function loadSubjectsForGrade(grade) {
 }
 
 /**
- * ดึง midMax/finMax จากชื่อชีต (format: "ชื่อวิชา_ชั้น-ห้อง" เช่น "คณิตศาสตร์_ป.1-1")
+ * ดึง midMax/finMax จากชื่อชีต (format: "ชื่อวิชา ป3-1" เช่น "คณิตศาสตร์ ป3-1")
  * ใช้ภายใน saveScoreSheetData เพื่อแปลงสัดส่วนคะแนน
  */
 function getAssessmentConfigFromSheet_(sheetName) {
   try {
     // แยกชื่อวิชาและระดับชั้นจาก sheetName
-    // format: "ชื่อวิชา_ชั้น-ห้อง" เช่น "คณิตศาสตร์_ป.1-1"
-    const parts = sheetName.split('_');
-    if (parts.length < 2) return { midMax: 70, finalMax: 30 };
+    // format: "คณิตศาสตร์ ป3-1" (space คั่น, grade ไม่มีจุด)
+    const lastSpaceIdx = sheetName.lastIndexOf(' ');
+    if (lastSpaceIdx < 0) return { midMax: 70, finalMax: 30 };
     
-    const subjectName = parts[0];
-    const gradeClassPart = parts.slice(1).join('_'); // ป.1-1
+    const subjectName = sheetName.substring(0, lastSpaceIdx).trim();
+    const gradeClassPart = sheetName.substring(lastSpaceIdx + 1); // "ป3-1"
     const gradeParts = gradeClassPart.split('-');
-    const grade = gradeParts[0]; // ป.1
+    // แปลง "ป3" → "ป.3" (เพิ่มจุดหลัง ป เพื่อ match ชีตรายวิชา)
+    var grade = gradeParts[0]; // "ป3"
+    grade = grade.replace(/^(ป)(\d)/, '$1.$2'); // "ป.3"
+
+    console.log('getAssessmentConfigFromSheet_:', { sheetName, subjectName, grade });
 
     // เรียก getSubjectAssessmentConfig ด้วย subjectName, code ว่าง, grade
     const cfg = getSubjectAssessmentConfig(subjectName, '', grade);
@@ -740,7 +744,7 @@ function saveScoreSheetData(sheetName, term, studentScores, fullScores, fullFina
       sheet.getRange(4, scoreSlots[i] + 1).setValue(fullScores[i] || "");
     }
     // ดึง midMax/finMax จากชีตรายวิชา เพื่อแปลงสัดส่วน
-    // sheetName format: "ชื่อวิชา_ชั้น-ห้อง" → ต้องหา subject จาก sheetName
+    // sheetName format: "ชื่อวิชา ป3-1" → ต้องหา subject จาก sheetName
     const cfg = getAssessmentConfigFromSheet_(sheetName);
     const midMax = cfg.midMax;
     const finMax = cfg.finalMax;
