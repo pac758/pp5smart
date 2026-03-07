@@ -1009,7 +1009,7 @@ function getScoreSheetsForSync() {
     sheets.forEach(function(sheet) {
       var name = sheet.getName();
       
-      if (excludeSheets.indexOf(name) !== -1 || name.indexOf('TMP_') === 0) {
+      if (excludeSheets.indexOf(name) !== -1 || name.indexOf('TMP_') === 0 || name.indexOf('BACKUP') === 0) {
         return;
       }
       
