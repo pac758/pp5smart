@@ -80,8 +80,10 @@ function importFromSchoolMIS(csvContent, sheetName, term) {
     const sheetData = sheet.getDataRange().getValues();
     const studentMap = buildStudentMapSync_(sheetData);
     
-    // 4. กำหนดคอลัมน์ตาม term
-    const cols = getTermColumnsSync_(term);
+    // 4. กำหนดคอลัมน์ตาม term + detect layout อัตโนมัติ
+    const sheetLayout = detectSheetLayout_(sheet);
+    const cols = sheetLayout[term];
+    Logger.log('📐 Import layout: ' + sheetLayout.layout + ' for ' + sheetName);
     
     // 5. นำเข้าข้อมูล
     var importCount = 0;
@@ -111,6 +113,7 @@ function importFromSchoolMIS(csvContent, sheetName, term) {
       var scoresCount = Math.min(csvRow.scores.length, slots.length);
       
       for (var i = 0; i < scoresCount; i++) {
+        if (slots[i] < 0) continue; // s9 ไม่มีในชีตเก่า (15 col/term)
         var score = csvRow.scores[i];
         if (score !== null && score !== undefined && score !== '') {
           sheet.getRange(row, slots[i] + 1).setValue(score);
@@ -264,9 +267,11 @@ function exportToSchoolMIS(sheetName, term) {
       throw new Error('ไม่พบชีต: ' + sheetName);
     }
     
-    // 2. ดึงข้อมูล
+    // 2. ดึงข้อมูล + detect layout อัตโนมัติ
     var data = sheet.getDataRange().getValues();
-    var cols = getTermColumnsSync_(term);
+    var sheetLayout = detectSheetLayout_(sheet);
+    var cols = sheetLayout[term];
+    Logger.log('📐 Export layout: ' + sheetLayout.layout + ' for ' + sheetName);
     
     // 3. ดึงข้อมูลนักเรียนจากชีต Students เพื่อเอา idCard
     var studentsSheet = ss.getSheetByName('Students');
@@ -295,11 +300,11 @@ function exportToSchoolMIS(sheetName, term) {
       // หา idCard จาก Students sheet
       var idCard = studentIdCardMap[studentId] || '';
       
-      // ดึงคะแนนจาก pp5smart scoreSlots (10 ช่อง ตรง 1:1 กับ SchoolMIS)
+      // ดึงคะแนนจาก scoreSlots (รองรับทั้ง 15 และ 16 col/term)
       var slots = cols.scoreSlots;
       var scores = [];
       for (var j = 0; j < slots.length; j++) {
-        scores.push(row[slots[j]] || '');
+        scores.push(slots[j] >= 0 ? (row[slots[j]] || '') : '');
       }
       
       // รวม (1-4) และ (6-9) อ่านจากชีตโดยตรง
@@ -438,10 +443,12 @@ function exportToSchoolMIS_Average(sheetName) {
       throw new Error('ไม่พบชีต: ' + sheetName);
     }
     
-    // 2. ดึงข้อมูล
+    // 2. ดึงข้อมูล + detect layout อัตโนมัติ
     var data = sheet.getDataRange().getValues();
-    var cols1 = getTermColumnsSync_('term1');
-    var cols2 = getTermColumnsSync_('term2');
+    var sheetLayout = detectSheetLayout_(sheet);
+    var cols1 = sheetLayout.term1;
+    var cols2 = sheetLayout.term2;
+    Logger.log('📐 Export Average layout: ' + sheetLayout.layout + ' for ' + sheetName);
     
     // 3. ดึงข้อมูลนักเรียนจากชีต Students เพื่อเอา idCard
     var studentsSheet = ss.getSheetByName('Students');
@@ -466,11 +473,12 @@ function exportToSchoolMIS_Average(sheetName) {
       var nameParts = splitThaiNameSync_(fullName);
       var idCard = studentIdCardMap[studentId] || '';
       
-      // ดึงคะแนนทั้ง 2 ภาค แล้วเฉลี่ย (ใช้ scoreSlots 9 ช่อง)
+      // ดึงคะแนนทั้ง 2 ภาค แล้วเฉลี่ย (ใช้ scoreSlots — รองรับ -1 สำหรับ s9 ที่ไม่มี)
       var slots1 = cols1.scoreSlots;
       var slots2 = cols2.scoreSlots;
       var avgScores = [];
       for (var j = 0; j < slots1.length; j++) {
+        if (slots1[j] < 0 || slots2[j] < 0) { avgScores.push(''); continue; }
         var s1 = Number(row[slots1[j]]) || 0;
         var s2 = Number(row[slots2[j]]) || 0;
         var hasT1 = (row[slots1[j]] !== '' && row[slots1[j]] !== null && row[slots1[j]] !== undefined);
@@ -656,7 +664,9 @@ function compareWithSchoolMIS(csvContent, sheetName, term) {
     
     var sheetData = sheet.getDataRange().getValues();
     var studentMap = buildStudentMapSync_(sheetData);
-    var cols = getTermColumnsSync_(term);
+    var sheetLayout = detectSheetLayout_(sheet);
+    var cols = sheetLayout[term];
+    Logger.log('📐 Compare layout: ' + sheetLayout.layout + ' for ' + sheetName);
     
     var comparison = {
       matched: [],

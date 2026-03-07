@@ -687,6 +687,73 @@ function getAssessmentConfigFromSheet_(sheetName) {
 }
 
 /**
+ * 🔍 ตรวจ layout ชีตคะแนน: 15 col/term (เก่า) หรือ 16 col/term (ใหม่)
+ * ชีตเก่า: ไม่มี "ครั้งที่9" แยก → col N(13) = "รวม"
+ * ชีตใหม่: มี "ครั้งที่9" แยก → col N(13) = "ครั้งที่9"
+ * @param {Sheet} sheet - ชีตคะแนน
+ * @returns {Object} termCols สำหรับ term1 และ term2, พร้อม layout type
+ */
+function detectSheetLayout_(sheet) {
+  var headerRow = sheet.getRange(3, 1, 1, 37).getValues()[0];
+  var colN = String(headerRow[13] || '').trim();
+  
+  // ชีตใหม่ (16 col/term): N(13) = "ครั้งที่9"
+  // ชีตเก่า (15 col/term): N(13) = "รวม"
+  if (colN.indexOf('ครั้งที่9') >= 0 || colN.indexOf('ครั้งที่ 9') >= 0) {
+    // Layout ใหม่ 16 col/term
+    return {
+      layout: 'new16',
+      yearAvgCol: 35,
+      yearGradeCol: 36,
+      term1: {
+        s1: 3, s2: 4, s3: 5, s4: 6, sum14: 7,
+        s5: 8, makeup: 9,
+        s6: 10, s7: 11, s8: 12, s9: 13, sum69: 14,
+        midTotal: 15, s10: 16, total: 17, grade: 18,
+        scoreSlots: [3, 4, 5, 6, 8, 10, 11, 12, 13, 16],
+        hasS9: true
+      },
+      term2: {
+        s1: 19, s2: 20, s3: 21, s4: 22, sum14: 23,
+        s5: 24, makeup: 25,
+        s6: 26, s7: 27, s8: 28, s9: 29, sum69: 30,
+        midTotal: 31, s10: 32, total: 33, grade: 34,
+        scoreSlots: [19, 20, 21, 22, 24, 26, 27, 28, 29, 32],
+        hasS9: true
+      }
+    };
+  } else {
+    // Layout เก่า 15 col/term: ไม่มี s9 แยก
+    // D(3)=s1, E(4)=s2, F(5)=s3, G(6)=s4, H(7)=sum14,
+    // I(8)=s5, J(9)=makeup,
+    // K(10)=s6, L(11)=s7, M(12)=s8, N(13)=sum69,
+    // O(14)=midTotal, P(15)=s10(ปลายภาค), Q(16)=total, R(17)=grade
+    // term2 starts at S(18)
+    return {
+      layout: 'old15',
+      yearAvgCol: 33,
+      yearGradeCol: 34,
+      term1: {
+        s1: 3, s2: 4, s3: 5, s4: 6, sum14: 7,
+        s5: 8, makeup: 9,
+        s6: 10, s7: 11, s8: 12, s9: -1, sum69: 13,
+        midTotal: 14, s10: 15, total: 16, grade: 17,
+        scoreSlots: [3, 4, 5, 6, 8, 10, 11, 12, -1, 15],
+        hasS9: false
+      },
+      term2: {
+        s1: 18, s2: 19, s3: 20, s4: 21, sum14: 22,
+        s5: 23, makeup: 24,
+        s6: 25, s7: 26, s8: 27, s9: -1, sum69: 28,
+        midTotal: 29, s10: 30, total: 31, grade: 32,
+        scoreSlots: [18, 19, 20, 21, 23, 25, 26, 27, -1, 30],
+        hasS9: false
+      }
+    };
+  }
+}
+
+/**
  * บันทึกคะแนนเฉพาะภาคเรียน (term) - แก้ไขแล้ว
  * พร้อมคำนวณคะแนนเฉลี่ย 2 ภาคและเกรด (อัปเดตทุกครั้ง)
  */
@@ -698,44 +765,11 @@ function saveScoreSheetData(sheetName, term, studentScores, fullScores, fullFina
 
     const startRow = 5;
     
-    // ✅ โครงสร้างตาม SchoolMIS (16 คอลัมน์ต่อภาค)
-    // Per term layout (0-indexed from termStart):
-    //   0-3: ครั้งที่ 1-4 (ก่อนกลางภาค)
-    //   4:   รวม(ก่อนกลางภาค)
-    //   5:   ครั้งที่ 5 (กลางภาค)
-    //   6:   แก้ตัวกลางภาค
-    //   7-10: ครั้งที่ 6-9 (หลังกลางภาค)
-    //   11:  รวม(หลังกลางภาค)
-    //   12:  รวมระหว่างภาค
-    //   13:  ครั้งที่ 10 (ปลายภาค)
-    //   14:  รวมทั้งหมด
-    //   15:  เกรด
-    // ✅ ชีตมี 3 คอลัมน์ header: A(0)=ลำดับ, B(1)=เลขประจำตัว, C(2)=ชื่อ-สกุล
-    // term1 เริ่มที่ D(col 3), term2 เริ่มที่ T(col 19)
-    const termCols = {
-      term1: { 
-        start: 3,           // D
-        s1: 3, s2: 4, s3: 5, s4: 6, sum14: 7,
-        s5: 8, makeup: 9,
-        s6: 10, s7: 11, s8: 12, s9: 13, sum69: 14,
-        midTotal: 15,
-        s10: 16,
-        total: 17,
-        grade: 18
-      },
-      term2: { 
-        start: 19,          // T
-        s1: 19, s2: 20, s3: 21, s4: 22, sum14: 23,
-        s5: 24, makeup: 25,
-        s6: 26, s7: 27, s8: 28, s9: 29, sum69: 30,
-        midTotal: 31,
-        s10: 32,
-        total: 33,
-        grade: 34
-      }
-    };
+    // ✅ ตรวจ layout ชีต (15 vs 16 col/term) อัตโนมัติ
+    const sheetLayout = detectSheetLayout_(sheet);
+    Logger.log('📐 Sheet layout: ' + sheetLayout.layout + ' for ' + sheetName);
     
-    const cols = termCols[term];
+    const cols = sheetLayout[term];
     if (!cols) throw new Error("term ต้องเป็น 'term1' หรือ 'term2'");
 
     // fullScores จาก frontend: [s1,s2,s3,s4, s5, s6,s7,s8,s9] = 9 ช่อง (ตัวชี้วัด)
@@ -743,6 +777,7 @@ function saveScoreSheetData(sheetName, term, studentScores, fullScores, fullFina
     // บันทึกคะแนนเต็มในแถวที่ 4
     var scoreSlots = [cols.s1, cols.s2, cols.s3, cols.s4, cols.s5, cols.s6, cols.s7, cols.s8, cols.s9];
     for (let i = 0; i < 9; i++) {
+      if (scoreSlots[i] < 0) continue; // s9 ไม่มีในชีตเก่า (15 col/term)
       sheet.getRange(4, scoreSlots[i] + 1).setValue(fullScores[i] || "");
     }
     // ดึง midMax/finMax จากชีตรายวิชา เพื่อแปลงสัดส่วน
@@ -764,6 +799,7 @@ function saveScoreSheetData(sheetName, term, studentScores, fullScores, fullFina
 
       // บันทึกคะแนน 9 ช่อง (ครั้งที่ 1-9 ตัวชี้วัด) — คะแนนดิบ
       for (let i = 0; i < 9; i++) {
+        if (scoreSlots[i] < 0) continue; // s9 ไม่มีในชีตเก่า
         let val = scores[i];
         if (val === null || val === undefined || val === "") val = "";
         else {
@@ -807,8 +843,8 @@ function saveScoreSheetData(sheetName, term, studentScores, fullScores, fullFina
       sheet.getRange(row, cols.grade + 1).setValue(student.grade || calculateFinalGrade(total));
 
       // ✅ คำนวณคะแนนเฉลี่ย 2 ภาคและเกรดรวม
-      const totalTerm1 = Number(sheet.getRange(row, termCols.term1.total + 1).getValue()) || 0;
-      const totalTerm2 = Number(sheet.getRange(row, termCols.term2.total + 1).getValue()) || 0;
+      const totalTerm1 = Number(sheet.getRange(row, sheetLayout.term1.total + 1).getValue()) || 0;
+      const totalTerm2 = Number(sheet.getRange(row, sheetLayout.term2.total + 1).getValue()) || 0;
       
       let average = 0;
       let finalGradeVal = "";
@@ -821,9 +857,9 @@ function saveScoreSheetData(sheetName, term, studentScores, fullScores, fullFina
         finalGradeVal = calculateFinalGrade(average);
       }
 
-      // บันทึกคะแนนเฉลี่ยที่ AJ (col index 35 → getRange col 36) และเกรดที่ AK (col index 36 → getRange col 37)
-      sheet.getRange(row, 36).setValue(average);
-      sheet.getRange(row, 37).setValue(finalGradeVal);
+      // บันทึกคะแนนเฉลี่ยและเกรดรวม (column ขึ้นกับ layout ชีต)
+      sheet.getRange(row, sheetLayout.yearAvgCol + 1).setValue(average);
+      sheet.getRange(row, sheetLayout.yearGradeCol + 1).setValue(finalGradeVal);
     });
 
     return "บันทึกคะแนนเรียบร้อย พร้อมคำนวณเกรดเฉลี่ย";
@@ -859,33 +895,14 @@ function getScoreSheetData(sheetName) {
     const data = sheet.getDataRange().getValues();
     const startRow = 5;
 
-    // ✅ ชีตมี 3 คอลัมน์ header: A(0)=ลำดับ, B(1)=เลขประจำตัว, C(2)=ชื่อ-สกุล
-    // term1 เริ่มที่ D(col 3), term2 เริ่มที่ T(col 19)
-    const termCols = {
-      term1: { 
-        s1: 3, s2: 4, s3: 5, s4: 6, sum14: 7,
-        s5: 8, makeup: 9,
-        s6: 10, s7: 11, s8: 12, s9: 13, sum69: 14,
-        midTotal: 15,
-        s10: 16,
-        total: 17,
-        grade: 18
-      },
-      term2: { 
-        s1: 19, s2: 20, s3: 21, s4: 22, sum14: 23,
-        s5: 24, makeup: 25,
-        s6: 26, s7: 27, s8: 28, s9: 29, sum69: 30,
-        midTotal: 31,
-        s10: 32,
-        total: 33,
-        grade: 34
-      }
-    };
+    // ✅ ตรวจ layout ชีต (15 vs 16 col/term) อัตโนมัติ
+    const sheetLayout = detectSheetLayout_(sheet);
+    Logger.log('📐 getScoreSheetData layout: ' + sheetLayout.layout + ' for ' + sheetName);
 
     function extractTermData(cols) {
       // คะแนนเต็ม 9 ช่อง (ครั้งที่ 1-9 ตัวชี้วัด) จากแถวที่ 4 (index 3)
       var scoreSlots = [cols.s1, cols.s2, cols.s3, cols.s4, cols.s5, cols.s6, cols.s7, cols.s8, cols.s9];
-      const fullScores = scoreSlots.map(function(idx) { return Number(data[3][idx]) || 0; });
+      const fullScores = scoreSlots.map(function(idx) { return idx >= 0 ? (Number(data[3][idx]) || 0) : 0; });
       const fullFinal = Number(data[3][cols.s10]) || 0; // คะแนนเต็มปลายภาค (ครั้งที่ 10)
       
       const rows = [];
@@ -894,7 +911,7 @@ function getScoreSheetData(sheetName) {
         if (!row[1] || !row[2]) continue;
         
         // ดึงคะแนน 9 ช่อง (ครั้งที่ 1-9 ตัวชี้วัด)
-        const scores = scoreSlots.map(function(idx) { return Number(row[idx]) || 0; });
+        const scores = scoreSlots.map(function(idx) { return idx >= 0 ? (Number(row[idx]) || 0) : 0; });
         const mid = Number(row[cols.midTotal]) || 0;
         const final_ = Number(row[cols.s10]) || 0; // ปลายภาค (ครั้งที่ 10) แยก
         const total = Number(row[cols.total]) || 0;
@@ -916,7 +933,7 @@ function getScoreSheetData(sheetName) {
       return { fullScores, fullFinal, rows };
     }
 
-    // ดึงข้อมูลสรุปรวม 2 ภาค (คอลัมน์ AJ-AK, index 35-36)
+    // ดึงข้อมูลสรุปรวม 2 ภาค (column ขึ้นกับ layout ชีต)
     var yearSummary = [];
     for (var yi = startRow - 1; yi < data.length; yi++) {
       var yRow = data[yi];
@@ -924,14 +941,14 @@ function getScoreSheetData(sheetName) {
       yearSummary.push({
         id: yRow[1],
         name: yRow[2],
-        yearAvg: yRow[35] !== undefined && yRow[35] !== '' ? Number(yRow[35]) || 0 : 0,
-        yearGrade: String(yRow[36] || '')
+        yearAvg: yRow[sheetLayout.yearAvgCol] !== undefined && yRow[sheetLayout.yearAvgCol] !== '' ? Number(yRow[sheetLayout.yearAvgCol]) || 0 : 0,
+        yearGrade: String(yRow[sheetLayout.yearGradeCol] || '')
       });
     }
 
     return {
-      term1: extractTermData(termCols.term1),
-      term2: extractTermData(termCols.term2),
+      term1: extractTermData(sheetLayout.term1),
+      term2: extractTermData(sheetLayout.term2),
       yearSummary: yearSummary
     };
   } catch (e) {
