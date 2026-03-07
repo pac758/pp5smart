@@ -704,38 +704,37 @@ function getFilteredStudentsInline(grade, classNo) {
   const occupationIndex      = 19; // T (ใช้สำหรับทั้งบิดาและมารดา)
 
   for (let i = 1; i < data.length; i++) {
-    const row = data[i];
-    const rowGrade = String(row[colMap['grade']] || '').trim();
-    const rowClass = String(row[colMap['class_no']] || '').trim();
+    const row = data[i];
+    const rowGrade = String(row[colMap['grade']] || '').trim();
+    const rowClass = String(row[colMap['class_no']] || '').trim();
 
-    const matchGrade = !grade || grade === rowGrade;
-    const matchClass = !classNo || classNo === rowClass;
+    // กรองนักเรียนที่จำหน่าย/ย้ายออก/พ้นสภาพ
+    var rowStatus = colMap['status'] != null ? String(row[colMap['status']] || '').trim() : '';
+    if (rowStatus === 'จำหน่าย' || rowStatus === 'ย้ายออก' || rowStatus === 'พ้นสภาพ') continue;
 
-    if (matchGrade && matchClass) {
-      const father_name = `${String(row[fatherFirstNameIndex] || '').trim()} ${String(row[fatherLastNameIndex] || '').trim()}`.trim();
-      const mother_name = `${String(row[motherFirstNameIndex] || '').trim()} ${String(row[motherLastNameIndex] || '').trim()}`.trim();
-      
-      result.push({
-        id: String(row[colMap['student_id']] || '').trim(),
-        idCard: String(row[colMap['id_card']] || '').trim(),
-        title: String(row[colMap['title']] || '').trim(),
-        firstname: String(row[colMap['firstname']] || '').trim(),
-        lastname: String(row[colMap['lastname']] || '').trim(),
-        grade: rowGrade,
-        classNo: rowClass,
-        gender: String(row[colMap['gender']] || '').trim(),
-        birthdate: U_formatToDateInput(row[colMap['birthdate']]),
-        age: String(row[colMap['age']] || '').trim(),
-        weight: String(row[colMap['weight']] || '').trim(),
-        height: String(row[colMap['height']] || '').trim(),
-        blood_type: String(row[colMap['blood_type']] || '').trim(),
-        father_name: father_name,
-        father_occupation: String(row[occupationIndex] || '').trim(),
-        mother_name: mother_name,
-        mother_occupation: String(row[occupationIndex] || '').trim(),
-        address: String(row[addressIndex] || '').trim()
-      });
-    }
+    const matchGrade = !grade || grade === rowGrade;
+    const matchClass = !classNo || classNo === rowClass;
+
+    if (matchGrade && matchClass) {
+      const father_name = `${String(row[fatherFirstNameIndex] || '').trim()} ${String(row[fatherLastNameIndex] || '').trim()}`.trim();
+      const mother_name = `${String(row[motherFirstNameIndex] || '').trim()} ${String(row[motherLastNameIndex] || '').trim()}`.trim();
+      result.push({
+        id: String(row[colMap['student_id']] || '').trim(),
+        idCard: String(row[colMap['id_card']] || '').trim(),
+        title: String(row[colMap['title']] || '').trim(),
+        firstname: String(row[colMap['firstname']] || '').trim(),
+        lastname: String(row[colMap['lastname']] || '').trim(),
+        grade: rowGrade,
+        classNo: rowClass,
+        gender: String(row[colMap['gender']] || '').trim(),
+        birthdate: U_formatToDateInput(row[colMap['birthdate']]),
+        father_name: father_name,
+        father_occupation: String(row[occupationIndex] || '').trim(),
+        mother_name: mother_name,
+        mother_occupation: String(row[occupationIndex] || '').trim(),
+        address: String(row[addressIndex] || '').trim()
+      });
+    }
   }
 
   // --- 👇 เพิ่มโค้ดเรียงลำดับนักเรียนตามรหัส (id) ---

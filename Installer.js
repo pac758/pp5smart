@@ -443,6 +443,20 @@ function switchAcademicYear(newYear, options) {
       }
     }
 
+    // ============ ขั้นที่ 5: จัดการนักเรียน (เลื่อนชั้น + จำหน่าย ป.6) ============
+    var studentResult = { promoted: 0, graduated: 0 };
+    if (options.promoteStudents !== false) {
+      Logger.log('🎓 กำลังจำหน่ายนักเรียน ป.6 และเลื่อนชั้น...');
+      try {
+        var gradResult = graduateP6Students_();
+        studentResult.graduated = gradResult.graduated || 0;
+      } catch (e) { Logger.log('⚠️ graduateP6: ' + e.message); }
+      try {
+        var proResult = promoteStudents_();
+        studentResult.promoted = proResult.promoted || 0;
+      } catch (e) { Logger.log('⚠️ promote: ' + e.message); }
+    }
+
     // ล้าง cache
     try { S_clearSettingsCache(); } catch (e) {}
 
@@ -453,6 +467,8 @@ function switchAcademicYear(newYear, options) {
       archiveUrl: archiveUrl,
       sheetsCleared: cleanedCount,
       scoreSheetDeleted: deletedSheets,
+      studentsPromoted: studentResult.promoted,
+      studentsGraduated: studentResult.graduated,
       newYear: newYear,
       oldYear: oldYear
     };
@@ -464,6 +480,130 @@ function switchAcademicYear(newYear, options) {
   } catch (e) {
     Logger.log('❌ switchAcademicYear error: ' + e.message + '\n' + e.stack);
     return { success: false, message: 'เกิดข้อผิดพลาด: ' + e.message };
+  }
+}
+
+// ============================================================
+// 🎓 PROMOTE STUDENTS — เลื่อนชั้นนักเรียน
+// ============================================================
+
+/**
+ * เลื่อนชั้นนักเรียนที่ status = 'active':
+ * ป.1 → ป.2, ป.2 → ป.3, ..., ป.5 → ป.6
+ * (ป.6 ไม่เลื่อน — ต้องจำหน่ายก่อน)
+ * @returns {Object} { promoted: number }
+ */
+function promoteStudents_() {
+  var ss = SS();
+  var sheet = ss.getSheetByName('Students');
+  if (!sheet) return { promoted: 0 };
+
+  var data = sheet.getDataRange().getValues();
+  if (data.length < 2) return { promoted: 0 };
+
+  var headers = data[0];
+  var col = {};
+  headers.forEach(function(h, i) { col[String(h).trim()] = i; });
+
+  var gradeIdx = col['grade'];
+  var statusIdx = col['status'];
+  if (gradeIdx == null) return { promoted: 0 };
+
+  var gradeMap = {
+    'ป.1': 'ป.2',
+    'ป.2': 'ป.3',
+    'ป.3': 'ป.4',
+    'ป.4': 'ป.5',
+    'ป.5': 'ป.6'
+  };
+
+  var promoted = 0;
+  for (var r = 1; r < data.length; r++) {
+    var status = statusIdx != null ? String(data[r][statusIdx]).trim() : 'active';
+    if (status !== 'active' && status !== '') continue;
+
+    var currentGrade = String(data[r][gradeIdx]).trim();
+    var newGrade = gradeMap[currentGrade];
+    if (newGrade) {
+      sheet.getRange(r + 1, gradeIdx + 1).setValue(newGrade);
+      promoted++;
+    }
+  }
+
+  Logger.log('🎓 เลื่อนชั้นนักเรียน: ' + promoted + ' คน');
+  return { promoted: promoted };
+}
+
+/**
+ * เลื่อนชั้นนักเรียน (เรียกจากภายนอก / UI)
+ * @returns {Object}
+ */
+function promoteAllStudents() {
+  try {
+    var result = promoteStudents_();
+    return { success: true, message: 'เลื่อนชั้นนักเรียน ' + result.promoted + ' คน', promoted: result.promoted };
+  } catch (e) {
+    return { success: false, message: e.message };
+  }
+}
+
+// ============================================================
+// 🎓 GRADUATE P.6 — จำหน่ายนักเรียน ป.6
+// ============================================================
+
+/**
+ * จำหน่ายนักเรียน ป.6 ที่ status = 'active':
+ * เปลี่ยน status เป็น 'จำหน่าย' (ไม่ลบข้อมูล ยังดูได้)
+ * @returns {Object} { graduated: number }
+ */
+function graduateP6Students_() {
+  var ss = SS();
+  var sheet = ss.getSheetByName('Students');
+  if (!sheet) return { graduated: 0 };
+
+  var data = sheet.getDataRange().getValues();
+  if (data.length < 2) return { graduated: 0 };
+
+  var headers = data[0];
+  var col = {};
+  headers.forEach(function(h, i) { col[String(h).trim()] = i; });
+
+  var gradeIdx = col['grade'];
+  var statusIdx = col['status'];
+  if (gradeIdx == null) return { graduated: 0 };
+
+  // ถ้าไม่มีคอลัมน์ status ให้สร้างเพิ่ม
+  if (statusIdx == null) {
+    var lastCol = headers.length;
+    sheet.getRange(1, lastCol + 1).setValue('status');
+    statusIdx = lastCol;
+    Logger.log('➕ เพิ่มคอลัมน์ status');
+  }
+
+  var graduated = 0;
+  for (var r = 1; r < data.length; r++) {
+    var currentGrade = String(data[r][gradeIdx]).trim();
+    var status = String(data[r][statusIdx] || '').trim();
+    if (currentGrade === 'ป.6' && (status === 'active' || status === '')) {
+      sheet.getRange(r + 1, statusIdx + 1).setValue('จำหน่าย');
+      graduated++;
+    }
+  }
+
+  Logger.log('🎓 จำหน่ายนักเรียน ป.6: ' + graduated + ' คน');
+  return { graduated: graduated };
+}
+
+/**
+ * จำหน่ายนักเรียน ป.6 (เรียกจากภายนอก / UI)
+ * @returns {Object}
+ */
+function graduateP6() {
+  try {
+    var result = graduateP6Students_();
+    return { success: true, message: 'จำหน่ายนักเรียน ป.6 จำนวน ' + result.graduated + ' คน', graduated: result.graduated };
+  } catch (e) {
+    return { success: false, message: e.message };
   }
 }
 
@@ -514,15 +654,34 @@ function previewSwitchAcademicYear() {
       scoreSheets.push(name);
     });
 
-    // นับนักเรียน
+    // นับนักเรียนแยกตามชั้น
     var studentsSheet = ss.getSheetByName('Students');
-    var studentCount = studentsSheet ? Math.max(0, studentsSheet.getLastRow() - 1) : 0;
+    var studentCount = 0;
+    var gradeCounts = { 'ป.1': 0, 'ป.2': 0, 'ป.3': 0, 'ป.4': 0, 'ป.5': 0, 'ป.6': 0 };
+    if (studentsSheet && studentsSheet.getLastRow() > 1) {
+      var sData = studentsSheet.getDataRange().getValues();
+      var sHeaders = sData[0];
+      var sCol = {};
+      sHeaders.forEach(function(h, i) { sCol[String(h).trim()] = i; });
+      var gIdx = sCol['grade'];
+      var stIdx = sCol['status'];
+      for (var sr = 1; sr < sData.length; sr++) {
+        var st = stIdx != null ? String(sData[sr][stIdx] || '').trim() : '';
+        if (st === 'จำหน่าย' || st === 'ย้ายออก' || st === 'พ้นสภาพ') continue;
+        studentCount++;
+        var g = gIdx != null ? String(sData[sr][gIdx]).trim() : '';
+        if (gradeCounts[g] !== undefined) gradeCounts[g]++;
+      }
+    }
 
     return {
       success: true,
       currentYear: currentYear,
       suggestedNewYear: Number(currentYear) + 1 || '',
       studentCount: studentCount,
+      gradeCounts: gradeCounts,
+      p6Count: gradeCounts['ป.6'],
+      promoteCount: studentCount - gradeCounts['ป.6'],
       dataCounts: dataCounts,
       scoreSheets: scoreSheets,
       totalDataRows: dataCounts.reduce(function(sum, d) { return sum + d.rows; }, 0)
