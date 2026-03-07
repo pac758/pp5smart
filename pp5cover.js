@@ -264,7 +264,13 @@ function getClassTeacherName(grade, classNo) {
 function getSummaryDataFromSheet(sheetName, resultColumnName, validResults, grade, classNo) {
   try {
     const ss = _pp5SS_();
-    const sheet = ss.getSheetByName(sheetName);
+    // ถ้าเป็นชีตรายปี ให้ใช้ S_getYearlySheet
+    var sheet;
+    if (typeof S_YEARLY_SHEETS !== 'undefined' && S_YEARLY_SHEETS.indexOf(sheetName) !== -1) {
+      sheet = S_getYearlySheet(sheetName);
+    } else {
+      sheet = ss.getSheetByName(sheetName);
+    }
     if (!sheet) {
       Logger.log('⚠️ ไม่พบชีต: ' + sheetName);
       const allSheets = ss.getSheets().map(s => s.getName());
@@ -341,7 +347,7 @@ function getReadingSummary(grade, classNo) {
 function getSubjectScoreSummary(grade, classNo) {
   try {
     const ss = _pp5SS_();
-    const scoreSheet = ss.getSheetByName("SCORES_WAREHOUSE");
+    const scoreSheet = S_getYearlySheet('SCORES_WAREHOUSE');
     if (!scoreSheet) return [];
     
     const data = scoreSheet.getDataRange().getValues();

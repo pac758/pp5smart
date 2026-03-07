@@ -961,7 +961,7 @@ function getStudentAllSubjectResults(studentId, term) {
 function getStudentActivities(studentId) {
   try {
     const ss = SS();
-    const sheet = ss.getSheetByName('การประเมินกิจกรรมพัฒนาผู้เรียน');
+    const sheet = S_getYearlySheet('การประเมินกิจกรรมพัฒนาผู้เรียน');
     
     if (!sheet) return [];
     
@@ -990,7 +990,7 @@ function getStudentActivities(studentId) {
 function getStudentCharacteristics(studentId) {
   try {
     const ss = SS();
-    const sheet = ss.getSheetByName('การประเมินคุณลักษณะ');
+    const sheet = S_getYearlySheet('การประเมินคุณลักษณะ');
     
     if (!sheet) return {};
     

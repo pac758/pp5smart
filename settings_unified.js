@@ -488,6 +488,63 @@ function S_getSemester() {
   return settings['ภาคเรียน'] || settings['semester'] || '1';
 }
 
+// ============================================================
+// 📋 YEARLY SHEET NAME HELPERS
+// ============================================================
+
+/** ชีตข้อมูลรายปี — ชื่อฐาน (ปีแรกที่ยังไม่มี suffix จะใช้ชื่อเดิม) */
+var S_YEARLY_SHEETS = [
+  'SCORES_WAREHOUSE',
+  'การประเมินอ่านคิดเขียน',
+  'การประเมินคุณลักษณะ',
+  'การประเมินกิจกรรมพัฒนาผู้เรียน',
+  'การประเมินสมรรถนะ',
+  'AttendanceLog',
+  'ความเห็นครู'
+];
+
+/**
+ * สร้างชื่อชีตสำหรับปีที่ระบุ
+ * เช่น S_sheetName('SCORES_WAREHOUSE', '2568') → 'SCORES_WAREHOUSE_2568'
+ *      S_sheetName('SCORES_WAREHOUSE')         → ใช้ปีปัจจุบันจาก global_settings
+ * @param {string} baseName - ชื่อฐานชีต
+ * @param {string} [year] - ปีการศึกษา (ถ้าไม่ระบุจะดึงจาก settings)
+ * @returns {string}
+ */
+function S_sheetName(baseName, year) {
+  var y = year || S_getAcademicYear();
+  return baseName + '_' + y;
+}
+
+/**
+ * ดึง Sheet object สำหรับปีปัจจุบัน พร้อม fallback ไปชื่อเดิม (กรณียังไม่เคยเปลี่ยนปี)
+ * @param {string} baseName - ชื่อฐานชีต เช่น 'SCORES_WAREHOUSE'
+ * @param {string} [year] - ปีการศึกษา (optional)
+ * @returns {GoogleAppsScript.Spreadsheet.Sheet|null}
+ */
+function S_getYearlySheet(baseName, year) {
+  var ss = SS();
+  var name = S_sheetName(baseName, year);
+  var sheet = ss.getSheetByName(name);
+  if (sheet) return sheet;
+  // fallback: ลองชื่อเดิมไม่มี suffix (กรณีระบบยังไม่เคยเปลี่ยนปี)
+  return ss.getSheetByName(baseName);
+}
+
+/**
+ * ดึงชื่อชีตสำหรับปีที่ระบุ พร้อม fallback
+ * @param {string} baseName
+ * @param {string} [year]
+ * @returns {string} ชื่อชีตที่มีอยู่จริง
+ */
+function S_resolveSheetName(baseName, year) {
+  var ss = SS();
+  var name = S_sheetName(baseName, year);
+  if (ss.getSheetByName(name)) return name;
+  if (ss.getSheetByName(baseName)) return baseName;
+  return name; // ยังไม่มีชีต — คืนชื่อใหม่ไว้สร้างทีหลัง
+}
+
 /**
  * ดึง Logo URL
  * @returns {string}

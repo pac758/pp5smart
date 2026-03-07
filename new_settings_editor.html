@@ -333,7 +333,7 @@ if (typeof window.SettingsEditor === 'undefined') {
                     if (el && !el.value) el.value = result.suggestedNewYear;
 
                     var lines = [];
-                    lines.push('<strong>ปีการศึกษาปัจจุบัน:</strong> ' + result.currentYear);
+                    lines.push('<strong>ปีการศึกษาปัจจุบัน:</strong> ' + result.currentYear + ' → <strong>' + result.suggestedNewYear + '</strong>');
                     lines.push('<hr class="my-1">');
                     lines.push('<strong>🎓 นักเรียน (' + result.studentCount + ' คน):</strong>');
                     var gc = result.gradeCounts || {};
@@ -341,18 +341,25 @@ if (typeof window.SettingsEditor === 'undefined') {
                         if (gc[g]) lines.push('&nbsp;&nbsp;• ' + g + ': ' + gc[g] + ' คน' + (g === 'ป.6' ? ' → <span class="text-danger fw-bold">จำหน่าย</span>' : ' → เลื่อนเป็น ' + g.replace(/\d/, function(d){return parseInt(d)+1;})));
                     });
                     lines.push('<hr class="my-1">');
-                    lines.push('<strong>🧹 ข้อมูลที่จะล้าง:</strong>');
-                    (result.dataCounts || []).forEach(function(d) {
-                        if (d.rows > 0) lines.push('&nbsp;&nbsp;• ' + d.sheet + ': ' + d.rows + ' แถว');
+                    lines.push('<strong>📝 ชีตที่จะ Rename (เก็บข้อมูลเดิมไว้):</strong>');
+                    (result.sheetsToRename || []).forEach(function(d) {
+                        if (!d.alreadyRenamed) {
+                            lines.push('&nbsp;&nbsp;• ' + d.from + ' → ' + d.to + ' (' + d.rows + ' แถว)');
+                        }
+                    });
+                    lines.push('<strong>✨ ชีตใหม่ที่จะสร้าง:</strong>');
+                    (result.sheetsToCreate || []).forEach(function(name) {
+                        lines.push('&nbsp;&nbsp;• ' + name);
                     });
                     if (result.scoreSheets && result.scoreSheets.length > 0) {
-                        lines.push('<strong>ชีตคะแนนที่จะลบ (' + result.scoreSheets.length + '):</strong>');
+                        lines.push('<strong>📝 ชีตคะแนนรายวิชาที่จะ Rename (' + result.scoreSheets.length + '):</strong>');
                         result.scoreSheets.forEach(function(name) {
-                            lines.push('&nbsp;&nbsp;• ' + name);
+                            lines.push('&nbsp;&nbsp;• ' + name + ' → ' + name + '_' + result.currentYear);
                         });
                     }
                     lines.push('<hr class="my-1">');
-                    lines.push('<strong>สรุป:</strong> ล้าง ' + result.totalDataRows + ' แถว + ลบ ' + (result.scoreSheets ? result.scoreSheets.length : 0) + ' ชีต | เลื่อนชั้น ' + (result.promoteCount || 0) + ' คน | จำหน่าย ป.6 ' + (result.p6Count || 0) + ' คน');
+                    lines.push('<span class="text-success fw-bold">✅ ข้อมูลเดิมทั้งหมดจะยังคงอยู่ในชีตเดิม (แค่เปลี่ยนชื่อ)</span>');
+                    lines.push('<strong>สรุป:</strong> เลื่อนชั้น ' + (result.promoteCount || 0) + ' คน | จำหน่าย ป.6 ' + (result.p6Count || 0) + ' คน');
 
                     var previewEl = self.$('switchPreview');
                     var infoEl = self.$('previewInfo');
@@ -376,7 +383,7 @@ if (typeof window.SettingsEditor === 'undefined') {
                 self.setSwitchStatus('กรุณาระบุปีการศึกษาใหม่', 'warning');
                 return;
             }
-            if (!confirm('⚠️ ยืนยันเปลี่ยนปีการศึกษาเป็น ' + newYear + '?\n\nระบบจะ:\n1. สำรอง Spreadsheet ทั้งไฟล์\n2. ล้างข้อมูลคะแนน/ประเมิน/เวลาเรียน\n3. ลบชีตคะแนนรายวิชา\n4. จำหน่ายนักเรียน ป.6\n5. เลื่อนชั้นนักเรียน (ป.1→ป.2 ... ป.5→ป.6)\n6. อัปเดตปีการศึกษา\n\nข้อมูลรายวิชา+ผู้ใช้จะยังคงอยู่\nนักเรียนที่จำหน่ายจะยังอยู่ในระบบ (status=จำหน่าย)')) {
+            if (!confirm('⚠️ ยืนยันเปลี่ยนปีการศึกษาเป็น ' + newYear + '?\n\nระบบจะ:\n1. สำรอง Spreadsheet ทั้งไฟล์ (backup)\n2. เปลี่ยนชื่อชีตข้อมูลเดิม → เติม _ปีเก่า\n3. สร้างชีตว่างสำหรับปีใหม่\n4. เปลี่ยนชื่อชีตคะแนนรายวิชา → เติม _ปีเก่า\n5. จำหน่ายนักเรียน ป.6\n6. เลื่อนชั้นนักเรียน (ป.1→ป.2 ... ป.5→ป.6)\n7. อัปเดตปีการศึกษา\n\n✅ ข้อมูลเดิมทั้งหมดจะยังอยู่ (แค่เปลี่ยนชื่อชีต)')) {
                 return;
             }
 
@@ -395,8 +402,8 @@ if (typeof window.SettingsEditor === 'undefined') {
                         return;
                     }
                     var msg = '<strong>✅ ' + result.message + '</strong><br>';
-                    msg += '📦 Archive: <a href="' + result.archiveUrl + '" target="_blank">เปิดไฟล์สำรอง</a><br>';
-                    msg += '🧹 ล้างข้อมูล: ' + result.sheetsCleared + ' ชีต | ลบชีตคะแนน: ' + result.scoreSheetDeleted + ' ชีต<br>';
+                    msg += '📦 Backup: <a href="' + result.archiveUrl + '" target="_blank">เปิดไฟล์สำรอง</a><br>';
+                    msg += '📝 Rename: ' + (result.sheetsRenamed || 0) + ' ชีต | ✨ สร้างใหม่: ' + (result.sheetsCreated || 0) + ' ชีต | 📝 ชีตคะแนน: ' + (result.scoreSheetArchived || 0) + ' ชีต<br>';
                     msg += '🎓 เลื่อนชั้น: ' + (result.studentsPromoted || 0) + ' คน | จำหน่าย ป.6: ' + (result.studentsGraduated || 0) + ' คน';
                     self.setSwitchStatus(msg, 'success');
 

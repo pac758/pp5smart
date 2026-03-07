@@ -101,9 +101,9 @@ function getStudentScoresForWeb(grade, classNo) {
       return numA - numB;
     });
     
-    const scoresSheet = ss.getSheetByName("SCORES_WAREHOUSE");
+    const scoresSheet = S_getYearlySheet('SCORES_WAREHOUSE');
     if (!scoresSheet) {
-      throw new Error("ไม่พบชีต 'SCORES_WAREHOUSE'");
+      throw new Error("ไม่พบชีต SCORES_WAREHOUSE สำหรับปีปัจจุบัน");
     }
     
     const scoresData = scoresSheet.getDataRange().getValues();

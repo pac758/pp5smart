@@ -496,10 +496,10 @@ function isStudentInClass(studentId, targetGrade, targetClassNo) {
 function saveAttendanceLog(date, grade, classNo, records, updatedCount) {
   try {
     const ss = SS();
-    let logSheet = ss.getSheetByName("AttendanceLog");
+    let logSheet = S_getYearlySheet('AttendanceLog');
     
     if (!logSheet) {
-      logSheet = ss.insertSheet("AttendanceLog");
+      logSheet = ss.insertSheet(S_sheetName('AttendanceLog'));
       const headers = ["timestamp", "date", "grade", "class", "updated_count", "user_email", "details"];
       logSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
       

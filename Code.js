@@ -502,13 +502,20 @@ function getGlobalSettings() {
 // � DIAGNOSTIC: ตรวจสอบชีตที่ขาดหายไป
 // ============================================================
 function checkMissingSheets() {
-  const requiredSheets = [
+  const permanentSheets = [
     'global_settings', 'Users', 'Students', 'รายวิชา',
-    'SCORES_WAREHOUSE', 'Holidays', 'HomeroomTeachers',
-    'การประเมินอ่านคิดเขียน', 'การประเมินคุณลักษณะ',
+    'Holidays', 'HomeroomTeachers'
+  ];
+  // ชีตรายปี — ใช้ S_resolveSheetName เพื่อหาชื่อจริง
+  var yearlyBases = (typeof S_YEARLY_SHEETS !== 'undefined') ? S_YEARLY_SHEETS : [
+    'SCORES_WAREHOUSE', 'การประเมินอ่านคิดเขียน', 'การประเมินคุณลักษณะ',
     'การประเมินกิจกรรมพัฒนาผู้เรียน', 'การประเมินสมรรถนะ',
     'AttendanceLog', 'ความเห็นครู'
   ];
+  var requiredSheets = permanentSheets.slice();
+  yearlyBases.forEach(function(base) {
+    requiredSheets.push((typeof S_resolveSheetName === 'function') ? S_resolveSheetName(base) : base);
+  });
   
   const ss = SS();
   const existingSheets = ss.getSheets().map(s => s.getName());

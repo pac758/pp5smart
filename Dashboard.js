@@ -391,7 +391,7 @@ function getUniqueSubjectCount(scores) { const u = new Set(scores.map(s => s.sub
 function getScoresData(academicYear = null) {
   try {
     const ss = SS();
-    const sheet = ss.getSheetByName("SCORES_WAREHOUSE");
+    const sheet = S_getYearlySheet('SCORES_WAREHOUSE');
     if (!sheet) return [];
     const data = sheet.getDataRange().getValues();
     if (data.length <= 1) return [];
@@ -647,7 +647,7 @@ function getDashboardProgress() {
 
     // 1. ตรวจสอบคะแนนรายวิชา (SCORES_WAREHOUSE)
     try {
-      const scoresSheet = ss.getSheetByName('SCORES_WAREHOUSE');
+      const scoresSheet = S_getYearlySheet('SCORES_WAREHOUSE');
       if (scoresSheet && scoresSheet.getLastRow() > 1) {
         const scoresData = scoresSheet.getDataRange().getValues();
         const headers = scoresData[0];
@@ -711,7 +711,7 @@ function getDashboardProgress() {
 
     // 3. ตรวจสอบการประเมินอ่าน คิด เขียน
     try {
-      const rtwSheet = ss.getSheetByName('การประเมินอ่านคิดเขียน');
+      const rtwSheet = S_getYearlySheet('การประเมินอ่านคิดเขียน');
       if (rtwSheet && rtwSheet.getLastRow() > 1) {
         const rtwData = rtwSheet.getDataRange().getValues();
         const studentsSheet = ss.getSheetByName('Students');
@@ -736,7 +736,7 @@ function getDashboardProgress() {
 
     // 4. ตรวจสอบการประเมินคุณลักษณะ
     try {
-      const charSheet = ss.getSheetByName('การประเมินคุณลักษณะ');
+      const charSheet = S_getYearlySheet('การประเมินคุณลักษณะ');
       if (charSheet && charSheet.getLastRow() > 1) {
         items.push({
           label: 'ประเมินคุณลักษณะ',
@@ -775,7 +775,7 @@ function getDashboardAlerts() {
 
     // 1. ตรวจสอบนักเรียนที่ได้เกรด 0
     try {
-      const scoresSheet = ss.getSheetByName('SCORES_WAREHOUSE');
+      const scoresSheet = S_getYearlySheet('SCORES_WAREHOUSE');
       if (scoresSheet && scoresSheet.getLastRow() > 1) {
         const sData = scoresSheet.getDataRange().getValues();
         const sHeaders = sData[0];

@@ -423,12 +423,13 @@ function getCachedSheetData_(sheetName) {
       return CACHED_STUDENTS_DATA;
     case 'SCORES_WAREHOUSE':
       if (CACHED_WAREHOUSE_DATA && (now - CACHED_WAREHOUSE_TIME) < CACHE_DURATION) return CACHED_WAREHOUSE_DATA;
-      CACHED_WAREHOUSE_DATA = SS().getSheetByName('SCORES_WAREHOUSE').getDataRange().getValues();
+      var whSheet = S_getYearlySheet('SCORES_WAREHOUSE');
+      CACHED_WAREHOUSE_DATA = whSheet ? whSheet.getDataRange().getValues() : [];
       CACHED_WAREHOUSE_TIME = now;
       return CACHED_WAREHOUSE_DATA;
     case 'ความเห็นครู':
       if (CACHED_COMMENT_DATA && (now - CACHED_COMMENT_TIME) < CACHE_DURATION) return CACHED_COMMENT_DATA;
-      const sh = SS().getSheetByName('ความเห็นครู');
+      const sh = S_getYearlySheet('ความเห็นครู');
       CACHED_COMMENT_DATA = sh ? sh.getDataRange().getValues() : null;
       CACHED_COMMENT_TIME = now;
       return CACHED_COMMENT_DATA;

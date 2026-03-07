@@ -1449,7 +1449,7 @@ function getStudentFullData(studentId) {
     let realComment = '';
     try {
       const ss = SS();
-      const commentSheet = ss.getSheetByName('ความเห็นครู');
+      const commentSheet = S_getYearlySheet('ความเห็นครู');
       if (commentSheet) {
         const data = commentSheet.getDataRange().getValues();
         if (data.length > 1) {

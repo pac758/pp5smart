@@ -180,7 +180,13 @@ function _readSheetToObjects(sheetName, useCache = true) {
   
   try {
     const ss = _openSpreadsheet();
-    const sheet = ss.getSheetByName(sheetName);
+    // ถ้าเป็นชีตรายปี ให้ใช้ S_getYearlySheet (resolve ชื่อ + fallback อัตโนมัติ)
+    var sheet;
+    if (typeof S_YEARLY_SHEETS !== 'undefined' && S_YEARLY_SHEETS.indexOf(sheetName) !== -1) {
+      sheet = S_getYearlySheet(sheetName);
+    } else {
+      sheet = ss.getSheetByName(sheetName);
+    }
     if (!sheet) return [];
 
     const values = sheet.getDataRange().getValues();
@@ -1070,10 +1076,10 @@ function rebuildScoresWarehouseForClass(grade, classNo, academicYear) {
     Logger.log(`🔨 Starting rebuild for ${grade} ห้อง ${classNo}`);
     
     const ss = _openSpreadsheet();
-    const warehouseSheet = ss.getSheetByName('SCORES_WAREHOUSE');
+    const warehouseSheet = S_getYearlySheet('SCORES_WAREHOUSE');
     
     if (!warehouseSheet) {
-      throw new Error('ไม่พบชีต SCORES_WAREHOUSE');
+      throw new Error('ไม่พบชีต SCORES_WAREHOUSE สำหรับปีปัจจุบัน');
     }
     
     // สำรอง: คัดลอกชีต SCORES_WAREHOUSE ก่อนแก้ไข

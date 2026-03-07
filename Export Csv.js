@@ -112,23 +112,6 @@ function getStudentsInClass(grade, classNo) {
 
 function getGradesFromWarehouseAllYears(grade, classNo, academicYear) {
   const ss = SS();
-  const warehouseSheet = ss.getSheetByName('SCORES_WAREHOUSE');
-  
-  if (!warehouseSheet) {
-    Logger.log('⚠️ ไม่พบชีต SCORES_WAREHOUSE');
-    return {};
-  }
-  
-  const data = warehouseSheet.getDataRange().getValues();
-  const headers = data[0];
-  
-  const studentIdCol = headers.indexOf('student_id');
-  const gradeCol = headers.indexOf('grade');
-  const classCol = headers.indexOf('class_no');
-  const subjectCodeCol = headers.indexOf('subject_code');
-  const finalGradeCol = headers.indexOf('final_grade');
-  const yearCol = headers.indexOf('academic_year');
-  
   const gradesMap = {};
   
   const currentGradeNumber = parseInt(grade.replace('ป.', ''));
@@ -139,87 +122,97 @@ function getGradesFromWarehouseAllYears(grade, classNo, academicYear) {
     const targetYear = String(parseInt(academicYear) - yearOffset);
     yearsToFetch.push({
       year: targetYear,
-      grade: `ป.${i}`
+      grade: 'ป.' + i
     });
   }
   
-  Logger.log(`📚 ดึงข้อมูล ${yearsToFetch.length} ปี: ${JSON.stringify(yearsToFetch)}`);
+  Logger.log('📚 ดึงข้อมูล ' + yearsToFetch.length + ' ปี: ' + JSON.stringify(yearsToFetch));
   
-  for (let i = 1; i < data.length; i++) {
-    const row = data[i];
-    
-    const rowYear = String(row[yearCol]);
-    const rowGrade = String(row[gradeCol]);
-    const rowClass = String(row[classCol]);
-    
-    const isRelevant = yearsToFetch.some(y => 
-      y.year === rowYear && y.grade === rowGrade && rowClass === classNo
-    );
-    
-    if (isRelevant) {
-      const studentId = String(row[studentIdCol]);
-      const subjectCode = String(row[subjectCodeCol]);
-      const finalGrade = row[finalGradeCol] || '';
-      
-      if (!gradesMap[studentId]) {
-        gradesMap[studentId] = {};
-      }
-      
-      gradesMap[studentId][subjectCode] = finalGrade;
+  // ดึงข้อมูลจากชีตแต่ละปี (แผน B: ชีตแยกตามปี)
+  yearsToFetch.forEach(function(yf) {
+    var sheet = S_getYearlySheet('SCORES_WAREHOUSE', yf.year);
+    if (!sheet) {
+      Logger.log('⚠️ ไม่พบชีต SCORES_WAREHOUSE สำหรับปี ' + yf.year);
+      return;
     }
-  }
+    
+    var data = sheet.getDataRange().getValues();
+    if (data.length < 2) return;
+    var headers = data[0];
+    
+    var studentIdCol = headers.indexOf('student_id');
+    var gradeCol = headers.indexOf('grade');
+    var classCol = headers.indexOf('class_no');
+    var subjectCodeCol = headers.indexOf('subject_code');
+    var finalGradeCol = headers.indexOf('final_grade');
+    
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      var rowGrade = String(row[gradeCol]);
+      var rowClass = String(row[classCol]);
+      
+      if (rowGrade === yf.grade && rowClass === classNo) {
+        var studentId = String(row[studentIdCol]);
+        var subjectCode = String(row[subjectCodeCol]);
+        var finalGrade = row[finalGradeCol] || '';
+        
+        if (!gradesMap[studentId]) {
+          gradesMap[studentId] = {};
+        }
+        gradesMap[studentId][subjectCode] = finalGrade;
+      }
+    }
+  });
   
   return gradesMap;
 }
 
 function getActivitiesDataAllYears(grade, classNo, academicYear) {
-  const ss = SS();
-  const activitySheet = ss.getSheetByName('การประเมินกิจกรรมพัฒนาผู้เรียน');
-  
-  if (!activitySheet) {
-    Logger.log('⚠️ ไม่พบชีตกิจกรรม');
-    return {};
-  }
-  
-  const data = activitySheet.getDataRange().getValues();
-  const headers = data[0];
-  
-  const studentIdCol = headers.indexOf('รหัสนักเรียน');
-  const gradeCol = headers.indexOf('ชั้น');
-  const classCol = headers.indexOf('ห้อง');
-  
-  const activity1Col = headers.indexOf('กิจกรรมแนะแนว');
-  const activity2Col = headers.indexOf('ลูกเสือ_เนตรนารี');
-  const activity3Col = headers.indexOf('ชุมนุม');
-  const activity4Col = headers.indexOf('เพื่อสังคมและสาธารณประโยชน์');
-  
-  const activitiesMap = {};
-  
-  const currentGradeNumber = parseInt(grade.replace('ป.', ''));
-  
-  for (let i = 1; i < data.length; i++) {
-    const row = data[i];
-    const studentId = String(row[studentIdCol]);
-    const studentGrade = String(row[gradeCol]);
-    const studentClass = String(row[classCol]);
-    
-    if (studentClass === classNo) {
-      const gradeNum = parseInt(studentGrade.replace('ป.', ''));
-      
-      if (gradeNum <= currentGradeNumber) {
-        if (!activitiesMap[studentId]) {
-          activitiesMap[studentId] = {};
-        }
-        
-        const prefix = `year${gradeNum}_`;
-        activitiesMap[studentId][`${prefix}activity1`] = row[activity1Col] === 'ผ่าน' ? 'ผ' : '';
-        activitiesMap[studentId][`${prefix}activity2`] = row[activity2Col] === 'ผ่าน' ? 'ผ' : '';
-        activitiesMap[studentId][`${prefix}activity3`] = row[activity3Col] === 'ผ่าน' ? 'ผ' : '';
-        activitiesMap[studentId][`${prefix}activity4`] = row[activity4Col] === 'ผ่าน' ? 'ผ' : '';
+  var activitiesMap = {};
+  var currentGradeNumber = parseInt(grade.replace('ป.', ''));
+
+  // ดึงข้อมูลจากชีตกิจกรรมแต่ละปี (แผน B: ชีตแยกตามปี)
+  for (var g = 1; g <= currentGradeNumber; g++) {
+    var yearOffset = currentGradeNumber - g;
+    var targetYear = String(parseInt(academicYear) - yearOffset);
+
+    var sheet = S_getYearlySheet('การประเมินกิจกรรมพัฒนาผู้เรียน', targetYear);
+    if (!sheet) {
+      Logger.log('⚠️ ไม่พบชีตกิจกรรมสำหรับปี ' + targetYear);
+      continue;
+    }
+
+    var data = sheet.getDataRange().getValues();
+    if (data.length < 2) continue;
+    var headers = data[0];
+
+    var studentIdCol = headers.indexOf('รหัสนักเรียน');
+    var gradeCol = headers.indexOf('ชั้น');
+    var classCol = headers.indexOf('ห้อง');
+    var activity1Col = headers.indexOf('กิจกรรมแนะแนว');
+    var activity2Col = headers.indexOf('ลูกเสือ_เนตรนารี');
+    var activity3Col = headers.indexOf('ชุมนุม');
+    var activity4Col = headers.indexOf('เพื่อสังคมและสาธารณประโยชน์');
+
+    var targetGrade = 'ป.' + g;
+    var prefix = 'year' + g + '_';
+
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      var studentGrade = String(row[gradeCol]);
+      var studentClass = String(row[classCol]);
+
+      if (studentGrade === targetGrade && studentClass === classNo) {
+        var studentId = String(row[studentIdCol]);
+        if (!activitiesMap[studentId]) activitiesMap[studentId] = {};
+        activitiesMap[studentId][prefix + 'activity1'] = row[activity1Col] === 'ผ่าน' ? 'ผ' : '';
+        activitiesMap[studentId][prefix + 'activity2'] = row[activity2Col] === 'ผ่าน' ? 'ผ' : '';
+        activitiesMap[studentId][prefix + 'activity3'] = row[activity3Col] === 'ผ่าน' ? 'ผ' : '';
+        activitiesMap[studentId][prefix + 'activity4'] = row[activity4Col] === 'ผ่าน' ? 'ผ' : '';
       }
     }
   }
-  
+
   return activitiesMap;
 }
 

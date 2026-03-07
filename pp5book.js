@@ -821,7 +821,7 @@ function pp5book_getCharacteristicData_(grade, classNo) {
   students.sort(function(a, b) { return String(a.studentId).localeCompare(String(b.studentId), undefined, { numeric: true }); });
 
   // --- ดึงข้อมูลจากชีต การประเมินคุณลักษณะ ---
-  var charSheet = ss.getSheetByName('การประเมินคุณลักษณะ');
+  var charSheet = S_getYearlySheet('การประเมินคุณลักษณะ');
   var charMap = {};
   if (charSheet && charSheet.getLastRow() > 1) {
     var headers = charSheet.getRange(1, 1, 1, charSheet.getLastColumn()).getValues()[0].map(String);
@@ -891,7 +891,7 @@ function pp5book_getRTWData_(grade, classNo) {
   students.sort(function(a, b) { return String(a.studentId).localeCompare(String(b.studentId), undefined, { numeric: true }); });
 
   // --- ดึงจากชีต การประเมินอ่านคิดเขียน ---
-  var rtwSheet = ss.getSheetByName('การประเมินอ่านคิดเขียน');
+  var rtwSheet = S_getYearlySheet('การประเมินอ่านคิดเขียน');
   var rtwMap = {};
   var subjectCols = ['ภาษาไทย', 'คณิตศาสตร์', 'วิทยาศาสตร์', 'สังคมศึกษา', 'สุขศึกษา', 'ศิลปะ', 'การงาน', 'ภาษาอังกฤษ'];
 
@@ -998,7 +998,7 @@ function pp5book_getSubjectScoreData_(grade, classNo) {
   // --- ดึงจากชีต การประเมินอ่านคิดเขียน (Subject Score ใช้ชีตเดียวกัน) ---
   // Subject Score Assessment จะดึงจาก getStudentsForSubjectScore ที่ใช้ชีต RTW
   // แต่เราต้องดึงโดยตรงเพื่อได้ข้อมูลครบ
-  var rtwSheet = ss.getSheetByName('การประเมินอ่านคิดเขียน');
+  var rtwSheet = S_getYearlySheet('การประเมินอ่านคิดเขียน');
   var scoreMap = {};
   var subjectCols = ['ภาษาไทย', 'คณิตศาสตร์', 'วิทยาศาสตร์', 'สังคมศึกษา', 'สุขศึกษา', 'ศิลปะ', 'การงาน', 'ภาษาอังกฤษ'];
 
