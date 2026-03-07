@@ -254,20 +254,20 @@ function createScoreSheet(subjectCode, subjectName, hour, grade, classNo) {
     const sheet = ss.insertSheet(sheetName);
 
     // ส่วนหัวของตาราง
-    // โครงสร้างใหม่ตาม SchoolMIS (15 คอลัมน์ต่อภาค)
+    // โครงสร้างตาม SchoolMIS (16 คอลัมน์ต่อภาค)
     const header3 = [
       "ลำดับ", "เลขประจำตัว", "ชื่อ - สกุล",
-      // Term 1 (15 cols: D-R, index 3-17)
+      // Term 1 (16 cols: D-S, index 3-18)
       "ครั้งที่1","ครั้งที่2","ครั้งที่3","ครั้งที่4","รวม",
       "ครั้งที่5","แก้ตัวกลางภาค",
-      "ครั้งที่6","ครั้งที่7","ครั้งที่8","รวม",
-      "รวมระหว่างภาค","ครั้งที่9","รวมทั้งหมด","เกรด",
-      // Term 2 (15 cols: S-AG, index 18-32)
+      "ครั้งที่6","ครั้งที่7","ครั้งที่8","ครั้งที่9","รวม",
+      "รวมระหว่างภาค","ครั้งที่10","รวมทั้งหมด","เกรด",
+      // Term 2 (16 cols: T-AI, index 19-34)
       "ครั้งที่1","ครั้งที่2","ครั้งที่3","ครั้งที่4","รวม",
       "ครั้งที่5","แก้ตัวกลางภาค",
-      "ครั้งที่6","ครั้งที่7","ครั้งที่8","รวม",
-      "รวมระหว่างภาค","ครั้งที่9","รวมทั้งหมด","เกรด",
-      // Summary (2 cols: AH-AI, index 33-34)
+      "ครั้งที่6","ครั้งที่7","ครั้งที่8","ครั้งที่9","รวม",
+      "รวมระหว่างภาค","ครั้งที่10","รวมทั้งหมด","เกรด",
+      // Summary (2 cols: AJ-AK, index 35-36)
       "คะแนนเฉลี่ย 2 ภาค", "ระดับผลการเรียน"
     ];
 
@@ -669,58 +669,60 @@ function saveScoreSheetData(sheetName, term, studentScores, fullScores, fullFina
 
     const startRow = 5;
     
-    // ✅ โครงสร้างใหม่ตาม SchoolMIS (15 คอลัมน์ต่อภาค)
+    // ✅ โครงสร้างตาม SchoolMIS (16 คอลัมน์ต่อภาค)
     // Per term layout (0-indexed from termStart):
     //   0-3: ครั้งที่ 1-4 (ก่อนกลางภาค)
     //   4:   รวม(ก่อนกลางภาค)
     //   5:   ครั้งที่ 5 (กลางภาค)
     //   6:   แก้ตัวกลางภาค
-    //   7-9: ครั้งที่ 6-8 (หลังกลางภาค)
-    //   10:  รวม(หลังกลางภาค)
-    //   11:  รวมระหว่างภาค
-    //   12:  ครั้งที่ 9 (ปลายภาค)
-    //   13:  รวมทั้งหมด
-    //   14:  เกรด
+    //   7-10: ครั้งที่ 6-9 (หลังกลางภาค)
+    //   11:  รวม(หลังกลางภาค)
+    //   12:  รวมระหว่างภาค
+    //   13:  ครั้งที่ 10 (ปลายภาค)
+    //   14:  รวมทั้งหมด
+    //   15:  เกรด
     const termCols = {
       term1: { 
         start: 3,           // D
         s1: 3, s2: 4, s3: 5, s4: 6, sum14: 7,
         s5: 8, makeup: 9,
-        s6: 10, s7: 11, s8: 12, sum68: 13,
-        midTotal: 14,
-        s9: 15,
-        total: 16,
-        grade: 17
+        s6: 10, s7: 11, s8: 12, s9: 13, sum69: 14,
+        midTotal: 15,
+        s10: 16,
+        total: 17,
+        grade: 18
       },
       term2: { 
-        start: 18,          // S
-        s1: 18, s2: 19, s3: 20, s4: 21, sum14: 22,
-        s5: 23, makeup: 24,
-        s6: 25, s7: 26, s8: 27, sum68: 28,
-        midTotal: 29,
-        s9: 30,
-        total: 31,
-        grade: 32
+        start: 19,          // T
+        s1: 19, s2: 20, s3: 21, s4: 22, sum14: 23,
+        s5: 24, makeup: 25,
+        s6: 26, s7: 27, s8: 28, s9: 29, sum69: 30,
+        midTotal: 31,
+        s10: 32,
+        total: 33,
+        grade: 34
       }
     };
     
     const cols = termCols[term];
     if (!cols) throw new Error("term ต้องเป็น 'term1' หรือ 'term2'");
 
-    // fullScores จาก frontend: [s1,s2,s3,s4, s5, s6,s7,s8, s9] = 9 ช่อง
-    // fullFinal ไม่ใช้แล้ว (ครั้งที่ 9 = ปลายภาค อยู่ใน fullScores[8])
+    // fullScores จาก frontend: [s1,s2,s3,s4, s5, s6,s7,s8,s9] = 9 ช่อง (ตัวชี้วัด)
+    // fullFinal จาก frontend: คะแนนปลายภาค (ครั้งที่ 10)
     // บันทึกคะแนนเต็มในแถวที่ 4
     var scoreSlots = [cols.s1, cols.s2, cols.s3, cols.s4, cols.s5, cols.s6, cols.s7, cols.s8, cols.s9];
     for (let i = 0; i < 9; i++) {
       sheet.getRange(4, scoreSlots[i] + 1).setValue(fullScores[i] || "");
     }
+    // บันทึกคะแนนเต็มปลายภาค (ครั้งที่ 10)
+    sheet.getRange(4, cols.s10 + 1).setValue(fullFinal || "");
 
     // บันทึกคะแนนนักเรียน
     studentScores.forEach((student, idx) => {
       const row = startRow + idx;
       var scores = student.scores || [];
 
-      // บันทึกคะแนน 9 ช่อง (ครั้งที่ 1-9)
+      // บันทึกคะแนน 9 ช่อง (ครั้งที่ 1-9 ตัวชี้วัด)
       for (let i = 0; i < 9; i++) {
         let val = scores[i];
         if (val === null || val === undefined || val === "") val = "";
@@ -732,27 +734,28 @@ function saveScoreSheetData(sheetName, term, studentScores, fullScores, fullFina
         sheet.getRange(row, scoreSlots[i] + 1).setValue(val);
       }
 
+      // บันทึกปลายภาค (ครั้งที่ 10) จาก student.final
+      var s10val = Number(student.final) || 0;
+      sheet.getRange(row, cols.s10 + 1).setValue(s10val);
+
       // คำนวณรวมก่อนกลางภาค (1-4)
       var sum14 = (Number(scores[0])||0) + (Number(scores[1])||0) + (Number(scores[2])||0) + (Number(scores[3])||0);
       sheet.getRange(row, cols.sum14 + 1).setValue(sum14);
 
-      // คำนวณรวมหลังกลางภาค (6-8)
-      var sum68 = (Number(scores[5])||0) + (Number(scores[6])||0) + (Number(scores[7])||0);
-      sheet.getRange(row, cols.sum68 + 1).setValue(sum68);
+      // คำนวณรวมหลังกลางภาค (6-9)
+      var sum69 = (Number(scores[5])||0) + (Number(scores[6])||0) + (Number(scores[7])||0) + (Number(scores[8])||0);
+      sheet.getRange(row, cols.sum69 + 1).setValue(sum69);
 
       // แก้ตัวกลางภาค
       sheet.getRange(row, cols.makeup + 1).setValue(student.makeup || "");
 
       // รวมระหว่างภาค = รวมก่อนกลางภาค + ครั้งที่5 + รวมหลังกลางภาค
       var s5val = Number(scores[4]) || 0;
-      var midTotal = sum14 + s5val + sum68;
+      var midTotal = sum14 + s5val + sum69;
       sheet.getRange(row, cols.midTotal + 1).setValue(midTotal);
 
-      // ครั้งที่ 9 (ปลายภาค) — อยู่ใน scores[8]
-      var s9val = Number(scores[8]) || 0;
-
-      // รวมทั้งหมด = รวมระหว่างภาค + ครั้งที่9
-      var total = midTotal + s9val;
+      // รวมทั้งหมด = รวมระหว่างภาค + ครั้งที่10(ปลายภาค)
+      var total = midTotal + s10val;
       sheet.getRange(row, cols.total + 1).setValue(total);
 
       // เกรด
@@ -773,9 +776,9 @@ function saveScoreSheetData(sheetName, term, studentScores, fullScores, fullFina
         finalGradeVal = calculateFinalGrade(average);
       }
 
-      // บันทึกคะแนนเฉลี่ยที่ AH (column 34) และเกรดที่ AI (column 35)
-      sheet.getRange(row, 34).setValue(average);
-      sheet.getRange(row, 35).setValue(finalGradeVal);
+      // บันทึกคะแนนเฉลี่ยที่ AJ (column 36) และเกรดที่ AK (column 37)
+      sheet.getRange(row, 36).setValue(average);
+      sheet.getRange(row, 37).setValue(finalGradeVal);
     });
 
     return "บันทึกคะแนนเรียบร้อย พร้อมคำนวณเกรดเฉลี่ย";
@@ -811,43 +814,43 @@ function getScoreSheetData(sheetName) {
     const data = sheet.getDataRange().getValues();
     const startRow = 5;
 
-    // ✅ โครงสร้างใหม่ตาม SchoolMIS (15 คอลัมน์ต่อภาค)
+    // ✅ โครงสร้างตาม SchoolMIS (16 คอลัมน์ต่อภาค)
     const termCols = {
       term1: { 
         s1: 3, s2: 4, s3: 5, s4: 6, sum14: 7,
         s5: 8, makeup: 9,
-        s6: 10, s7: 11, s8: 12, sum68: 13,
-        midTotal: 14,
-        s9: 15,
-        total: 16,
-        grade: 17
+        s6: 10, s7: 11, s8: 12, s9: 13, sum69: 14,
+        midTotal: 15,
+        s10: 16,
+        total: 17,
+        grade: 18
       },
       term2: { 
-        s1: 18, s2: 19, s3: 20, s4: 21, sum14: 22,
-        s5: 23, makeup: 24,
-        s6: 25, s7: 26, s8: 27, sum68: 28,
-        midTotal: 29,
-        s9: 30,
-        total: 31,
-        grade: 32
+        s1: 19, s2: 20, s3: 21, s4: 22, sum14: 23,
+        s5: 24, makeup: 25,
+        s6: 26, s7: 27, s8: 28, s9: 29, sum69: 30,
+        midTotal: 31,
+        s10: 32,
+        total: 33,
+        grade: 34
       }
     };
 
     function extractTermData(cols) {
-      // คะแนนเต็ม 9 ช่อง (ครั้งที่ 1-9) จากแถวที่ 4 (index 3)
+      // คะแนนเต็ม 9 ช่อง (ครั้งที่ 1-9 ตัวชี้วัด) จากแถวที่ 4 (index 3)
       var scoreSlots = [cols.s1, cols.s2, cols.s3, cols.s4, cols.s5, cols.s6, cols.s7, cols.s8, cols.s9];
       const fullScores = scoreSlots.map(function(idx) { return Number(data[3][idx]) || 0; });
-      const fullFinal = 0; // ไม่ใช้แยกแล้ว (ครั้งที่ 9 = ปลายภาค)
+      const fullFinal = Number(data[3][cols.s10]) || 0; // คะแนนเต็มปลายภาค (ครั้งที่ 10)
       
       const rows = [];
       for (let i = startRow - 1; i < data.length; i++) {
         const row = data[i];
         if (!row[1] || !row[2]) continue;
         
-        // ดึงคะแนน 9 ช่อง (ครั้งที่ 1-9)
+        // ดึงคะแนน 9 ช่อง (ครั้งที่ 1-9 ตัวชี้วัด)
         const scores = scoreSlots.map(function(idx) { return Number(row[idx]) || 0; });
         const mid = Number(row[cols.midTotal]) || 0;
-        const final_ = Number(row[cols.s9]) || 0;
+        const final_ = Number(row[cols.s10]) || 0; // ปลายภาค (ครั้งที่ 10) แยก
         const total = Number(row[cols.total]) || 0;
         const grade = String(row[cols.grade] || "");
         const makeup = Number(row[cols.makeup]) || 0;
@@ -867,7 +870,7 @@ function getScoreSheetData(sheetName) {
       return { fullScores, fullFinal, rows };
     }
 
-    // ดึงข้อมูลสรุปรวม 2 ภาค (คอลัมน์ AH-AI, index 33-34)
+    // ดึงข้อมูลสรุปรวม 2 ภาค (คอลัมน์ AJ-AK, index 35-36)
     var yearSummary = [];
     for (var yi = startRow - 1; yi < data.length; yi++) {
       var yRow = data[yi];
@@ -875,8 +878,8 @@ function getScoreSheetData(sheetName) {
       yearSummary.push({
         id: yRow[1],
         name: yRow[2],
-        yearAvg: yRow[33] !== undefined && yRow[33] !== '' ? Number(yRow[33]) || 0 : 0,
-        yearGrade: String(yRow[34] || '')
+        yearAvg: yRow[35] !== undefined && yRow[35] !== '' ? Number(yRow[35]) || 0 : 0,
+        yearGrade: String(yRow[36] || '')
       });
     }
 
@@ -1960,20 +1963,20 @@ function createScoreSheetWithStudents(subjectCode, subjectName, hour, grade, cla
     // ▼▼▼ ส่วน “สร้างชีตใหม่” ทำงานเฉพาะกรณีไม่พบชีตเดิมเท่านั้น ▼▼▼
     const sheet = ss.insertSheet(baseSheetName);
 
-    // โครงสร้างใหม่ตาม SchoolMIS (15 คอลัมน์ต่อภาค)
+    // โครงสร้างตาม SchoolMIS (16 คอลัมน์ต่อภาค)
     const header3 = [
       "ลำดับ", "เลขประจำตัว", "ชื่อ - สกุล",
-      // Term 1 (15 cols: D-R, index 3-17)
+      // Term 1 (16 cols: D-S, index 3-18)
       "ครั้งที่1","ครั้งที่2","ครั้งที่3","ครั้งที่4","รวม",
       "ครั้งที่5","แก้ตัวกลางภาค",
-      "ครั้งที่6","ครั้งที่7","ครั้งที่8","รวม",
-      "รวมระหว่างภาค","ครั้งที่9","รวมทั้งหมด","เกรด",
-      // Term 2 (15 cols: S-AG, index 18-32)
+      "ครั้งที่6","ครั้งที่7","ครั้งที่8","ครั้งที่9","รวม",
+      "รวมระหว่างภาค","ครั้งที่10","รวมทั้งหมด","เกรด",
+      // Term 2 (16 cols: T-AI, index 19-34)
       "ครั้งที่1","ครั้งที่2","ครั้งที่3","ครั้งที่4","รวม",
       "ครั้งที่5","แก้ตัวกลางภาค",
-      "ครั้งที่6","ครั้งที่7","ครั้งที่8","รวม",
-      "รวมระหว่างภาค","ครั้งที่9","รวมทั้งหมด","เกรด",
-      // Summary (2 cols: AH-AI, index 33-34)
+      "ครั้งที่6","ครั้งที่7","ครั้งที่8","ครั้งที่9","รวม",
+      "รวมระหว่างภาค","ครั้งที่10","รวมทั้งหมด","เกรด",
+      // Summary (2 cols: AJ-AK, index 35-36)
       "คะแนนเฉลี่ย 2 ภาค", "ระดับผลการเรียน"
     ];
 
@@ -2699,15 +2702,15 @@ function deleteOldScoreSheets() {
  *   Term1 เดิม: col 3-12 (D-M) = ช่อง1-10, col 13 = กลางภาค, col 14 = ปลายภาค, col 15 = รวม, col 16 = เกรด
  *   Term2 เดิม: col 17-26 (R-AA) = ช่อง11-20, col 27 = กลางภาค2, col 28 = ปลายภาค2, col 29 = รวม2, col 30 = เกรด2
  *
- * โครงสร้างใหม่ (ต่อ 1 ภาค): 15 คอลัมน์
- *   Term1 ใหม่: s1-s4(3-6), sum14(7), s5(8), makeup(9), s6-s8(10-12), sum68(13), midTotal(14), s9(15), total(16), grade(17)
- *   Term2 ใหม่: s1-s4(18-21), sum14(22), s5(23), makeup(24), s6-s8(25-27), sum68(28), midTotal(29), s9(30), total(31), grade(32)
+ * โครงสร้างใหม่ (ต่อ 1 ภาค): 16 คอลัมน์
+ *   Term1 ใหม่: s1-s4(3-6), sum14(7), s5(8), makeup(9), s6-s9(10-13), sum69(14), midTotal(15), s10(16), total(17), grade(18)
+ *   Term2 ใหม่: s1-s4(19-22), sum14(23), s5(24), makeup(25), s6-s9(26-29), sum69(30), midTotal(31), s10(32), total(33), grade(34)
  *
  * MAPPING (ผู้ใช้เลือก):
  *   เดิม ช่อง 1-4 → ครั้งที่ 1-4
  *   เดิม ช่อง 5   → ครั้งที่ 5 (กลางภาค)
  *   เดิม ช่อง 6-8 → ครั้งที่ 6-8
- *   เดิม "ปลายภาค" → ครั้งที่ 9 (ปลายภาค)
+ *   เดิม "ปลายภาค" → ครั้งที่ 10 (ปลายภาค)
  *   เดิม ช่อง 9-10 → ไม่ใช้
  */
 function migrateScoresFromBackup() {
@@ -2745,19 +2748,19 @@ function migrateScoresFromBackup() {
         term2: { scores: 17, final: 28 }   // col R(17)-AA(26)=ช่อง11-20, col AC(28)=ปลายภาค2
       };
       
-      // โครงสร้างใหม่ (0-indexed)
+      // โครงสร้างใหม่ (0-indexed, 16 คอลัมน์ต่อภาค)
       var NEW = {
         term1: {
           s1: 3, s2: 4, s3: 5, s4: 6, sum14: 7,
           s5: 8, makeup: 9,
-          s6: 10, s7: 11, s8: 12, sum68: 13,
-          midTotal: 14, s9: 15, total: 16, grade: 17
+          s6: 10, s7: 11, s8: 12, s9: 13, sum69: 14,
+          midTotal: 15, s10: 16, total: 17, grade: 18
         },
         term2: {
-          s1: 18, s2: 19, s3: 20, s4: 21, sum14: 22,
-          s5: 23, makeup: 24,
-          s6: 25, s7: 26, s8: 27, sum68: 28,
-          midTotal: 29, s9: 30, total: 31, grade: 32
+          s1: 19, s2: 20, s3: 21, s4: 22, sum14: 23,
+          s5: 24, makeup: 25,
+          s6: 26, s7: 27, s8: 28, s9: 29, sum69: 30,
+          midTotal: 31, s10: 32, total: 33, grade: 34
         }
       };
       
@@ -2807,8 +2810,8 @@ function migrateScoresFromBackup() {
           avg = t1Total > 0 ? t1Total : t2Total;
           fg = calculateFinalGrade(avg);
         }
-        targetSheet.getRange(row, 34).setValue(avg);
-        targetSheet.getRange(row, 35).setValue(fg);
+        targetSheet.getRange(row, 36).setValue(avg);
+        targetSheet.getRange(row, 37).setValue(fg);
       }
       
       Logger.log('  ✅ Migrate ' + studentCount + ' คน สำเร็จ');
@@ -2842,9 +2845,9 @@ function migrateTermFullScores_(targetSheet, bFullRow, oldCols, newCols) {
     var val = Number(bFullRow[oldCols.scores + 5 + k]) || 0;
     if (val > 0) targetSheet.getRange(4, newCols.s6 + k + 1).setValue(val);
   }
-  // เดิม: ปลายภาค → ครั้งที่ 9
+  // เดิม: ปลายภาค → ครั้งที่ 10
   var vFinal = Number(bFullRow[oldCols.final]) || 0;
-  if (vFinal > 0) targetSheet.getRange(4, newCols.s9 + 1).setValue(vFinal);
+  if (vFinal > 0) targetSheet.getRange(4, newCols.s10 + 1).setValue(vFinal);
 }
 
 /**
@@ -2852,7 +2855,7 @@ function migrateTermFullScores_(targetSheet, bFullRow, oldCols, newCols) {
  */
 function migrateTermRow_(targetSheet, targetRow, bRow, oldCols, newCols) {
   // เดิม: ช่อง 1-4 → ครั้งที่ 1-4
-  var s = [0,0,0,0, 0, 0,0,0, 0]; // scores index 0-8
+  var s = [0,0,0,0, 0, 0,0,0,0, 0]; // scores index 0-9 (10 ช่อง)
   for (var k = 0; k < 4; k++) {
     s[k] = Number(bRow[oldCols.scores + k]) || 0;
     targetSheet.getRange(targetRow, newCols.s1 + k + 1).setValue(s[k]);
@@ -2860,23 +2863,23 @@ function migrateTermRow_(targetSheet, targetRow, bRow, oldCols, newCols) {
   // เดิม: ช่อง 5 → ครั้งที่ 5 (กลางภาค)
   s[4] = Number(bRow[oldCols.scores + 4]) || 0;
   targetSheet.getRange(targetRow, newCols.s5 + 1).setValue(s[4]);
-  // เดิม: ช่อง 6-8 → ครั้งที่ 6-8
+  // เดิม: ช่อง 6-8 → ครั้งที่ 6-8 (ครั้งที่ 9 ไม่มีในข้อมูลเดิม)
   for (var k = 0; k < 3; k++) {
     s[5 + k] = Number(bRow[oldCols.scores + 5 + k]) || 0;
     targetSheet.getRange(targetRow, newCols.s6 + k + 1).setValue(s[5 + k]);
   }
-  // เดิม: ปลายภาค → ครั้งที่ 9
-  s[8] = Number(bRow[oldCols.final]) || 0;
-  targetSheet.getRange(targetRow, newCols.s9 + 1).setValue(s[8]);
+  // เดิม: ปลายภาค → ครั้งที่ 10
+  s[9] = Number(bRow[oldCols.final]) || 0;
+  targetSheet.getRange(targetRow, newCols.s10 + 1).setValue(s[9]);
   
   // คำนวณรวม
   var sum14 = s[0] + s[1] + s[2] + s[3];
-  var sum68 = s[5] + s[6] + s[7];
-  var midTotal = sum14 + s[4] + sum68;
-  var total = midTotal + s[8];
+  var sum69 = s[5] + s[6] + s[7] + s[8]; // s[8]=ครั้ง9 (0 จากข้อมูลเดิม)
+  var midTotal = sum14 + s[4] + sum69;
+  var total = midTotal + s[9];
   
   targetSheet.getRange(targetRow, newCols.sum14 + 1).setValue(sum14);
-  targetSheet.getRange(targetRow, newCols.sum68 + 1).setValue(sum68);
+  targetSheet.getRange(targetRow, newCols.sum69 + 1).setValue(sum69);
   targetSheet.getRange(targetRow, newCols.midTotal + 1).setValue(midTotal);
   targetSheet.getRange(targetRow, newCols.total + 1).setValue(total);
   targetSheet.getRange(targetRow, newCols.grade + 1).setValue(calculateFinalGrade(total));

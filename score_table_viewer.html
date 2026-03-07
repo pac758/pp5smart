@@ -2001,16 +2001,18 @@ window.ScoreEntrySystem = (function() {
         // Recalculate full score sums
         const fulls = [...table.querySelectorAll('.score-entry-full-score')].map(i => Number(i.value || 0));
         var fSum14 = (fulls[0]||0)+(fulls[1]||0)+(fulls[2]||0)+(fulls[3]||0);
-        var fSum68 = (fulls[5]||0)+(fulls[6]||0)+(fulls[7]||0);
-        var fMidTotal = fSum14 + (fulls[4]||0) + fSum68;
-        var fTotal = fMidTotal + (fulls[8]||0);
+        var fSum69 = (fulls[5]||0)+(fulls[6]||0)+(fulls[7]||0)+(fulls[8]||0);
+        var fMidTotal = fSum14 + (fulls[4]||0) + fSum69;
+        var fullFinalSpan = table.querySelector('.score-entry-full-final');
+        var fFinal = fullFinalSpan ? Number(fullFinalSpan.textContent || 0) : 0;
+        var fTotal = fMidTotal + fFinal;
 
         var s14 = table.querySelector('.score-entry-full-sum14');
-        var s68 = table.querySelector('.score-entry-full-sum68');
+        var s69 = table.querySelector('.score-entry-full-sum69');
         var sMid = table.querySelector('.score-entry-full-midtotal');
         var sTotal = table.querySelector('.score-entry-full-total');
         if (s14) s14.textContent = fSum14;
-        if (s68) s68.textContent = fSum68;
+        if (s69) s69.textContent = fSum69;
         if (sMid) sMid.textContent = fMidTotal;
         if (sTotal) sTotal.textContent = fTotal;
 
@@ -2101,7 +2103,7 @@ window.ScoreEntrySystem = (function() {
     function calcRowTotal(row, debounce = true) {
       const action = () => {
         const sum14Cell = row.querySelector('.score-entry-sum14');
-        const sum68Cell = row.querySelector('.score-entry-sum68');
+        const sum69Cell = row.querySelector('.score-entry-sum69');
         const sumCell = row.querySelector('.score-entry-sum');
         const totalCell = row.querySelector('.score-entry-total');
         const gradeCell = row.querySelector('.score-entry-grade');
@@ -2110,7 +2112,7 @@ window.ScoreEntrySystem = (function() {
         const table = row.closest('table');
         const fullScores = [...table.querySelectorAll('.score-entry-full-score')].map(i => Number(i.value || 0));
 
-        // Validate & clamp ทุก input
+        // Validate & clamp ทุก input (ตัวชี้วัด 1-9)
         var scores = [];
         row.querySelectorAll('.score-entry-input').forEach((input) => {
           const idx = Number(input.dataset.index);
@@ -2123,20 +2125,21 @@ window.ScoreEntrySystem = (function() {
         var sum14 = (scores[0]||0)+(scores[1]||0)+(scores[2]||0)+(scores[3]||0);
         if (sum14Cell) sum14Cell.textContent = sum14;
 
-        // คำนวณรวมหลังกลางภาค (6-8): index 5-7
-        var sum68 = (scores[5]||0)+(scores[6]||0)+(scores[7]||0);
-        if (sum68Cell) sum68Cell.textContent = sum68;
+        // คำนวณรวมหลังกลางภาค (6-9): index 5-8
+        var sum69 = (scores[5]||0)+(scores[6]||0)+(scores[7]||0)+(scores[8]||0);
+        if (sum69Cell) sum69Cell.textContent = sum69;
 
-        // รวมระหว่างภาค = รวม(1-4) + ครั้งที่5 + รวม(6-8)
+        // รวมระหว่างภาค = รวม(1-4) + ครั้งที่5 + รวม(6-9)
         var s5 = scores[4] || 0;
-        var midTotal = sum14 + s5 + sum68;
+        var midTotal = sum14 + s5 + sum69;
         if (sumCell) sumCell.textContent = midTotal;
 
-        // ครั้งที่ 9 (ปลายภาค): index 8
-        var s9 = scores[8] || 0;
+        // ครั้งที่ 10 (ปลายภาค) จาก final-input แยก
+        const finalInput = row.querySelector('.score-entry-final-input');
+        var s10 = Number(finalInput?.value || 0);
 
         // รวมทั้งหมด
-        var total = midTotal + s9;
+        var total = midTotal + s10;
         totalCell.textContent = total;
 
         // เกรด
@@ -2297,9 +2300,9 @@ window.ScoreEntrySystem = (function() {
           <th rowspan="2" style="width:200px;">ชื่อ-นามสกุล</th>
           <th colspan="5" style="background:#e8f5e9;">คะแนนก่อนกลางภาค</th>
           <th rowspan="2" style="width:45px; background:#fff3e0;">ครั้งที่5</th>
-          <th colspan="4" style="background:#e3f2fd;">คะแนนหลังกลางภาค</th>
+          <th colspan="5" style="background:#e3f2fd;">คะแนนหลังกลางภาค</th>
           <th rowspan="2" style="width:50px; background:#f3e5f5;">รวม<br>ระหว่างภาค</th>
-          <th rowspan="2" style="width:45px; background:#fff8e1;">ครั้งที่9<br>ปลายภาค</th>
+          <th rowspan="2" style="width:45px; background:#fff8e1;">ครั้งที่10<br>ปลายภาค</th>
           <th rowspan="2" style="width:50px; background:#fce4ec;">รวม<br>ทั้งหมด</th>
           <th rowspan="2" style="width:40px;">เกรด</th>
         </tr>
@@ -2312,6 +2315,7 @@ window.ScoreEntrySystem = (function() {
           <th style="width:42px; background:#e3f2fd;">6</th>
           <th style="width:42px; background:#e3f2fd;">7</th>
           <th style="width:42px; background:#e3f2fd;">8</th>
+          <th style="width:42px; background:#e3f2fd;">9</th>
           <th style="width:42px; background:#bbdefb;">รวม</th>
         </tr>
         <tr class="score-entry-fullscore-row">
@@ -2319,8 +2323,8 @@ window.ScoreEntrySystem = (function() {
           <th class="col-student-code"></th>
           <th></th>`;
       
-      // คะแนนเต็ม 9 ช่อง: [s1,s2,s3,s4, s5, s6,s7,s8, s9]
-      // แสดง: s1-s4, (sum14 auto), s5, s6-s8, (sum68 auto), (midTotal auto), s9, (total auto), grade
+      // คะแนนเต็ม 9 ช่อง: [s1,s2,s3,s4, s5, s6,s7,s8,s9] (ตัวชี้วัด) + fullFinal (ปลายภาค)
+      // แสดง: s1-s4, (sum14 auto), s5, s6-s9, (sum69 auto), (midTotal auto), s10, (total auto), grade
       // fullScores input: ครั้งที่1-4
       for(let i = 0; i < 4; i++) {
         html += `<th><input type="number" min="0" max="100" step="0.5" class="score-entry-full-score" data-index="${i}" value="${fullScores[i] ?? ''}" style="width:38px; height:28px; font-size:0.85rem; text-align:center; border:1px solid #cbd5e1; border-radius:4px;"></th>`;
@@ -2330,20 +2334,20 @@ window.ScoreEntrySystem = (function() {
       html += `<th><span class="score-entry-full-sum14" style="font-weight:700; color:#2e7d32;">${fullSum14}</span></th>`;
       // ครั้งที่5 (กลางภาค)
       html += `<th><input type="number" min="0" max="100" step="0.5" class="score-entry-full-score" data-index="4" value="${fullScores[4] ?? ''}" style="width:38px; height:28px; font-size:0.85rem; text-align:center; border:1px solid #cbd5e1; border-radius:4px;"></th>`;
-      // ครั้งที่6-8
-      for(let i = 5; i < 8; i++) {
+      // ครั้งที่6-9
+      for(let i = 5; i < 9; i++) {
         html += `<th><input type="number" min="0" max="100" step="0.5" class="score-entry-full-score" data-index="${i}" value="${fullScores[i] ?? ''}" style="width:38px; height:28px; font-size:0.85rem; text-align:center; border:1px solid #cbd5e1; border-radius:4px;"></th>`;
       }
-      // รวม(6-8) auto
-      var fullSum68 = (fullScores[5]||0)+(fullScores[6]||0)+(fullScores[7]||0);
-      html += `<th><span class="score-entry-full-sum68" style="font-weight:700; color:#1565c0;">${fullSum68}</span></th>`;
+      // รวม(6-9) auto
+      var fullSum69 = (fullScores[5]||0)+(fullScores[6]||0)+(fullScores[7]||0)+(fullScores[8]||0);
+      html += `<th><span class="score-entry-full-sum69" style="font-weight:700; color:#1565c0;">${fullSum69}</span></th>`;
       // รวมระหว่างภาค auto
-      var fullMidTotal = fullSum14 + (fullScores[4]||0) + fullSum68;
+      var fullMidTotal = fullSum14 + (fullScores[4]||0) + fullSum69;
       html += `<th><span class="score-entry-full-midtotal" style="font-weight:700; color:#7b1fa2;">${fullMidTotal}</span></th>`;
-      // ครั้งที่9 (ปลายภาค)
-      html += `<th><input type="number" min="0" max="100" step="0.5" class="score-entry-full-score" data-index="8" value="${fullScores[8] ?? ''}" style="width:38px; height:28px; font-size:0.85rem; text-align:center; border:1px solid #cbd5e1; border-radius:4px;"></th>`;
+      // ครั้งที่10 (ปลายภาค) — ใช้ fullFinal จาก backend
+      html += `<th><span class="score-entry-full-final" style="font-weight:700; color:#f57f17;">${fullFinal}</span></th>`;
       // รวมทั้งหมด auto
-      var fullTotal = fullMidTotal + (fullScores[8]||0);
+      var fullTotal = fullMidTotal + fullFinal;
       html += `<th><span class="score-entry-full-total" style="font-weight:700; color:#c62828;">${fullTotal}</span></th>`;
       html += `<th></th>
         </tr>
@@ -2353,8 +2357,8 @@ window.ScoreEntrySystem = (function() {
       sortedData.forEach((row, i) => {
         var scores = row.scores || [];
         var sum14 = (Number(scores[0])||0)+(Number(scores[1])||0)+(Number(scores[2])||0)+(Number(scores[3])||0);
-        var sum68 = (Number(scores[5])||0)+(Number(scores[6])||0)+(Number(scores[7])||0);
-        var midTotal = sum14 + (Number(scores[4])||0) + sum68;
+        var sum69 = (Number(scores[5])||0)+(Number(scores[6])||0)+(Number(scores[7])||0)+(Number(scores[8])||0);
+        var midTotal = sum14 + (Number(scores[4])||0) + sum69;
         
         html += `<tr>
           <td style="font-weight:600;">${i+1}</td>
@@ -2369,16 +2373,16 @@ window.ScoreEntrySystem = (function() {
         html += `<td class="score-entry-sum14" style="font-weight:600; color:#2e7d32; background:#f1f8e9;">${sum14}</td>`;
         // ครั้งที่ 5 (กลางภาค)
         html += `<td><input type="number" min="0" step="0.5" class="score-entry-input" data-index="4" value="${scores[4] ?? ''}"></td>`;
-        // ครั้งที่ 6-8
-        for(let j = 5; j < 8; j++) {
+        // ครั้งที่ 6-9
+        for(let j = 5; j < 9; j++) {
           html += `<td><input type="number" min="0" step="0.5" class="score-entry-input" data-index="${j}" value="${scores[j] ?? ''}"></td>`;
         }
-        // รวม(6-8) auto
-        html += `<td class="score-entry-sum68" style="font-weight:600; color:#1565c0; background:#e3f2fd;">${sum68}</td>`;
+        // รวม(6-9) auto
+        html += `<td class="score-entry-sum69" style="font-weight:600; color:#1565c0; background:#e3f2fd;">${sum69}</td>`;
         // รวมระหว่างภาค auto
         html += `<td class="score-entry-sum" style="font-weight:700; color:#7b1fa2; background:#f3e5f5;">${midTotal}</td>`;
-        // ครั้งที่ 9 (ปลายภาค)
-        html += `<td><input type="number" min="0" step="0.5" class="score-entry-input score-entry-final-input" data-index="8" value="${scores[8] ?? ''}"></td>`;
+        // ครั้งที่ 10 (ปลายภาค)
+        html += `<td><input type="number" min="0" step="0.5" class="score-entry-final-input" value="${row.final ?? ''}"></td>`;
         // รวมทั้งหมด
         html += `<td class="score-entry-total" style="font-weight:700; color:#c62828; background:#fce4ec;">${row.total || 0}</td>`;
         // เกรด
@@ -2401,16 +2405,18 @@ window.ScoreEntrySystem = (function() {
 
         // คำนวณรวมคะแนนเต็ม
         var fSum14 = (fulls[0]||0)+(fulls[1]||0)+(fulls[2]||0)+(fulls[3]||0);
-        var fSum68 = (fulls[5]||0)+(fulls[6]||0)+(fulls[7]||0);
-        var fMidTotal = fSum14 + (fulls[4]||0) + fSum68;
-        var fTotal = fMidTotal + (fulls[8]||0);
+        var fSum69 = (fulls[5]||0)+(fulls[6]||0)+(fulls[7]||0)+(fulls[8]||0);
+        var fMidTotal = fSum14 + (fulls[4]||0) + fSum69;
+        var fullFinalSpan = table.querySelector('.score-entry-full-final');
+        var fFinal = fullFinalSpan ? Number(fullFinalSpan.textContent || 0) : 0;
+        var fTotal = fMidTotal + fFinal;
 
         var s14 = table.querySelector('.score-entry-full-sum14');
-        var s68 = table.querySelector('.score-entry-full-sum68');
+        var s69 = table.querySelector('.score-entry-full-sum69');
         var sMid = table.querySelector('.score-entry-full-midtotal');
         var sTotal = table.querySelector('.score-entry-full-total');
         if (s14) s14.textContent = fSum14;
-        if (s68) s68.textContent = fSum68;
+        if (s69) s69.textContent = fSum69;
         if (sMid) sMid.textContent = fMidTotal;
         if (sTotal) sTotal.textContent = fTotal;
 
@@ -2585,9 +2591,9 @@ window.ScoreEntrySystem = (function() {
           <th rowspan="2" style="width:200px;">ชื่อ-นามสกุล</th>
           <th colspan="5" style="background:#e8f5e9;">คะแนนก่อนกลางภาค (เฉลี่ย)</th>
           <th rowspan="2" style="width:45px; background:#fff3e0;">ครั้งที่5</th>
-          <th colspan="4" style="background:#e3f2fd;">คะแนนหลังกลางภาค (เฉลี่ย)</th>
+          <th colspan="5" style="background:#e3f2fd;">คะแนนหลังกลางภาค (เฉลี่ย)</th>
           <th rowspan="2" style="width:50px; background:#f3e5f5;">รวม<br>ระหว่างภาค</th>
-          <th rowspan="2" style="width:45px; background:#fff8e1;">ครั้งที่9<br>ปลายภาค</th>
+          <th rowspan="2" style="width:45px; background:#fff8e1;">ครั้งที่10<br>ปลายภาค</th>
           <th rowspan="2" style="width:50px; background:#fce4ec;">รวม<br>ทั้งหมด</th>
           <th rowspan="2" style="width:40px;">เกรด</th>
         </tr>
@@ -2600,6 +2606,7 @@ window.ScoreEntrySystem = (function() {
           <th style="width:42px; background:#e3f2fd;">6</th>
           <th style="width:42px; background:#e3f2fd;">7</th>
           <th style="width:42px; background:#e3f2fd;">8</th>
+          <th style="width:42px; background:#e3f2fd;">9</th>
           <th style="width:42px; background:#bbdefb;">รวม</th>
         </tr>
         <tr class="score-entry-fullscore-row">
@@ -2615,25 +2622,25 @@ window.ScoreEntrySystem = (function() {
       html += '<th style="font-weight:700; color:#2e7d32;">' + afSum14 + '</th>';
       // s5
       html += '<th style="text-align:center; font-weight:700; color:#e65100;">' + avgFullScores[4] + '</th>';
-      // s6-s8
-      for (let i = 5; i < 8; i++) {
+      // s6-s9
+      for (let i = 5; i < 9; i++) {
         html += '<th style="text-align:center; font-weight:700; color:#1565c0;">' + avgFullScores[i] + '</th>';
       }
-      var afSum68 = avgFullScores[5]+avgFullScores[6]+avgFullScores[7];
-      html += '<th style="font-weight:700; color:#1565c0;">' + afSum68 + '</th>';
-      var afMidTotal = afSum14 + avgFullScores[4] + afSum68;
+      var afSum69 = avgFullScores[5]+avgFullScores[6]+avgFullScores[7]+avgFullScores[8];
+      html += '<th style="font-weight:700; color:#1565c0;">' + afSum69 + '</th>';
+      var afMidTotal = afSum14 + avgFullScores[4] + afSum69;
       html += '<th style="font-weight:700; color:#7b1fa2;">' + afMidTotal + '</th>';
-      // s9
-      html += '<th style="font-weight:700; color:#f57f17;">' + avgFullScores[8] + '</th>';
-      var afTotal = afMidTotal + avgFullScores[8];
+      // s10 ปลายภาค
+      html += '<th style="font-weight:700; color:#f57f17;">' + avgFullScores[9] + '</th>';
+      var afTotal = afMidTotal + avgFullScores[9];
       html += '<th style="font-weight:700; color:#c62828;">' + afTotal + '</th>';
       html += '<th></th></tr></thead><tbody>';
 
       sortedData.forEach((row, i) => {
         var sc = row.scores;
         var sum14 = (sc[0]||0)+(sc[1]||0)+(sc[2]||0)+(sc[3]||0);
-        var sum68 = (sc[5]||0)+(sc[6]||0)+(sc[7]||0);
-        var midTotal = sum14 + (sc[4]||0) + sum68;
+        var sum69 = (sc[5]||0)+(sc[6]||0)+(sc[7]||0)+(sc[8]||0);
+        var midTotal = sum14 + (sc[4]||0) + sum69;
 
         html += '<tr>';
         html += '<td style="font-weight:600;">' + (i + 1) + '</td>';
@@ -2645,13 +2652,13 @@ window.ScoreEntrySystem = (function() {
         html += '<td style="text-align:center; font-weight:600; color:#2e7d32; background:#f1f8e9;">' + sum14 + '</td>';
         // s5
         html += '<td style="text-align:center;">' + (sc[4] || 0) + '</td>';
-        // s6-s8
-        for (let j = 5; j < 8; j++) html += '<td style="text-align:center;">' + (sc[j] || 0) + '</td>';
-        html += '<td style="text-align:center; font-weight:600; color:#1565c0; background:#e3f2fd;">' + sum68 + '</td>';
+        // s6-s9
+        for (let j = 5; j < 9; j++) html += '<td style="text-align:center;">' + (sc[j] || 0) + '</td>';
+        html += '<td style="text-align:center; font-weight:600; color:#1565c0; background:#e3f2fd;">' + sum69 + '</td>';
         // รวมระหว่างภาค
         html += '<td style="text-align:center; font-weight:700; color:#7b1fa2; background:#f3e5f5;">' + midTotal + '</td>';
-        // s9 ปลายภาค
-        html += '<td style="text-align:center;">' + (sc[8] || 0) + '</td>';
+        // s10 ปลายภาค
+        html += '<td style="text-align:center;">' + (sc[9] || 0) + '</td>';
         // รวมทั้งหมด
         html += '<td class="score-entry-total" style="text-align:center; font-weight:700; color:#c62828; background:#fce4ec;">' + row.total + '</td>';
         
@@ -2689,18 +2696,20 @@ window.ScoreEntrySystem = (function() {
       const sheetName = generateSheetName(subject.name, grade, classNo);
 
       const fullScores = [...table.querySelectorAll('.score-entry-full-score')].map(input => Number(input.value || 0));
-      const fullFinal = 0; // ไม่ใช้แยกแล้ว (ครั้งที่ 9 อยู่ใน fullScores[8])
+      const fullFinalSpan = table.querySelector('.score-entry-full-final');
+      const fullFinal = fullFinalSpan ? Number(fullFinalSpan.textContent || 0) : 0;
 
       const data = [...rows].map(row => {
         const id = row.cells[1].textContent.trim();
         const name = row.cells[2].textContent.trim();
-        // 9 ช่อง: [s1,s2,s3,s4, s5, s6,s7,s8, s9]
+        // 9 ช่อง: [s1,s2,s3,s4, s5, s6,s7,s8,s9] (ตัวชี้วัด)
         const scores = [];
         row.querySelectorAll('.score-entry-input').forEach(input => {
           scores[Number(input.dataset.index)] = Number(input.value || 0);
         });
         const mid = Number(row.querySelector('.score-entry-sum')?.textContent || 0);
-        const finalVal = scores[8] || 0;
+        const finalInput = row.querySelector('.score-entry-final-input');
+        const finalVal = finalInput ? Number(finalInput.value || 0) : 0;
         const total = Number(row.querySelector('.score-entry-total')?.textContent || 0);
         const gradeVal = row.querySelector('.score-entry-grade .score-entry-grade-badge')?.textContent?.trim() || '';
         return { id, name, scores, mid, final: finalVal, total, grade: gradeVal };
@@ -2989,11 +2998,12 @@ window.ScoreEntrySystem = (function() {
       if (!table) return null;
 
       const fullScores = [...table.querySelectorAll('.score-entry-full-score')].map(i => Number(i.value || 0));
-      // คำนวณจาก fullScores โดยตรง (โครงสร้าง SchoolMIS)
+      // คำนวณจาก fullScores โดยตรง (โครงสร้าง SchoolMIS 9 ตัวชี้วัด + ปลายภาคแยก)
       const fSum14 = (fullScores[0]||0)+(fullScores[1]||0)+(fullScores[2]||0)+(fullScores[3]||0);
-      const fSum68 = (fullScores[5]||0)+(fullScores[6]||0)+(fullScores[7]||0);
-      const fullMid = fSum14 + (fullScores[4]||0) + fSum68;
-      const fullFinal = fullScores[8] || 0;
+      const fSum69 = (fullScores[5]||0)+(fullScores[6]||0)+(fullScores[7]||0)+(fullScores[8]||0);
+      const fullMid = fSum14 + (fullScores[4]||0) + fSum69;
+      const fullFinalSpan = table.querySelector('.score-entry-full-final');
+      const fullFinal = fullFinalSpan ? Number(fullFinalSpan.textContent || 0) : 0;
       const fullTotal = fullMid + fullFinal;
 
       const rows = [...table.querySelectorAll('tbody tr')].map((tr, idx) => {
@@ -3004,7 +3014,8 @@ window.ScoreEntrySystem = (function() {
           scores[Number(input.dataset.index)] = Number(input.value || 0);
         });
         const mid = Number(tr.querySelector('.score-entry-sum')?.textContent || 0);
-        const finalVal = scores[8] || 0;
+        const finalInput = tr.querySelector('.score-entry-final-input');
+        const finalVal = finalInput ? Number(finalInput.value || 0) : 0;
         const total = Number(tr.querySelector('.score-entry-total')?.textContent || 0);
         const grade = tr.querySelector('.score-entry-grade .score-entry-grade-badge')?.textContent?.trim() || '0';
         return { no: idx+1, id, name, scores, mid, final: finalVal, total, grade };

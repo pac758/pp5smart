@@ -980,32 +980,31 @@ function renderTermTable(containerId, termDataObj, term) {
       <th rowspan="2" style="width:50px;">เลขที่</th>
       <th rowspan="2" style="width:100px; display:none;">รหัส</th>
       <th rowspan="2" style="width:200px;">ชื่อ-นามสกุล</th>
-      <th colspan="10">คะแนนตัวชี้วัดปลายทาง/ผลการเรียนรู้</th>
+      <th colspan="9">คะแนนตัวชี้วัดปลายทาง/ผลการเรียนรู้</th>
       <th rowspan="2" style="width:70px;">กลางภาค</th>
       <th rowspan="2" style="width:70px;">ปลายภาค</th>
       <th rowspan="2" style="width:70px;">รวม</th>
       <th rowspan="2" style="width:50px;">เกรด</th>
     </tr>
-    <!-- แถวที่ 2: เลข 1-10 -->
+    <!-- แถวที่ 2: เลข 1-9 -->
     <tr>
       <th style="width:55px;">1</th><th style="width:55px;">2</th>
       <th style="width:55px;">3</th><th style="width:55px;">4</th>
       <th style="width:55px;">5</th><th style="width:55px;">6</th>
       <th style="width:55px;">7</th><th style="width:55px;">8</th>
-      <th style="width:55px;">9</th><th style="width:55px;">10</th>
+      <th style="width:55px;">9</th>
     </tr>
     <!-- แถวที่ 3: คะแนนเต็ม -->
     <tr class="score-entry-fullscore-row">
       <th colspan="2">คะแนนเต็ม</th>`;
   
-  for(let i = 0; i < 10; i++) {
+  for(let i = 0; i < 9; i++) {
     html += `<th><input type="number" min="0" max="100" step="0.5" class="score-entry-full-score" data-index="${i}" value="${fullScores[i] ?? ''}" style="width:50px; height:32px; font-size:0.9rem; text-align:center; border:1px solid #cbd5e1; border-radius:4px;" aria-label="คะแนนเต็มครั้งที่ ${i+1}"></th>`;
   }
   
  html += `<th><span class="score-entry-full-mid" style="font-weight:700; color:#1e40af;">0</span></th>
       <th><span class="score-entry-full-final" style="font-weight:700; color:#1e40af;">${fullFinal}</span></th>
       <th><span class="score-entry-full-total" style="font-weight:700; color:#1e40af;">0</span></th>
-      <th></th>
     </tr>
   </thead>
   <tbody>`;
@@ -1016,7 +1015,7 @@ function renderTermTable(containerId, termDataObj, term) {
       <td style="font-weight:500; color:#64748b; display:none;">${row.id || ''}</td>
       <td class="score-entry-student-name">${row.name || ''}</td>`;
     
-    for(let j = 0; j < 10; j++) {
+    for(let j = 0; j < 9; j++) {
       const val = row.scores?.[j] ?? 0;
       html += `<td><input type="number" min="0" step="0.5" class="score-entry-input" data-index="${j}" value="${val}" aria-label="คะแนนครั้งที่ ${j+1}"></td>`;
     }
@@ -1082,7 +1081,7 @@ function renderTermTable(containerId, termDataObj, term) {
   });
 }
 
-// Event listener สำหรับช่องคะแนนเต็มย่อย (1-10) เท่านั้น
+// Event listener สำหรับช่องคะแนนเต็มย่อย (1-9) เท่านั้น
 table.querySelectorAll('.score-entry-full-score').forEach(input => {
   input.addEventListener('input', () => {
     updateFullScore();
