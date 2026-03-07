@@ -2756,6 +2756,20 @@ window.ScoreEntrySystem = (function() {
           showButtonStatus(statusId, "บันทึกสำเร็จ", "success");
           showLoading(false);
           updateStats();
+          
+          // reload data จาก server เพื่อ update combined table
+          google.script.run
+            .withSuccessHandler(function(freshData) {
+              if (freshData) {
+                currentData = freshData;
+                renderCombinedTable("scoreEntryCombinedContainer", freshData);
+                console.log('🔄 Combined table refreshed after save');
+              }
+            })
+            .withFailureHandler(function(err) {
+              console.warn('⚠️ Could not refresh combined data:', err);
+            })
+            .getScoreSheetData(sheetName);
         })
         .withFailureHandler(error => {
           showStatus("❌ บันทึกไม่สำเร็จ: " + (error.message || error), "danger", "fas fa-exclamation-circle");
