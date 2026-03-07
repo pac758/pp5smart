@@ -2560,6 +2560,11 @@ window.ScoreEntrySystem = (function() {
         avgFullScores.push(Math.round(((v1 + v2) / 2) * 100) / 100);
       }
 
+      // ดึง assessmentConfig สำหรับแปลงสัดส่วน
+      const midMax = Number(assessmentConfig.midMax ?? 70);
+      const finMax = Number(assessmentConfig.finalMax ?? 30);
+      const avgFullScoresSum = avgFullScores.reduce((a, b) => a + b, 0);
+
       // จับคู่นักเรียนจาก term1 (ใช้ term1 เป็นหลัก)
       const combinedRows = rows1.map((r1, idx) => {
         const r2 = rows2.find(r => r.id === r1.id) || rows2[idx] || {};
@@ -2569,11 +2574,19 @@ window.ScoreEntrySystem = (function() {
           const s2 = Number(r2.scores?.[j]) || 0;
           avgScores.push(Math.round(((s1 + s2) / 2) * 100) / 100);
         }
-        const avgMid = Math.round(((Number(r1.mid) || 0) + (Number(r2.mid) || 0)) / 2 * 100) / 100;
-        const avgFinal = Math.round(((Number(r1.final) || 0) + (Number(r2.final) || 0)) / 2 * 100) / 100;
-        const avgTotal = Math.round(((Number(r1.total) || 0) + (Number(r2.total) || 0)) / 2 * 100) / 100;
-        
-        // ตัดเกรดจากคะแนนเฉลี่ยที่หาร 2 แล้ว (เหมือนแต่ละภาค)
+
+        // คำนวณ mid จากสัดส่วน: (คะแนนดิบเฉลี่ย / คะแนนเต็มเฉลี่ย) * midMax
+        const avgItemsSum = avgScores.reduce((a, b) => a + b, 0);
+        let avgMid = 0;
+        if (avgFullScoresSum > 0 && avgItemsSum > 0) {
+          avgMid = Math.round((avgItemsSum / avgFullScoresSum) * midMax * 100) / 100;
+        }
+
+        // ปลายภาคเฉลี่ย — clamp ไม่เกิน finMax
+        let avgFinal = Math.round(((Number(r1.final) || 0) + (Number(r2.final) || 0)) / 2 * 100) / 100;
+        if (avgFinal > finMax) avgFinal = finMax;
+
+        const avgTotal = Math.round((avgMid + avgFinal) * 100) / 100;
         const avgGrade = calculateGrade(avgTotal);
 
         return {
@@ -2790,13 +2803,15 @@ window.ScoreEntrySystem = (function() {
 
             renderTermTable("scoreEntryTerm1Container", data.term1, "term1");
             renderTermTable("scoreEntryTerm2Container", data.term2, "term2");
-            renderCombinedTable("scoreEntryCombinedContainer", data);
 
             try {
               await hydrateAssessmentConfig(subject);
             } catch (cfgErr) {
               console.warn("ใช้ค่าเริ่มต้น 70/30 เนื่องจากดึงคอนฟิกไม่สำเร็จ:", cfgErr);
             }
+
+            // render combined table หลัง hydrate เพื่อให้ assessmentConfig มีค่าถูกต้อง
+            renderCombinedTable("scoreEntryCombinedContainer", data);
 
             showStatus(`✅ โหลดข้อมูลสำเร็จ: ${subject.name} ${grade}/${classNo}`, "success", "fas fa-check-circle");
 
