@@ -28,9 +28,9 @@ function debugHolidaySheet() {
   const allSheets = ss.getSheets().map(s => s.getName());
   Logger.log('📋 ชีตทั้งหมด: ' + JSON.stringify(allSheets));
   
-  const sheet = ss.getSheetByName("วันหยุด");
+  const sheet = ss.getSheetByName('Holidays') || ss.getSheetByName('วันหยุด');
   if (!sheet) {
-    Logger.log('❌ ไม่พบชีต "วันหยุด"');
+    Logger.log('❌ ไม่พบชีต "Holidays" หรือ "วันหยุด"');
     return;
   }
   
@@ -58,10 +58,10 @@ function loadHolidaysFromSheet() {
     const ss = SS();
     Logger.log('📅 loadHolidaysFromSheet: SS() OK, id=' + ss.getId());
     
-    const sheet = ss.getSheetByName("วันหยุด");
+    const sheet = ss.getSheetByName('Holidays') || ss.getSheetByName('วันหยุด');
     
     if (!sheet) {
-      Logger.log('❌ ไม่พบชีต "วันหยุด"');
+      Logger.log('❌ ไม่พบชีต "Holidays" หรือ "วันหยุด"');
       const allSheets = ss.getSheets().map(s => s.getName());
       Logger.log('📋 ชีตทั้งหมด: ' + JSON.stringify(allSheets));
       return [];
@@ -104,10 +104,10 @@ function loadHolidaysFromSheet() {
 function saveHolidaySheet(holidayData) {
   try {
     const ss = SS();
-    let sheet = ss.getSheetByName("วันหยุด");
+    let sheet = ss.getSheetByName('Holidays') || ss.getSheetByName('วันหยุด');
 
     if (!sheet) {
-      sheet = ss.insertSheet("วันหยุด");
+      sheet = ss.insertSheet('Holidays');
     } else {
       const lastRow = sheet.getLastRow();
       if (lastRow > 1) {

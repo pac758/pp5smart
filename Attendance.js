@@ -530,9 +530,9 @@ function saveAttendanceLog(date, grade, classNo, records, updatedCount) {
 function getHolidaysMap() {
   try {
     const ss = SS();
-    const holidaySheet = ss.getSheetByName('วันหยุด');
+    const holidaySheet = ss.getSheetByName('Holidays') || ss.getSheetByName('วันหยุด');
     if (!holidaySheet) {
-      Logger.log('❌ ไม่พบชีต "วันหยุด"');
+      Logger.log('❌ ไม่พบชีต "Holidays" หรือ "วันหยุด"');
       return {};
     }
     
