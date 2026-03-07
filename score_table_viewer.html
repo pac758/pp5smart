@@ -1993,19 +1993,23 @@ window.ScoreEntrySystem = (function() {
     }
 
     function syncConfigToAllTables() {
+      const midMax = Number(assessmentConfig.midMax ?? 70);
+      const finMax = Number(assessmentConfig.finalMax ?? 30);
+
       ['scoreEntryTerm1Container', 'scoreEntryTerm2Container'].forEach(cid => {
         const wrap = document.getElementById(cid);
         const table = wrap?.querySelector('table.score-entry-table');
         if (!table) return;
 
-        // Recalculate full score sums
+        // Recalculate full score sums (คะแนนดิบ)
         const fulls = [...table.querySelectorAll('.score-entry-full-score')].map(i => Number(i.value || 0));
         var fSum14 = (fulls[0]||0)+(fulls[1]||0)+(fulls[2]||0)+(fulls[3]||0);
         var fSum69 = (fulls[5]||0)+(fulls[6]||0)+(fulls[7]||0)+(fulls[8]||0);
         var fMidTotal = fSum14 + (fulls[4]||0) + fSum69;
+
+        // อัปเดต fullFinal จาก assessmentConfig
         var fullFinalSpan = table.querySelector('.score-entry-full-final');
-        var fFinal = fullFinalSpan ? Number(fullFinalSpan.textContent || 0) : 0;
-        var fTotal = fMidTotal + fFinal;
+        if (fullFinalSpan) fullFinalSpan.textContent = finMax;
 
         var s14 = table.querySelector('.score-entry-full-sum14');
         var s69 = table.querySelector('.score-entry-full-sum69');
@@ -2014,7 +2018,7 @@ window.ScoreEntrySystem = (function() {
         if (s14) s14.textContent = fSum14;
         if (s69) s69.textContent = fSum69;
         if (sMid) sMid.textContent = fMidTotal;
-        if (sTotal) sTotal.textContent = fTotal;
+        if (sTotal) sTotal.textContent = fMidTotal + finMax;
 
         table.querySelectorAll('tbody tr').forEach(row => calcRowTotal(row, false));
       });
@@ -2110,7 +2114,11 @@ window.ScoreEntrySystem = (function() {
         if (!totalCell || !gradeCell) return;
 
         const table = row.closest('table');
+        const midMax = Number(assessmentConfig.midMax ?? 70);
+        const finMax = Number(assessmentConfig.finalMax ?? 30);
+
         const fullScores = [...table.querySelectorAll('.score-entry-full-score')].map(i => Number(i.value || 0));
+        const fullScoresSum = fullScores.reduce((a, b) => a + b, 0);
 
         // Validate & clamp ทุก input (ตัวชี้วัด 1-9)
         var scores = [];
@@ -2129,17 +2137,25 @@ window.ScoreEntrySystem = (function() {
         var sum69 = (scores[5]||0)+(scores[6]||0)+(scores[7]||0)+(scores[8]||0);
         if (sum69Cell) sum69Cell.textContent = sum69;
 
-        // รวมระหว่างภาค = รวม(1-4) + ครั้งที่5 + รวม(6-9)
-        var s5 = scores[4] || 0;
-        var midTotal = sum14 + s5 + sum69;
-        if (sumCell) sumCell.textContent = midTotal;
+        // คะแนนดิบรวมตัวชี้วัด (1-9)
+        const itemsSum = (scores[0]||0)+(scores[1]||0)+(scores[2]||0)+(scores[3]||0)
+          +(scores[4]||0)+(scores[5]||0)+(scores[6]||0)+(scores[7]||0)+(scores[8]||0);
 
-        // ครั้งที่ 10 (ปลายภาค) จาก final-input แยก
+        // แปลงสัดส่วน: mid = (คะแนนดิบ / คะแนนเต็มรวม) * midMax
+        let mid = 0;
+        if (fullScoresSum > 0 && itemsSum > 0) {
+          mid = Math.round((itemsSum / fullScoresSum) * midMax);
+        }
+        if (sumCell) sumCell.textContent = mid;
+
+        // ครั้งที่ 10 (ปลายภาค) จาก final-input แยก — clamp ไม่เกิน finMax
         const finalInput = row.querySelector('.score-entry-final-input');
-        var s10 = Number(finalInput?.value || 0);
+        let finalVal = Number(finalInput?.value || 0);
+        if (finalVal > finMax) { finalVal = finMax; if (finalInput) finalInput.value = finMax; }
+        if (finalVal < 0) { finalVal = 0; if (finalInput) finalInput.value = 0; }
 
-        // รวมทั้งหมด
-        var total = midTotal + s10;
+        // รวมทั้งหมด = mid(แปลงแล้ว) + ปลายภาค
+        var total = mid + finalVal;
         totalCell.textContent = total;
 
         // เกรด
@@ -2401,15 +2417,17 @@ window.ScoreEntrySystem = (function() {
         const table = container.querySelector('.score-entry-table');
         if (!table) return;
         
+        const finMax = Number(assessmentConfig.finalMax ?? 30);
         const fulls = [...table.querySelectorAll('.score-entry-full-score')].map(i => Number(i.value || 0));
 
-        // คำนวณรวมคะแนนเต็ม
+        // คำนวณรวมคะแนนเต็มดิบ
         var fSum14 = (fulls[0]||0)+(fulls[1]||0)+(fulls[2]||0)+(fulls[3]||0);
         var fSum69 = (fulls[5]||0)+(fulls[6]||0)+(fulls[7]||0)+(fulls[8]||0);
         var fMidTotal = fSum14 + (fulls[4]||0) + fSum69;
+
+        // อัปเดต fullFinal จาก assessmentConfig
         var fullFinalSpan = table.querySelector('.score-entry-full-final');
-        var fFinal = fullFinalSpan ? Number(fullFinalSpan.textContent || 0) : 0;
-        var fTotal = fMidTotal + fFinal;
+        if (fullFinalSpan) fullFinalSpan.textContent = finMax;
 
         var s14 = table.querySelector('.score-entry-full-sum14');
         var s69 = table.querySelector('.score-entry-full-sum69');
@@ -2418,7 +2436,7 @@ window.ScoreEntrySystem = (function() {
         if (s14) s14.textContent = fSum14;
         if (s69) s69.textContent = fSum69;
         if (sMid) sMid.textContent = fMidTotal;
-        if (sTotal) sTotal.textContent = fTotal;
+        if (sTotal) sTotal.textContent = fMidTotal + finMax;
 
         table.querySelectorAll('tbody tr').forEach(row => {
           row.querySelectorAll('.score-entry-input').forEach(input => {
@@ -2630,17 +2648,17 @@ window.ScoreEntrySystem = (function() {
       html += '<th style="font-weight:700; color:#1565c0;">' + afSum69 + '</th>';
       var afMidTotal = afSum14 + avgFullScores[4] + afSum69;
       html += '<th style="font-weight:700; color:#7b1fa2;">' + afMidTotal + '</th>';
-      // s10 ปลายภาค
-      html += '<th style="font-weight:700; color:#f57f17;">' + avgFullScores[9] + '</th>';
-      var afTotal = afMidTotal + avgFullScores[9];
-      html += '<th style="font-weight:700; color:#c62828;">' + afTotal + '</th>';
+      // ปลายภาค — ใช้ finMax จาก assessmentConfig
+      var avgFinMax = Number(assessmentConfig.finalMax ?? 30);
+      var avgMidMax = Number(assessmentConfig.midMax ?? 70);
+      html += '<th style="font-weight:700; color:#f57f17;">' + avgFinMax + '</th>';
+      html += '<th style="font-weight:700; color:#c62828;">' + (avgMidMax + avgFinMax) + '</th>';
       html += '<th></th></tr></thead><tbody>';
 
       sortedData.forEach((row, i) => {
         var sc = row.scores;
         var sum14 = (sc[0]||0)+(sc[1]||0)+(sc[2]||0)+(sc[3]||0);
         var sum69 = (sc[5]||0)+(sc[6]||0)+(sc[7]||0)+(sc[8]||0);
-        var midTotal = sum14 + (sc[4]||0) + sum69;
 
         html += '<tr>';
         html += '<td style="font-weight:600;">' + (i + 1) + '</td>';
@@ -2655,10 +2673,10 @@ window.ScoreEntrySystem = (function() {
         // s6-s9
         for (let j = 5; j < 9; j++) html += '<td style="text-align:center;">' + (sc[j] || 0) + '</td>';
         html += '<td style="text-align:center; font-weight:600; color:#1565c0; background:#e3f2fd;">' + sum69 + '</td>';
-        // รวมระหว่างภาค
-        html += '<td style="text-align:center; font-weight:700; color:#7b1fa2; background:#f3e5f5;">' + midTotal + '</td>';
-        // s10 ปลายภาค
-        html += '<td style="text-align:center;">' + (sc[9] || 0) + '</td>';
+        // รวมระหว่างภาค (สัดส่วน 100 จากชีต)
+        html += '<td style="text-align:center; font-weight:700; color:#7b1fa2; background:#f3e5f5;">' + (row.mid || 0) + '</td>';
+        // ปลายภาค
+        html += '<td style="text-align:center;">' + (row.final || 0) + '</td>';
         // รวมทั้งหมด
         html += '<td class="score-entry-total" style="text-align:center; font-weight:700; color:#c62828; background:#fce4ec;">' + row.total + '</td>';
         

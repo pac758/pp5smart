@@ -658,6 +658,31 @@ function loadSubjectsForGrade(grade) {
 }
 
 /**
+ * ดึง midMax/finMax จากชื่อชีต (format: "ชื่อวิชา_ชั้น-ห้อง" เช่น "คณิตศาสตร์_ป.1-1")
+ * ใช้ภายใน saveScoreSheetData เพื่อแปลงสัดส่วนคะแนน
+ */
+function getAssessmentConfigFromSheet_(sheetName) {
+  try {
+    // แยกชื่อวิชาและระดับชั้นจาก sheetName
+    // format: "ชื่อวิชา_ชั้น-ห้อง" เช่น "คณิตศาสตร์_ป.1-1"
+    const parts = sheetName.split('_');
+    if (parts.length < 2) return { midMax: 70, finalMax: 30 };
+    
+    const subjectName = parts[0];
+    const gradeClassPart = parts.slice(1).join('_'); // ป.1-1
+    const gradeParts = gradeClassPart.split('-');
+    const grade = gradeParts[0]; // ป.1
+
+    // เรียก getSubjectAssessmentConfig ด้วย subjectName, code ว่าง, grade
+    const cfg = getSubjectAssessmentConfig(subjectName, '', grade);
+    return { midMax: Number(cfg.midMax) || 70, finalMax: Number(cfg.finalMax) || 30 };
+  } catch (e) {
+    console.warn('getAssessmentConfigFromSheet_ error:', e.message);
+    return { midMax: 70, finalMax: 30 };
+  }
+}
+
+/**
  * บันทึกคะแนนเฉพาะภาคเรียน (term) - แก้ไขแล้ว
  * พร้อมคำนวณคะแนนเฉลี่ย 2 ภาคและเกรด (อัปเดตทุกครั้ง)
  */
@@ -714,15 +739,24 @@ function saveScoreSheetData(sheetName, term, studentScores, fullScores, fullFina
     for (let i = 0; i < 9; i++) {
       sheet.getRange(4, scoreSlots[i] + 1).setValue(fullScores[i] || "");
     }
-    // บันทึกคะแนนเต็มปลายภาค (ครั้งที่ 10)
-    sheet.getRange(4, cols.s10 + 1).setValue(fullFinal || "");
+    // ดึง midMax/finMax จากชีตรายวิชา เพื่อแปลงสัดส่วน
+    // sheetName format: "ชื่อวิชา_ชั้น-ห้อง" → ต้องหา subject จาก sheetName
+    const cfg = getAssessmentConfigFromSheet_(sheetName);
+    const midMax = cfg.midMax;
+    const finMax = cfg.finalMax;
+    const fullScoresSum = fullScores.reduce((a, b) => a + (Number(b) || 0), 0);
+
+    // บันทึกคะแนนเต็ม midMax/finMax ในแถวที่ 4
+    sheet.getRange(4, cols.midTotal + 1).setValue(midMax);
+    sheet.getRange(4, cols.s10 + 1).setValue(finMax);
+    sheet.getRange(4, cols.total + 1).setValue(midMax + finMax);
 
     // บันทึกคะแนนนักเรียน
     studentScores.forEach((student, idx) => {
       const row = startRow + idx;
       var scores = student.scores || [];
 
-      // บันทึกคะแนน 9 ช่อง (ครั้งที่ 1-9 ตัวชี้วัด)
+      // บันทึกคะแนน 9 ช่อง (ครั้งที่ 1-9 ตัวชี้วัด) — คะแนนดิบ
       for (let i = 0; i < 9; i++) {
         let val = scores[i];
         if (val === null || val === undefined || val === "") val = "";
@@ -734,31 +768,36 @@ function saveScoreSheetData(sheetName, term, studentScores, fullScores, fullFina
         sheet.getRange(row, scoreSlots[i] + 1).setValue(val);
       }
 
-      // บันทึกปลายภาค (ครั้งที่ 10) จาก student.final
+      // บันทึกปลายภาค (ครั้งที่ 10) จาก student.final — คะแนนดิบ (เต็ม finMax)
       var s10val = Number(student.final) || 0;
+      if (s10val > finMax) s10val = finMax;
       sheet.getRange(row, cols.s10 + 1).setValue(s10val);
 
-      // คำนวณรวมก่อนกลางภาค (1-4)
+      // คำนวณรวมก่อนกลางภาค (1-4) — คะแนนดิบ
       var sum14 = (Number(scores[0])||0) + (Number(scores[1])||0) + (Number(scores[2])||0) + (Number(scores[3])||0);
       sheet.getRange(row, cols.sum14 + 1).setValue(sum14);
 
-      // คำนวณรวมหลังกลางภาค (6-9)
+      // คำนวณรวมหลังกลางภาค (6-9) — คะแนนดิบ
       var sum69 = (Number(scores[5])||0) + (Number(scores[6])||0) + (Number(scores[7])||0) + (Number(scores[8])||0);
       sheet.getRange(row, cols.sum69 + 1).setValue(sum69);
 
       // แก้ตัวกลางภาค
       sheet.getRange(row, cols.makeup + 1).setValue(student.makeup || "");
 
-      // รวมระหว่างภาค = รวมก่อนกลางภาค + ครั้งที่5 + รวมหลังกลางภาค
-      var s5val = Number(scores[4]) || 0;
-      var midTotal = sum14 + s5val + sum69;
+      // แปลงสัดส่วน: รวมระหว่างภาค = (คะแนนดิบรวมตัวชี้วัด / คะแนนเต็มรวม) * midMax
+      var itemsSum = (Number(scores[0])||0) + (Number(scores[1])||0) + (Number(scores[2])||0) + (Number(scores[3])||0)
+        + (Number(scores[4])||0) + (Number(scores[5])||0) + (Number(scores[6])||0) + (Number(scores[7])||0) + (Number(scores[8])||0);
+      var midTotal = 0;
+      if (fullScoresSum > 0 && itemsSum > 0) {
+        midTotal = Math.round((itemsSum / fullScoresSum) * midMax);
+      }
       sheet.getRange(row, cols.midTotal + 1).setValue(midTotal);
 
-      // รวมทั้งหมด = รวมระหว่างภาค + ครั้งที่10(ปลายภาค)
+      // รวมทั้งหมด = รวมระหว่างภาค(แปลงแล้ว) + ปลายภาค (สเกล 100)
       var total = midTotal + s10val;
       sheet.getRange(row, cols.total + 1).setValue(total);
 
-      // เกรด
+      // เกรด — คำนวณจาก total ที่เป็นสเกล 100 แล้ว
       sheet.getRange(row, cols.grade + 1).setValue(student.grade || calculateFinalGrade(total));
 
       // ✅ คำนวณคะแนนเฉลี่ย 2 ภาคและเกรดรวม
