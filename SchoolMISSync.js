@@ -476,6 +476,23 @@ function exportToSchoolMIS_Average(sheetName) {
       // ดึงคะแนนทั้ง 2 ภาค แล้วเฉลี่ย (ใช้ scoreSlots — รองรับ -1 สำหรับ s9 ที่ไม่มี)
       var slots1 = cols1.scoreSlots;
       var slots2 = cols2.scoreSlots;
+      
+      // 🔍 Debug: log student แรก
+      if (i === 4) {
+        Logger.log('🔍 DEBUG Export Avg Student1: id=' + studentId);
+        Logger.log('  slots1=' + JSON.stringify(slots1));
+        Logger.log('  slots2=' + JSON.stringify(slots2));
+        Logger.log('  cols1: midTotal=' + cols1.midTotal + ' s10=' + cols1.s10 + ' total=' + cols1.total + ' grade=' + cols1.grade);
+        Logger.log('  cols2: midTotal=' + cols2.midTotal + ' s10=' + cols2.s10 + ' total=' + cols2.total + ' grade=' + cols2.grade);
+        for (var d = 0; d < slots1.length; d++) {
+          var v1 = slots1[d] >= 0 ? row[slots1[d]] : 'N/A';
+          var v2 = slots2[d] >= 0 ? row[slots2[d]] : 'N/A';
+          Logger.log('  slot[' + d + ']: col1=' + slots1[d] + '→' + v1 + ' | col2=' + slots2[d] + '→' + v2);
+        }
+        Logger.log('  mid1=row[' + cols1.midTotal + ']=' + row[cols1.midTotal] + ' | mid2=row[' + cols2.midTotal + ']=' + row[cols2.midTotal]);
+        Logger.log('  fin1=row[' + cols1.s10 + ']=' + row[cols1.s10] + ' | fin2=row[' + cols2.s10 + ']=' + row[cols2.s10]);
+        Logger.log('  tot1=row[' + cols1.total + ']=' + row[cols1.total] + ' | tot2=row[' + cols2.total + ']=' + row[cols2.total]);
+      }
       var avgScores = [];
       for (var j = 0; j < slots1.length; j++) {
         if (slots1[j] < 0 || slots2[j] < 0) { avgScores.push(''); continue; }
