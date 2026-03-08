@@ -2486,7 +2486,7 @@ window.ScoreEntrySystem = (function() {
         });
       });
 
-      // Keyboard navigation
+      // Keyboard navigation — ArrowDown/Up = same column next/prev row, Enter/Tab = next input
       table.querySelectorAll('tbody input, thead input').forEach((input, index, allInputs) => {
         input.addEventListener('keydown', (e) => {
           let nextInput = null;
@@ -2495,13 +2495,19 @@ window.ScoreEntrySystem = (function() {
             e.preventDefault();
             nextInput = e.shiftKey ? allInputs[index - 1] : allInputs[index + 1];
           }
-          else if (e.key === 'ArrowDown') {
+          else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
             e.preventDefault();
-            nextInput = allInputs[index + 1];
-          }
-          else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            nextInput = allInputs[index - 1];
+            // หา column index ของ input ปัจจุบันในแถว
+            var currentRow = e.target.closest('tr');
+            if (!currentRow) return;
+            var rowInputs = Array.from(currentRow.querySelectorAll('input'));
+            var colIdx = rowInputs.indexOf(e.target);
+            // หาแถวถัดไป/ก่อนหน้า
+            var targetRow = e.key === 'ArrowDown' ? currentRow.nextElementSibling : currentRow.previousElementSibling;
+            if (targetRow) {
+              var targetInputs = targetRow.querySelectorAll('input');
+              if (targetInputs[colIdx]) nextInput = targetInputs[colIdx];
+            }
           }
           
           if (nextInput) {
