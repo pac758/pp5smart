@@ -899,11 +899,33 @@ function getScoreSheetData(sheetName) {
     const sheetLayout = detectSheetLayout_(sheet);
     Logger.log('📐 getScoreSheetData layout: ' + sheetLayout.layout + ' for ' + sheetName);
 
+    // ดึงคะแนนเต็มจากชีตรายวิชา (fallback เมื่อชีตคะแนนยังไม่มีค่า)
+    var subjectFsCfg = null;
+    try {
+      var lastSpaceIdx = sheetName.lastIndexOf(' ');
+      if (lastSpaceIdx >= 0) {
+        var subjName = sheetName.substring(0, lastSpaceIdx).trim();
+        var gradeClassPart = sheetName.substring(lastSpaceIdx + 1);
+        var gradeOnly = gradeClassPart.split('-')[0].replace(/^(ป)(\d)/, '$1.$2');
+        subjectFsCfg = getSubjectFullScores(subjName, gradeOnly);
+      }
+    } catch (e) { /* ignore */ }
+
     function extractTermData(cols) {
       // คะแนนเต็ม 9 ช่อง (ครั้งที่ 1-9 ตัวชี้วัด) จากแถวที่ 4 (index 3)
       var scoreSlots = [cols.s1, cols.s2, cols.s3, cols.s4, cols.s5, cols.s6, cols.s7, cols.s8, cols.s9];
-      const fullScores = scoreSlots.map(function(idx) { return idx >= 0 ? (Number(data[3][idx]) || 0) : 0; });
-      const fullFinal = Number(data[3][cols.s10]) || 0; // คะแนนเต็มปลายภาค (ครั้งที่ 10)
+      var fullScores = scoreSlots.map(function(idx) { return idx >= 0 ? (Number(data[3][idx]) || 0) : 0; });
+      var fullFinal = Number(data[3][cols.s10]) || 0;
+      
+      // fallback: ถ้า fullScores เป็น 0 ทั้งหมด → ดึงจากชีตรายวิชา
+      var allZero = fullScores.every(function(v) { return v === 0; });
+      if (allZero && subjectFsCfg && subjectFsCfg.fullScores) {
+        var sfArr = subjectFsCfg.fullScores;
+        if (sfArr.some(function(v) { return v > 0; })) {
+          fullScores = sfArr;
+          fullFinal = subjectFsCfg.finalMax || fullFinal;
+        }
+      }
       
       const rows = [];
       for (let i = startRow - 1; i < data.length; i++) {
@@ -913,7 +935,7 @@ function getScoreSheetData(sheetName) {
         // ดึงคะแนน 9 ช่อง (ครั้งที่ 1-9 ตัวชี้วัด)
         const scores = scoreSlots.map(function(idx) { return idx >= 0 ? (Number(row[idx]) || 0) : 0; });
         const mid = Number(row[cols.midTotal]) || 0;
-        const final_ = Number(row[cols.s10]) || 0; // ปลายภาค (ครั้งที่ 10) แยก
+        const final_ = Number(row[cols.s10]) || 0;
         const total = Number(row[cols.total]) || 0;
         const grade = String(row[cols.grade] || "");
         const makeup = Number(row[cols.makeup]) || 0;
