@@ -42,11 +42,15 @@ body.modal-open { overflow: hidden; padding-right: 0 !important; }
         <option value="เพิ่มเติม">เพิ่มเติม</option>
       </select>
     </div>
-    <div class="col-md-3 text-end">
-      <button class="btn btn-outline-primary" onclick="exportAllSubjects()">🧾 ส่งออกรายวิชาทั้งหมด</button>
+    <div class="col-md-2 text-end">
+      <button class="btn btn-outline-info btn-sm" onclick="document.getElementById('csvFileInput').click()">📥 นำเข้า CSV</button>
+      <input type="file" id="csvFileInput" accept=".csv" style="display:none;" onchange="handleCSVImport(this)">
     </div>
-    <div class="col-md-3 text-end">
-      <button class="btn btn-success" onclick="openModal()">➕ เพิ่มรายวิชา</button>
+    <div class="col-md-2 text-end">
+      <button class="btn btn-outline-primary btn-sm" onclick="exportAllSubjects()">🧾 ส่งออก PDF</button>
+    </div>
+    <div class="col-md-2 text-end">
+      <button class="btn btn-success btn-sm" onclick="openModal()">➕ เพิ่มรายวิชา</button>
     </div>
   </div>
 
@@ -378,6 +382,41 @@ if (window.__SUBJECTS_BOOTED__) {
     new bootstrap.Toast(toastEl).show();
   }
 
+  // 📥 Import CSV โครงสร้างคะแนน
+  function handleCSVImport(input) {
+    if (!input.files || !input.files[0]) return;
+    var file = input.files[0];
+    if (!file.name.endsWith('.csv')) {
+      showToast('❌ กรุณาเลือกไฟล์ .csv', false);
+      input.value = '';
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var base64 = btoa(unescape(encodeURIComponent(e.target.result)));
+      showToast('⏳ กำลังนำเข้าโครงสร้างคะแนน...');
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(function(result) {
+            if (result && result.success) {
+              showToast('✅ ' + result.message, true);
+              loadSubjects();
+            } else {
+              showToast('❌ ' + (result ? result.message : 'เกิดข้อผิดพลาด'), false);
+            }
+          })
+          .withFailureHandler(function(err) {
+            showToast('❌ นำเข้าล้มเหลว: ' + (err.message || err), false);
+          })
+          .importSubjectsFromCSV(base64);
+      } else {
+        showToast('❌ Google Apps Script ไม่พร้อมใช้งาน', false);
+      }
+      input.value = '';
+    };
+    reader.readAsText(file, 'UTF-8');
+  }
+
   // auto-calculate ผลรวมในตาราง fullScore
   function recalcFsTotals() {
     var v = function(id) { return Number(document.getElementById(id)?.value) || 0; };
@@ -410,6 +449,7 @@ if (window.__SUBJECTS_BOOTED__) {
   window.deleteSubject = deleteSubject;
   window.exportAllSubjects = exportAllSubjects;
   window.applyFilters = applyFilters;
+  window.handleCSVImport = handleCSVImport;
 
   // init เมื่อ DOM พร้อม และเรียกทันทีหากโหลดไปแล้ว (กันเคส SPA)
   document.addEventListener('DOMContentLoaded', function() { init(); bindFsEvents(); });

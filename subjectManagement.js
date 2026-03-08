@@ -485,7 +485,114 @@ function getSubjectFullScores(subjectName, grade) {
 }
 
 /**
- * 🔧 ฟังก์ชันสำหรับสร้างโฟลเดอร์ (ถ้ายังไม่มีในไฟล์อื่น)
+ * � นำเข้าโครงสร้างคะแนนจาก CSV (base64) เข้าชีตรายวิชา
+ * CSV format (2-row header):
+ *   ชั้น, รหัสวิชา, ชื่อวิชา, ชั่วโมง/ปี, ประเภทวิชา,
+ *   ค1, ค2, ค3, ค4, รวม14,
+ *   ค5(สอบกลางภาค),
+ *   ค6, ค7, ค8, รวม68,
+ *   รวมระหว่างภาค, ปลายภาค, รวมทั้งหมด, ครูผู้สอน
+ * @param {string} csvBase64 - CSV content encoded as base64
+ * @returns {Object} { success, count, message }
+ */
+function importSubjectsFromCSV(csvBase64) {
+  try {
+    // decode base64 → string
+    var csvText = Utilities.newBlob(Utilities.base64Decode(csvBase64)).getDataAsString('UTF-8');
+    var lines = csvText.split(/\r?\n/).filter(function(l) { return l.trim().length > 0; });
+    
+    // skip 2 header rows
+    if (lines.length < 3) throw new Error('ไฟล์ CSV ต้องมีอย่างน้อย 3 แถว (2 header + 1 data)');
+    var dataLines = lines.slice(2);
+    
+    var ss = _openSpreadsheet_();
+    var sheet = ss.getSheetByName(SUBJECT_SHEET_NAME);
+    if (!sheet) {
+      sheet = ss.insertSheet(SUBJECT_SHEET_NAME);
+      sheet.getRange(1, 1, 1, SUBJECT_HEADERS_ALL.length).setValues([SUBJECT_HEADERS_ALL]);
+      sheet.getRange(1, 1, 1, SUBJECT_HEADERS_ALL.length).setFontWeight('bold');
+      sheet.setFrozenRows(1);
+    } else {
+      ensureFullScoreHeaders_(sheet);
+    }
+    
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    var existingData = sheet.getDataRange().getValues();
+    
+    // สร้าง map ของรายวิชาที่มีอยู่แล้ว: key = "ชั้น|ชื่อวิชา"
+    var existingMap = {};
+    for (var e = 1; e < existingData.length; e++) {
+      var key = String(existingData[e][0]).trim() + '|' + String(existingData[e][2]).trim();
+      existingMap[key] = e + 1; // row number (1-indexed)
+    }
+    
+    var addCount = 0;
+    var updateCount = 0;
+    
+    dataLines.forEach(function(line) {
+      // parse CSV line (simple split — ไม่มี quoted fields ที่ซับซ้อน)
+      var cols = line.split(',').map(function(c) { return c.trim(); });
+      if (cols.length < 18) return;
+      
+      // CSV columns mapping:
+      // 0=ชั้น, 1=รหัสวิชา, 2=ชื่อวิชา, 3=ชั่วโมง/ปี, 4=ประเภทวิชา
+      // 5=ค1, 6=ค2, 7=ค3, 8=ค4, 9=รวม14
+      // 10=ค5(สอบกลางภาค)
+      // 11=ค6, 12=ค7, 13=ค8, 14=รวม68
+      // 15=รวมระหว่างภาค, 16=ปลายภาค, 17=รวมทั้งหมด
+      // 18=ครูผู้สอน (อาจมีช่องว่างหลายตัว)
+      
+      var subjectData = {};
+      subjectData['ชั้น'] = cols[0];
+      subjectData['รหัสวิชา'] = cols[1];
+      subjectData['ชื่อวิชา'] = cols[2];
+      subjectData['ชั่วโมง/ปี'] = cols[3];
+      subjectData['ประเภทวิชา'] = cols[4];
+      subjectData['ครูผู้สอน'] = cols.slice(18).join(',').trim(); // กัน comma ในชื่อ
+      subjectData['คะแนนระหว่างปี'] = cols[15];
+      subjectData['คะแนนปลายปี'] = cols[16];
+      subjectData['รวม'] = cols[17];
+      
+      // คะแนนเต็มรายตัวชี้วัด
+      subjectData['เต็ม_ครั้ง1'] = cols[5];
+      subjectData['เต็ม_ครั้ง2'] = cols[6];
+      subjectData['เต็ม_ครั้ง3'] = cols[7];
+      subjectData['เต็ม_ครั้ง4'] = cols[8];
+      subjectData['เต็ม_ครั้ง5'] = cols[10]; // สอบกลางภาค
+      subjectData['เต็ม_ครั้ง6'] = cols[11];
+      subjectData['เต็ม_ครั้ง7'] = cols[12];
+      subjectData['เต็ม_ครั้ง8'] = cols[13];
+      subjectData['เต็ม_ครั้ง9'] = '0'; // ไม่มีใน CSV
+      
+      var newRow = headers.map(function(h) { return subjectData[h] || ''; });
+      
+      var key = String(cols[0]).trim() + '|' + String(cols[2]).trim();
+      if (existingMap[key]) {
+        // update existing row
+        sheet.getRange(existingMap[key], 1, 1, newRow.length).setValues([newRow]);
+        updateCount++;
+      } else {
+        // append new row
+        sheet.appendRow(newRow);
+        existingMap[key] = sheet.getLastRow();
+        addCount++;
+      }
+    });
+    
+    return {
+      success: true,
+      count: addCount + updateCount,
+      message: 'นำเข้าสำเร็จ: เพิ่มใหม่ ' + addCount + ' รายการ, อัปเดต ' + updateCount + ' รายการ'
+    };
+    
+  } catch (e) {
+    console.error('importSubjectsFromCSV error:', e);
+    return { success: false, count: 0, message: 'เกิดข้อผิดพลาด: ' + e.message };
+  }
+}
+
+/**
+ * �🔧 ฟังก์ชันสำหรับสร้างโฟลเดอร์ (ถ้ายังไม่มีในไฟล์อื่น)
  */
 function _getOrCreateFolder_(folderName) {
   const folders = DriveApp.getFoldersByName(folderName);
