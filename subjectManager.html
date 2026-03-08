@@ -70,11 +70,11 @@ body.modal-open { overflow: hidden; padding-right: 0 !important; }
           <th>ชื่อวิชา</th>
           <th style="width:50px;">ชม.</th>
           <th style="width:65px;">ประเภท</th>
-          <th>ครูผู้สอน</th>
-          <th style="width:45px;">ระหว่าง</th>
+          <th>คะแนนเต็มรายครั้ง (1-9)</th>
+          <th style="width:50px;">ระหว่าง</th>
           <th style="width:45px;">ปลาย</th>
           <th style="width:40px;">รวม</th>
-          <th>คะแนนเต็มรายครั้ง (1-9)</th>
+          <th>ครูผู้สอน</th>
           <th style="width:70px;">จัดการ</th>
         </tr>
       </thead>
@@ -234,11 +234,11 @@ if (window.__SUBJECTS_BOOTED__) {
         <td>${row['ชื่อวิชา'] ?? ''}</td>
         <td class="text-center">${row['ชั่วโมง/ปี'] ?? ''}</td>
         <td class="text-center">${row['ประเภทวิชา'] ?? ''}</td>
-        <td>${row['ครูผู้สอน'] ?? ''}</td>
+        <td>${fsBadge}</td>
         <td class="text-center">${row['คะแนนระหว่างปี'] ?? ''}</td>
         <td class="text-center">${row['คะแนนปลายปี'] ?? ''}</td>
         <td class="text-center fw-bold">${row['รวม'] ?? ''}</td>
-        <td>${fsBadge}</td>
+        <td>${row['ครูผู้สอน'] ?? ''}</td>
         <td class="text-center text-nowrap">
           <button class="btn btn-warning btn-act" onclick="editSubject(${index})" title="แก้ไข"><i class="fas fa-edit"></i></button>
           <button class="btn btn-danger btn-act" onclick="deleteSubject(${index})" title="ลบ"><i class="fas fa-trash"></i></button>
