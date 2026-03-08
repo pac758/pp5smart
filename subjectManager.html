@@ -87,17 +87,50 @@ body.modal-open { overflow: hidden; padding-right: 0 !important; }
         <div class="col-md-4"><input id="total" class="form-control" placeholder="รวมคะแนน"></div>
       </div>
       <hr class="my-2">
-      <p class="mb-1 fw-bold text-primary" style="font-size:0.9rem;"><i class="fas fa-star"></i> คะแนนเต็มรายตัวชี้วัด (ครั้งที่ 1-9)</p>
-      <div class="row g-1">
-        <div class="col"><input id="fs1" type="number" min="0" class="form-control form-control-sm text-center" placeholder="ค1"></div>
-        <div class="col"><input id="fs2" type="number" min="0" class="form-control form-control-sm text-center" placeholder="ค2"></div>
-        <div class="col"><input id="fs3" type="number" min="0" class="form-control form-control-sm text-center" placeholder="ค3"></div>
-        <div class="col"><input id="fs4" type="number" min="0" class="form-control form-control-sm text-center" placeholder="ค4"></div>
-        <div class="col"><input id="fs5" type="number" min="0" class="form-control form-control-sm text-center" placeholder="ค5"></div>
-        <div class="col"><input id="fs6" type="number" min="0" class="form-control form-control-sm text-center" placeholder="ค6"></div>
-        <div class="col"><input id="fs7" type="number" min="0" class="form-control form-control-sm text-center" placeholder="ค7"></div>
-        <div class="col"><input id="fs8" type="number" min="0" class="form-control form-control-sm text-center" placeholder="ค8"></div>
-        <div class="col"><input id="fs9" type="number" min="0" class="form-control form-control-sm text-center" placeholder="ค9"></div>
+      <p class="mb-1 fw-bold text-primary" style="font-size:0.9rem;"><i class="fas fa-star"></i> คะแนนเต็มรายตัวชี้วัด</p>
+      <div class="table-responsive">
+        <table class="table table-bordered table-sm mb-0 text-center" style="font-size:0.82rem;" id="fsTable">
+          <thead>
+            <tr style="background:#d6eaf8;">
+              <th colspan="5" style="background:#e8f5e9;">คะแนนก่อนกลางภาค(ปี)</th>
+              <th rowspan="2" style="background:#fff3e0; vertical-align:middle; width:60px;">สอบ<br>กลางภาค</th>
+              <th colspan="5" style="background:#e3f2fd;">คะแนนหลังกลางภาค(ปี)</th>
+              <th rowspan="2" style="background:#f3e5f5; vertical-align:middle; width:55px;">รวม<br>ระหว่างภาค</th>
+              <th rowspan="2" style="background:#fff8e1; vertical-align:middle; width:55px;">ปลายภาค</th>
+              <th rowspan="2" style="background:#fce4ec; vertical-align:middle; width:60px;">รวมทั้งหมด<br>(100)</th>
+            </tr>
+            <tr style="background:#f5f5f5;">
+              <th style="background:#e8f5e9; width:50px;">ครั้งที่1</th>
+              <th style="background:#e8f5e9; width:50px;">ครั้งที่2</th>
+              <th style="background:#e8f5e9; width:50px;">ครั้งที่3</th>
+              <th style="background:#e8f5e9; width:50px;">ครั้งที่4</th>
+              <th style="background:#c8e6c9; width:45px;">รวม</th>
+              <th style="background:#e3f2fd; width:50px;">ครั้งที่6</th>
+              <th style="background:#e3f2fd; width:50px;">ครั้งที่7</th>
+              <th style="background:#e3f2fd; width:50px;">ครั้งที่8</th>
+              <th style="background:#e3f2fd; width:50px;">ครั้งที่9</th>
+              <th style="background:#bbdefb; width:45px;">รวม</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><input id="fs1" type="number" min="0" class="form-control form-control-sm text-center p-1 fs-input" style="width:46px;"></td>
+              <td><input id="fs2" type="number" min="0" class="form-control form-control-sm text-center p-1 fs-input" style="width:46px;"></td>
+              <td><input id="fs3" type="number" min="0" class="form-control form-control-sm text-center p-1 fs-input" style="width:46px;"></td>
+              <td><input id="fs4" type="number" min="0" class="form-control form-control-sm text-center p-1 fs-input" style="width:46px;"></td>
+              <td style="background:#c8e6c9;"><strong id="fsSum14">0</strong></td>
+              <td style="background:#fff3e0;"><input id="fs5" type="number" min="0" class="form-control form-control-sm text-center p-1 fs-input" style="width:46px;"></td>
+              <td><input id="fs6" type="number" min="0" class="form-control form-control-sm text-center p-1 fs-input" style="width:46px;"></td>
+              <td><input id="fs7" type="number" min="0" class="form-control form-control-sm text-center p-1 fs-input" style="width:46px;"></td>
+              <td><input id="fs8" type="number" min="0" class="form-control form-control-sm text-center p-1 fs-input" style="width:46px;"></td>
+              <td><input id="fs9" type="number" min="0" class="form-control form-control-sm text-center p-1 fs-input" style="width:46px;"></td>
+              <td style="background:#bbdefb;"><strong id="fsSum69">0</strong></td>
+              <td style="background:#f3e5f5;"><strong id="fsMidTotal">0</strong></td>
+              <td style="background:#fff8e1;"><strong id="fsFinalScore">0</strong></td>
+              <td style="background:#fce4ec;"><strong id="fsGrandTotal">0</strong></td>
+            </tr>
+          </tbody>
+        </table>
       </div>
       <div class="mt-3 text-end">
         <button class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
@@ -231,6 +264,7 @@ if (window.__SUBJECTS_BOOTED__) {
       var el = document.getElementById('fs' + fi);
       if (el) el.value = row['เต็ม_ครั้ง' + fi] || '';
     }
+    recalcFsTotals();
     new bootstrap.Modal(m).show();
   }
 
@@ -344,6 +378,31 @@ if (window.__SUBJECTS_BOOTED__) {
     new bootstrap.Toast(toastEl).show();
   }
 
+  // auto-calculate ผลรวมในตาราง fullScore
+  function recalcFsTotals() {
+    var v = function(id) { return Number(document.getElementById(id)?.value) || 0; };
+    var sum14 = v('fs1') + v('fs2') + v('fs3') + v('fs4');
+    var sum69 = v('fs6') + v('fs7') + v('fs8') + v('fs9');
+    var midTotal = sum14 + v('fs5') + sum69;
+    var fin = Number(document.getElementById('finalScore')?.value) || 0;
+    document.getElementById('fsSum14').textContent = sum14;
+    document.getElementById('fsSum69').textContent = sum69;
+    document.getElementById('fsMidTotal').textContent = midTotal;
+    document.getElementById('fsFinalScore').textContent = fin;
+    document.getElementById('fsGrandTotal').textContent = midTotal + fin;
+    // auto-fill midScore & total
+    document.getElementById('midScore').value = midTotal;
+    document.getElementById('total').value = midTotal + fin;
+  }
+
+  function bindFsEvents() {
+    document.querySelectorAll('.fs-input').forEach(function(el) {
+      el.addEventListener('input', recalcFsTotals);
+    });
+    var finEl = document.getElementById('finalScore');
+    if (finEl) finEl.addEventListener('input', recalcFsTotals);
+  }
+
   // export ให้ปุ่มใน HTML ใช้
   window.openModal = openModal;
   window.editSubject = editSubject;
@@ -353,8 +412,8 @@ if (window.__SUBJECTS_BOOTED__) {
   window.applyFilters = applyFilters;
 
   // init เมื่อ DOM พร้อม และเรียกทันทีหากโหลดไปแล้ว (กันเคส SPA)
-  document.addEventListener('DOMContentLoaded', init);
-  if (document.readyState !== 'loading') setTimeout(init, 0);
+  document.addEventListener('DOMContentLoaded', function() { init(); bindFsEvents(); });
+  if (document.readyState !== 'loading') setTimeout(function() { init(); bindFsEvents(); }, 0);
 }
 </script>
 </body>
