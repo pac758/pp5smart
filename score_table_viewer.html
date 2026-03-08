@@ -881,6 +881,9 @@
         <button class="btn btn-outline-secondary btn-sm" id="btnClearCurrent" onclick="window.ScoreEntrySystem.clearCurrentTerm()">
           <i class="fas fa-eraser"></i> ล้าง
         </button>
+        <button class="btn btn-outline-info btn-sm" id="btnCopyTerm1ToTerm2" style="display:none;" onclick="window.ScoreEntrySystem.copyTerm1ToTerm2()">
+          <i class="fas fa-copy"></i> คัดลอกจากภาค 1
+        </button>
         <button id="scoreEntryBtnSaveTerm1" class="btn btn-success btn-sm" disabled>
           <i class="fas fa-save"></i> บันทึก
         </button>
@@ -3304,6 +3307,50 @@ window.ScoreEntrySystem = (function() {
         if (currentData) {
           renderCombinedTable(containerId, currentData);
         }
+      },
+
+      copyTerm1ToTerm2: function() {
+        if (!confirm('คัดลอกคะแนนจากภาคเรียนที่ 1 ไปภาคเรียนที่ 2?\n(คะแนนเดิมในภาค 2 จะถูกแทนที่)')) return;
+        
+        var term1Container = document.getElementById('scoreEntryTerm1Container');
+        var term2Container = document.getElementById('scoreEntryTerm2Container');
+        if (!term1Container || !term2Container) {
+          showStatus('❌ ไม่พบตารางภาคเรียน', 'danger', 'fas fa-exclamation-circle');
+          return;
+        }
+        
+        var t1Rows = term1Container.querySelectorAll('tbody tr');
+        var t2Rows = term2Container.querySelectorAll('tbody tr');
+        
+        if (t1Rows.length === 0 || t2Rows.length === 0) {
+          showStatus('❌ ไม่พบข้อมูลในตาราง', 'danger', 'fas fa-exclamation-circle');
+          return;
+        }
+        
+        var copied = 0;
+        t1Rows.forEach(function(t1Row, idx) {
+          if (idx >= t2Rows.length) return;
+          var t2Row = t2Rows[idx];
+          
+          // คัดลอก score inputs (ครั้งที่ 1-9)
+          var t1Inputs = t1Row.querySelectorAll('.score-entry-input');
+          var t2Inputs = t2Row.querySelectorAll('.score-entry-input');
+          t1Inputs.forEach(function(inp, i) {
+            if (i < t2Inputs.length) t2Inputs[i].value = inp.value;
+          });
+          
+          // คัดลอก final input (ปลายภาค)
+          var t1Final = t1Row.querySelector('.score-entry-final-input');
+          var t2Final = t2Row.querySelector('.score-entry-final-input');
+          if (t1Final && t2Final) t2Final.value = t1Final.value;
+          
+          // คำนวณผลรวมใหม่
+          calcRowTotal(t2Row, false);
+          copied++;
+        });
+        
+        updateStats();
+        showStatus('✅ คัดลอกคะแนนจากภาค 1 ไปภาค 2 เรียบร้อย (' + copied + ' แถว)', 'success', 'fas fa-check-circle');
       }
     };
   })();
@@ -3339,6 +3386,7 @@ window.ScoreEntrySystem = (function() {
     if (el('scoreEntryStatusExportTerm1')) el('scoreEntryStatusExportTerm1').style.display = isTerm1 ? '' : 'none';
     if (el('scoreEntryStatusExportTerm2')) el('scoreEntryStatusExportTerm2').style.display = isTerm2 ? '' : 'none';
     if (el('btnClearCurrent')) el('btnClearCurrent').style.display = isCombined ? 'none' : '';
+    if (el('btnCopyTerm1ToTerm2')) el('btnCopyTerm1ToTerm2').style.display = isTerm2 ? '' : 'none';
 
     if (isCombined && window.ScoreEntrySystem) {
       window.ScoreEntrySystem.renderCombined('scoreEntryCombinedContainer');
