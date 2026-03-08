@@ -5,6 +5,19 @@
 
 const SUBJECT_SHEET_NAME = 'รายวิชา';
 
+const SUBJECT_HEADERS_BASE = [
+  'ชั้น', 'รหัสวิชา', 'ชื่อวิชา', 'ชั่วโมง/ปี',
+  'ประเภทวิชา', 'ครูผู้สอน', 'คะแนนระหว่างปี',
+  'คะแนนปลายปี', 'รวม'
+];
+
+const FULLSCORE_HEADERS = [
+  'เต็ม_ครั้ง1', 'เต็ม_ครั้ง2', 'เต็ม_ครั้ง3', 'เต็ม_ครั้ง4',
+  'เต็ม_ครั้ง5', 'เต็ม_ครั้ง6', 'เต็ม_ครั้ง7', 'เต็ม_ครั้ง8', 'เต็ม_ครั้ง9'
+];
+
+const SUBJECT_HEADERS_ALL = SUBJECT_HEADERS_BASE.concat(FULLSCORE_HEADERS);
+
 /**
  * 🔍 ดึงข้อมูลรายวิชาทั้งหมด
  */
@@ -17,13 +30,8 @@ function getSubjects() {
     if (!sheet) {
       sheet = ss.insertSheet(SUBJECT_SHEET_NAME);
       // สร้างหัวตาราง
-      const headers = [
-        'ชั้น', 'รหัสวิชา', 'ชื่อวิชา', 'ชั่วโมง/ปี', 
-        'ประเภทวิชา', 'ครูผู้สอน', 'คะแนนระหว่างปี', 
-        'คะแนนปลายปี', 'รวม'
-      ];
-      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-      sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+      sheet.getRange(1, 1, 1, SUBJECT_HEADERS_ALL.length).setValues([SUBJECT_HEADERS_ALL]);
+      sheet.getRange(1, 1, 1, SUBJECT_HEADERS_ALL.length).setFontWeight('bold');
       sheet.setFrozenRows(1);
       
       console.log('✅ สร้างชีต "รายวิชา" ใหม่พร้อมหัวตาราง');
@@ -67,16 +75,12 @@ function addSubject(subjectData) {
     let sheet = ss.getSheetByName(SUBJECT_SHEET_NAME);
     
     if (!sheet) {
-      // สร้างชีตใหม่หากไม่มี
       sheet = ss.insertSheet(SUBJECT_SHEET_NAME);
-      const headers = [
-        'ชั้น', 'รหัสวิชา', 'ชื่อวิชา', 'ชั่วโมง/ปี', 
-        'ประเภทวิชา', 'ครูผู้สอน', 'คะแนนระหว่างปี', 
-        'คะแนนปลายปี', 'รวม'
-      ];
-      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-      sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+      sheet.getRange(1, 1, 1, SUBJECT_HEADERS_ALL.length).setValues([SUBJECT_HEADERS_ALL]);
+      sheet.getRange(1, 1, 1, SUBJECT_HEADERS_ALL.length).setFontWeight('bold');
       sheet.setFrozenRows(1);
+    } else {
+      ensureFullScoreHeaders_(sheet);
     }
 
     // ตรวจสอบข้อมูลที่จำเป็น
@@ -412,6 +416,72 @@ function _buildSubjectsListHTML_(subjects) {
   </div>
 </body>
 </html>`;
+}
+
+/**
+ * 🔧 ตรวจสอบและเพิ่มคอลัมน์คะแนนเต็ม (เต็ม_ครั้ง1-9) ในชีตรายวิชาเก่าที่ยังไม่มี
+ */
+function ensureFullScoreHeaders_(sheet) {
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const missing = [];
+  
+  FULLSCORE_HEADERS.forEach(function(h) {
+    if (headers.indexOf(h) === -1) missing.push(h);
+  });
+  
+  if (missing.length > 0) {
+    var startCol = headers.length + 1;
+    sheet.getRange(1, startCol, 1, missing.length).setValues([missing]);
+    sheet.getRange(1, startCol, 1, missing.length).setFontWeight('bold');
+    console.log('✅ เพิ่มคอลัมน์คะแนนเต็มในชีตรายวิชา: ' + missing.join(', '));
+  }
+}
+
+/**
+ * 📊 ดึงคะแนนเต็มรายตัวชี้วัด (9 ช่อง) จากชีตรายวิชา
+ * @param {string} subjectName - ชื่อวิชา
+ * @param {string} grade - ชั้น เช่น "ป.3"
+ * @returns {Object} { fullScores: [s1,s2,...,s9], midMax, finalMax }
+ */
+function getSubjectFullScores(subjectName, grade) {
+  try {
+    const ss = _openSpreadsheet_();
+    const sheet = ss.getSheetByName(SUBJECT_SHEET_NAME);
+    if (!sheet) return { fullScores: [0,0,0,0,0,0,0,0,0], midMax: 70, finalMax: 30 };
+    
+    ensureFullScoreHeaders_(sheet);
+    
+    const data = sheet.getDataRange().getValues();
+    if (data.length < 2) return { fullScores: [0,0,0,0,0,0,0,0,0], midMax: 70, finalMax: 30 };
+    
+    const headers = data[0];
+    var idxGrade = headers.indexOf('ชั้น');
+    var idxName = headers.indexOf('ชื่อวิชา');
+    var idxMid = headers.indexOf('คะแนนระหว่างปี');
+    var idxFinal = headers.indexOf('คะแนนปลายปี');
+    
+    // หา index ของ FULLSCORE_HEADERS
+    var fsIdx = FULLSCORE_HEADERS.map(function(h) { return headers.indexOf(h); });
+    
+    // หาแถวที่ตรงกับ grade + subjectName
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      if (String(row[idxGrade]).trim() === String(grade).trim() &&
+          String(row[idxName]).trim() === String(subjectName).trim()) {
+        var fullScores = fsIdx.map(function(idx) { return idx >= 0 ? (Number(row[idx]) || 0) : 0; });
+        return {
+          fullScores: fullScores,
+          midMax: Number(row[idxMid]) || 70,
+          finalMax: Number(row[idxFinal]) || 30
+        };
+      }
+    }
+    
+    return { fullScores: [0,0,0,0,0,0,0,0,0], midMax: 70, finalMax: 30 };
+  } catch (e) {
+    console.warn('getSubjectFullScores error:', e.message);
+    return { fullScores: [0,0,0,0,0,0,0,0,0], midMax: 70, finalMax: 30 };
+  }
 }
 
 /**
