@@ -2576,24 +2576,30 @@ window.ScoreEntrySystem = (function() {
       // จับคู่นักเรียนจาก term1 (ใช้ term1 เป็นหลัก)
       const combinedRows = rows1.map((r1, idx) => {
         const r2 = rows2.find(r => r.id === r1.id) || rows2[idx] || {};
+        
+        // ตรวจว่าแต่ละภาคมีคะแนนจริงหรือไม่ (ดูจากคะแนนรวม scores + final)
+        const t1HasScore = (r1.scores || []).some(s => Number(s) > 0) || Number(r1.final) > 0;
+        const t2HasScore = (r2.scores || []).some(s => Number(s) > 0) || Number(r2.final) > 0;
+        const bothTerms = t1HasScore && t2HasScore;
+        const divider = bothTerms ? 2 : 1;
+        
         const avgScores = [];
         for (let j = 0; j < 9; j++) {
           const s1v = Number(r1.scores?.[j]) || 0;
           const s2v = Number(r2.scores?.[j]) || 0;
-          const avg = Math.round(((s1v + s2v) / 2) * 100) / 100;
+          const avg = Math.round(((s1v + s2v) / divider) * 100) / 100;
           const maxFull = displayFullScores[j] || 0;
-          // ถ้า full=0 (ไม่มีการประเมิน) → แสดง 0; ถ้ามี → cap ไม่เกิน max
           avgScores.push(maxFull > 0 ? Math.min(avg, maxFull) : 0);
         }
 
-        // ✅ เฉลี่ย midTotal ที่ scale แล้ว (ไม่คำนวณจาก raw scores ใหม่ เพราะ 2 ภาคอาจมี fullScores ต่างกัน)
+        // midTotal — ถ้ามีเฉพาะภาคเดียวไม่เฉลี่ย
         const mid1 = Number(r1.mid) || 0;
         const mid2 = Number(r2.mid) || 0;
-        let avgMid = Math.round(((mid1 + mid2) / 2) * 100) / 100;
+        let avgMid = Math.round(((mid1 + mid2) / divider) * 100) / 100;
         if (avgMid > midMax) avgMid = midMax;
 
-        // ปลายภาคเฉลี่ย — clamp ไม่เกิน finMax
-        let avgFinal = Math.round(((Number(r1.final) || 0) + (Number(r2.final) || 0)) / 2 * 100) / 100;
+        // ปลายภาค — ถ้ามีเฉพาะภาคเดียวไม่เฉลี่ย
+        let avgFinal = Math.round(((Number(r1.final) || 0) + (Number(r2.final) || 0)) / divider * 100) / 100;
         if (avgFinal > finMax) avgFinal = finMax;
 
         const avgTotal = Math.round((avgMid + avgFinal) * 100) / 100;
