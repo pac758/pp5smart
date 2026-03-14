@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>⚙️ ตั้งค่าระบบ (เวอร์ชันใหม่)</title>
+
+  <!-- Bootstrap 5 + Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>body { font-family: 'Sarabun', sans-serif; }</style>
+</head>
+<body class="bg-light">
+  <div class="container py-4 animate-fade-in" style="max-width: 900px;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2 class="mb-0 text-primary">
+        <i class="bi bi-sliders"></i> ตั้งค่าระบบกลาง (เวอร์ชันใหม่)
+      </h2>
+    </div>
+
+    <div class="row g-4">
+      <!-- ข้อมูลโรงเรียน -->
+      <div class="col-lg-6">
+        <div class="card h-100 shadow-sm">
+          <div class="card-header bg-primary text-white">
+            <i class="bi bi-building"></i> ข้อมูลโรงเรียน
+          </div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label for="schoolName" class="form-label">ชื่อโรงเรียน</label>
+              <input id="schoolName" type="text" class="form-control" />
+            </div>
+            <div class="mb-3">
+              <label for="schoolAddress" class="form-label">ที่อยู่โรงเรียน</label>
+              <input id="schoolAddress" type="text" class="form-control" />
+            </div>
+            <div class="row">
+              <div class="col-6 mb-3">
+                <label for="academicYear" class="form-label">ปีการศึกษา</label>
+                <input id="academicYear" type="number" class="form-control" />
+              </div>
+              <div class="col-6 mb-3">
+                <label for="semester" class="form-label">ภาคเรียน</label>
+                <input id="semester" type="number" class="form-control" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- บุคลากร -->
+      <div class="col-lg-6">
+        <div class="card h-100 shadow-sm">
+          <div class="card-header bg-success text-white">
+            <i class="bi bi-people-fill"></i> บุคลากร
+          </div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label for="directorName" class="form-label">ชื่อผู้อำนวยการ</label>
+              <input id="directorName" type="text" class="form-control" />
+            </div>
+            <div class="mb-3">
+              <label for="directorPosition" class="form-label">ตำแหน่งผู้อำนวยการ</label>
+              <input id="directorPosition" type="text" class="form-control" />
+            </div>
+            <div class="mb-3">
+              <label for="supervisorName" class="form-label">ชื่อหัวหน้างานวิชาการ</label>
+              <input id="supervisorName" type="text" class="form-control" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- การตั้งค่าขั้นสูง -->
+      <div class="col-12">
+        <div class="card shadow-sm">
+          <div class="card-header bg-secondary text-white">
+            <i class="bi bi-gear-wide-connected"></i> การตั้งค่าขั้นสูง
+          </div>
+          <div class="card-body row align-items-center">
+            <div class="col-md-4 text-center mb-3 mb-md-0">
+              <img id="logoPreview" class="img-thumbnail" style="max-height: 120px; object-fit: contain;" alt="โลโก้" />
+            </div>
+            <div class="col-md-8">
+              <div class="mb-3">
+                <label for="logoFileId" class="form-label">รหัสโลโก้ Google Drive</label>
+                <input type="text" id="logoFileId" class="form-control" />
+              </div>
+              <div class="mb-3">
+                <label for="pdfSaveFolderId" class="form-label">รหัสโฟลเดอร์สำหรับบันทึก PDF</label>
+                <input type="text" id="pdfSaveFolderId" class="form-control" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- เปลี่ยนปีการศึกษา -->
+    <div class="row g-4 mt-1">
+      <div class="col-12">
+        <div class="card shadow-sm border-warning">
+          <div class="card-header bg-warning text-dark">
+            <i class="bi bi-calendar-event"></i> เปลี่ยนปีการศึกษา
+          </div>
+          <div class="card-body">
+            <p class="text-muted mb-3" style="font-size:0.9rem;">
+              ระบบจะ <strong>สำรอง Spreadsheet ทั้งไฟล์</strong> ไว้ในโฟลเดอร์ Archive แล้วล้างข้อมูลคะแนน/ประเมิน/เวลาเรียน เพื่อเริ่มต้นปีการศึกษาใหม่
+              <br>ข้อมูลนักเรียน, รายวิชา, ผู้ใช้ จะ <strong>ยังคงอยู่</strong>
+            </p>
+            <div id="switchPreview" class="mb-3" style="display:none;">
+              <div class="alert alert-info py-2 mb-2" id="previewInfo"></div>
+            </div>
+            <div class="row align-items-end">
+              <div class="col-auto">
+                <label class="form-label fw-bold">ปีการศึกษาใหม่ (พ.ศ.)</label>
+                <input type="number" id="newAcademicYear" class="form-control" style="width:140px;" />
+              </div>
+              <div class="col-auto">
+                <button id="previewSwitchBtn" class="btn btn-outline-warning">
+                  <i class="bi bi-eye"></i> ดูข้อมูลก่อนเปลี่ยน
+                </button>
+              </div>
+              <div class="col-auto">
+                <button id="switchYearBtn" class="btn btn-danger" disabled>
+                  <i class="bi bi-arrow-repeat"></i> เปลี่ยนปีการศึกษา
+                </button>
+              </div>
+            </div>
+            <div id="switchStatus" class="mt-3"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ปุ่มบันทึก + สถานะ -->
+    <div class="mt-4 text-center">
+      <button id="saveBtn" class="btn btn-primary btn-lg px-5">
+    <i class="bi bi-save-fill"></i> บันทึกการตั้งค่าทั้งหมด
+</button>
+<div id="status" class="mt-3"></div>
+  </div>
+<script>
+// ========= Settings Editor Namespace =========
+if (typeof window.SettingsEditor === 'undefined') {
+    window.SettingsEditor = {
+        
+        // ----- Utils -----
+        $: (id) => document.getElementById(id),
+
+        setStatus: function(html, type = 'info') {
+            const statusEl = this.$('status');
+            if (statusEl) {
+                statusEl.innerHTML = html ? `<div class="alert alert-${type} py-2 mb-0">${html}</div>` : '';
+            }
+        },
+
+        defaultLogoDataUrl: function() {
+            return 'data:image/svg+xml;utf8,' + encodeURIComponent(
+                `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 150"><rect width="150" height="150" fill="#e9ecef"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" font-size="14" fill="#6c757d">ไม่มีโลโก้</text></svg>`
+            );
+        },
+
+        // ----- Logo Display Logic -----
+        tryLoadLogo: function(img, urls, index = 0) {
+            if (index >= urls.length) {
+                console.error('ไม่สามารถโหลดโลโก้จาก URLs ทั้งหมดได้');
+                img.src = this.defaultLogoDataUrl();
+                return;
+            }
+            const currentUrl = urls[index];
+            // console.log(`🔄 กำลังลอง URL [${index + 1}/${urls.length}]: ${currentUrl}`);
+            
+            img.onload = () => { 
+                // console.log('✅ โหลดโลโก้สำเร็จจาก: ' + currentUrl); 
+                img.onload = img.onerror = null; 
+            };
+            img.onerror = () => { 
+                // console.warn(`❌ โหลดไม่สำเร็จจาก: ${currentUrl}`); 
+                this.tryLoadLogo(img, urls, index + 1); 
+            };
+            
+            const separator = currentUrl.includes('?') ? '&' : '?';
+            img.src = currentUrl + separator + 't=' + Date.now();
+        },
+
+        handleLogoDisplay: function(settings) {
+            const img = this.$('logoPreview');
+            
+            const urls = [];
+            
+            if (settings.logo) urls.push(settings.logo);
+            if (settings.logoUrl_lh3 && settings.logoUrl_lh3 !== settings.logo) {
+                urls.push(settings.logoUrl_lh3);
+            }
+            if (settings.logoDataUrl && settings.logoDataUrl !== settings.logo) {
+                urls.push(settings.logoDataUrl);
+            }
+            if (settings.schoolLogo && settings.schoolLogo !== settings.logo) {
+                urls.push(settings.schoolLogo);
+            }
+            if (settings.logoUrl_uc) urls.push(settings.logoUrl_uc);
+            
+            if (urls.length === 0 && settings.logoFileId) {
+                const fileId = settings.logoFileId.trim();
+                if (fileId) {
+                    urls.push(`https://lh3.googleusercontent.com/d/${fileId}`);
+                    urls.push(`https://drive.google.com/uc?export=view&id=${fileId}`);
+                }
+            }
+            
+            // console.log('🔍 Logo URLs:', urls);
+            
+            if (urls.length === 0) {
+                // console.warn('⚠️ ไม่มี logo URLs');
+                img.src = this.defaultLogoDataUrl();
+                return;
+            }
+            
+            this.tryLoadLogo(img, urls);
+        },
+
+        // ----- Form and Data Logic -----
+        populateForm: function(settings) {
+            // console.log('📝 กำลังโหลดข้อมูลลงฟอร์ม...');
+
+            try {
+                if (settings && settings.__meta) {
+                    // console.log('ℹ️ Settings meta:', settings.__meta);
+                    // console.log('ℹ️ Settings keys:', Object.keys(settings));
+                    const m = settings.__meta;
+                    const parts = [];
+                    if (m.source) parts.push('source=' + m.source);
+                    if (m.sheetName) parts.push('sheet=' + m.sheetName);
+                    if (m.rowCount) parts.push('rows=' + m.rowCount);
+                    if (m.spreadsheetName) parts.push('file=' + m.spreadsheetName);
+                    this.setStatus('<small class="text-muted">' + parts.join(' | ') + '</small>', 'light');
+                }
+            } catch (_e) {}
+            
+            const fieldMapping = { 
+                'schoolName': 'ชื่อโรงเรียน', 
+                'schoolAddress': 'ที่อยู่โรงเรียน', 
+                'academicYear': 'ปีการศึกษา', 
+                'semester': 'ภาคเรียน', 
+                'directorName': 'ชื่อผู้อำนวยการ', 
+                'directorPosition': 'ตำแหน่งผู้อำนวยการ', 
+                'supervisorName': 'ชื่อหัวหน้างานวิชาการ', 
+                'logoFileId': 'logoFileId', 
+                'pdfSaveFolderId': 'pdfSaveFolderId' 
+            };
+            
+            for (const inputId in fieldMapping) {
+                const el = this.$(inputId);
+                const thaiKey = fieldMapping[inputId];
+                
+                if (el) {
+                    let value = settings[thaiKey] || settings[inputId] || '';
+                    el.value = value;
+                    if (value === '' && settings && settings.__meta && settings.__meta.source === 'sheet') {
+                        // console.warn('⚠️ Missing setting key for field:', inputId, 'thaiKey:', thaiKey);
+                    }
+                }
+            }
+            
+            this.handleLogoDisplay(settings);
+            if (!(settings && settings.__meta)) {
+                this.setStatus('');
+            }
+        },
+
+        initializeSettingsPage: function() {
+            this.setStatus('<div class="spinner-border spinner-border-sm me-2"></div>กำลังโหลดข้อมูล...', 'info');
+            google.script.run
+                .withSuccessHandler(this.populateForm.bind(this))
+                .withFailureHandler(error => {
+                    console.error('เกิดข้อผิดพลาดในการโหลด:', error);
+                    this.setStatus('เกิดข้อผิดพลาดในการโหลดข้อมูล: ' + (error?.message || error), 'danger');
+                })
+                .getGlobalSettings(false);
+        },
+
+        saveSettings: function() {
+            const settingsData = { 
+                'ชื่อโรงเรียน': this.$('schoolName').value, 
+                'ที่อยู่โรงเรียน': this.$('schoolAddress').value, 
+                'ปีการศึกษา': this.$('academicYear').value, 
+                'ภาคเรียน': this.$('semester').value, 
+                'ชื่อผู้อำนวยการ': this.$('directorName').value, 
+                'ตำแหน่งผู้อำนวยการ': this.$('directorPosition').value, 
+                'ชื่อหัวหน้างานวิชาการ': this.$('supervisorName').value, 
+                'logoFileId': this.$('logoFileId').value, 
+                'pdfSaveFolderId': this.$('pdfSaveFolderId').value 
+            };
+            
+            const saveBtn = this.$('saveBtn');
+            const originalBtnHTML = saveBtn.innerHTML;
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>กำลังบันทึก...';
+            
+            google.script.run
+                .withSuccessHandler((message) => {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = originalBtnHTML;
+                    this.setStatus(message || 'บันทึกสำเร็จ', 'success');
+                    setTimeout(() => this.initializeSettingsPage(), 500);
+                })
+                .withFailureHandler((error) => {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = originalBtnHTML;
+                    this.setStatus('เกิดข้อผิดพลาด: ' + (error?.message || error), 'danger');
+                })
+                .saveSystemSettings(settingsData);
+        },
+
+        // ----- Academic Year Switch -----
+        setSwitchStatus: function(html, type) {
+            var el = this.$('switchStatus');
+            if (el) el.innerHTML = html ? '<div class="alert alert-' + (type || 'info') + ' py-2 mb-0">' + html + '</div>' : '';
+        },
+
+        previewSwitch: function() {
+            var self = this;
+            self.setSwitchStatus('<span class="spinner-border spinner-border-sm me-2"></span>กำลังดึงข้อมูล...', 'info');
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    if (!result || !result.success) {
+                        self.setSwitchStatus('เกิดข้อผิดพลาด: ' + (result && result.message || 'ไม่ทราบ'), 'danger');
+                        return;
+                    }
+                    var el = self.$('newAcademicYear');
+                    if (el && !el.value) el.value = result.suggestedNewYear;
+
+                    var lines = [];
+                    lines.push('<strong>ปีการศึกษาปัจจุบัน:</strong> ' + result.currentYear + ' → <strong>' + result.suggestedNewYear + '</strong>');
+                    lines.push('<hr class="my-1">');
+                    lines.push('<strong>🎓 นักเรียน (' + result.studentCount + ' คน):</strong>');
+                    var gc = result.gradeCounts || {};
+                    ['ป.1','ป.2','ป.3','ป.4','ป.5','ป.6'].forEach(function(g) {
+                        if (gc[g]) lines.push('&nbsp;&nbsp;• ' + g + ': ' + gc[g] + ' คน' + (g === 'ป.6' ? ' → <span class="text-danger fw-bold">จำหน่าย</span>' : ' → เลื่อนเป็น ' + g.replace(/\d/, function(d){return parseInt(d)+1;})));
+                    });
+                    lines.push('<hr class="my-1">');
+                    lines.push('<strong>📝 ชีตที่จะ Rename (เก็บข้อมูลเดิมไว้):</strong>');
+                    (result.sheetsToRename || []).forEach(function(d) {
+                        if (!d.alreadyRenamed) {
+                            lines.push('&nbsp;&nbsp;• ' + d.from + ' → ' + d.to + ' (' + d.rows + ' แถว)');
+                        }
+                    });
+                    lines.push('<strong>✨ ชีตใหม่ที่จะสร้าง:</strong>');
+                    (result.sheetsToCreate || []).forEach(function(name) {
+                        lines.push('&nbsp;&nbsp;• ' + name);
+                    });
+                    if (result.scoreSheets && result.scoreSheets.length > 0) {
+                        lines.push('<strong>📝 ชีตคะแนนรายวิชาที่จะ Rename (' + result.scoreSheets.length + '):</strong>');
+                        result.scoreSheets.forEach(function(name) {
+                            lines.push('&nbsp;&nbsp;• ' + name + ' → ' + name + '_' + result.currentYear);
+                        });
+                    }
+                    lines.push('<hr class="my-1">');
+                    lines.push('<span class="text-success fw-bold">✅ ข้อมูลเดิมทั้งหมดจะยังคงอยู่ในชีตเดิม (แค่เปลี่ยนชื่อ)</span>');
+                    lines.push('<strong>สรุป:</strong> เลื่อนชั้น ' + (result.promoteCount || 0) + ' คน | จำหน่าย ป.6 ' + (result.p6Count || 0) + ' คน');
+
+                    var previewEl = self.$('switchPreview');
+                    var infoEl = self.$('previewInfo');
+                    if (previewEl) previewEl.style.display = 'block';
+                    if (infoEl) infoEl.innerHTML = lines.join('<br>');
+
+                    var switchBtn = self.$('switchYearBtn');
+                    if (switchBtn) switchBtn.disabled = false;
+                    self.setSwitchStatus('');
+                })
+                .withFailureHandler(function(err) {
+                    self.setSwitchStatus('เกิดข้อผิดพลาด: ' + (err && err.message || err), 'danger');
+                })
+                .previewSwitchAcademicYear();
+        },
+
+        doSwitchYear: function() {
+            var self = this;
+            var newYear = self.$('newAcademicYear') ? self.$('newAcademicYear').value : '';
+            if (!newYear) {
+                self.setSwitchStatus('กรุณาระบุปีการศึกษาใหม่', 'warning');
+                return;
+            }
+            if (!confirm('⚠️ ยืนยันเปลี่ยนปีการศึกษาเป็น ' + newYear + '?\n\nระบบจะ:\n1. สำรอง Spreadsheet ทั้งไฟล์ (backup)\n2. เปลี่ยนชื่อชีตข้อมูลเดิม → เติม _ปีเก่า\n3. สร้างชีตว่างสำหรับปีใหม่\n4. เปลี่ยนชื่อชีตคะแนนรายวิชา → เติม _ปีเก่า\n5. จำหน่ายนักเรียน ป.6\n6. เลื่อนชั้นนักเรียน (ป.1→ป.2 ... ป.5→ป.6)\n7. อัปเดตปีการศึกษา\n\n✅ ข้อมูลเดิมทั้งหมดจะยังอยู่ (แค่เปลี่ยนชื่อชีต)')) {
+                return;
+            }
+
+            var switchBtn = self.$('switchYearBtn');
+            var origHTML = switchBtn.innerHTML;
+            switchBtn.disabled = true;
+            switchBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>กำลังเปลี่ยนปี...';
+            self.setSwitchStatus('<span class="spinner-border spinner-border-sm me-2"></span>กำลังสำรองข้อมูลและเปลี่ยนปีการศึกษา... อาจใช้เวลา 1-3 นาที', 'info');
+
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    switchBtn.innerHTML = origHTML;
+                    if (!result || !result.success) {
+                        switchBtn.disabled = false;
+                        self.setSwitchStatus('เกิดข้อผิดพลาด: ' + (result && result.message || 'ไม่ทราบ'), 'danger');
+                        return;
+                    }
+                    var msg = '<strong>✅ ' + result.message + '</strong><br>';
+                    msg += '📦 Backup: <a href="' + result.archiveUrl + '" target="_blank">เปิดไฟล์สำรอง</a><br>';
+                    msg += '📝 Rename: ' + (result.sheetsRenamed || 0) + ' ชีต | ✨ สร้างใหม่: ' + (result.sheetsCreated || 0) + ' ชีต | 📝 ชีตคะแนน: ' + (result.scoreSheetArchived || 0) + ' ชีต<br>';
+                    msg += '🎓 เลื่อนชั้น: ' + (result.studentsPromoted || 0) + ' คน | จำหน่าย ป.6: ' + (result.studentsGraduated || 0) + ' คน';
+                    self.setSwitchStatus(msg, 'success');
+
+                    // รีโหลดข้อมูลหน้า settings
+                    setTimeout(function() { self.initializeSettingsPage(); }, 1000);
+                })
+                .withFailureHandler(function(err) {
+                    switchBtn.disabled = false;
+                    switchBtn.innerHTML = origHTML;
+                    self.setSwitchStatus('เกิดข้อผิดพลาด: ' + (err && err.message || err), 'danger');
+                })
+                .switchAcademicYear(Number(newYear));
+        },
+
+        // ----- Init Function -----
+        init: function() {
+            // console.log('🚀 Initializing Settings Editor page...');
+            
+            this.$('saveBtn').onclick = this.saveSettings.bind(this);
+            
+            var previewBtn = this.$('previewSwitchBtn');
+            if (previewBtn) previewBtn.onclick = this.previewSwitch.bind(this);
+            var switchBtn = this.$('switchYearBtn');
+            if (switchBtn) switchBtn.onclick = this.doSwitchYear.bind(this);
+            
+            let logoTimeout;
+            this.$('logoFileId').oninput = () => {
+                clearTimeout(logoTimeout);
+                logoTimeout = setTimeout(() => {
+                    this.handleLogoDisplay({ 'logoFileId': this.$('logoFileId').value });
+                }, 500);
+            };
+            
+            this.initializeSettingsPage();
+        }
+    };
+}
+
+// ========= Initialization =========
+window.setupNew_settings_editorPage = function() {
+    if (window.SettingsEditor && typeof window.SettingsEditor.init === 'function') {
+        window.SettingsEditor.init();
+    }
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', window.setupNew_settings_editorPage);
+} else {
+    setTimeout(window.setupNew_settings_editorPage, 0);
+}
+</script>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <style>
+    /* CSS ตกแต่งเพิ่มเติม */
+    .student-list-container {
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid #dee2e6;
+      border-radius: 0.375rem;
+      background: #fff;
+    }
+    .student-item {
+      border-bottom: 1px solid #eee;
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .student-item:last-child { border-bottom: none; }
+    .student-item:hover { background-color: #f8f9fa; }
+    .student-item input[type="checkbox"] { cursor: pointer; transform: scale(1.2); margin-right: 10px; }
+    
+    .list-controls {
+      position: sticky;
+      top: 0;
+      background: #f8f9fa;
+      padding: 8px;
+      border-bottom: 1px solid #dee2e6;
+      z-index: 10;
+    }
+
+    .progress-container { margin-top: 20px; display: none; }
+    #generateBtn.loading .spinner-border { display: inline-block; }
+    .spinner-border { display: none; }
+
+    /* สไตล์สำหรับลิงก์ผลลัพธ์ */
+    .result-item {
+        transition: background-color 0.2s;
+    }
+    .result-item:hover {
+        background-color: #f8f9fa;
+    }
+    .teacher-info-box {
+      background: linear-gradient(135deg, #e0f2fe, #f0f9ff);
+      border: 1px solid #7dd3fc;
+      border-radius: 10px;
+      padding: 10px 16px;
+      margin-bottom: 12px;
+      font-size: 0.95rem;
+      color: #0369a1;
+      display: flex;
+      align-items: center;
+    }
+    .teacher-info-box i {
+      font-size: 1.1rem;
+      color: #0284c7;
+    }
+  </style>
+</head>
+<body>
+  <div class="container py-4">
+    <div class="mb-3">
+      <h4 class="text-primary"><i class="fas fa-tasks"></i> พิมพ์รายงาน ปพ.6 (เลือกรายบุคคลได้)</h4>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold">ระดับชั้น</label>
+            <select id="gradeSelect" class="form-select">
+              <option value="">-- กำลังโหลด... --</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">ห้อง</label>
+            <select id="classSelect" class="form-select" disabled>
+              <option value="">-- เลือกระดับชั้นก่อน --</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="teacherInfoBox" class="teacher-info-box" style="display:none;">
+          <i class="fas fa-chalkboard-teacher me-2"></i>
+          <span>ครูประจำชั้น: </span>
+          <strong id="teacherNameDisplay">-</strong>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-bold">รายชื่อนักเรียน</label>
+          <div class="student-list-container">
+            <div class="list-controls d-flex justify-content-between align-items-center">
+              <div>
+                <input type="checkbox" id="selectAll" disabled> 
+                <label for="selectAll" class="small text-muted ms-1">เลือกทั้งหมด</label>
+              </div>
+              <span class="badge bg-secondary" id="selectedCount">เลือก 0 คน</span>
+            </div>
+            <div id="studentListBody" class="p-2 text-center text-muted">
+              <small>กรุณาเลือกห้องเรียนเพื่อแสดงรายชื่อ</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-check form-switch mb-3">
+          <input class="form-check-input" type="checkbox" id="showRankToggle" checked>
+          <label class="form-check-label" for="showRankToggle">แสดงอันดับที่ในรายงาน</label>
+        </div>
+
+        <button id="generateBtn" class="btn btn-primary w-100" disabled>
+          <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+          <span class="btn-text"><i class="fas fa-print"></i> พิมพ์รายการที่เลือก</span>
+        </button>
+
+        <div id="progressContainer" class="progress-container">
+          <div class="d-flex justify-content-between small mb-1">
+            <span id="progressText">กำลังเตรียมข้อมูล...</span>
+            <span id="progressPercent">0%</span>
+          </div>
+          <div class="progress" style="height: 20px;">
+            <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 0%"></div>
+          </div>
+          <div id="resultLinks" class="mt-2 rounded p-2 bg-white border" style="max-height: 200px; overflow-y: auto;"></div>
+        </div>
+
+      </div>
+    </div>
+    <div id="statusArea" class="mt-3"></div>
+  </div>
+
+<script>
+(function() {
+  'use strict';
+
+  const elements = {
+    gradeSelect: document.getElementById('gradeSelect'),
+    classSelect: document.getElementById('classSelect'),
+    studentListBody: document.getElementById('studentListBody'),
+    selectAll: document.getElementById('selectAll'),
+    selectedCount: document.getElementById('selectedCount'),
+    generateBtn: document.getElementById('generateBtn'),
+    statusArea: document.getElementById('statusArea'),
+    progressContainer: document.getElementById('progressContainer'),
+    progressBar: document.getElementById('progressBar'),
+    progressText: document.getElementById('progressText'),
+    progressPercent: document.getElementById('progressPercent'),
+    resultLinks: document.getElementById('resultLinks'),
+    teacherInfoBox: document.getElementById('teacherInfoBox'),
+    teacherNameDisplay: document.getElementById('teacherNameDisplay'),
+    showRankToggle: document.getElementById('showRankToggle')
+  };
+
+  let dataCache = { allStudents: null, currentGrade: null, currentClass: null };
+  let batchQueue = [], batchTotal = 0, batchSuccess = 0, batchFail = 0, lastSuccessUrl = '';
+
+  // --- Helper Functions ---
+  function showStatus(msg, type = 'info') {
+    elements.statusArea.innerHTML = `<div class="alert alert-${type} py-2">${msg}</div>`;
+  }
+
+  function addOptions(el, options) {
+    const fragment = document.createDocumentFragment();
+    options.forEach(val => {
+      const opt = document.createElement('option');
+      opt.value = opt.textContent = val;
+      fragment.appendChild(opt);
+    });
+    el.appendChild(fragment);
+  }
+
+  // --- Core Logic ---
+  function loadAllData() {
+    showStatus('⏳ กำลังโหลดข้อมูล...', 'info');
+    google.script.run
+      .withSuccessHandler(data => {
+        dataCache.allStudents = data;
+        elements.gradeSelect.innerHTML = '<option value="">-- เลือกระดับชั้น --</option>';
+        addOptions(elements.gradeSelect, Object.keys(data).sort());
+        showStatus('✅ พร้อมใช้งาน', 'success');
+      })
+      .withFailureHandler(err => showStatus('❌ โหลดข้อมูลล้มเหลว: ' + err.message, 'danger'))
+      .getAllStudentDataOptimized();
+  }
+
+  function onGradeChange() {
+    const grade = elements.gradeSelect.value;
+    dataCache.currentGrade = grade;
+    elements.classSelect.innerHTML = '<option value="">-- เลือกห้อง --</option>';
+    elements.classSelect.disabled = !grade;
+    elements.studentListBody.innerHTML = '<div class="p-2 text-center text-muted"><small>กรุณาเลือกห้องเรียน</small></div>';
+    elements.selectAll.disabled = true;
+    elements.selectAll.checked = false;
+    updateSelectedCount();
+
+    if (grade && dataCache.allStudents[grade]) {
+      addOptions(elements.classSelect, Object.keys(dataCache.allStudents[grade]).sort());
+    }
+
+    // ซ่อนครูประจำชั้นเมื่อเปลี่ยนชั้น
+    elements.teacherInfoBox.style.display = 'none';
+    elements.teacherNameDisplay.textContent = '-';
+  }
+
+  function onClassChange() {
+    const grade = dataCache.currentGrade;
+    const classNo = elements.classSelect.value;
+    dataCache.currentClass = classNo;
+    elements.selectAll.disabled = false;
+    elements.selectAll.checked = false;
+
+    if (!grade || !classNo) return;
+
+    const students = dataCache.allStudents[grade][classNo];
+    renderStudentList(students);
+
+    // ดึงชื่อครูประจำชั้น
+    elements.teacherInfoBox.style.display = 'flex';
+    elements.teacherNameDisplay.innerHTML = '<span class="spinner-border spinner-border-sm me-1" style="width:14px;height:14px;"></span> กำลังโหลด...';
+    google.script.run
+      .withSuccessHandler(function(name) {
+        elements.teacherNameDisplay.textContent = name || 'ไม่พบข้อมูล';
+      })
+      .withFailureHandler(function() {
+        elements.teacherNameDisplay.textContent = 'ไม่พบข้อมูล';
+      })
+      .getHomeroomTeacher(grade, classNo);
+  }
+
+  // ⭐ สร้างรายการ Checkbox
+  function renderStudentList(students) {
+    elements.studentListBody.innerHTML = '';
+    if (!students || students.length === 0) {
+      elements.studentListBody.innerHTML = '<div class="text-center text-danger p-2">ไม่พบนักเรียน</div>';
+      return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    students.forEach(s => {
+      const div = document.createElement('div');
+      div.className = 'student-item d-flex align-items-center';
+      div.onclick = (e) => {
+        if (e.target.type !== 'checkbox') {
+           const cb = div.querySelector('input');
+           cb.checked = !cb.checked;
+           updateSelectedCount();
+        }
+      };
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.value = s.id;
+      cb.dataset.name = s.fullName;
+      cb.className = 'student-checkbox';
+      cb.onchange = updateSelectedCount;
+
+      const label = document.createElement('span');
+      label.textContent = `${s.id} - ${s.fullName}`;
+
+      div.appendChild(cb);
+      div.appendChild(label);
+      fragment.appendChild(div);
+    });
+    elements.studentListBody.appendChild(fragment);
+    updateSelectedCount();
+  }
+
+  function updateSelectedCount() {
+    const checked = document.querySelectorAll('.student-checkbox:checked');
+    const count = checked.length;
+    elements.selectedCount.textContent = `เลือก ${count} คน`;
+    
+    const btnText = elements.generateBtn.querySelector('.btn-text');
+    btnText.textContent = count > 0 ? `พิมพ์รายการที่เลือก (${count} คน)` : 'พิมพ์รายการที่เลือก';
+    elements.generateBtn.disabled = count === 0;
+  }
+
+  // ⭐ จัดการ Select All
+  elements.selectAll.addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.student-checkbox');
+    checkboxes.forEach(cb => cb.checked = this.checked);
+    updateSelectedCount();
+  });
+
+  // --- Batch Process ---
+  elements.generateBtn.addEventListener('click', function() {
+    const checkedBoxes = document.querySelectorAll('.student-checkbox:checked');
+    if (checkedBoxes.length === 0) return;
+
+    // เตรียมคิว
+    batchQueue = Array.from(checkedBoxes).map(cb => ({ id: cb.value, name: cb.dataset.name }));
+    batchTotal = batchQueue.length;
+    batchSuccess = 0;
+    batchFail = 0;
+    lastSuccessUrl = '';
+
+    // UI Reset
+    elements.generateBtn.disabled = true;
+    elements.generateBtn.classList.add('loading');
+    elements.gradeSelect.disabled = true;
+    elements.classSelect.disabled = true;
+    elements.progressContainer.style.display = 'block';
+    elements.progressBar.style.width = '0%';
+    elements.progressBar.classList.add('progress-bar-striped', 'progress-bar-animated');
+    elements.progressText.textContent = '⏳ กำลังเตรียมข้อมูล...';
+    elements.progressPercent.textContent = '0%';
+    elements.resultLinks.innerHTML = '';
+    
+    // Scroll ลงไปดู progress
+    elements.progressContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    
+    updateProgress();
+    processNext(); // เริ่มยิงคนแรก
+  });
+
+  function processNext() {
+    if (batchQueue.length === 0) {
+      finishBatch();
+      return;
+    }
+
+    const current = batchQueue.shift();
+    const currentNum = batchTotal - batchQueue.length;
+    elements.progressText.textContent = `⏳ (${currentNum}/${batchTotal}) กำลังสร้าง: ${current.name}`;
+
+    google.script.run
+      .withSuccessHandler(url => {
+        batchSuccess++;
+        addLink(current.name, url, true);
+        updateProgress();
+        processNext(); // ต่อคนถัดไป
+      })
+      .withFailureHandler(err => {
+        batchFail++;
+        addLink(current.name, null, false, err.message);
+        updateProgress();
+        processNext(); // ต่อคนถัดไป (แม้จะ error)
+      })
+      .generatePp6Pdf(current.id, elements.showRankToggle.checked);
+  }
+
+  function updateProgress() {
+    const done = batchSuccess + batchFail;
+    const pct = Math.round((done / batchTotal) * 100);
+    elements.progressBar.style.width = `${pct}%`;
+    elements.progressPercent.textContent = `${pct}%`;
+  }
+
+  // ⭐⭐⭐ แก้ไขตรงนี้: เพิ่มปุ่มไอคอน PDF ⭐⭐⭐
+  function addLink(name, url, success, errorMsg = '') {
+    const div = document.createElement('div');
+    div.className = 'result-item border-bottom py-2 d-flex justify-content-between align-items-center px-2';
+    
+    if (success) {
+        lastSuccessUrl = url;
+        // กรณีสำเร็จ: แสดงชื่อ + ปุ่มเปิดไฟล์สีแดง
+        div.innerHTML = `
+            <span>
+                <i class="fas fa-check-circle text-success me-2"></i> ${name}
+            </span>
+            <a href="${url}" target="_blank" class="btn btn-sm btn-outline-danger" title="เปิดไฟล์ PDF">
+                <i class="fas fa-file-pdf fa-lg"></i> เปิดไฟล์
+            </a>
+        `;
+    } else {
+        // กรณีพลาด: แสดงชื่อ + ข้อความ error
+        div.innerHTML = `
+            <span class="text-danger">
+                <i class="fas fa-times-circle me-2"></i> ${name} (${errorMsg})
+            </span>
+        `;
+    }
+    elements.resultLinks.prepend(div);
+  }
+
+  function finishBatch() {
+    elements.progressText.textContent = `✅ เสร็จสิ้น! (สำเร็จ ${batchSuccess} / ผิดพลาด ${batchFail})`;
+    elements.progressBar.classList.remove('progress-bar-animated');
+    elements.generateBtn.disabled = false;
+    elements.generateBtn.classList.remove('loading');
+    elements.gradeSelect.disabled = false;
+    elements.classSelect.disabled = false;
+    // เปิดไฟล์อัตโนมัติถ้าสร้างสำเร็จ
+    if (batchSuccess > 0 && lastSuccessUrl) {
+      window.open(lastSuccessUrl, '_blank');
+    }
+  }
+
+  // --- Init ---
+  elements.gradeSelect.addEventListener('change', onGradeChange);
+  elements.classSelect.addEventListener('change', onClassChange);
+  loadAllData();
+
+})();
+</script>
+</body>
+</html>

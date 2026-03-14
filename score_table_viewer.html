@@ -1,0 +1,3639 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<title>🎓 ระบบบันทึกคะแนนนักเรียน (โหลดอัตโนมัติ)</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+
+<style>
+  body, .score-entry-system, .score-entry-system * {
+    font-family: 'Sarabun', Tahoma, Verdana, sans-serif !important;
+  }
+
+  .score-entry-system {
+    --primary-color: #2563eb;
+    --primary-hover: #1d4ed8;
+    --success-color: #059669;
+    --success-hover: #047857;
+    --danger-color: #dc2626;
+    --border-radius: 10px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    margin: 0; 
+    padding: 8px 0;
+  }
+  .score-entry-system * { box-sizing: border-box; }
+
+  .score-entry-wrapper { 
+    max-width: 100%; 
+    margin: 0 auto; 
+    padding: 0 8px; 
+  }
+  @media (min-width: 1200px) {
+    .score-entry-wrapper { padding: 0 12px; }
+  }
+  
+  /* ✅ Compact Header - ทุกอย่างในบรรทัดเดียว */
+  .score-entry-compact-header {
+    background: rgba(255,255,255,0.98);
+    padding: 8px 15px;
+    border-radius: var(--border-radius);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+  }
+  
+  .compact-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--primary-color);
+    white-space: nowrap;
+  }
+  .compact-title i {
+    font-size: 1.2rem;
+  }
+  
+  .compact-selectors {
+    display: flex;
+    gap: 8px;
+    flex: 1;
+    min-width: 300px;
+  }
+  .compact-selectors .form-select {
+    padding: 6px 10px;
+    font-size: 0.9rem;
+    border-radius: 6px;
+    min-width: 100px;
+  }
+  
+  .compact-info {
+    color: #64748b;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+  .compact-info strong {
+    color: var(--primary-color);
+  }
+  
+  /* ✅ Main Content */
+  .score-entry-main-content {
+    background: rgba(255,255,255,0.98);
+    border-radius: var(--border-radius);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    overflow: hidden;
+  }
+  
+  /* ✅ Toolbar - Tabs และปุ่มรวมกัน */
+  .score-entry-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .compact-tabs {
+    border: none !important;
+    margin: 0;
+    background: #e2e8f0;
+    padding: 4px;
+    border-radius: 8px;
+  }
+  .compact-tabs .nav-item {
+    margin: 0;
+  }
+  .compact-tabs .nav-link {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 6px !important;
+    border: none !important;
+    margin-right: 4px;
+    color: #475569;
+    background: transparent;
+    transition: all 0.2s;
+  }
+  .compact-tabs .nav-link:hover:not(.active) {
+    background: #cbd5e1;
+    color: #1e293b;
+  }
+  .compact-tabs .nav-link.active {
+    background: var(--primary-color) !important;
+    color: white !important;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+  }
+  .compact-tabs .nav-link i {
+    margin-right: 6px;
+  }
+  
+  .toolbar-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .toolbar-actions .btn {
+    font-size: 0.8rem;
+    padding: 5px 10px;
+  }
+  
+  /* ✅ Action Bar */
+  .score-entry-action-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: #fff;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .action-left {
+    display: flex;
+    gap: 6px;
+  }
+  .action-right {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    font-size: 0.85rem;
+  }
+  
+  /* ✅ Table Container */
+  .score-entry-table-container {
+    background: #f8fafc;
+    padding: 8px;
+    overflow-x: auto;
+  }
+
+  /* ✅ Stats Panel - แสดงโดย default */
+  .score-entry-stats-panel {
+    background: #fff;
+    border-top: 1px solid #e2e8f0;
+    padding: 10px 12px;
+  }
+  .score-entry-stats-panel h3 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #475569;
+    margin: 0 0 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .score-entry-stats-panel h3 i {
+    color: var(--primary-color);
+  }
+  .score-entry-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+    gap: 8px;
+  }
+  .score-entry-stat-card {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 8px;
+    padding: 10px 8px;
+    text-align: center;
+    border: 1px solid #e2e8f0;
+    transition: all 0.2s;
+  }
+  .score-entry-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  }
+  .score-entry-stat-number {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    display: block;
+  }
+  .score-entry-stat-label { 
+    font-size: 0.7rem; 
+    color: #64748b; 
+  }
+  
+  /* ✅ Table Styles */
+  .score-entry-table {
+    width: 100%;
+    min-width: 900px;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    border: 1px solid #e2e8f0;
+    font-size: 0.92rem;
+  }
+
+  .score-entry-table thead tr:nth-child(1) th {
+    background-color: #334155 !important;
+    color: #f0f0f0 !important;
+    font-weight: 600;
+    padding: 8px 4px;
+    text-align: center;
+    border: none;
+    white-space: nowrap;
+    font-size: 0.85rem;
+  }
+
+  .score-entry-table thead tr.score-entry-fullscore-row th {
+    background: #f1f5f9 !important;
+    color: #334155 !important;
+    font-weight: 600;
+    border-bottom: 2px solid #cbd5e1;
+    padding: 6px 4px;
+    font-size: 0.85rem;
+  }
+
+  .score-entry-table tbody tr:nth-child(even) { background: #f8fafc; }
+  .score-entry-table tbody tr:hover { background: #e0e7ff; }
+
+  .score-entry-table td {
+    padding: 7px 5px;
+    text-align: center;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: middle;
+  }
+
+  .score-entry-table td:first-child { 
+    font-weight: 600; 
+    background: #f8fafc; 
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    min-width: 40px;
+    width: 40px;
+  }
+  .score-entry-table td:nth-child(2) {
+    min-width: 80px;
+  }
+  .score-entry-table td:nth-child(3) { 
+    text-align: left; 
+    padding-left: 10px;
+    min-width: 160px;
+    position: sticky;
+    left: 40px;
+    background: #f8fafc;
+    z-index: 1;
+  }
+  
+  /* Inputs */
+  .score-entry-input {
+    width: 42px;
+    padding: 4px 2px;
+    text-align: center;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 0.92rem;
+    transition: all 0.2s;
+  }
+  @media (min-width: 1400px) {
+    .score-entry-input { width: 48px; font-size: 0.95rem; }
+  }
+  .score-entry-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+    outline: none;
+  }
+  .score-entry-input.is-invalid {
+    border-color: var(--danger-color);
+    background: #fef2f2;
+  }
+  
+  .score-entry-final-input {
+    width: 46px;
+    padding: 4px 2px;
+    text-align: center;
+    border: 2px solid #10b981;
+    border-radius: 4px;
+    font-weight: 600;
+    background: #ecfdf5;
+    font-size: 0.92rem;
+  }
+  @media (min-width: 1400px) {
+    .score-entry-final-input { width: 52px; font-size: 0.95rem; }
+  }
+
+  .score-entry-total, .score-entry-sum {
+    font-weight: 700;
+    color: var(--primary-color);
+    font-size: 0.95rem;
+  }
+  
+  .score-entry-grade-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 0.85rem;
+  }
+  .score-entry-grade-4 { background: #dcfce7; color: #166534; }
+  .score-entry-grade-3 { background: #dbeafe; color: #1e40af; }
+  .score-entry-grade-2 { background: #fef9c3; color: #854d0e; }
+  .score-entry-grade-1 { background: #fed7aa; color: #9a3412; }
+  .score-entry-grade-0 { background: #fecaca; color: #991b1b; }
+  
+  /* Responsive */
+  @media (max-width: 768px) {
+    .score-entry-compact-header {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .compact-selectors {
+      flex-wrap: wrap;
+    }
+    .compact-selectors .form-select {
+      flex: 1;
+      min-width: 90px;
+    }
+    .score-entry-toolbar {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .toolbar-actions {
+      justify-content: flex-end;
+    }
+  }
+  
+  /* ซ่อน elements เดิมที่ไม่ใช้แล้ว */
+  .score-entry-header,
+  .score-entry-control-panel,
+  .score-entry-content-header {
+    display: none !important;
+  }
+
+  /* Additional table styles */
+  .score-entry-student-name {
+    text-align: left !important;
+    font-weight: 500;
+    color: #374151;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-left: 0.5rem !important;
+  }
+  @media (max-width: 1200px) {
+    .score-entry-student-name { max-width: 150px; }
+  }
+
+  .score-entry-input::-webkit-outer-spin-button,
+  .score-entry-input::-webkit-inner-spin-button,
+  .score-entry-final-input::-webkit-outer-spin-button,
+  .score-entry-final-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .score-entry-input, .score-entry-final-input {
+    -moz-appearance: textfield;
+  }
+
+  /* Grade badges - more styles */
+  .score-entry-grade-3-5{ background: #dbeafe; color: #1e40af; }
+  .score-entry-grade-2-5{ background: #fef9c3; color: #854d0e; }
+  .score-entry-grade-1-5{ background: #fed7aa; color: #9a3412; }
+
+  /* Status indicator */
+  .score-entry-status-indicator {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+  .score-entry-status-indicator.saving { color: #0891b2; background: #ecfeff; }
+  .score-entry-status-indicator.saved { color: #059669; background: #ecfdf5; }
+  .score-entry-status-indicator.error { color: #dc2626; background: #fef2f2; }
+
+  @keyframes scoreEntryShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+  }
+
+  /* Action buttons old style - keep for compatibility */
+  .score-entry-action-buttons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #fff;
+    border-bottom: 1px solid #e2e8f0;
+    flex-wrap: wrap;
+  }
+  .score-entry-status-indicator.exporting { color: #7c3aed; background: #f5f3ff; }
+  .score-entry-status-indicator.success { color: #059669; background: #ecfdf5; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .score-entry-table thead th { text-align: center !important; vertical-align: middle !important; }
+  .score-entry-table tbody td { text-align: center !important; vertical-align: middle !important; }
+
+  .score-entry-full-score, .score-entry-full-final {
+    text-align: center !important;
+    margin: 0 auto;
+    display: block;
+  }
+
+  .score-entry-full-mid, .score-entry-full-total {
+    display: block;
+    text-align: center !important;
+    width: 100%;
+  }
+
+  .score-entry-input, .score-entry-final-input { margin: 0 auto; display: block; }
+  .score-entry-sum, .score-entry-total { text-align: center !important; vertical-align: middle !important; }
+  .score-entry-grade { text-align: center !important; vertical-align: middle !important; }
+  .score-entry-table thead tr:nth-child(2) th { text-align: center !important; vertical-align: middle !important; padding: 0.5rem !important; }
+
+  /* ============================================================
+     🔄 SCHOOLMIS SYNC STYLES
+     ============================================================ */
+  
+  /* Sync Button Style */
+  .btn-sync-schoolmis {
+    background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+    border: none;
+    color: white;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+  }
+  .btn-sync-schoolmis:hover {
+    background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+    color: white;
+  }
+
+  /* Modal Styles */
+  .sync-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  }
+  .sync-modal.show {
+    display: flex;
+  }
+
+  .sync-modal-content {
+    background: white;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 750px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+    animation: syncModalSlideIn 0.3s ease;
+  }
+
+  @keyframes syncModalSlideIn {
+    from { opacity: 0; transform: translateY(-30px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .sync-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem 1.5rem;
+    background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+    color: white;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .sync-modal-header h2 {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .sync-close-btn {
+    font-size: 28px;
+    cursor: pointer;
+    opacity: 0.8;
+    background: none;
+    border: none;
+    color: white;
+    line-height: 1;
+  }
+  .sync-close-btn:hover { opacity: 1; }
+
+  .sync-modal-body { padding: 1.5rem; }
+
+  /* Tabs */
+  .sync-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 1.25rem;
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 10px;
+  }
+
+  .sync-tab {
+    padding: 10px 20px;
+    border: none;
+    background: #f3f4f6;
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .sync-tab:hover { background: #e5e7eb; }
+  .sync-tab.active {
+    background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+    color: white;
+  }
+
+  .sync-tab-content { display: none; }
+  .sync-tab-content.active { display: block; }
+
+  /* Options */
+  .sync-options {
+    background: #f8fafc;
+    padding: 1rem 1.25rem;
+    border-radius: 10px;
+    margin-bottom: 1.25rem;
+    border: 1px solid #e2e8f0;
+  }
+
+  .sync-form-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  .sync-form-group { }
+  .sync-form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.9rem;
+  }
+
+  .sync-form-group select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.3s;
+  }
+  .sync-form-group select:focus {
+    outline: none;
+    border-color: #8b5cf6;
+  }
+
+  /* Info Box */
+  .sync-info-box {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 15px;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+    font-size: 14px;
+  }
+  .sync-info-box i { margin-top: 2px; font-size: 16px; }
+  .sync-info-box p { margin: 0; }
+
+  .sync-info-box.info { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+  .sync-info-box.success { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+  .sync-info-box.warning { background: #fffbeb; color: #b45309; border: 1px solid #fcd34d; }
+
+  /* Upload Area */
+  .sync-upload-area {
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-bottom: 1rem;
+    background: #fafbfc;
+  }
+  .sync-upload-area:hover {
+    border-color: #8b5cf6;
+    background: #faf5ff;
+  }
+  .sync-upload-area.drag-over {
+    border-color: #8b5cf6;
+    background: #f3e8ff;
+  }
+  .sync-upload-area i {
+    color: #8b5cf6;
+    margin-bottom: 10px;
+    font-size: 2.5rem;
+  }
+  .sync-upload-area p { color: #6b7280; margin: 0; }
+
+  /* File Info */
+  .sync-file-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 15px;
+    background: #ecfdf5;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+    border: 1px solid #a7f3d0;
+  }
+  .sync-file-info i { color: #10b981; font-size: 20px; }
+  .sync-file-info span { flex: 1; font-weight: 500; color: #065f46; }
+  .sync-file-info .sync-remove-file {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #9ca3af;
+    padding: 5px;
+    font-size: 16px;
+  }
+  .sync-file-info .sync-remove-file:hover { color: #ef4444; }
+
+  /* Action Buttons */
+  .sync-action-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .sync-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s;
+  }
+  .sync-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .sync-btn-primary {
+    background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+    color: white;
+  }
+  .sync-btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+  }
+
+  .sync-btn-secondary {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+  }
+  .sync-btn-secondary:hover:not(:disabled) { background: #e5e7eb; }
+
+  .sync-btn-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+  }
+  .sync-btn-success:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  }
+
+  .sync-btn-warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+  }
+  .sync-btn-warning:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+  }
+
+  /* Preview Table */
+  .sync-preview-container {
+    max-height: 250px;
+    overflow: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    margin-top: 1rem;
+  }
+
+  .sync-preview-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .sync-preview-table th,
+  .sync-preview-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #f3f4f6;
+    text-align: left;
+  }
+  .sync-preview-table th {
+    background: #f8fafc;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    color: #374151;
+  }
+  .sync-preview-table tr:hover { background: #faf5ff; }
+
+  /* Compare Summary */
+  .sync-compare-summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 1.25rem 0;
+  }
+
+  .sync-summary-item {
+    text-align: center;
+    padding: 1.25rem 1rem;
+    border-radius: 12px;
+  }
+  .sync-summary-item.success { background: #ecfdf5; border: 1px solid #a7f3d0; }
+  .sync-summary-item.warning { background: #fffbeb; border: 1px solid #fcd34d; }
+  .sync-summary-item.danger { background: #fef2f2; border: 1px solid #fecaca; }
+
+  .sync-summary-item .count {
+    display: block;
+    font-size: 2rem;
+    font-weight: 700;
+  }
+  .sync-summary-item.success .count { color: #059669; }
+  .sync-summary-item.warning .count { color: #d97706; }
+  .sync-summary-item.danger .count { color: #dc2626; }
+
+  .sync-summary-item .label {
+    font-size: 13px;
+    color: #6b7280;
+    margin-top: 4px;
+  }
+
+  /* Status Message */
+  .sync-status-area { margin-top: 1rem; }
+  .sync-status-message {
+    padding: 12px 15px;
+    border-radius: 10px;
+    font-size: 14px;
+  }
+  .sync-status-message.success { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+  .sync-status-message.error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+  .sync-status-message.loading { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+
+  /* Export Preview */
+  .sync-export-preview {
+    background: #f8fafc;
+    padding: 2rem;
+    border-radius: 10px;
+    text-align: center;
+    color: #6b7280;
+    border: 1px dashed #d1d5db;
+  }
+  .sync-export-preview i {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    color: #8b5cf6;
+  }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .sync-form-row { grid-template-columns: 1fr; }
+    .sync-tabs { flex-wrap: wrap; }
+    .sync-action-buttons { flex-direction: column; }
+    .sync-compare-summary { grid-template-columns: 1fr; }
+  }
+
+/* ซ่อนคอลัมน์รหัสนักเรียน */
+.score-entry-table .col-student-code {
+  display: none !important;
+}
+</style>
+</head>
+<body class="score-entry-system">
+<div class="score-entry-wrapper">
+  <!-- ✅ Control Panel แบบกระชับ - รวมทุกอย่างในบรรทัดเดียว -->
+  <div class="score-entry-compact-header">
+    <div class="compact-title">
+      <i class="fas fa-graduation-cap"></i>
+      <span>บันทึกคะแนน</span>
+    </div>
+    <div class="compact-selectors">
+      <select id="scoreEntryGradeSelect" class="form-select form-select-sm">
+        <option value="">ระดับชั้น</option>
+        <option value="ป.1">ป.1</option>
+        <option value="ป.2">ป.2</option>
+        <option value="ป.3">ป.3</option>
+        <option value="ป.4">ป.4</option>
+        <option value="ป.5">ป.5</option>
+        <option value="ป.6">ป.6</option>
+      </select>
+      <select id="scoreEntryClassSelect" class="form-select form-select-sm" disabled>
+        <option value="">ห้องเรียน</option>
+      </select>
+      <select id="scoreEntrySubjectSelect" class="form-select form-select-sm" disabled>
+        <option value="">รายวิชา</option>
+      </select>
+    </div>
+    <div class="compact-info" id="scoreEntryCurrentSubjectInfo">
+      <small>เลือกรายวิชาเพื่อเริ่มบันทึก</small>
+    </div>
+  </div>
+
+  <div class="score-entry-main-content">
+    <!-- ✅ Tabs และปุ่มต่างๆ รวมในแถวเดียว -->
+    <div class="score-entry-toolbar">
+      <ul class="nav nav-tabs compact-tabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="scoreEntryTerm1Tab" data-bs-toggle="tab" data-bs-target="#scoreEntryTerm1" type="button" role="tab" onclick="onScoreTabSwitch('scoreEntryTerm1Tab')">
+            <i class="fas fa-calendar-check"></i> ภาคเรียน 1
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="scoreEntryTerm2Tab" data-bs-toggle="tab" data-bs-target="#scoreEntryTerm2" type="button" role="tab" onclick="onScoreTabSwitch('scoreEntryTerm2Tab')">
+            <i class="fas fa-calendar-plus"></i> ภาคเรียน 2
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="scoreEntryCombinedTab" data-bs-toggle="tab" data-bs-target="#scoreEntryCombined" type="button" role="tab" onclick="onScoreTabSwitch('scoreEntryCombinedTab')">
+            <i class="fas fa-calculator"></i> รวม 2 ภาค
+          </button>
+        </li>
+      </ul>
+      
+      <div class="toolbar-actions">
+        <button class="btn btn-outline-primary btn-sm" id="btnSortToggle" onclick="window.ScoreEntrySystem.toggleSort()" title="สลับการเรียง">
+          <i class="fas fa-sort-amount-down"></i> <span id="btnSortLabel">ชาย→หญิง</span>
+        </button>
+        <button class="btn btn-outline-secondary btn-sm" id="btnClearCurrent" onclick="window.ScoreEntrySystem.clearCurrentTerm()">
+          <i class="fas fa-eraser"></i> ล้าง
+        </button>
+        <button class="btn btn-outline-info btn-sm" id="btnCopyTerm1ToTerm2" style="display:none;" onclick="window.ScoreEntrySystem.copyTerm1ToTerm2()">
+          <i class="fas fa-copy"></i> คัดลอกจากภาค 1
+        </button>
+        <button id="scoreEntryBtnSaveTerm1" class="btn btn-success btn-sm" disabled>
+          <i class="fas fa-save"></i> บันทึก
+        </button>
+        <button id="scoreEntryBtnSaveTerm2" class="btn btn-success btn-sm" disabled style="display:none;">
+          <i class="fas fa-save"></i> บันทึก
+        </button>
+        <button id="scoreEntryBtnExportTerm1Pdf" class="btn btn-outline-dark btn-sm" disabled>
+          <i class="fas fa-file-pdf"></i> PDF
+        </button>
+        <button id="scoreEntryBtnExportTerm2Pdf" class="btn btn-outline-dark btn-sm" disabled style="display:none;">
+          <i class="fas fa-file-pdf"></i> PDF
+        </button>
+        <span id="scoreEntryStatusTerm1"></span>
+        <span id="scoreEntryStatusTerm2" style="display:none;"></span>
+        <span id="scoreEntryStatusExportTerm1"></span>
+        <span id="scoreEntryStatusExportTerm2" style="display:none;"></span>
+        <button id="btnSyncSchoolMIS" class="btn btn-sm btn-sync-schoolmis" onclick="openSchoolMISSync()">
+          <i class="fas fa-sync-alt"></i> Sync SchoolMIS
+        </button>
+        <button id="scoreEntryBtnExportYearPdf" class="btn btn-sm btn-dark" disabled>
+          <i class="fas fa-file-pdf"></i> PDF รวม
+        </button>
+        <button id="scoreEntryBtnExportCSV" class="btn btn-sm btn-success" disabled>
+          <i class="fas fa-file-csv"></i> CSV
+        </button>
+        <button id="scoreEntryBtnRebuildWarehouse" class="btn btn-sm btn-warning" disabled title="อัปเดตคลังคะแนนให้ตรงกับข้อมูลชีตทั้งหมดของห้องนี้">
+          <i class="fas fa-sync-alt"></i> Rebuild คลัง
+        </button>
+        <span id="scoreEntryStatusRebuild"></span>
+      </div>
+    </div>
+
+    <div class="tab-content">
+      <div class="tab-pane fade show active" id="scoreEntryTerm1" role="tabpanel">
+        <div id="scoreEntryTerm1Container" class="score-entry-table-container"></div>
+      </div>
+
+      <div class="tab-pane fade" id="scoreEntryTerm2" role="tabpanel">
+        <div id="scoreEntryTerm2Container" class="score-entry-table-container"></div>
+      </div>
+
+      <div class="tab-pane fade" id="scoreEntryCombined" role="tabpanel">
+        <div id="scoreEntryCombinedContainer" class="score-entry-table-container"></div>
+      </div>
+    </div>
+
+    <!-- ✅ Stats Panel - แสดงเสมอ -->
+    <div class="score-entry-stats-panel" id="statsPanel">
+      <h3><i class="fas fa-chart-bar"></i> สถิติภาพรวม</h3>
+      <div class="score-entry-stats-grid">
+        <div class="score-entry-stat-card">
+          <span class="score-entry-stat-number" id="totalStudents">0</span>
+          <div class="score-entry-stat-label">นักเรียน</div>
+        </div>
+        <div class="score-entry-stat-card">
+          <span class="score-entry-stat-number" id="completedScores">0</span>
+          <div class="score-entry-stat-label">บันทึกแล้ว</div>
+        </div>
+        <div class="score-entry-stat-card">
+          <span class="score-entry-stat-number" id="avgScore">0</span>
+          <div class="score-entry-stat-label">คะแนนเฉลี่ย</div>
+        </div>
+        <div class="score-entry-stat-card">
+          <span class="score-entry-stat-number" id="passRate">0%</span>
+          <div class="score-entry-stat-label">อัตราผ่าน</div>
+        </div>
+        <div class="score-entry-stat-card">
+          <span class="score-entry-stat-number" id="grade4count">0</span>
+          <div class="score-entry-stat-label">เกรด 4</div>
+        </div>
+        <div class="score-entry-stat-card">
+          <span class="score-entry-stat-number" id="gradeBelow2Count">0</span>
+          <div class="score-entry-stat-label">ต่ำกว่า 2</div>
+        </div>
+      </div>
+      <div id="scoreEntryStatusMessage" class="alert alert-info d-none mb-3 mt-2" role="alert"></div>
+      <div class="score-entry-progress-bar-container" style="margin-top:8px; border-radius:10px; background:#e2e8f0; height:6px;">
+        <div class="score-entry-progress-bar" id="scoreEntryProgressBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, var(--success-color), #3b82f6); border-radius: 10px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     🔄 SCHOOLMIS SYNC MODAL
+     ============================================================ -->
+<div id="schoolmisSyncModal" class="sync-modal">
+  <div class="sync-modal-content">
+    <div class="sync-modal-header">
+      <h2><i class="fas fa-exchange-alt"></i> Sync ข้อมูลกับ SchoolMIS</h2>
+      <button class="sync-close-btn" onclick="closeSchoolMISSync()">&times;</button>
+    </div>
+    
+    <div class="sync-modal-body">
+      <!-- Tab Navigation -->
+      <div class="sync-tabs">
+        <button class="sync-tab active" onclick="switchSyncTab(event, 'import')">
+          <i class="fas fa-download"></i> นำเข้า (Import)
+        </button>
+        <button class="sync-tab" onclick="switchSyncTab(event, 'export')">
+          <i class="fas fa-upload"></i> ส่งออก (Export)
+        </button>
+        <button class="sync-tab" onclick="switchSyncTab(event, 'compare')">
+          <i class="fas fa-balance-scale"></i> เปรียบเทียบ
+        </button>
+      </div>
+      
+      <!-- Common Options -->
+      <div class="sync-options">
+        <div class="sync-form-row">
+          <div class="sync-form-group">
+            <label><i class="fas fa-graduation-cap"></i> ชั้น/ห้อง:</label>
+            <select id="syncGradeSelect" onchange="onSyncGradeChange()">
+              <option value="">-- เลือกชั้น --</option>
+            </select>
+          </div>
+          <div class="sync-form-group">
+            <label><i class="fas fa-book"></i> วิชา:</label>
+            <select id="syncSheetSelect" onchange="onSyncSheetChange()">
+              <option value="">-- เลือกวิชา --</option>
+            </select>
+          </div>
+          <div class="sync-form-group" style="display:none;">
+            <select id="syncTermSelect">
+              <option value="term1" selected>ภาคเรียนที่ 1</option>
+              <option value="term2">ภาคเรียนที่ 2</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Import Tab Content -->
+      <div id="importTabContent" class="sync-tab-content active">
+        <div class="sync-info-box info">
+          <i class="fas fa-info-circle"></i>
+          <p>นำเข้าคะแนนจากไฟล์ CSV ที่ส่งออกจาก SchoolMIS เข้าสู่ระบบของคุณ</p>
+        </div>
+        
+        <div class="sync-upload-area" id="csvUploadArea" 
+             onclick="document.getElementById('csvFileInput').click()"
+             ondragover="event.preventDefault(); this.classList.add('drag-over')"
+             ondragleave="this.classList.remove('drag-over')"
+             ondrop="handleImportDrop(event)">
+          <i class="fas fa-file-csv"></i>
+          <p>ลากไฟล์ CSV มาวางที่นี่<br><small>หรือ คลิกเพื่อเลือกไฟล์</small></p>
+          <input type="file" id="csvFileInput" accept=".csv" style="display: none;" onchange="handleImportFileChange(this)">
+        </div>
+        
+        <div id="uploadedFileInfo" class="sync-file-info" style="display: none;">
+          <i class="fas fa-file-csv"></i>
+          <span id="uploadedFileName"></span>
+          <button onclick="clearUploadedFile()" class="sync-remove-file">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <div class="sync-action-buttons">
+          <button onclick="previewImport()" class="sync-btn sync-btn-secondary" id="previewImportBtn" disabled>
+            <i class="fas fa-eye"></i> ดูตัวอย่างข้อมูล
+          </button>
+          <button onclick="executeImport()" class="sync-btn sync-btn-success" id="executeImportBtn" disabled>
+            <i class="fas fa-download"></i> นำเข้าข้อมูล
+          </button>
+        </div>
+        
+        <!-- Preview Area -->
+        <div id="importPreviewArea" style="display: none;">
+          <h5 style="margin: 1rem 0 0.5rem; font-weight: 600;"><i class="fas fa-table"></i> ตัวอย่างข้อมูลที่จะนำเข้า:</h5>
+          <div class="sync-preview-container">
+            <table id="importPreviewTable" class="sync-preview-table">
+              <thead></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Export Tab Content -->
+      <div id="exportTabContent" class="sync-tab-content">
+        <div class="sync-info-box success">
+          <i class="fas fa-info-circle"></i>
+          <p>ส่งออกคะแนนจากระบบเป็นไฟล์ CSV สำหรับนำเข้า SchoolMIS</p>
+        </div>
+        
+        <div class="sync-export-preview" id="exportPreview">
+          <i class="fas fa-users"></i>
+          <p>เลือกชีตคะแนนเพื่อดูข้อมูลและส่งออก</p>
+        </div>
+        
+        <div class="sync-action-buttons">
+          <button onclick="previewExport()" class="sync-btn sync-btn-secondary" id="previewExportBtn" disabled>
+            <i class="fas fa-eye"></i> ดูตัวอย่าง
+          </button>
+          <button onclick="executeExport()" class="sync-btn sync-btn-primary" id="executeExportBtn" disabled>
+            <i class="fas fa-file-download"></i> ดาวน์โหลด (ภาคเดียว)
+          </button>
+          <button onclick="executeExportAverage()" class="sync-btn sync-btn-success" id="executeExportAvgBtn" disabled style="background:#10b981;">
+            <i class="fas fa-calculator"></i> ดาวน์โหลด เฉลี่ย 2 ภาค
+          </button>
+        </div>
+        
+        <!-- Export Preview Area -->
+        <div id="exportPreviewArea" style="display: none;">
+          <h5 style="margin: 1rem 0 0.5rem; font-weight: 600;"><i class="fas fa-table"></i> ตัวอย่างข้อมูลที่จะส่งออก:</h5>
+          <div class="sync-preview-container">
+            <table id="exportPreviewTable" class="sync-preview-table">
+              <thead></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Compare Tab Content -->
+      <div id="compareTabContent" class="sync-tab-content">
+        <div class="sync-info-box warning">
+          <i class="fas fa-info-circle"></i>
+          <p>เปรียบเทียบข้อมูลในระบบกับไฟล์ SchoolMIS เพื่อดูความแตกต่าง</p>
+        </div>
+        
+        <div class="sync-upload-area" id="csvCompareUploadArea" 
+             onclick="document.getElementById('csvCompareFileInput').click()"
+             ondragover="event.preventDefault(); this.classList.add('drag-over')"
+             ondragleave="this.classList.remove('drag-over')"
+             ondrop="handleCompareDrop(event)">
+          <i class="fas fa-file-csv"></i>
+          <p>ลากไฟล์ CSV จาก SchoolMIS มาวางที่นี่<br><small>เพื่อเปรียบเทียบกับข้อมูลในระบบ</small></p>
+          <input type="file" id="csvCompareFileInput" accept=".csv" style="display: none;" onchange="handleCompareFileChange(this)">
+        </div>
+        
+        <div id="compareFileInfo" class="sync-file-info" style="display: none;">
+          <i class="fas fa-file-csv"></i>
+          <span id="compareFileName"></span>
+          <button onclick="clearCompareFile()" class="sync-remove-file">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <div class="sync-action-buttons">
+          <button onclick="executeCompare()" class="sync-btn sync-btn-warning" id="executeCompareBtn" disabled>
+            <i class="fas fa-balance-scale"></i> เปรียบเทียบข้อมูล
+          </button>
+        </div>
+        
+        <!-- Compare Results -->
+        <div id="compareResults" style="display: none;">
+          <div class="sync-compare-summary">
+            <div class="sync-summary-item success">
+              <span class="count" id="matchedCount">0</span>
+              <span class="label">ตรงกัน</span>
+            </div>
+            <div class="sync-summary-item warning">
+              <span class="count" id="differentCount">0</span>
+              <span class="label">ต่างกัน</span>
+            </div>
+            <div class="sync-summary-item danger">
+              <span class="count" id="notFoundCount">0</span>
+              <span class="label">ไม่พบในระบบ</span>
+            </div>
+          </div>
+          
+          <div id="differencesList" style="display: none;">
+            <h5 style="margin: 0.5rem 0; font-weight: 600;"><i class="fas fa-exclamation-triangle"></i> รายการที่แตกต่าง:</h5>
+            <div class="sync-preview-container">
+              <table id="differencesTable" class="sync-preview-table">
+                <thead>
+                  <tr>
+                    <th>รหัส</th>
+                    <th>ชื่อ</th>
+                    <th>ระบบ (กลาง/ปลาย/รวม)</th>
+                    <th>SchoolMIS (กลาง/ปลาย/รวม)</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Status/Result Area -->
+      <div id="syncStatusArea" class="sync-status-area" style="display: none;">
+        <div class="sync-status-message" id="syncStatusMessage"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="scoreEntryLoadingOverlay" class="score-entry-loading-overlay d-none" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9998;display:flex;align-items:center;justify-content:center;">
+  <div class="loading-spinner text-white text-center">
+    <div class="score-entry-spinner mx-auto mb-2" style="width:50px;height:50px;border:4px solid #f3f3f3;border-top:4px solid #3498db;border-radius:50%;animation:spin 1s linear infinite;"></div>
+    <div>กำลังโหลดข้อมูล...</div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+/**
+ * ===================================================================
+ * 🔄 SCHOOLMIS SYNC - JavaScript Functions
+ * ===================================================================
+ */
+
+var uploadedCsvContent = null;
+var compareCsvContent = null;
+var syncScoreSheetsList = [];
+
+/**
+ * เปิด Modal
+ */
+function openSchoolMISSync() {
+  try {
+    document.getElementById('schoolmisSyncModal').classList.add('show');
+    loadSyncScoreSheetsList();
+  } catch (e) {
+    console.error('Error opening SchoolMIS Sync:', e);
+    alert('เกิดข้อผิดพลาด: ' + e.message);
+  }
+}
+
+/**
+ * ปิด Modal
+ */
+function closeSchoolMISSync() {
+  document.getElementById('schoolmisSyncModal').classList.remove('show');
+  resetSyncForm();
+}
+
+/**
+ * สลับ Tab
+ */
+function switchSyncTab(event, tabName) {
+  // ลบ active จากทุก tab
+  document.querySelectorAll('.sync-tab').forEach(tab => tab.classList.remove('active'));
+  document.querySelectorAll('.sync-tab-content').forEach(content => content.classList.remove('active'));
+  
+  // เพิ่ม active ให้ tab ที่เลือก
+  event.target.closest('.sync-tab').classList.add('active');
+  document.getElementById(`${tabName}TabContent`).classList.add('active');
+  
+  // ซ่อน status
+  document.getElementById('syncStatusArea').style.display = 'none';
+}
+
+/**
+ * โหลดรายการชีตคะแนน (แยกตามชั้น/ห้อง)
+ */
+var allSyncSheets = []; // เก็บชีตทั้งหมดสำหรับกรอง
+
+function loadSyncScoreSheetsList() {
+  showSyncStatus('กำลังโหลดรายการชีต...', 'loading');
+  
+  if (typeof google === 'undefined' || !google.script || !google.script.run) {
+    showSyncStatus('⚠️ ไม่สามารถเชื่อมต่อ Backend ได้ (ทดสอบในโหมด Demo)', 'warning');
+    hideSyncStatus();
+    return;
+  }
+  
+  try {
+    google.script.run
+      .withSuccessHandler(function(data) {
+        var grades = (data && data.grades) || [];
+        allSyncSheets = (data && data.sheets) || [];
+        syncScoreSheetsList = allSyncSheets;
+        
+        // Populate dropdown ชั้น/ห้อง
+        var gradeSelect = document.getElementById('syncGradeSelect');
+        gradeSelect.innerHTML = '<option value="">-- เลือกชั้น --</option>';
+        
+        grades.forEach(function(g) {
+          var option = document.createElement('option');
+          option.value = g;
+          option.textContent = g;
+          gradeSelect.appendChild(option);
+        });
+        
+        // Reset dropdown วิชา
+        var sheetSelect = document.getElementById('syncSheetSelect');
+        sheetSelect.innerHTML = '<option value="">-- เลือกวิชา --</option>';
+        
+        hideSyncStatus();
+      })
+      .withFailureHandler(function(error) {
+        showSyncStatus('ไม่สามารถโหลดรายการชีต: ' + (error.message || error), 'error');
+      })
+      .getScoreSheetsForSync();
+  } catch (e) {
+    console.error('Error loading sheets:', e);
+    showSyncStatus('เกิดข้อผิดพลาด: ' + e.message, 'error');
+  }
+}
+
+/**
+ * เมื่อเลือกชั้น/ห้องเปลี่ยน → กรองวิชา
+ */
+function onSyncGradeChange() {
+  var gradeClass = document.getElementById('syncGradeSelect').value;
+  var sheetSelect = document.getElementById('syncSheetSelect');
+  sheetSelect.innerHTML = '<option value="">-- เลือกวิชา --</option>';
+  
+  if (!gradeClass) {
+    onSyncSheetChange(); // reset
+    return;
+  }
+  
+  // กรองเฉพาะวิชาที่ตรง gradeClass
+  var filtered = allSyncSheets.filter(function(s) { return s.gradeClass === gradeClass; });
+  
+  filtered.forEach(function(sheet) {
+    var option = document.createElement('option');
+    option.value = sheet.sheetName;
+    option.textContent = sheet.subjectName || sheet.sheetName;
+    sheetSelect.appendChild(option);
+  });
+  
+  // ถ้ามีวิชาเดียว → เลือกอัตโนมัติ
+  if (filtered.length === 1) {
+    sheetSelect.value = filtered[0].sheetName;
+  }
+  
+  onSyncSheetChange();
+}
+
+/**
+ * เมื่อเลือกวิชาเปลี่ยน
+ */
+function onSyncSheetChange() {
+  var sheetName = document.getElementById('syncSheetSelect').value;
+  
+  if (sheetName) {
+    // หาชื่อวิชาที่อ่านง่าย
+    var found = allSyncSheets.find(function(s) { return s.sheetName === sheetName; });
+    var displayName = found ? (found.subjectName || sheetName) : sheetName;
+    var gradeClass = document.getElementById('syncGradeSelect').value || '';
+    
+    document.getElementById('exportPreview').innerHTML =
+      '<i class="fas fa-check-circle" style="color: #10b981;"></i>' +
+      '<p>พร้อมส่งออก: <strong>' + gradeClass + ' — ' + displayName + '</strong></p>';
+    document.getElementById('previewExportBtn').disabled = false;
+    document.getElementById('executeExportBtn').disabled = false;
+    document.getElementById('executeExportAvgBtn').disabled = false;
+  } else {
+    document.getElementById('exportPreview').innerHTML =
+      '<i class="fas fa-users"></i>' +
+      '<p>เลือกชั้นและวิชาเพื่อดูข้อมูลและส่งออก</p>';
+    document.getElementById('previewExportBtn').disabled = true;
+    document.getElementById('executeExportBtn').disabled = true;
+    document.getElementById('executeExportAvgBtn').disabled = true;
+  }
+}
+
+/**
+ * ตั้งค่า File Upload Areas
+ */
+function initSyncUploadAreas() {
+  // Import upload area
+  setupSyncUploadArea('csvUploadArea', 'csvFileInput', handleImportFileSelect);
+  
+  // Compare upload area
+  setupSyncUploadArea('csvCompareUploadArea', 'csvCompareFileInput', handleCompareFileSelect);
+}
+
+function setupSyncUploadArea(areaId, inputId, callback) {
+  const uploadArea = document.getElementById(areaId);
+  const fileInput = document.getElementById(inputId);
+  
+  if (!uploadArea || !fileInput) return;
+  
+  uploadArea.addEventListener('click', () => fileInput.click());
+  
+  uploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadArea.classList.add('drag-over');
+  });
+  
+  uploadArea.addEventListener('dragleave', () => {
+    uploadArea.classList.remove('drag-over');
+  });
+  
+  uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadArea.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file && file.name.endsWith('.csv')) {
+      callback(file);
+    } else {
+      showSyncStatus('กรุณาเลือกไฟล์ .csv เท่านั้น', 'error');
+    }
+  });
+  
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) callback(file);
+  });
+}
+
+/**
+ * จัดการไฟล์ที่อัพโหลด (Import) - เรียกจาก onchange
+ */
+function handleImportFileChange(input) {
+  const file = input.files[0];
+  if (file) {
+    handleImportFileSelect(file);
+  }
+}
+
+/**
+ * จัดการไฟล์ที่อัพโหลด (Compare) - เรียกจาก onchange
+ */
+function handleCompareFileChange(input) {
+  const file = input.files[0];
+  if (file) {
+    handleCompareFileSelect(file);
+  }
+}
+
+/**
+ * จัดการ drag & drop สำหรับ Import
+ */
+function handleImportDrop(event) {
+  event.preventDefault();
+  event.currentTarget.classList.remove('drag-over');
+  const file = event.dataTransfer.files[0];
+  if (file && file.name.toLowerCase().endsWith('.csv')) {
+    handleImportFileSelect(file);
+  } else {
+    showSyncStatus('กรุณาเลือกไฟล์ .csv เท่านั้น', 'error');
+  }
+}
+
+/**
+ * จัดการ drag & drop สำหรับ Compare
+ */
+function handleCompareDrop(event) {
+  event.preventDefault();
+  event.currentTarget.classList.remove('drag-over');
+  const file = event.dataTransfer.files[0];
+  if (file && file.name.toLowerCase().endsWith('.csv')) {
+    handleCompareFileSelect(file);
+  } else {
+    showSyncStatus('กรุณาเลือกไฟล์ .csv เท่านั้น', 'error');
+  }
+}
+
+/**
+ * จัดการไฟล์ที่อัพโหลด (Import)
+ */
+function handleImportFileSelect(file) {
+  const reader = new FileReader();
+  
+  reader.onload = function(e) {
+    uploadedCsvContent = e.target.result;
+    
+    document.getElementById('csvUploadArea').style.display = 'none';
+    document.getElementById('uploadedFileInfo').style.display = 'flex';
+    document.getElementById('uploadedFileName').textContent = file.name;
+    
+    document.getElementById('previewImportBtn').disabled = false;
+    document.getElementById('executeImportBtn').disabled = false;
+    
+    showSyncStatus(`โหลดไฟล์ "${file.name}" สำเร็จ`, 'success');
+  };
+  
+  reader.readAsText(file, 'UTF-8');
+}
+
+/**
+ * จัดการไฟล์ที่อัพโหลด (Compare)
+ */
+function handleCompareFileSelect(file) {
+  const reader = new FileReader();
+  
+  reader.onload = function(e) {
+    compareCsvContent = e.target.result;
+    
+    document.getElementById('csvCompareUploadArea').style.display = 'none';
+    document.getElementById('compareFileInfo').style.display = 'flex';
+    document.getElementById('compareFileName').textContent = file.name;
+    
+    document.getElementById('executeCompareBtn').disabled = false;
+    showSyncStatus(`โหลดไฟล์ "${file.name}" สำเร็จ พร้อมเปรียบเทียบ`, 'success');
+  };
+  
+  reader.readAsText(file, 'UTF-8');
+}
+
+/**
+ * ล้างไฟล์ที่อัพโหลด
+ */
+function clearUploadedFile() {
+  uploadedCsvContent = null;
+  document.getElementById('csvUploadArea').style.display = 'block';
+  document.getElementById('uploadedFileInfo').style.display = 'none';
+  document.getElementById('csvFileInput').value = '';
+  document.getElementById('previewImportBtn').disabled = true;
+  document.getElementById('executeImportBtn').disabled = true;
+  document.getElementById('importPreviewArea').style.display = 'none';
+  hideSyncStatus();
+}
+
+function clearCompareFile() {
+  compareCsvContent = null;
+  document.getElementById('csvCompareUploadArea').style.display = 'block';
+  document.getElementById('compareFileInfo').style.display = 'none';
+  document.getElementById('csvCompareFileInput').value = '';
+  document.getElementById('executeCompareBtn').disabled = true;
+  document.getElementById('compareResults').style.display = 'none';
+  hideSyncStatus();
+}
+
+/**
+ * ดูตัวอย่างข้อมูลที่จะนำเข้า
+ */
+function previewImport() {
+  if (!uploadedCsvContent) {
+    showSyncStatus('กรุณาอัพโหลดไฟล์ CSV ก่อน', 'error');
+    return;
+  }
+  
+  try {
+    const lines = uploadedCsvContent.split(/\r?\n/);
+    const headers = parseSyncCSVLine(lines[0]);
+    
+    const previewArea = document.getElementById('importPreviewArea');
+    const table = document.getElementById('importPreviewTable');
+    
+    // Headers (แสดง 8 คอลัมน์แรก)
+    let headerHtml = '<tr>';
+    headers.slice(0, 8).forEach(h => {
+      headerHtml += `<th>${escapeSyncHtml(h)}</th>`;
+    });
+    if (headers.length > 8) headerHtml += '<th>...</th>';
+    headerHtml += '</tr>';
+    table.querySelector('thead').innerHTML = headerHtml;
+    
+    // Data (แสดง 5 แถวแรก)
+    let bodyHtml = '';
+    for (let i = 1; i <= Math.min(5, lines.length - 1); i++) {
+      if (!lines[i].trim()) continue;
+      const cols = parseSyncCSVLine(lines[i]);
+      bodyHtml += '<tr>';
+      cols.slice(0, 8).forEach(c => {
+        bodyHtml += `<td>${escapeSyncHtml(c)}</td>`;
+      });
+      if (cols.length > 8) bodyHtml += '<td>...</td>';
+      bodyHtml += '</tr>';
+    }
+    table.querySelector('tbody').innerHTML = bodyHtml;
+    
+    previewArea.style.display = 'block';
+    
+  } catch (error) {
+    showSyncStatus('ไม่สามารถอ่านไฟล์ CSV: ' + error.message, 'error');
+  }
+}
+
+/**
+ * ดำเนินการนำเข้า
+ */
+function executeImport() {
+  const sheetName = document.getElementById('syncSheetSelect').value;
+  const term = document.getElementById('syncTermSelect').value;
+  
+  if (!sheetName) {
+    showSyncStatus('กรุณาเลือกชีตคะแนน', 'error');
+    return;
+  }
+  
+  if (!uploadedCsvContent) {
+    showSyncStatus('กรุณาอัพโหลดไฟล์ CSV', 'error');
+    return;
+  }
+  
+  // ตรวจสอบว่ามี google.script.run หรือไม่
+  if (typeof google === 'undefined' || !google.script || !google.script.run) {
+    showSyncStatus('⚠️ ไม่สามารถเชื่อมต่อ Backend ได้', 'error');
+    return;
+  }
+  
+  showSyncStatus('กำลังนำเข้าข้อมูล...', 'loading');
+  
+  // แปลงเป็น Base64
+  const base64Content = btoa(unescape(encodeURIComponent(uploadedCsvContent)));
+  
+  try {
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (result.success) {
+          let msg = result.message;
+          if (result.notFound && result.notFound.length > 0) {
+            msg += `<br><small>ไม่พบในระบบ: ${result.notFound.slice(0, 3).map(s => s.name).join(', ')}${result.notFound.length > 3 ? '...' : ''}</small>`;
+          }
+          showSyncStatus(msg, 'success');
+        } else {
+          showSyncStatus('เกิดข้อผิดพลาด: ' + result.error, 'error');
+        }
+      })
+      .withFailureHandler(function(error) {
+        showSyncStatus('เกิดข้อผิดพลาด: ' + (error.message || error), 'error');
+      })
+      .importSchoolMISFromUpload(base64Content, sheetName, term);
+  } catch (e) {
+    showSyncStatus('เกิดข้อผิดพลาด: ' + e.message, 'error');
+  }
+}
+
+/**
+ * ดูตัวอย่างข้อมูลที่จะส่งออก
+ */
+function previewExport() {
+  const sheetName = document.getElementById('syncSheetSelect').value;
+  const term = document.getElementById('syncTermSelect').value;
+  
+  if (!sheetName) {
+    showSyncStatus('กรุณาเลือกชีตคะแนน', 'error');
+    return;
+  }
+  
+  // ตรวจสอบว่ามี google.script.run หรือไม่
+  if (typeof google === 'undefined' || !google.script || !google.script.run) {
+    showSyncStatus('⚠️ ไม่สามารถเชื่อมต่อ Backend ได้', 'error');
+    return;
+  }
+  
+  showSyncStatus('กำลังโหลดข้อมูล...', 'loading');
+  
+  try {
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (result.success) {
+          displayExportPreview(result.csvContent);
+          hideSyncStatus();
+        } else {
+          showSyncStatus('เกิดข้อผิดพลาด: ' + result.error, 'error');
+        }
+      })
+      .withFailureHandler(function(error) {
+        showSyncStatus('เกิดข้อผิดพลาด: ' + (error.message || error), 'error');
+      })
+      .exportToSchoolMIS_Average(sheetName, window._scoreSortMode || 'id');
+  } catch (e) {
+    showSyncStatus('เกิดข้อผิดพลาด: ' + e.message, 'error');
+  }
+}
+
+/**
+ * แสดง Preview ข้อมูลส่งออก
+ */
+function displayExportPreview(csvContent) {
+  const lines = csvContent.split('\n');
+  const previewArea = document.getElementById('exportPreviewArea');
+  const table = document.getElementById('exportPreviewTable');
+  
+  // Headers
+  const headers = parseSyncCSVLine(lines[0]);
+  let headerHtml = '<tr>';
+  headers.slice(0, 8).forEach(h => {
+    headerHtml += `<th>${escapeSyncHtml(h)}</th>`;
+  });
+  if (headers.length > 8) headerHtml += '<th>...</th>';
+  headerHtml += '</tr>';
+  table.querySelector('thead').innerHTML = headerHtml;
+  
+  // Data
+  let bodyHtml = '';
+  for (let i = 1; i <= Math.min(5, lines.length - 1); i++) {
+    if (!lines[i].trim()) continue;
+    const cols = parseSyncCSVLine(lines[i]);
+    bodyHtml += '<tr>';
+    cols.slice(0, 8).forEach(c => {
+      bodyHtml += `<td>${escapeSyncHtml(c)}</td>`;
+    });
+    if (cols.length > 8) bodyHtml += '<td>...</td>';
+    bodyHtml += '</tr>';
+  }
+  table.querySelector('tbody').innerHTML = bodyHtml;
+  
+  previewArea.style.display = 'block';
+}
+
+/**
+ * ดำเนินการส่งออก
+ */
+function executeExport() {
+  const sheetName = document.getElementById('syncSheetSelect').value;
+  const term = document.getElementById('syncTermSelect').value;
+  
+  if (!sheetName) {
+    showSyncStatus('กรุณาเลือกชีตคะแนน', 'error');
+    return;
+  }
+  
+  // ตรวจสอบว่ามี google.script.run หรือไม่
+  if (typeof google === 'undefined' || !google.script || !google.script.run) {
+    showSyncStatus('⚠️ ไม่สามารถเชื่อมต่อ Backend ได้', 'error');
+    return;
+  }
+  
+  showSyncStatus('กำลังสร้างไฟล์ CSV...', 'loading');
+  
+  try {
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (result.success) {
+          // ดาวน์โหลดไฟล์ - แก้ไขให้รองรับ UTF-8 ภาษาไทย
+          try {
+            // แปลง Base64 เป็น Uint8Array (รองรับ UTF-8)
+            const binaryString = atob(result.base64);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            
+            // สร้าง Blob ด้วย Uint8Array
+            const blob = new Blob([bytes], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = result.fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showSyncStatus(`✅ ดาวน์โหลดสำเร็จ: ${result.fileName} (${result.studentCount} คน)`, 'success');
+          } catch (e) {
+            showSyncStatus('ไม่สามารถดาวน์โหลดไฟล์ได้: ' + e.message, 'error');
+          }
+        } else {
+          showSyncStatus('เกิดข้อผิดพลาด: ' + result.error, 'error');
+        }
+      })
+      .withFailureHandler(function(error) {
+        showSyncStatus('เกิดข้อผิดพลาด: ' + (error.message || error), 'error');
+      })
+      .exportToSchoolMIS_Base64(sheetName, term, window._scoreSortMode || 'id');
+  } catch (e) {
+    showSyncStatus('เกิดข้อผิดพลาด: ' + e.message, 'error');
+  }
+}
+
+/**
+ * ดำเนินการส่งออกเฉลี่ย 2 ภาคเรียน
+ */
+function executeExportAverage() {
+  const sheetName = document.getElementById('syncSheetSelect').value;
+  
+  if (!sheetName) {
+    showSyncStatus('กรุณาเลือกชีตคะแนน', 'error');
+    return;
+  }
+  
+  if (typeof google === 'undefined' || !google.script || !google.script.run) {
+    showSyncStatus('⚠️ ไม่สามารถเชื่อมต่อ Backend ได้', 'error');
+    return;
+  }
+  
+  showSyncStatus('กำลังคำนวณเฉลี่ย 2 ภาค และสร้างไฟล์ CSV...', 'loading');
+  
+  try {
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (result.success) {
+          try {
+            const binaryString = atob(result.base64);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            
+            const blob = new Blob([bytes], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = result.fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showSyncStatus(`✅ ดาวน์โหลดเฉลี่ย 2 ภาคสำเร็จ: ${result.fileName} (${result.studentCount} คน)`, 'success');
+          } catch (e) {
+            showSyncStatus('ไม่สามารถดาวน์โหลดไฟล์ได้: ' + e.message, 'error');
+          }
+        } else {
+          showSyncStatus('เกิดข้อผิดพลาด: ' + result.error, 'error');
+        }
+      })
+      .withFailureHandler(function(error) {
+        showSyncStatus('เกิดข้อผิดพลาด: ' + (error.message || error), 'error');
+      })
+      .exportToSchoolMIS_Average_Base64(sheetName, window._scoreSortMode || 'id');
+  } catch (e) {
+    showSyncStatus('เกิดข้อผิดพลาด: ' + e.message, 'error');
+  }
+}
+
+/**
+ * ดำเนินการเปรียบเทียบ
+ */
+function executeCompare() {
+  const sheetName = document.getElementById('syncSheetSelect').value;
+  const term = document.getElementById('syncTermSelect').value;
+  
+  if (!sheetName) {
+    showSyncStatus('กรุณาเลือกชีตคะแนน', 'error');
+    return;
+  }
+  
+  if (!compareCsvContent) {
+    showSyncStatus('กรุณาอัพโหลดไฟล์ CSV เพื่อเปรียบเทียบ', 'error');
+    return;
+  }
+  
+  // ตรวจสอบว่ามี google.script.run หรือไม่
+  if (typeof google === 'undefined' || !google.script || !google.script.run) {
+    showSyncStatus('⚠️ ไม่สามารถเชื่อมต่อ Backend ได้', 'error');
+    return;
+  }
+  
+  showSyncStatus('กำลังเปรียบเทียบข้อมูล...', 'loading');
+  
+  try {
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (result.summary) {
+          displayCompareResults(result);
+          hideSyncStatus();
+        } else if (result.error) {
+          showSyncStatus('เกิดข้อผิดพลาด: ' + result.error, 'error');
+        }
+      })
+      .withFailureHandler(function(error) {
+        showSyncStatus('เกิดข้อผิดพลาด: ' + (error.message || error), 'error');
+      })
+      .compareWithSchoolMIS(compareCsvContent, sheetName, term);
+  } catch (e) {
+    showSyncStatus('เกิดข้อผิดพลาด: ' + e.message, 'error');
+  }
+}
+
+/**
+ * แสดงผลการเปรียบเทียบ
+ */
+function displayCompareResults(result) {
+  const resultsArea = document.getElementById('compareResults');
+  
+  document.getElementById('matchedCount').textContent = result.summary.matched;
+  document.getElementById('differentCount').textContent = result.summary.different;
+  document.getElementById('notFoundCount').textContent = result.summary.notInSystem;
+  
+  resultsArea.style.display = 'block';
+  
+  // แสดงรายการที่แตกต่าง
+  if (result.differences && result.differences.length > 0) {
+    const diffList = document.getElementById('differencesList');
+    const tbody = document.querySelector('#differencesTable tbody');
+    
+    let html = '';
+    result.differences.slice(0, 10).forEach(diff => {
+      html += `<tr>
+        <td>${escapeSyncHtml(diff.code)}</td>
+        <td>${escapeSyncHtml(diff.name)}</td>
+        <td>${diff.system.midterm}/${diff.system.final}/${diff.system.total} (${diff.system.grade})</td>
+        <td>${diff.schoolmis.midterm}/${diff.schoolmis.final}/${diff.schoolmis.total} (${diff.schoolmis.grade})</td>
+      </tr>`;
+    });
+    
+    if (result.differences.length > 10) {
+      html += `<tr><td colspan="4" style="text-align:center; color:#6b7280;">และอีก ${result.differences.length - 10} รายการ...</td></tr>`;
+    }
+    
+    tbody.innerHTML = html;
+    diffList.style.display = 'block';
+  } else {
+    document.getElementById('differencesList').style.display = 'none';
+  }
+}
+
+/**
+ * แสดง/ซ่อน Status
+ */
+function showSyncStatus(message, type) {
+  const statusArea = document.getElementById('syncStatusArea');
+  const statusMsg = document.getElementById('syncStatusMessage');
+  
+  let icon = '';
+  if (type === 'loading') icon = '<span class="score-entry-btn-spinner"></span>';
+  else if (type === 'success') icon = '<i class="fas fa-check-circle"></i> ';
+  else if (type === 'error') icon = '<i class="fas fa-exclamation-circle"></i> ';
+  
+  statusMsg.className = 'sync-status-message ' + type;
+  statusMsg.innerHTML = icon + message;
+  statusArea.style.display = 'block';
+  
+  if (type === 'success') {
+    setTimeout(hideSyncStatus, 4000);
+  }
+}
+
+function hideSyncStatus() {
+  document.getElementById('syncStatusArea').style.display = 'none';
+}
+
+/**
+ * Reset Form
+ */
+function resetSyncForm() {
+  clearUploadedFile();
+  clearCompareFile();
+  document.getElementById('exportPreviewArea').style.display = 'none';
+  document.getElementById('compareResults').style.display = 'none';
+  hideSyncStatus();
+}
+
+/**
+ * Helper: Parse CSV Line
+ */
+function parseSyncCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  
+  result.push(current.trim());
+  return result;
+}
+
+/**
+ * Helper: Escape HTML
+ */
+function escapeSyncHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text || '';
+  return div.innerHTML;
+}
+
+// Initialize Sync Upload Areas when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(initSyncUploadAreas, 100);
+  
+  // Close modal when clicking outside
+  const modal = document.getElementById('schoolmisSyncModal');
+  if (modal) {
+    modal.addEventListener('click', function(e) {
+      if (e.target === this) {
+        closeSchoolMISSync();
+      }
+    });
+  }
+});
+
+
+/**
+ * ===================================================================
+ * 🔧 SCORE ENTRY SYSTEM - FIXED VERSION (เหมือนเดิม)
+ * ===================================================================
+ */
+
+window.ScoreEntrySystem = (function() {
+    // DOM Elements
+    const gradeSelect = document.getElementById("scoreEntryGradeSelect");
+    const classSelect = document.getElementById("scoreEntryClassSelect");
+    const subjectSelect = document.getElementById("scoreEntrySubjectSelect");
+    const btnSaveTerm1 = document.getElementById("scoreEntryBtnSaveTerm1");
+    const btnSaveTerm2 = document.getElementById("scoreEntryBtnSaveTerm2");
+    const btnExportTerm1Pdf = document.getElementById("scoreEntryBtnExportTerm1Pdf");
+    const btnExportTerm2Pdf = document.getElementById("scoreEntryBtnExportTerm2Pdf");
+    const btnExportYearPdf = document.getElementById("scoreEntryBtnExportYearPdf");
+    const btnExportCSV = document.getElementById("scoreEntryBtnExportCSV");
+    const btnRebuildWarehouse = document.getElementById("scoreEntryBtnRebuildWarehouse");
+    const statusMsg = document.getElementById("scoreEntryStatusMessage");
+    const loadingOverlay = document.getElementById("scoreEntryLoadingOverlay");
+    const currentSubjectInfo = document.getElementById("scoreEntryCurrentSubjectInfo");
+    const totalStudentsEl = document.getElementById("totalStudents");
+    const completedScoresEl = document.getElementById("completedScores");
+    const averageScoreEl = document.getElementById("avgScore");
+    const passRateEl = document.getElementById("passRate");
+    const progressBar = document.getElementById("scoreEntryProgressBar");
+    const grade4El = document.getElementById("grade4count");
+    const gradeBelow2El = document.getElementById("gradeBelow2Count");
+
+    // Sort mode: 'gender' = ชาย→หญิง, 'id' = เลขประจำตัว
+    if (typeof window._scoreSortMode === 'undefined') window._scoreSortMode = 'gender';
+
+    let currentData = null;
+    let loadDataRequestId = 0;
+    
+    let assessmentConfig = {
+      midMax: 70,
+      finalMax: 30,
+    };
+
+    const rowDebounceTimers = new WeakMap();
+    let statsDebounceTimer = null;
+
+    function getConfigValue(key) {
+      return assessmentConfig[key] ?? (key === 'midMax' ? 70 : 30);
+    }
+
+    function syncConfigToAllTables() {
+      const midMax = Number(assessmentConfig.midMax ?? 70);
+      const finMax = Number(assessmentConfig.finalMax ?? 30);
+
+      ['scoreEntryTerm1Container', 'scoreEntryTerm2Container'].forEach(cid => {
+        const wrap = document.getElementById(cid);
+        const table = wrap?.querySelector('table.score-entry-table');
+        if (!table) return;
+
+        // Recalculate full score sums (คะแนนดิบ)
+        const fulls = [...table.querySelectorAll('.score-entry-full-score')].map(i => Number(i.value || 0));
+        var fSum14 = (fulls[0]||0)+(fulls[1]||0)+(fulls[2]||0)+(fulls[3]||0);
+        var fSum69 = (fulls[5]||0)+(fulls[6]||0)+(fulls[7]||0)+(fulls[8]||0);
+        var fMidTotal = fSum14 + (fulls[4]||0) + fSum69;
+
+        // อัปเดต fullFinal จาก assessmentConfig
+        var fullFinalSpan = table.querySelector('.score-entry-full-final');
+        if (fullFinalSpan) fullFinalSpan.textContent = finMax;
+
+        var s14 = table.querySelector('.score-entry-full-sum14');
+        var s69 = table.querySelector('.score-entry-full-sum69');
+        var sMid = table.querySelector('.score-entry-full-midtotal');
+        var sTotal = table.querySelector('.score-entry-full-total');
+        if (s14) s14.textContent = fSum14;
+        if (s69) s69.textContent = fSum69;
+        if (sMid) sMid.textContent = fMidTotal;
+        if (sTotal) sTotal.textContent = fMidTotal + finMax;
+
+        table.querySelectorAll('tbody tr').forEach(row => calcRowTotal(row, false));
+      });
+    }
+
+    function hydrateAssessmentConfig(subject) {
+      return new Promise((resolve) => {
+        google.script.run
+          .withSuccessHandler(cfg => {
+            const mid = Number(cfg?.midMax) || 70;
+            const fin = Number(cfg?.finalMax) || 30;
+
+            assessmentConfig.midMax = mid;
+            assessmentConfig.finalMax = fin;
+
+            syncConfigToAllTables();
+
+            resolve({ midMax: mid, finalMax: fin });
+          })
+          .withFailureHandler(_err => {
+            const mid = 70, fin = 30;
+            assessmentConfig.midMax = mid;
+            assessmentConfig.finalMax = fin;
+
+            syncConfigToAllTables();
+
+            resolve({ midMax: mid, finalMax: fin, error: true });
+          })
+          .getSubjectAssessmentConfig(subject.name, subject.code, gradeSelect.value);
+      });
+    }
+
+    function validateAndClamp(input, maxVal) {
+      let val = Number(input.value);
+      let hasError = false;
+      
+      if (input.value === '' || isNaN(val)) {
+        val = 0;
+      }
+      
+      if (val < 0) {
+        val = 0;
+        hasError = true;
+      }
+      
+      if (val > maxVal) {
+        val = maxVal;
+        hasError = true;
+      }
+      
+      if (Number(input.value) !== val) {
+        input.value = val;
+      }
+      
+      if (hasError) {
+        input.classList.add('is-invalid');
+        setTimeout(() => input.classList.remove('is-invalid'), 500);
+      } else {
+        input.classList.remove('is-invalid');
+      }
+      
+      return val;
+    }
+
+    function scheduleStatsUpdate() {
+      if (statsDebounceTimer) clearTimeout(statsDebounceTimer);
+      statsDebounceTimer = setTimeout(updateStats, 500);
+    }
+
+    function calculateGrade(score) {
+      if (score >= 80) return "4";
+      if (score >= 75) return "3.5";
+      if (score >= 70) return "3";
+      if (score >= 65) return "2.5";
+      if (score >= 60) return "2";
+      if (score >= 55) return "1.5";
+      if (score >= 50) return "1";
+      return "0";
+    }
+    
+    function getGradeClass(grade) {
+      const gradeStr = grade.toString().replace('.', '-');
+      return `score-entry-grade-${gradeStr}`;
+    }
+
+    function calcRowTotal(row, debounce = true) {
+      const action = () => {
+        const sum14Cell = row.querySelector('.score-entry-sum14');
+        const sum69Cell = row.querySelector('.score-entry-sum69');
+        const sumCell = row.querySelector('.score-entry-sum');
+        const totalCell = row.querySelector('.score-entry-total');
+        const gradeCell = row.querySelector('.score-entry-grade');
+        if (!totalCell || !gradeCell) return;
+
+        const table = row.closest('table');
+        const midMax = Number(assessmentConfig.midMax ?? 70);
+        const finMax = Number(assessmentConfig.finalMax ?? 30);
+
+        const fullScores = [...table.querySelectorAll('.score-entry-full-score')].map(i => Number(i.value || 0));
+        const fullScoresSum = fullScores.reduce((a, b) => a + b, 0);
+
+        // Validate & clamp ทุก input (ตัวชี้วัด 1-9)
+        var scores = [];
+        row.querySelectorAll('.score-entry-input').forEach((input) => {
+          const idx = Number(input.dataset.index);
+          const maxVal = fullScores[idx] || 0;
+          const val = validateAndClamp(input, maxVal);
+          scores[idx] = val;
+        });
+
+        // คำนวณรวมก่อนกลางภาค (1-4): index 0-3
+        var sum14 = (scores[0]||0)+(scores[1]||0)+(scores[2]||0)+(scores[3]||0);
+        if (sum14Cell) sum14Cell.textContent = sum14;
+
+        // คำนวณรวมหลังกลางภาค (6-9): index 5-8
+        var sum69 = (scores[5]||0)+(scores[6]||0)+(scores[7]||0)+(scores[8]||0);
+        if (sum69Cell) sum69Cell.textContent = sum69;
+
+        // คะแนนดิบรวมตัวชี้วัด (1-9)
+        const itemsSum = (scores[0]||0)+(scores[1]||0)+(scores[2]||0)+(scores[3]||0)
+          +(scores[4]||0)+(scores[5]||0)+(scores[6]||0)+(scores[7]||0)+(scores[8]||0);
+
+        // แปลงสัดส่วน: mid = (คะแนนดิบ / คะแนนเต็มรวม) * midMax
+        let mid = 0;
+        if (fullScoresSum > 0 && itemsSum > 0) {
+          mid = Math.round((itemsSum / fullScoresSum) * midMax);
+        }
+        if (sumCell) sumCell.textContent = mid;
+
+        // ครั้งที่ 10 (ปลายภาค) จาก final-input แยก — clamp ไม่เกิน finMax
+        const finalInput = row.querySelector('.score-entry-final-input');
+        let finalVal = Number(finalInput?.value || 0);
+        if (finalVal > finMax) { finalVal = finMax; if (finalInput) finalInput.value = finMax; }
+        if (finalVal < 0) { finalVal = 0; if (finalInput) finalInput.value = 0; }
+
+        // รวมทั้งหมด = mid(แปลงแล้ว) + ปลายภาค
+        var total = mid + finalVal;
+        totalCell.textContent = total;
+
+        // เกรด
+        const grade = calculateGrade(total);
+        const badge = gradeCell.querySelector('.score-entry-grade-badge') || (() => {
+          const b = document.createElement('span');
+          gradeCell.appendChild(b);
+          return b;
+        })();
+        badge.textContent = grade;
+        badge.className = `score-entry-grade-badge ${getGradeClass(grade)}`;
+      };
+
+      if (debounce) {
+        const existingTimer = rowDebounceTimers.get(row);
+        if (existingTimer) clearTimeout(existingTimer);
+        const newTimer = setTimeout(action, 200);
+        rowDebounceTimers.set(row, newTimer);
+      } else {
+        action();
+      }
+    }
+
+    function updateStats() {
+      if (!currentData) {
+        totalStudentsEl.textContent = 0;
+        completedScoresEl.textContent = 0;
+        averageScoreEl.textContent = 0;
+        passRateEl.textContent = "0%";
+        grade4El.textContent = 0;
+        gradeBelow2El.textContent = 0;
+        progressBar.style.width = "0%";
+        return;
+      }
+
+      const activeTab = document.querySelector('.tab-pane.active');
+      const activeContainer = activeTab?.querySelector('.score-entry-table-container');
+      if (!activeContainer) return;
+
+      const rows = activeContainer.querySelectorAll('tbody tr');
+      let completedRows = 0;
+      let gradeCounts = { "4": 0, "0": 0, "1": 0, "1.5": 0, "2": 0, "2.5": 0, "3": 0, "3.5": 0 };
+
+      rows.forEach(row => {
+        const inputs = row.querySelectorAll('.score-entry-input, .score-entry-final-input');
+        let hasValue = false;
+        inputs.forEach(input => { if (input.value && input.value !== '') hasValue = true; });
+        if (hasValue) completedRows++;
+
+        const gradeSpan = row.querySelector('.score-entry-grade .score-entry-grade-badge');
+        if (gradeSpan) {
+          const gradeText = gradeSpan.textContent.trim();
+          if (gradeCounts.hasOwnProperty(gradeText)) gradeCounts[gradeText]++;
+        }
+      });
+
+      let totalScore = 0;
+      let validScores = 0;
+      let passCount = 0;
+
+      const totalCells = activeContainer.querySelectorAll('.score-entry-total');
+      totalCells.forEach(cell => {
+        const score = parseFloat(cell.textContent);
+        if (!isNaN(score) && score > 0) {
+          totalScore += score;
+          validScores++;
+          if (score >= 50) passCount++;
+        }
+      });
+
+      const activeTermData = activeTab.id === 'scoreEntryTerm1' ? currentData.term1 : currentData.term2;
+      const studentCount = activeTermData?.rows?.length || 0;
+
+      const averageScore = validScores > 0 ? (totalScore / validScores).toFixed(1) : 0;
+      const passRate = validScores > 0 ? ((passCount / validScores) * 100).toFixed(0) : 0;
+      const progressPercent = rows.length > 0 ? ((completedRows / rows.length) * 100).toFixed(0) : 0;
+
+      totalStudentsEl.textContent = studentCount;
+      completedScoresEl.textContent = completedRows;
+      averageScoreEl.textContent = averageScore;
+      passRateEl.textContent = `${passRate}%`;
+      progressBar.style.width = `${progressPercent}%`;
+
+      grade4El.textContent = gradeCounts["4"];
+      gradeBelow2El.textContent = gradeCounts["0"] + gradeCounts["1"] + gradeCounts["1.5"];
+    }
+
+    function showButtonStatus(statusElementId, message, type = 'saving') {
+      const statusEl = document.getElementById(statusElementId);
+      if (!statusEl) return;
+      
+      const spinner = type !== 'success' && type !== 'error' 
+        ? '<span class="score-entry-btn-spinner"></span>' 
+        : '';
+      
+      const icon = type === 'success' ? '<i class="fas fa-check-circle"></i> ' :
+                   type === 'error' ? '<i class="fas fa-exclamation-circle"></i> ' : '';
+      
+      statusEl.innerHTML = `<span class="score-entry-status-indicator ${type}">${spinner}${icon}${message}</span>`;
+      
+      if (type === 'success' || type === 'error') {
+        setTimeout(() => { statusEl.innerHTML = ''; }, 3000);
+      }
+    }
+
+    function hideButtonStatus(statusElementId) {
+      const statusEl = document.getElementById(statusElementId);
+      if (statusEl) statusEl.innerHTML = '';
+    }
+
+    function showLoading(show = true) {
+      loadingOverlay.classList.toggle("d-none", !show);
+    }
+    
+    function showStatus(message, type = "info", icon = "fas fa-info-circle") {
+      if (!statusMsg) return;
+      statusMsg.className = `alert alert-${type} mb-3`;
+      statusMsg.innerHTML = `<i class="${icon}"></i> ${message}`;
+      statusMsg.classList.remove("d-none");
+      if (type === 'success') setTimeout(() => statusMsg.classList.add("d-none"), 4000);
+    }
+    
+    function updateControls() {
+      const grade = gradeSelect.value;
+      const classNo = classSelect.value;
+      classSelect.disabled = !grade;
+      subjectSelect.disabled = !(grade && classNo);
+    }
+
+    function renderTermTable(containerId, termDataObj, term) {
+      const { rows: termData, fullScores = [], fullFinal = 0 } = termDataObj;
+      const container = document.getElementById(containerId);
+      if (!termData || !termData.length) {
+        container.innerHTML = '<div class="alert alert-warning">ไม่พบข้อมูลนักเรียน</div>';
+        return;
+      }
+
+      const sortMode = window._scoreSortMode || 'gender';
+      const sortedData = [...termData].sort((a, b) => {
+        const idA = parseInt(a.id) || 0;
+        const idB = parseInt(b.id) || 0;
+        if (sortMode === 'gender') {
+          const isMaleA = (a.gender || '').includes('ชาย');
+          const isMaleB = (b.gender || '').includes('ชาย');
+          if (isMaleA && !isMaleB) return -1;
+          if (!isMaleA && isMaleB) return 1;
+        }
+        return idA - idB;
+      });
+
+      const table = document.createElement("table");
+      table.className = "table score-entry-table mb-0";
+
+      // โครงสร้างตาม SchoolMIS: 9 ครั้ง + รวม + แก้ตัว + รวม + รวมระหว่างภาค + ปลายภาค + รวมทั้งหมด + เกรด
+      let html = `<thead>
+        <tr>
+          <th rowspan="2" style="width:40px;">ที่</th>
+          <th rowspan="2" style="width:100px;" class="col-student-code">รหัส</th>
+          <th rowspan="2" style="width:200px;">ชื่อ-นามสกุล</th>
+          <th colspan="5" style="background:#e8f5e9;">คะแนนก่อนกลางภาค (ปี)</th>
+          <th rowspan="2" style="width:45px; background:#fff3e0;">ครั้งที่5<br>สอบกลางภาค<br>(ปี)</th>
+          <th colspan="5" style="background:#e3f2fd;">คะแนนหลังกลางภาค (ปี)</th>
+          <th rowspan="2" style="width:50px; background:#f3e5f5;">รวม<br>ระหว่างภาค<br>(ปี)</th>
+          <th rowspan="2" style="width:45px; background:#fff8e1;">ครั้งที่10<br>สอบปลายภาค<br>(ปี)</th>
+          <th rowspan="2" style="width:50px; background:#fce4ec;">รวม<br>ทั้งหมด</th>
+          <th rowspan="2" style="width:40px;">เกรด</th>
+        </tr>
+        <tr>
+          <th style="width:42px; background:#e8f5e9;">1</th>
+          <th style="width:42px; background:#e8f5e9;">2</th>
+          <th style="width:42px; background:#e8f5e9;">3</th>
+          <th style="width:42px; background:#e8f5e9;">4</th>
+          <th style="width:42px; background:#c8e6c9;">รวม</th>
+          <th style="width:42px; background:#e3f2fd;">6</th>
+          <th style="width:42px; background:#e3f2fd;">7</th>
+          <th style="width:42px; background:#e3f2fd;">8</th>
+          <th style="width:42px; background:#e3f2fd;">9</th>
+          <th style="width:42px; background:#bbdefb;">รวม</th>
+        </tr>
+        <tr class="score-entry-fullscore-row">
+          <th>เต็ม</th>
+          <th class="col-student-code"></th>
+          <th></th>`;
+      
+      // คะแนนเต็ม 9 ช่อง: [s1,s2,s3,s4, s5, s6,s7,s8,s9] (ตัวชี้วัด) + fullFinal (ปลายภาค)
+      // แสดง: s1-s4, (sum14 auto), s5, s6-s9, (sum69 auto), (midTotal auto), s10, (total auto), grade
+      // fullScores input: ครั้งที่1-4
+      for(let i = 0; i < 4; i++) {
+        html += `<th><input type="number" min="0" max="100" step="0.5" class="score-entry-full-score" data-index="${i}" value="${fullScores[i] ?? ''}" style="width:38px; height:28px; font-size:0.85rem; text-align:center; border:1px solid #cbd5e1; border-radius:4px;"></th>`;
+      }
+      // รวม(1-4) auto
+      var fullSum14 = (fullScores[0]||0)+(fullScores[1]||0)+(fullScores[2]||0)+(fullScores[3]||0);
+      html += `<th><span class="score-entry-full-sum14" style="font-weight:700; color:#2e7d32;">${fullSum14}</span></th>`;
+      // ครั้งที่5 (กลางภาค)
+      html += `<th><input type="number" min="0" max="100" step="0.5" class="score-entry-full-score" data-index="4" value="${fullScores[4] ?? ''}" style="width:38px; height:28px; font-size:0.85rem; text-align:center; border:1px solid #cbd5e1; border-radius:4px;"></th>`;
+      // ครั้งที่6-9
+      for(let i = 5; i < 9; i++) {
+        html += `<th><input type="number" min="0" max="100" step="0.5" class="score-entry-full-score" data-index="${i}" value="${fullScores[i] ?? ''}" style="width:38px; height:28px; font-size:0.85rem; text-align:center; border:1px solid #cbd5e1; border-radius:4px;"></th>`;
+      }
+      // รวม(6-9) auto
+      var fullSum69 = (fullScores[5]||0)+(fullScores[6]||0)+(fullScores[7]||0)+(fullScores[8]||0);
+      html += `<th><span class="score-entry-full-sum69" style="font-weight:700; color:#1565c0;">${fullSum69}</span></th>`;
+      // รวมระหว่างภาค auto
+      var fullMidTotal = fullSum14 + (fullScores[4]||0) + fullSum69;
+      html += `<th><span class="score-entry-full-midtotal" style="font-weight:700; color:#7b1fa2;">${fullMidTotal}</span></th>`;
+      // ครั้งที่10 (ปลายภาค) — ใช้ fullFinal จาก backend
+      html += `<th><span class="score-entry-full-final" style="font-weight:700; color:#f57f17;">${fullFinal}</span></th>`;
+      // รวมทั้งหมด auto
+      var fullTotal = fullMidTotal + fullFinal;
+      html += `<th><span class="score-entry-full-total" style="font-weight:700; color:#c62828;">${fullTotal}</span></th>`;
+      html += `<th></th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+      sortedData.forEach((row, i) => {
+        var scores = row.scores || [];
+        var sum14 = (Number(scores[0])||0)+(Number(scores[1])||0)+(Number(scores[2])||0)+(Number(scores[3])||0);
+        var sum69 = (Number(scores[5])||0)+(Number(scores[6])||0)+(Number(scores[7])||0)+(Number(scores[8])||0);
+        var midTotal = sum14 + (Number(scores[4])||0) + sum69;
+        
+        html += `<tr data-student-id="${row.id || ''}" data-gender="${row.gender || ''}">
+          <td style="font-weight:600;">${i+1}</td>
+          <td style="font-weight:500; color:#64748b;" class="col-student-code">${row.id || ''}</td>
+          <td class="score-entry-student-name">${row.name || ''}</td>`;
+        
+        // ครั้งที่ 1-4
+        for(let j = 0; j < 4; j++) {
+          html += `<td><input type="number" min="0" step="0.5" class="score-entry-input" data-index="${j}" value="${scores[j] ?? ''}"></td>`;
+        }
+        // รวม(1-4) auto
+        html += `<td class="score-entry-sum14" style="font-weight:600; color:#2e7d32; background:#f1f8e9;">${sum14}</td>`;
+        // ครั้งที่ 5 (กลางภาค)
+        html += `<td><input type="number" min="0" step="0.5" class="score-entry-input" data-index="4" value="${scores[4] ?? ''}"></td>`;
+        // ครั้งที่ 6-9
+        for(let j = 5; j < 9; j++) {
+          html += `<td><input type="number" min="0" step="0.5" class="score-entry-input" data-index="${j}" value="${scores[j] ?? ''}"></td>`;
+        }
+        // รวม(6-9) auto
+        html += `<td class="score-entry-sum69" style="font-weight:600; color:#1565c0; background:#e3f2fd;">${sum69}</td>`;
+        // รวมระหว่างภาค auto
+        html += `<td class="score-entry-sum" style="font-weight:700; color:#7b1fa2; background:#f3e5f5;">${midTotal}</td>`;
+        // ครั้งที่ 10 (ปลายภาค)
+        html += `<td><input type="number" min="0" step="0.5" class="score-entry-final-input" value="${row.final ?? ''}"></td>`;
+        // รวมทั้งหมด
+        html += `<td class="score-entry-total" style="font-weight:700; color:#c62828; background:#fce4ec;">${row.total || 0}</td>`;
+        // เกรด
+        html += `<td class="score-entry-grade">
+            <span class="score-entry-grade-badge score-entry-grade-${(row.grade || "0").replace('.', '-')}">${row.grade || "0"}</span>
+          </td>
+        </tr>`;
+      });
+      
+      html += '</tbody>';
+      table.innerHTML = html;
+      container.innerHTML = '';
+      container.appendChild(table);
+
+      function updateFullScore() {
+        const table = container.querySelector('.score-entry-table');
+        if (!table) return;
+        
+        const finMax = Number(assessmentConfig.finalMax ?? 30);
+        const fulls = [...table.querySelectorAll('.score-entry-full-score')].map(i => Number(i.value || 0));
+
+        // คำนวณรวมคะแนนเต็มดิบ
+        var fSum14 = (fulls[0]||0)+(fulls[1]||0)+(fulls[2]||0)+(fulls[3]||0);
+        var fSum69 = (fulls[5]||0)+(fulls[6]||0)+(fulls[7]||0)+(fulls[8]||0);
+        var fMidTotal = fSum14 + (fulls[4]||0) + fSum69;
+
+        // อัปเดต fullFinal จาก assessmentConfig
+        var fullFinalSpan = table.querySelector('.score-entry-full-final');
+        if (fullFinalSpan) fullFinalSpan.textContent = finMax;
+
+        var s14 = table.querySelector('.score-entry-full-sum14');
+        var s69 = table.querySelector('.score-entry-full-sum69');
+        var sMid = table.querySelector('.score-entry-full-midtotal');
+        var sTotal = table.querySelector('.score-entry-full-total');
+        if (s14) s14.textContent = fSum14;
+        if (s69) s69.textContent = fSum69;
+        if (sMid) sMid.textContent = fMidTotal;
+        if (sTotal) sTotal.textContent = fMidTotal + finMax;
+
+        table.querySelectorAll('tbody tr').forEach(row => {
+          row.querySelectorAll('.score-entry-input').forEach(input => {
+            const idx = Number(input.dataset.index);
+            const cap = fulls[idx] ?? 0;
+            input.max = cap;
+          });
+
+          calcRowTotal(row, false);
+        });
+      }
+
+      // Event listeners
+      table.querySelectorAll('.score-entry-full-score').forEach(input => {
+        input.addEventListener('input', updateFullScore);
+      });
+
+      table.querySelectorAll('tbody input').forEach(input => {
+        input.addEventListener('input', (e) => {
+          calcRowTotal(e.target.closest('tr'));
+        });
+      });
+
+      table.querySelectorAll('input[type="number"]').forEach(input => {
+        input.addEventListener('input', (e) => {
+          let value = e.target.value;
+          value = value.replace(/[^\d.-]/g, '');
+          const parts = value.split('.');
+          if (parts.length > 2) {
+            value = parts[0] + '.' + parts.slice(1).join('');
+          }
+          e.target.value = value;
+        });
+        
+        input.addEventListener('blur', (e) => {
+          let value = parseFloat(e.target.value);
+          if (!isNaN(value)) {
+            e.target.value = Math.round(value * 10) / 10;
+          } else if (e.target.value !== '') {
+            e.target.value = 0;
+          }
+          const row = e.target.closest('tr');
+          if (row && row.closest('tbody')) {
+            calcRowTotal(row, false);
+          }
+        });
+      });
+
+      // Keyboard navigation — ArrowDown/Up = same column next/prev row, Enter/Tab = next input
+      table.querySelectorAll('tbody input, thead input').forEach((input, index, allInputs) => {
+        input.addEventListener('keydown', (e) => {
+          let nextInput = null;
+          
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            nextInput = e.shiftKey ? allInputs[index - 1] : allInputs[index + 1];
+          }
+          else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            // หา column index ของ input ปัจจุบันในแถว
+            var currentRow = e.target.closest('tr');
+            if (!currentRow) return;
+            var rowInputs = Array.from(currentRow.querySelectorAll('input'));
+            var colIdx = rowInputs.indexOf(e.target);
+            // หาแถวถัดไป/ก่อนหน้า
+            var targetRow = e.key === 'ArrowDown' ? currentRow.nextElementSibling : currentRow.previousElementSibling;
+            if (targetRow) {
+              var targetInputs = targetRow.querySelectorAll('input');
+              if (targetInputs[colIdx]) nextInput = targetInputs[colIdx];
+            }
+          }
+          
+          if (nextInput) {
+            nextInput.focus();
+            nextInput.select();
+          }
+        });
+        
+        input.addEventListener('focus', (e) => e.target.select());
+      });
+
+      updateFullScore();
+
+      table.querySelectorAll('tbody tr').forEach(row => {
+        calcRowTotal(row, false);
+      });
+    }
+
+    function convertGradeFormat(grade) {
+      return grade.replace(/[\/\.]/g, '');
+    }
+    
+    function generateSheetName(subjectName, grade, classNo) {
+      const cleanGrade = convertGradeFormat(grade);
+      return `${subjectName} ${cleanGrade}-${classNo}`;
+    }
+
+    /**
+     * แสดงตารางรวม 2 ภาคเรียน (เฉลี่ยคะแนน) — read-only
+     */
+    function renderCombinedTable(containerId, data) {
+      // console.log('🔄 renderCombinedTable called', containerId, data ? 'has data' : 'no data');
+      const container = document.getElementById(containerId);
+      if (!container) {
+        console.error('❌ Container not found:', containerId);
+        return;
+      }
+      if (!data || !data.term1 || !data.term2) {
+        // console.warn('⚠️ Missing term data', { term1: !!data?.term1, term2: !!data?.term2 });
+        container.innerHTML = '<div class="alert alert-warning">ไม่พบข้อมูลทั้ง 2 ภาคเรียน</div>';
+        return;
+      }
+      // console.log('✅ term1 rows:', data.term1.rows?.length, 'term2 rows:', data.term2.rows?.length);
+
+      const t1 = data.term1;
+      const t2 = data.term2;
+      const rows1 = t1.rows || [];
+      const rows2 = t2.rows || [];
+
+      // ใช้คะแนนเต็มของภาค 1 สำหรับแสดงผล (ไม่เฉลี่ย — ควรเหมือนกันทั้ง 2 ภาค)
+      const fs1 = t1.fullScores || [];
+      const fs2 = t2.fullScores || [];
+      const displayFullScores = [];
+      for (let i = 0; i < 9; i++) {
+        // ใช้ term1 เป็นหลัก ถ้าเป็น 0 ใช้ term2
+        displayFullScores.push(Number(fs1[i]) || Number(fs2[i]) || 0);
+      }
+
+      // ดึง assessmentConfig สำหรับแปลงสัดส่วน
+      const midMax = Number(assessmentConfig.midMax ?? 70);
+      const finMax = Number(assessmentConfig.finalMax ?? 30);
+
+      // จับคู่นักเรียนจาก term1 (ใช้ term1 เป็นหลัก)
+      const combinedRows = rows1.map((r1, idx) => {
+        const r2 = rows2.find(r => r.id === r1.id) || rows2[idx] || {};
+        
+        const avgScores = [];
+        for (let j = 0; j < 9; j++) {
+          const s1v = Number(r1.scores?.[j]) || 0;
+          const s2v = Number(r2.scores?.[j]) || 0;
+          const sDivider = (s1v > 0 && s2v > 0) ? 2 : 1;
+          const avg = Math.round(((s1v + s2v) / sDivider) * 100) / 100;
+          const maxFull = displayFullScores[j] || 0;
+          avgScores.push(maxFull > 0 ? Math.min(avg, maxFull) : 0);
+        }
+
+        // midTotal — ใช้ divider แยก: หาร 2 เฉพาะเมื่อทั้ง 2 ภาคมีค่า > 0
+        const mid1 = Number(r1.mid) || 0;
+        const mid2 = Number(r2.mid) || 0;
+        const midDivider = (mid1 > 0 && mid2 > 0) ? 2 : 1;
+        let avgMid = Math.round(((mid1 + mid2) / midDivider) * 100) / 100;
+        if (avgMid > midMax) avgMid = midMax;
+
+        // ปลายภาค — ใช้ divider แยก: หาร 2 เฉพาะเมื่อทั้ง 2 ภาคมีค่า > 0
+        const fin1 = Number(r1.final) || 0;
+        const fin2 = Number(r2.final) || 0;
+        const finDivider = (fin1 > 0 && fin2 > 0) ? 2 : 1;
+        let avgFinal = Math.round(((fin1 + fin2) / finDivider) * 100) / 100;
+        if (avgFinal > finMax) avgFinal = finMax;
+
+        const avgTotal = Math.round((avgMid + avgFinal) * 100) / 100;
+        const avgGrade = calculateGrade(avgTotal);
+
+        return {
+          id: r1.id,
+          name: r1.name,
+          gender: r1.gender,
+          scores: avgScores,
+          mid: avgMid,
+          final: avgFinal,
+          total: avgTotal,
+          grade: avgGrade
+        };
+      });
+
+      const cSortMode = window._scoreSortMode || 'gender';
+      const sortedData = [...combinedRows].sort((a, b) => {
+        if (cSortMode === 'gender') {
+          const isMaleA = (a.gender || '').includes('ชาย');
+          const isMaleB = (b.gender || '').includes('ชาย');
+          if (isMaleA && !isMaleB) return -1;
+          if (!isMaleA && isMaleB) return 1;
+        }
+        return (parseInt(a.id) || 0) - (parseInt(b.id) || 0);
+      });
+
+      const table = document.createElement('table');
+      table.className = 'table score-entry-table mb-0';
+
+      // โครงสร้างตาม SchoolMIS (read-only)
+      let html = `<thead>
+        <tr>
+          <th rowspan="2" style="width:40px;">ที่</th>
+          <th rowspan="2" style="width:100px;" class="col-student-code">รหัส</th>
+          <th rowspan="2" style="width:200px;">ชื่อ-นามสกุล</th>
+          <th colspan="5" style="background:#e8f5e9;">คะแนนก่อนกลางภาค (เฉลี่ย/ปี)</th>
+          <th rowspan="2" style="width:45px; background:#fff3e0;">ครั้งที่5<br>สอบกลางภาค<br>(ปี)</th>
+          <th colspan="5" style="background:#e3f2fd;">คะแนนหลังกลางภาค (เฉลี่ย/ปี)</th>
+          <th rowspan="2" style="width:50px; background:#f3e5f5;">รวม<br>ระหว่างภาค<br>(ปี)</th>
+          <th rowspan="2" style="width:45px; background:#fff8e1;">ครั้งที่10<br>สอบปลายภาค<br>(ปี)</th>
+          <th rowspan="2" style="width:50px; background:#fce4ec;">รวม<br>ทั้งหมด</th>
+          <th rowspan="2" style="width:40px;">เกรด</th>
+        </tr>
+        <tr>
+          <th style="width:42px; background:#e8f5e9;">1</th>
+          <th style="width:42px; background:#e8f5e9;">2</th>
+          <th style="width:42px; background:#e8f5e9;">3</th>
+          <th style="width:42px; background:#e8f5e9;">4</th>
+          <th style="width:42px; background:#c8e6c9;">รวม</th>
+          <th style="width:42px; background:#e3f2fd;">6</th>
+          <th style="width:42px; background:#e3f2fd;">7</th>
+          <th style="width:42px; background:#e3f2fd;">8</th>
+          <th style="width:42px; background:#e3f2fd;">9</th>
+          <th style="width:42px; background:#bbdefb;">รวม</th>
+        </tr>
+        <tr class="score-entry-fullscore-row">
+          <th>เต็ม</th>
+          <th class="col-student-code"></th>
+          <th></th>`;
+
+      // คะแนนเต็ม: s1-s4 (ใช้ term1 full scores)
+      for (let i = 0; i < 4; i++) {
+        html += '<th style="text-align:center; font-weight:700; color:#2e7d32;">' + displayFullScores[i] + '</th>';
+      }
+      var dfSum14 = displayFullScores[0]+displayFullScores[1]+displayFullScores[2]+displayFullScores[3];
+      html += '<th style="font-weight:700; color:#2e7d32;">' + dfSum14 + '</th>';
+      // s5
+      html += '<th style="text-align:center; font-weight:700; color:#e65100;">' + displayFullScores[4] + '</th>';
+      // s6-s9
+      for (let i = 5; i < 9; i++) {
+        html += '<th style="text-align:center; font-weight:700; color:#1565c0;">' + displayFullScores[i] + '</th>';
+      }
+      var dfSum69 = displayFullScores[5]+displayFullScores[6]+displayFullScores[7]+displayFullScores[8];
+      html += '<th style="font-weight:700; color:#1565c0;">' + dfSum69 + '</th>';
+      // รวมระหว่างภาค — แสดง midMax (70) เพราะ avgMid คำนวณเทียบ midMax
+      html += '<th style="font-weight:700; color:#7b1fa2;">' + midMax + '</th>';
+      // ปลายภาค
+      html += '<th style="font-weight:700; color:#f57f17;">' + finMax + '</th>';
+      html += '<th style="font-weight:700; color:#c62828;">' + (midMax + finMax) + '</th>';
+      html += '<th></th></tr></thead><tbody>';
+
+      sortedData.forEach((row, i) => {
+        var sc = row.scores;
+        var sum14 = (sc[0]||0)+(sc[1]||0)+(sc[2]||0)+(sc[3]||0);
+        var sum69 = (sc[5]||0)+(sc[6]||0)+(sc[7]||0)+(sc[8]||0);
+
+        html += '<tr data-student-id="' + (row.id || '') + '" data-gender="' + (row.gender || '') + '">';
+        html += '<td style="font-weight:600;">' + (i + 1) + '</td>';
+        html += '<td class="col-student-code">' + (row.id || '') + '</td>';
+        html += '<td class="score-entry-student-name">' + (row.name || '') + '</td>';
+        
+        // s1-s4
+        for (let j = 0; j < 4; j++) html += '<td style="text-align:center;">' + (sc[j] || 0) + '</td>';
+        html += '<td style="text-align:center; font-weight:600; color:#2e7d32; background:#f1f8e9;">' + sum14 + '</td>';
+        // s5
+        html += '<td style="text-align:center;">' + (sc[4] || 0) + '</td>';
+        // s6-s9
+        for (let j = 5; j < 9; j++) html += '<td style="text-align:center;">' + (sc[j] || 0) + '</td>';
+        html += '<td style="text-align:center; font-weight:600; color:#1565c0; background:#e3f2fd;">' + sum69 + '</td>';
+        // รวมระหว่างภาค (สัดส่วน 100 จากชีต)
+        html += '<td style="text-align:center; font-weight:700; color:#7b1fa2; background:#f3e5f5;">' + (row.mid || 0) + '</td>';
+        // ปลายภาค
+        html += '<td style="text-align:center;">' + (row.final || 0) + '</td>';
+        // รวมทั้งหมด
+        html += '<td class="score-entry-total" style="text-align:center; font-weight:700; color:#c62828; background:#fce4ec;">' + row.total + '</td>';
+        
+        var gradeStr = String(row.grade);
+        var gradeClass = gradeStr.replace('.', '-');
+        html += '<td class="score-entry-grade"><span class="score-entry-grade-badge score-entry-grade-' + gradeClass + '">' + gradeStr + '</span></td>';
+        html += '</tr>';
+      });
+
+      html += '</tbody>';
+      table.innerHTML = html;
+      container.innerHTML = '';
+      container.appendChild(table);
+    }
+    window.renderCombinedTable = renderCombinedTable;
+
+    function saveTermData(termId) {
+      const statusId = `scoreEntryStatus${termId.charAt(0).toUpperCase() + termId.slice(1)}`;
+      const containerId = `scoreEntry${termId.charAt(0).toUpperCase() + termId.slice(1)}Container`;
+      
+      const container = document.getElementById(containerId);
+      const table = container?.querySelector("table");
+      const rows = table?.querySelectorAll("tbody tr");
+      
+      if (!rows || rows.length === 0) {
+        showStatus("ไม่พบข้อมูลในตาราง", "warning", "fas fa-exclamation-triangle");
+        showButtonStatus(statusId, "ไม่พบข้อมูล", "error");
+        return;
+      }
+
+      const grade = gradeSelect.value;
+      const classNo = classSelect.value;
+      const subjectValue = subjectSelect.value;
+      const subject = JSON.parse(subjectValue);
+      const sheetName = generateSheetName(subject.name, grade, classNo);
+
+      const fullScores = [...table.querySelectorAll('.score-entry-full-score')].map(input => Number(input.value || 0));
+      const fullFinalSpan = table.querySelector('.score-entry-full-final');
+      const fullFinal = fullFinalSpan ? Number(fullFinalSpan.textContent || 0) : 0;
+
+      const data = [...rows].map(row => {
+        const id = row.cells[1].textContent.trim();
+        const name = row.cells[2].textContent.trim();
+        // 9 ช่อง: [s1,s2,s3,s4, s5, s6,s7,s8,s9] (ตัวชี้วัด)
+        const scores = [];
+        row.querySelectorAll('.score-entry-input').forEach(input => {
+          scores[Number(input.dataset.index)] = Number(input.value || 0);
+        });
+        const mid = Number(row.querySelector('.score-entry-sum')?.textContent || 0);
+        const finalInput = row.querySelector('.score-entry-final-input');
+        const finalVal = finalInput ? Number(finalInput.value || 0) : 0;
+        const total = Number(row.querySelector('.score-entry-total')?.textContent || 0);
+        const gradeVal = row.querySelector('.score-entry-grade .score-entry-grade-badge')?.textContent?.trim() || '';
+        return { id, name, scores, mid, final: finalVal, total, grade: gradeVal };
+      });
+
+      showLoading(true);
+      showStatus("🔄 กำลังบันทึกข้อมูล...", "info");
+      showButtonStatus(statusId, "กำลังบันทึกข้อมูล...", "saving");
+
+      google.script.run
+        .withSuccessHandler(() => {
+          const termName = termId === 'term1' ? 'ภาคเรียนที่ 1' : 'ภาคเรียนที่ 2';
+          showStatus(`✅ บันทึก${termName} เรียบร้อยแล้ว`, "success", "fas fa-check-circle");
+          showButtonStatus(statusId, "บันทึกสำเร็จ", "success");
+          showLoading(false);
+          updateStats();
+          
+          // reload data จาก server เพื่อ update combined table
+          google.script.run
+            .withSuccessHandler(function(freshData) {
+              if (freshData) {
+                currentData = freshData;
+                renderCombinedTable("scoreEntryCombinedContainer", freshData);
+                // console.log('🔄 Combined table refreshed after save');
+              }
+            })
+            .withFailureHandler(function(err) {
+              // console.warn('⚠️ Could not refresh combined data:', err);
+            })
+            .getScoreSheetData(sheetName);
+        })
+        .withFailureHandler(error => {
+          showStatus("❌ บันทึกไม่สำเร็จ: " + (error.message || error), "danger", "fas fa-exclamation-circle");
+          showButtonStatus(statusId, "บันทึกล้มเหลว", "error");
+          showLoading(false);
+        })
+        .saveScoreSheetData(sheetName, termId, data, fullScores, fullFinal);
+    }
+
+    function loadData() {
+      const grade = gradeSelect.value;
+      const classNo = classSelect.value;
+      const subjectValue = subjectSelect.value;
+
+      if (!grade || !classNo || !subjectValue) {
+        showStatus("กรุณาเลือกระดับชั้น ห้องเรียน และรายวิชาให้ครบถ้วน", "warning", "fas fa-exclamation-triangle");
+        return;
+      }
+
+      let subject;
+      try {
+        subject = JSON.parse(subjectValue);
+      } catch (e) {
+        showStatus("รูปแบบข้อมูลรายวิชาไม่ถูกต้อง", "danger", "fas fa-exclamation-circle");
+        return;
+      }
+
+      const sheetName = generateSheetName(subject.name, grade, classNo);
+      const thisRequestId = ++loadDataRequestId;
+
+      showLoading(true);
+      showStatus("กำลังโหลดข้อมูล...", "info");
+
+      google.script.run
+        .withSuccessHandler(async (data) => {
+          if (thisRequestId !== loadDataRequestId) {
+            // console.warn("ข้อมูลมาช้าเกินไป - มี request ใหม่แล้ว (req " + thisRequestId + " vs " + loadDataRequestId + ")");
+            return;
+          }
+
+          try {
+            currentData = data;
+
+            renderTermTable("scoreEntryTerm1Container", data.term1, "term1");
+            renderTermTable("scoreEntryTerm2Container", data.term2, "term2");
+
+            try {
+              await hydrateAssessmentConfig(subject);
+            } catch (cfgErr) {
+              // console.warn("ใช้ค่าเริ่มต้น 70/30 เนื่องจากดึงคอนฟิกไม่สำเร็จ:", cfgErr);
+            }
+
+            // render combined table หลัง hydrate เพื่อให้ assessmentConfig มีค่าถูกต้อง
+            renderCombinedTable("scoreEntryCombinedContainer", data);
+
+            showStatus(`✅ โหลดข้อมูลสำเร็จ: ${subject.name} ${grade}/${classNo}`, "success", "fas fa-check-circle");
+
+            btnSaveTerm1.disabled = false;
+            btnSaveTerm2.disabled = false;
+            btnExportTerm1Pdf.disabled = false;
+            btnExportTerm2Pdf.disabled = false;
+            btnExportYearPdf.disabled = false;
+
+            updateStats();
+
+            const activeTabBtn = document.querySelector('.nav-link.active');
+            if (activeTabBtn) {
+              activeTabBtn.dispatchEvent(new Event('shown.bs.tab', { bubbles: true }));
+            }
+
+          } catch (e) {
+            console.error(e);
+            showStatus("❌ เกิดข้อผิดพลาดระหว่างประมวลผลข้อมูล", "danger", "fas fa-exclamation-circle");
+          } finally {
+            showLoading(false);
+          }
+        })
+        .withFailureHandler((error) => {
+          showLoading(false);
+          showStatus("เกิดข้อผิดพลาด: " + (error.message || error), "danger", "fas fa-exclamation-circle");
+        })
+        .getScoreSheetData(sheetName);
+    }
+
+    // Event Listeners
+    gradeSelect.addEventListener("change", () => {
+      const grade = gradeSelect.value;
+      lastClassChangeKey = '';
+      classSelect.innerHTML = '<option value="">-- เลือกห้องเรียน --</option>';
+      subjectSelect.innerHTML = '<option value="">-- เลือกรายวิชา --</option>';
+      classSelect.disabled = true;
+      subjectSelect.disabled = true;
+      btnSaveTerm1.disabled = true;
+      btnSaveTerm2.disabled = true;
+      btnExportTerm1Pdf.disabled = true;
+      btnExportTerm2Pdf.disabled = true;
+      btnExportYearPdf.disabled = true;
+      btnExportCSV.disabled = true;
+      btnRebuildWarehouse.disabled = true;
+      if (!grade) return;
+
+      classSelect.innerHTML = '<option value="">🔄 กำลังโหลด...</option>';
+
+      google.script.run
+        .withSuccessHandler(classes => {
+          classSelect.disabled = false;
+          classSelect.innerHTML = '<option value="">-- เลือกห้องเรียน --</option>';
+          if (classes && classes.length > 0) {
+            classes.forEach(classNo => {
+              const opt = document.createElement("option");
+              opt.value = classNo;
+              opt.textContent = `ห้อง ${classNo}`;
+              classSelect.appendChild(opt);
+            });
+          } else {
+            classSelect.innerHTML = '<option value="">❌ ไม่พบห้องเรียน</option>';
+          }
+          updateControls();
+        })
+        .withFailureHandler(err => {
+          showStatus(`เกิดข้อผิดพลาดในการโหลดห้องเรียน: ${err.message || err}`, 'danger');
+        })
+        .getAvailableClasses(grade);
+    });
+
+    let lastClassChangeKey = '';
+    classSelect.addEventListener("change", () => {
+      const grade = gradeSelect.value;
+      const classNo = classSelect.value;
+      const changeKey = grade + '|' + classNo;
+      if (changeKey === lastClassChangeKey) return;
+      lastClassChangeKey = changeKey;
+
+      subjectSelect.innerHTML = '<option value="">-- เลือกรายวิชา --</option>';
+      subjectSelect.disabled = true;
+      btnSaveTerm1.disabled = true;
+      btnSaveTerm2.disabled = true;
+      btnExportTerm1Pdf.disabled = true;
+      btnExportTerm2Pdf.disabled = true;
+      btnExportYearPdf.disabled = true;
+
+      if (grade && classNo) {
+        btnExportCSV.disabled = false;
+        btnRebuildWarehouse.disabled = false;
+      } else {
+        btnExportCSV.disabled = true;
+        btnRebuildWarehouse.disabled = true;
+      }
+
+      if (!grade || !classNo) return;
+
+      subjectSelect.innerHTML = '<option value="">🔄 กำลังโหลด...</option>';
+
+      // ลำดับวิชา + วิชากิจกรรมที่ซ่อน
+      var _subjectOrder = ['ภาษาไทย','คณิตศาสตร์','วิทยาศาสตร์','สังคมศึกษา','ประวัติศาสตร์',
+        'สุขศึกษา','ศิลปะ','การงาน','ภาษาอังกฤษ','หน้าที่พลเมือง','การป้องกัน'];
+      var _activitySubjects = ['แนะแนว','ชุมนุม','ลูกเสือ','เนตรนารี','บำเพ็ญประโยชน์',
+        'กิจกรรมเพื่อสังคม'];
+
+      google.script.run
+        .withSuccessHandler(subjects => {
+          subjectSelect.disabled = false;
+          subjectSelect.innerHTML = '<option value="">-- เลือกรายวิชา --</option>';
+          if (subjects && subjects.length > 0) {
+            // กรองวิชากิจกรรมออก
+            var filtered = subjects.filter(sub => !_activitySubjects.some(act => sub.name.indexOf(act) !== -1));
+            // เรียงตามลำดับ
+            filtered.sort((a, b) => {
+              var oa = _subjectOrder.length, ob = _subjectOrder.length;
+              for (var i = 0; i < _subjectOrder.length; i++) {
+                if (a.name.indexOf(_subjectOrder[i]) !== -1) { oa = i; break; }
+              }
+              for (var i = 0; i < _subjectOrder.length; i++) {
+                if (b.name.indexOf(_subjectOrder[i]) !== -1) { ob = i; break; }
+              }
+              return oa - ob;
+            });
+            filtered.forEach(sub => {
+              const opt = document.createElement("option");
+              opt.value = JSON.stringify(sub);
+              opt.textContent = `${sub.name} (${sub.code})`;
+              subjectSelect.appendChild(opt);
+            });
+            // auto-select วิชาแรกแล้วเรียก loadData
+            if (filtered.length >= 1) {
+              subjectSelect.selectedIndex = 1;
+              subjectSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+          } else {
+            subjectSelect.innerHTML = '<option value="">❌ ไม่พบรายวิชา</option>';
+          }
+          updateControls();
+        })
+        .withFailureHandler(err => {
+          showStatus(`เกิดข้อผิดพลาดในการโหลดรายวิชา: ${err.message || err}`, 'danger');
+        })
+        .getSubjectsForGrade(grade);
+    });
+
+    subjectSelect.addEventListener("change", () => {
+      updateControls();
+      updateSubjectInfo();
+
+      document.getElementById("scoreEntryTerm1Container").innerHTML = '';
+      document.getElementById("scoreEntryTerm2Container").innerHTML = '';
+      
+      if (totalStudentsEl) totalStudentsEl.textContent = "0";
+      if (completedScoresEl) completedScoresEl.textContent = "0";
+      if (averageScoreEl) averageScoreEl.textContent = "0";
+      if (passRateEl) passRateEl.textContent = "0%";
+      if (grade4El) grade4El.textContent = "0";
+      if (gradeBelow2El) gradeBelow2El.textContent = "0";
+      if (progressBar) progressBar.style.width = "0%";
+
+      if (statusMsg) statusMsg.classList.add("d-none");
+      hideButtonStatus("scoreEntryStatusTerm1");
+      hideButtonStatus("scoreEntryStatusTerm2");
+      hideButtonStatus("scoreEntryStatusExportTerm1");
+      hideButtonStatus("scoreEntryStatusExportTerm2");
+
+      btnSaveTerm1.disabled = true;
+      btnSaveTerm2.disabled = true;
+      btnExportTerm1Pdf.disabled = true;
+      btnExportTerm2Pdf.disabled = true;
+      btnExportYearPdf.disabled = true;
+
+      if (subjectSelect.value) {
+        loadData();
+      }
+    });
+
+    function updateSubjectInfo() {
+      const grade = gradeSelect.value;
+      const classNo = classSelect.value;
+      const subjectValue = subjectSelect.value;
+
+      if (grade && classNo && subjectValue) {
+        try {
+          const subject = JSON.parse(subjectValue);
+          currentSubjectInfo.innerHTML = `
+            <strong>${subject.name}</strong><br>
+            <small>${grade}/${classNo} | ${subject.code}</small>
+          `;
+        } catch (e) {
+          currentSubjectInfo.innerHTML = '<small>เลือกรายวิชาเพื่อเริ่มบันทึกคะแนน</small>';
+        }
+      } else {
+        currentSubjectInfo.innerHTML = '<small>เลือกรายวิชาเพื่อเริ่มบันทึกคะแนน</small>';
+      }
+    }
+
+    btnSaveTerm1.addEventListener("click", () => saveTermData("term1"));
+    btnSaveTerm2.addEventListener("click", () => saveTermData("term2"));
+    btnExportCSV.addEventListener("click", handleExportCSV);
+
+    btnRebuildWarehouse.addEventListener("click", () => {
+      const grade = gradeSelect.value;
+      const classNo = classSelect.value;
+      if (!grade || !classNo) {
+        showButtonStatus("scoreEntryStatusRebuild", "กรุณาเลือกชั้นและห้องก่อน", "error");
+        return;
+      }
+      btnRebuildWarehouse.disabled = true;
+      showButtonStatus("scoreEntryStatusRebuild", "กำลัง Rebuild " + grade + "/" + classNo + "...", "saving");
+      google.script.run
+        .withSuccessHandler(() => {
+          btnRebuildWarehouse.disabled = false;
+          showButtonStatus("scoreEntryStatusRebuild", "Rebuild สำเร็จ ✅", "success");
+          showStatus("✅ Rebuild คลังคะแนนเรียบร้อยแล้ว", "success", "fas fa-check-circle");
+        })
+        .withFailureHandler(err => {
+          btnRebuildWarehouse.disabled = false;
+          showButtonStatus("scoreEntryStatusRebuild", "Rebuild ล้มเหลว: " + (err.message || err), "error");
+        })
+        .rebuildScoresWarehouseForClass(grade, classNo);
+    });
+
+    btnExportTerm1Pdf.addEventListener('click', () => exportTerm('term1'));
+    btnExportTerm2Pdf.addEventListener('click', () => exportTerm('term2'));
+    btnExportYearPdf.addEventListener('click', () => exportYear());
+
+    function downloadBase64Pdf(filename, base64) {
+      try {
+        if (!base64 || base64.trim() === '') {
+          showStatus('❌ ไม่ได้รับข้อมูล PDF จาก Server', 'danger', 'fas fa-exclamation-circle');
+          return;
+        }
+
+        base64 = base64.replace(/\s/g, '');
+        
+        const base64Pattern = /^[A-Za-z0-9+/]*={0,2}$/;
+        if (!base64Pattern.test(base64)) {
+          console.error('Invalid Base64 string:', base64.substring(0, 100));
+          showStatus('❌ รูปแบบข้อมูล PDF ไม่ถูกต้อง', 'danger', 'fas fa-exclamation-circle');
+          return;
+        }
+
+        const byteChars = atob(base64);
+        const byteNums = new Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) {
+          byteNums[i] = byteChars.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNums);
+        
+        const blob = new Blob([byteArray], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+          a.remove();
+        }, 100);
+        
+      } catch (e) {
+        console.error('Download PDF Error:', e);
+        showStatus('❌ ไม่สามารถดาวน์โหลดไฟล์ PDF ได้: ' + e.message, 'danger', 'fas fa-exclamation-circle');
+      }
+    }
+
+    function collectTermTableData(containerId) {
+      const container = document.getElementById(containerId);
+      const table = container?.querySelector('table.score-entry-table');
+      if (!table) return null;
+
+      const fullScores = [...table.querySelectorAll('.score-entry-full-score')].map(i => Number(i.value || 0));
+      // คำนวณจาก fullScores โดยตรง (โครงสร้าง SchoolMIS 9 ตัวชี้วัด + ปลายภาคแยก)
+      const fSum14 = (fullScores[0]||0)+(fullScores[1]||0)+(fullScores[2]||0)+(fullScores[3]||0);
+      const fSum69 = (fullScores[5]||0)+(fullScores[6]||0)+(fullScores[7]||0)+(fullScores[8]||0);
+      const fullMid = fSum14 + (fullScores[4]||0) + fSum69;
+      const fullFinalSpan = table.querySelector('.score-entry-full-final');
+      const fullFinal = fullFinalSpan ? Number(fullFinalSpan.textContent || 0) : 0;
+      const fullTotal = fullMid + fullFinal;
+
+      const rows = [...table.querySelectorAll('tbody tr')].map((tr, idx) => {
+        const id = tr.cells[1]?.textContent?.trim() || '';
+        const name = tr.cells[2]?.textContent?.trim() || '';
+        const scores = [];
+        tr.querySelectorAll('.score-entry-input').forEach(input => {
+          scores[Number(input.dataset.index)] = Number(input.value || 0);
+        });
+        const mid = Number(tr.querySelector('.score-entry-sum')?.textContent || 0);
+        const finalInput = tr.querySelector('.score-entry-final-input');
+        const finalVal = finalInput ? Number(finalInput.value || 0) : 0;
+        const total = Number(tr.querySelector('.score-entry-total')?.textContent || 0);
+        const grade = tr.querySelector('.score-entry-grade .score-entry-grade-badge')?.textContent?.trim() || '0';
+        return { no: idx+1, id, name, scores, mid, final: finalVal, total, grade };
+      });
+
+      return { fullScores, fullFinal, fullMid, fullTotal, rows };
+    }
+
+    function buildPdfFilename(subjectName, grade, classNo, suffix){
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = (now.getMonth()+1).toString().padStart(2,'0');
+      const d = now.getDate().toString().padStart(2,'0');
+      return `${subjectName}_${grade.replace('.', '')}-${classNo}_${suffix}_${y}${m}${d}.pdf`.replaceAll(' ', '_');
+    }
+
+    function exportTerm(termId) {
+      const statusId = `scoreEntryStatusExport${termId.charAt(0).toUpperCase() + termId.slice(1)}`;
+      const containerId = `scoreEntry${termId.charAt(0).toUpperCase() + termId.slice(1)}Container`;
+      const termData = collectTermTableData(containerId);
+      
+      if (!termData || !termData.rows || termData.rows.length === 0) {
+        showStatus('ไม่พบข้อมูลในตาราง กรุณาโหลดข้อมูลก่อน', 'warning', 'fas fa-exclamation-triangle');
+        showButtonStatus(statusId, "ไม่พบข้อมูล", "error");
+        return;
+      }
+
+      const grade = gradeSelect.value;
+      const classNo = classSelect.value;
+      const subjectValue = subjectSelect.value;
+      
+      if (!grade || !classNo || !subjectValue) {
+        showStatus('กรุณาเลือกรายวิชาก่อนส่งออก', 'warning', 'fas fa-exclamation-triangle');
+        showButtonStatus(statusId, "กรุณาเลือกรายวิชา", "error");
+        return;
+      }
+
+      const subject = JSON.parse(subjectValue);
+      const termName = termId === 'term1' ? 'ภาคเรียนที่ 1' : 'ภาคเรียนที่ 2';
+      const filename = buildPdfFilename(subject.name, grade, classNo, termName.replace(' ', '_'));
+
+      showLoading(true);
+      showStatus(`🔄 กำลังสร้างไฟล์ PDF ${termName}...`, 'info');
+      showButtonStatus(statusId, `กำลังสร้าง PDF ${termName}...`, "exporting");
+
+      google.script.run
+        .withSuccessHandler(base64Pdf => {
+          showLoading(false);
+          if (base64Pdf && typeof base64Pdf === 'string') {
+            downloadBase64Pdf(filename, base64Pdf);
+            showStatus(`✅ ส่งออก ${termName} สำเร็จ`, 'success', 'fas fa-check-circle');
+            showButtonStatus(statusId, "ส่งออกสำเร็จ", "success");
+          } else {
+            showStatus('❌ ไม่สามารถสร้างไฟล์ PDF ได้', 'danger', 'fas fa-exclamation-circle');
+            showButtonStatus(statusId, "สร้าง PDF ล้มเหลว", "error");
+          }
+        })
+        .withFailureHandler(error => {
+          showLoading(false);
+          showStatus('❌ เกิดข้อผิดพลาด: ' + (error.message || error), 'danger', 'fas fa-exclamation-circle');
+          showButtonStatus(statusId, "เกิดข้อผิดพลาด", "error");
+        })
+        .exportScoresPdf_SingleTerm(subject.name, subject.code, grade, classNo, termId, termData);
+    }
+
+    function exportYear() {
+      const term1Data = collectTermTableData('scoreEntryTerm1Container');
+      const term2Data = collectTermTableData('scoreEntryTerm2Container');
+      
+      if (!term1Data || !term1Data.rows || term1Data.rows.length === 0) {
+        showStatus('ไม่พบข้อมูลภาคเรียนที่ 1', 'warning', 'fas fa-exclamation-triangle');
+        return;
+      }
+      
+      if (!term2Data || !term2Data.rows || term2Data.rows.length === 0) {
+        showStatus('ไม่พบข้อมูลภาคเรียนที่ 2', 'warning', 'fas fa-exclamation-triangle');
+        return;
+      }
+
+      const grade = gradeSelect.value;
+      const classNo = classSelect.value;
+      const subjectValue = subjectSelect.value;
+      
+      if (!grade || !classNo || !subjectValue) {
+        showStatus('กรุณาเลือกรายวิชาก่อนส่งออก', 'warning', 'fas fa-exclamation-triangle');
+        return;
+      }
+
+      const subject = JSON.parse(subjectValue);
+      const filename = buildPdfFilename(subject.name, grade, classNo, 'รวม_2_ภาคเรียน');
+
+      showLoading(true);
+      showStatus('🔄 กำลังสร้างไฟล์ PDF รวม 2 ภาคเรียน...', 'info');
+
+      google.script.run
+        .withSuccessHandler(base64Pdf => {
+          showLoading(false);
+          if (base64Pdf && typeof base64Pdf === 'string') {
+            downloadBase64Pdf(filename, base64Pdf);
+            showStatus('✅ ส่งออกรวม 2 ภาคเรียนสำเร็จ', 'success', 'fas fa-check-circle');
+          } else {
+            showStatus('❌ ไม่สามารถสร้างไฟล์ PDF ได้', 'danger', 'fas fa-exclamation-circle');
+          }
+        })
+        .withFailureHandler(error => {
+          showLoading(false);
+          showStatus('❌ เกิดข้อผิดพลาด: ' + (error.message || error), 'danger', 'fas fa-exclamation-circle');
+        })
+        .exportScoresPdf_Year(subject.name, subject.code, grade, classNo, term1Data, term2Data);
+    }
+
+    function handleExportCSV() {
+      const grade = gradeSelect.value;
+      const classNo = classSelect.value;
+      
+      if (!grade || !classNo) {
+        showStatus('⚠️ กรุณาเลือกชั้นและห้องเรียนก่อน', 'warning', 'fas fa-exclamation-triangle');
+        return;
+      }
+      
+      showLoading(true);
+      showStatus('🔄 กำลังดึงข้อมูลคะแนนทุกวิชาจาก SCORES_WAREHOUSE...', 'info');
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showLoading(false);
+          
+          if (result.success) {
+            const downloaded = downloadCSVFromBase64(result.base64Content, result.filename);
+            
+            if (downloaded) {
+              showStatus(`✅ Export สำเร็จ! ไฟล์: ${result.filename}`, 'success', 'fas fa-check-circle');
+            } else {
+              showStatus('❌ ไม่สามารถดาวน์โหลดไฟล์ได้', 'danger', 'fas fa-exclamation-circle');
+            }
+          } else {
+            showStatus('❌ Export ล้มเหลว: ' + result.error, 'danger', 'fas fa-exclamation-circle');
+          }
+        })
+        .withFailureHandler(function(error) {
+          showLoading(false);
+          showStatus('❌ เกิดข้อผิดพลาด: ' + (error.message || error), 'danger', 'fas fa-exclamation-circle');
+        })
+        .handleExportClassCSV(grade, classNo, window._scoreSortMode || 'id');
+    }
+
+    function downloadCSVFromBase64(base64Content, filename) {
+      try {
+        base64Content = base64Content.replace(/\s/g, '');
+        
+        const binaryString = atob(base64Content);
+        const bytes = new Uint8Array(binaryString.length);
+        
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        const blob = new Blob([bytes], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+          a.remove();
+        }, 100);
+        
+        return true;
+      } catch (e) {
+        console.error('Download CSV Error:', e);
+        return false;
+      }
+    }
+
+    return {
+      clearCurrentTerm: function() {
+        const activeTab = document.querySelector('.tab-pane.active');
+        if (activeTab) this.clearAllScores(activeTab.id);
+      },
+
+      clearAllScores: function(tabId) {
+        if (confirm('คุณต้องการล้างคะแนนทั้งหมดใช่หรือไม่?')) {
+          const container = document.getElementById(`${tabId}Container`);
+          if (!container) return;
+
+          const inputs = container.querySelectorAll('.score-entry-input, .score-entry-final-input');
+          inputs.forEach(input => {
+            input.value = '';
+            input.classList.remove('is-invalid');
+          });
+
+          const totalCells = container.querySelectorAll('.score-entry-total');
+          const sumCells = container.querySelectorAll('.score-entry-sum');
+          const gradeCells = container.querySelectorAll('.score-entry-grade');
+
+          totalCells.forEach(cell => cell.textContent = '0');
+          sumCells.forEach(cell => cell.textContent = '0');
+          gradeCells.forEach(cell => {
+            cell.innerHTML = '<span class="score-entry-grade-badge score-entry-grade-0">0</span>';
+          });
+
+          updateStats();
+          showStatus('ล้างคะแนนเรียบร้อยแล้ว', 'info', 'fas fa-info-circle');
+        }
+      },
+
+      toggleSort: function() {
+        window._scoreSortMode = window._scoreSortMode === 'gender' ? 'id' : 'gender';
+        var label = document.getElementById('btnSortLabel');
+        if (label) label.textContent = window._scoreSortMode === 'gender' ? 'ชาย→หญิง' : 'เลขประจำตัว';
+        // สลับแถวใน DOM โดยตรง (ไม่ re-render เพื่อไม่ให้ค่าที่กรอกหาย)
+        ['scoreEntryTerm1Container','scoreEntryTerm2Container','scoreEntryCombinedContainer'].forEach(function(cid) {
+          var container = document.getElementById(cid);
+          if (!container) return;
+          var tbody = container.querySelector('tbody');
+          if (!tbody) return;
+          var rows = Array.from(tbody.querySelectorAll('tr'));
+          rows.sort(function(a, b) {
+            var idA = parseInt(a.getAttribute('data-student-id')) || 0;
+            var idB = parseInt(b.getAttribute('data-student-id')) || 0;
+            if (window._scoreSortMode === 'gender') {
+              var gA = a.getAttribute('data-gender') || '';
+              var gB = b.getAttribute('data-gender') || '';
+              var mA = gA.indexOf('ชาย') !== -1;
+              var mB = gB.indexOf('ชาย') !== -1;
+              if (mA && !mB) return -1;
+              if (!mA && mB) return 1;
+            }
+            return idA - idB;
+          });
+          rows.forEach(function(row, idx) {
+            tbody.appendChild(row);
+            // อัปเดตเลขลำดับ
+            var firstCell = row.querySelector('td:first-child');
+            if (firstCell) firstCell.textContent = idx + 1;
+          });
+        });
+      },
+
+      updateControls: function() {
+        updateControls();
+      },
+      
+      getConfig: function() {
+        return { ...assessmentConfig };
+      },
+
+      getCurrentData: function() {
+        return currentData;
+      },
+
+      renderCombined: function(containerId) {
+        if (currentData) {
+          renderCombinedTable(containerId, currentData);
+        }
+      },
+
+      copyTerm1ToTerm2: function() {
+        if (!confirm('คัดลอกคะแนนจากภาคเรียนที่ 1 ไปภาคเรียนที่ 2?\n(คะแนนเดิมในภาค 2 จะถูกแทนที่)')) return;
+        
+        var term1Container = document.getElementById('scoreEntryTerm1Container');
+        var term2Container = document.getElementById('scoreEntryTerm2Container');
+        if (!term1Container || !term2Container) {
+          showStatus('❌ ไม่พบตารางภาคเรียน', 'danger', 'fas fa-exclamation-circle');
+          return;
+        }
+        
+        var t1Rows = term1Container.querySelectorAll('tbody tr');
+        var t2Rows = term2Container.querySelectorAll('tbody tr');
+        
+        if (t1Rows.length === 0 || t2Rows.length === 0) {
+          showStatus('❌ ไม่พบข้อมูลในตาราง', 'danger', 'fas fa-exclamation-circle');
+          return;
+        }
+        
+        var copied = 0;
+        t1Rows.forEach(function(t1Row, idx) {
+          if (idx >= t2Rows.length) return;
+          var t2Row = t2Rows[idx];
+          
+          // คัดลอก score inputs (ครั้งที่ 1-9)
+          var t1Inputs = t1Row.querySelectorAll('.score-entry-input');
+          var t2Inputs = t2Row.querySelectorAll('.score-entry-input');
+          t1Inputs.forEach(function(inp, i) {
+            if (i < t2Inputs.length) t2Inputs[i].value = inp.value;
+          });
+          
+          // คัดลอก final input (ปลายภาค)
+          var t1Final = t1Row.querySelector('.score-entry-final-input');
+          var t2Final = t2Row.querySelector('.score-entry-final-input');
+          if (t1Final && t2Final) t2Final.value = t1Final.value;
+          
+          // คำนวณผลรวมใหม่
+          calcRowTotal(t2Row, false);
+          copied++;
+        });
+        
+        updateStats();
+        showStatus('✅ คัดลอกคะแนนจากภาค 1 ไปภาค 2 เรียบร้อย (' + copied + ' แถว)', 'success', 'fas fa-check-circle');
+      }
+    };
+  })();
+
+  // Initialize
+  document.addEventListener('DOMContentLoaded', () => {
+    // console.log('🎯 Score Entry System with SchoolMIS Sync');
+    // console.log('=====================================');
+    
+    setTimeout(() => {
+      if (typeof window.ScoreEntrySystem !== 'undefined') {
+        ScoreEntrySystem.updateControls();
+        // console.log('✅ System initialized');
+      }
+    }, 100);
+
+  });
+
+  // Global tab switching function (ใช้ onclick แทน shown.bs.tab เพราะ SPA ไม่ fire DOMContentLoaded)
+  window.onScoreTabSwitch = function(tabId) {
+    // console.log('🔀 Tab switch:', tabId);
+    var isTerm1 = tabId === 'scoreEntryTerm1Tab';
+    var isTerm2 = tabId === 'scoreEntryTerm2Tab';
+    var isCombined = tabId === 'scoreEntryCombinedTab';
+
+    var el = function(id) { return document.getElementById(id); };
+    if (el('scoreEntryBtnSaveTerm1')) el('scoreEntryBtnSaveTerm1').style.display = isTerm1 ? '' : 'none';
+    if (el('scoreEntryBtnSaveTerm2')) el('scoreEntryBtnSaveTerm2').style.display = isTerm2 ? '' : 'none';
+    if (el('scoreEntryBtnExportTerm1Pdf')) el('scoreEntryBtnExportTerm1Pdf').style.display = isTerm1 ? '' : 'none';
+    if (el('scoreEntryBtnExportTerm2Pdf')) el('scoreEntryBtnExportTerm2Pdf').style.display = isTerm2 ? '' : 'none';
+    if (el('scoreEntryStatusTerm1')) el('scoreEntryStatusTerm1').style.display = isTerm1 ? '' : 'none';
+    if (el('scoreEntryStatusTerm2')) el('scoreEntryStatusTerm2').style.display = isTerm2 ? '' : 'none';
+    if (el('scoreEntryStatusExportTerm1')) el('scoreEntryStatusExportTerm1').style.display = isTerm1 ? '' : 'none';
+    if (el('scoreEntryStatusExportTerm2')) el('scoreEntryStatusExportTerm2').style.display = isTerm2 ? '' : 'none';
+    if (el('btnClearCurrent')) el('btnClearCurrent').style.display = isCombined ? 'none' : '';
+    if (el('btnCopyTerm1ToTerm2')) el('btnCopyTerm1ToTerm2').style.display = isTerm2 ? '' : 'none';
+
+    if (isCombined && window.ScoreEntrySystem) {
+      window.ScoreEntrySystem.renderCombined('scoreEntryCombinedContainer');
+    }
+  };
+
+  window.addEventListener('error', function(event) {
+    console.error('🔥 Global error:', event.error);
+    event.preventDefault();
+  });
+
+// ============================================================
+// 🔄 SCHOOLMIS SYNC - INIT ON LOAD (รันทันทีเมื่อ script ถูก inject)
+// ============================================================
+(function() {
+  // console.log('🔄 SchoolMIS Sync: Initializing...');
+  
+  // รอให้ DOM พร้อม
+  function initSchoolMISSync() {
+    // console.log('🔄 SchoolMIS Sync: Setting up upload areas...');
+    
+    // Import upload area
+    const csvUploadArea = document.getElementById('csvUploadArea');
+    const csvFileInput = document.getElementById('csvFileInput');
+    
+    if (csvUploadArea && csvFileInput) {
+      // Remove old listeners และ add ใหม่
+      const newUploadArea = csvUploadArea.cloneNode(true);
+      csvUploadArea.parentNode.replaceChild(newUploadArea, csvUploadArea);
+      
+      const newFileInput = newUploadArea.querySelector('#csvFileInput');
+      
+      newUploadArea.addEventListener('click', function(e) {
+        if (e.target.tagName !== 'INPUT') {
+          newFileInput.click();
+        }
+      });
+      
+      newUploadArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.classList.add('drag-over');
+      });
+      
+      newUploadArea.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.classList.remove('drag-over');
+      });
+      
+      newUploadArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file && file.name.toLowerCase().endsWith('.csv')) {
+          handleImportFileSelect(file);
+        } else {
+          showSyncStatus('กรุณาเลือกไฟล์ .csv เท่านั้น', 'error');
+        }
+      });
+      
+      newFileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+          handleImportFileSelect(file);
+        }
+      });
+      
+      // console.log('✅ Import upload area ready');
+    }
+    
+    // Compare upload area
+    const csvCompareUploadArea = document.getElementById('csvCompareUploadArea');
+    const csvCompareFileInput = document.getElementById('csvCompareFileInput');
+    
+    if (csvCompareUploadArea && csvCompareFileInput) {
+      const newCompareArea = csvCompareUploadArea.cloneNode(true);
+      csvCompareUploadArea.parentNode.replaceChild(newCompareArea, csvCompareUploadArea);
+      
+      const newCompareInput = newCompareArea.querySelector('#csvCompareFileInput');
+      
+      newCompareArea.addEventListener('click', function(e) {
+        if (e.target.tagName !== 'INPUT') {
+          newCompareInput.click();
+        }
+      });
+      
+      newCompareArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.classList.add('drag-over');
+      });
+      
+      newCompareArea.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.classList.remove('drag-over');
+      });
+      
+      newCompareArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file && file.name.toLowerCase().endsWith('.csv')) {
+          handleCompareFileSelect(file);
+        } else {
+          showSyncStatus('กรุณาเลือกไฟล์ .csv เท่านั้น', 'error');
+        }
+      });
+      
+      newCompareInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+          handleCompareFileSelect(file);
+        }
+      });
+      
+      // console.log('✅ Compare upload area ready');
+    }
+    
+    // Modal close on backdrop click
+    const modal = document.getElementById('schoolmisSyncModal');
+    if (modal) {
+      modal.addEventListener('click', function(e) {
+        if (e.target === this) {
+          closeSchoolMISSync();
+        }
+      });
+      // console.log('✅ Modal backdrop listener ready');
+    }
+    
+    // console.log('✅ SchoolMIS Sync initialized successfully!');
+  }
+  
+  // รอ 200ms แล้ว init (ให้ DOM render เสร็จก่อน)
+  setTimeout(initSchoolMISSync, 200);
+})();
+</script>
+</body>
+</html>

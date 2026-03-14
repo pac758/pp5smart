@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>จัดการผู้ใช้</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      margin: 0;
+    }
+    .main-container {
+      max-width: 900px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 1.5rem;
+      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+      padding: 2rem;
+      visibility: hidden;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all .6s ease-out;
+    }
+    .main-container.loaded { visibility: visible; opacity: 1; transform: translateY(0); }
+    .user-card { transition: all .3s ease; }
+    .user-card:hover { background: #f9fafb; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: .75rem; font-weight: 600; }
+    td { padding: .75rem; border-top: 1px solid #e5e7eb; }
+    .btn { padding: .5rem 1rem; border-radius: .5rem; font-size: .875rem; font-weight: 500; cursor: pointer; transition: all .2s ease; border: none; }
+    .btn-sm { padding: .375rem .75rem; font-size: .8125rem; }
+    .btn-primary { background: linear-gradient(to right, #9333ea, #2563eb); color: #fff; }
+    .btn-success { background: #10b981; color: #fff; }
+    .btn-warning { background: #f59e0b; color: #fff; }
+    .btn-danger  { background: #ef4444; color: #fff; }
+    .btn:hover { transform: translateY(-1px); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; align-items: center; justify-content: center; }
+    .modal.active { display: flex; }
+    .modal-content { background: #fff; padding: 2rem; border-radius: 1rem; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; }
+    .hidden { display: none; }
+    .form-group { margin-bottom: 1rem; }
+    .form-label { display: block; margin-bottom: .5rem; font-weight: 600; color: #374151; }
+    .form-input { width: 100%; padding: .625rem .75rem; border: 1px solid #d1d5db; border-radius: .5rem; font-size: 1rem; transition: border-color .2s, box-shadow .2s; }
+    .form-input:focus { outline: none; border-color: #9333ea; box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.1); }
+    .form-select { width: 100%; padding: .625rem .75rem; border: 1px solid #d1d5db; border-radius: .5rem; font-size: 1rem; background: #fff; cursor: pointer; }
+    .form-select:focus { outline: none; border-color: #9333ea; box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.1); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner-icon { display: inline-block; animation: spin .7s linear infinite; }
+  </style>
+</head>
+<body>
+  <div class="main-container">
+    <!-- Header -->
+    <div class="text-center mb-6">
+      <div style="display:inline-flex;align-items:center;justify-content:center;width:3.5rem;height:3.5rem;background:linear-gradient(to bottom right,#a855f7,#2563eb);border-radius:9999px;box-shadow:0 10px 15px -3px rgba(0,0,0,.1);margin-bottom:.75rem;">
+        <span style="font-size:1.5rem;">👥</span>
+      </div>
+      <h1 style="font-size:1.5rem;font-weight:700;color:#1f2937;margin-bottom:.25rem;">จัดการผู้ใช้</h1>
+      <p style="color:#6b7280;font-size:.875rem;">แสดงรายการและจัดการผู้ใช้ทั้งหมด</p>
+    </div>
+
+    <!-- Search + Actions -->
+    <div class="flex justify-between items-center mb-4" style="flex-wrap:wrap;gap:1rem;">
+      <input type="text" id="searchBox" class="form-input" placeholder="🔍 ค้นหาชื่อผู้ใช้..." style="max-width:300px;">
+      <button class="btn btn-primary" id="refreshBtn"><span>🔄 รีเฟรช</span></button>
+    </div>
+
+    <!-- Loading -->
+    <div id="loadingState" class="text-center" style="padding:2rem;">
+      <span style="font-size:2rem;">⏳</span>
+      <p style="color:#6b7280;margin-top:.5rem;">กำลังโหลดข้อมูล...</p>
+    </div>
+
+    <!-- Table -->
+    <div id="usersTable" class="hidden" style="overflow-x:auto;">
+      <table>
+        <thead style="background:#f9fafb;">
+          <tr>
+            <th>ชื่อผู้ใช้</th>
+            <th>ชื่อ-นามสกุล</th>
+            <th>สิทธิ์</th>
+            <th>รหัสนักเรียน</th>
+            <th style="text-align:center;">จัดการ</th>
+          </tr>
+        </thead>
+        <tbody id="usersList"></tbody>
+      </table>
+    </div>
+
+    <!-- Empty -->
+    <div id="emptyState" class="hidden text-center" style="padding:2rem;">
+      <span style="font-size:3rem;">📭</span>
+      <p style="color:#6b7280;margin-top:.5rem;">ไม่พบข้อมูลผู้ใช้</p>
+    </div>
+
+    <!-- Status -->
+    <div id="status" class="mt-4 hidden" style="padding:.75rem;border-radius:.5rem;text-align:center;"></div>
+  </div>
+
+  <!-- Edit User Modal -->
+  <div id="editUserModal" class="modal">
+    <div class="modal-content">
+      <h2 style="font-size:1.25rem;font-weight:700;margin-bottom:1.5rem;">✏️ แก้ไขข้อมูลผู้ใช้</h2>
+      
+      <div class="form-group">
+        <label class="form-label">ชื่อผู้ใช้ (Username)</label>
+        <input type="text" id="editUsername" class="form-input" placeholder="กรอกชื่อผู้ใช้">
+        <input type="hidden" id="editOriginalUsername">
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">ชื่อ-นามสกุล</label>
+        <input type="text" id="editFullName" class="form-input" placeholder="กรอกชื่อ-นามสกุล">
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">สิทธิ์การใช้งาน</label>
+        <select id="editRole" class="form-select" onchange="window.__toggleEditStudentIds && window.__toggleEditStudentIds()">
+          <option value="teacher">👨‍🏫 Teacher</option>
+          <option value="admin">👑 Admin</option>
+          <option value="parent">👨‍👩‍👧 Parent</option>
+        </select>
+      </div>
+      
+      <div class="form-group" id="editStudentIdsGroup" style="display:none;">
+        <label class="form-label">🎓 รหัสนักเรียน</label>
+        <input type="text" id="editStudentIds" class="form-input" placeholder="เช่น S001, S002">
+        <p style="font-size:0.75rem;color:#6b7280;margin-top:0.25rem;">ระบุรหัสนักเรียนที่ผู้ปกครองดูแล คั่นด้วยเครื่องหมายจุลภาค</p>
+      </div>
+      
+      <div class="flex gap-2" style="margin-top:1.5rem;">
+        <button class="btn btn-success" id="btnConfirmEdit" style="flex:1;">💾 บันทึก</button>
+        <button class="btn" id="btnCancelEdit" style="flex:1;background:#e5e7eb;color:#374151;">ยกเลิก</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reset Password Modal -->
+  <div id="resetPasswordModal" class="modal">
+    <div class="modal-content">
+      <h2 style="font-size:1.25rem;font-weight:700;margin-bottom:1rem;">🔑 รีเซ็ตรหัสผ่าน</h2>
+      <p style="color:#6b7280;margin-bottom:1rem;">กำลังรีเซ็ตรหัสผ่านสำหรับ: <strong id="resetUsername"></strong></p>
+      <div class="form-group">
+        <label class="form-label">รหัสผ่านใหม่</label>
+        <input type="text" id="newPassword" class="form-input" placeholder="กรอกรหัสผ่านใหม่">
+      </div>
+      <div class="flex gap-2">
+        <button class="btn btn-primary" id="btnConfirmReset" style="flex:1;">บันทึก</button>
+        <button class="btn" id="btnCancelReset" style="flex:1;background:#e5e7eb;color:#374151;">ยกเลิก</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Modal -->
+  <div id="deleteModal" class="modal">
+    <div class="modal-content">
+      <h2 style="font-size:1.25rem;font-weight:700;margin-bottom:1rem;">⚠️ ยืนยันการลบ</h2>
+      <p style="color:#6b7280;margin-bottom:1rem;">คุณแน่ใจหรือไม่ที่จะลบผู้ใช้: <strong id="deleteUsername"></strong></p>
+      <p style="color:#ef4444;font-size:.875rem;margin-bottom:1rem;">การลบไม่สามารถกู้คืนได้!</p>
+      <div class="flex gap-2">
+        <button class="btn btn-danger" id="btnConfirmDelete" style="flex:1;">ลบ</button>
+        <button class="btn" id="btnCancelDelete" style="flex:1;background:#e5e7eb;color:#374151;">ยกเลิก</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    'use strict';
+    
+    // Cleanup ก่อนถ้ามีการ init ซ้ำ (สำหรับ SPA)
+    if (window.__admin_panel_cleanup__) {
+      window.__admin_panel_cleanup__();
+    }
+
+    const HAS_GAS = (typeof google !== 'undefined') && google.script && google.script.run;
+
+    let allUsers = [];
+    let currentEditUser = null;
+    let currentResetUser = null;
+    let currentDeleteUser = null;
+    let eventListeners = [];
+
+    // ---------- UI helpers ----------
+    function showStatus(message, ok = true){
+      const el = document.getElementById('status');
+      if (!el) return;
+      el.className = 'mt-4 ' + (ok ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800');
+      el.textContent = message;
+      el.classList.remove('hidden');
+      setTimeout(()=>el.classList.add('hidden'), 5000);
+    }
+    
+    function showLoading(on){
+      document.getElementById('loadingState')?.classList.toggle('hidden', !on);
+      document.getElementById('usersTable')?.classList.toggle('hidden', on);
+      document.getElementById('emptyState')?.classList.add('hidden');
+    }
+    
+    function badge(role){
+      const r = String(role||'').toLowerCase();
+      if (r === 'admin') return `<span style="background:#dbeafe;color:#1e40af;padding:.25rem .75rem;border-radius:.5rem;font-size:.875rem;">👑 Admin</span>`;
+      if (r === 'parent') return `<span style="background:#d1fae5;color:#065f46;padding:.25rem .75rem;border-radius:.5rem;font-size:.875rem;">👨‍👩‍👧 Parent</span>`;
+      return `<span style="background:#fef3c7;color:#92400e;padding:.25rem .75rem;border-radius:.5rem;font-size:.875rem;">👨‍🏫 Teacher</span>`;
+    }
+
+    // ---------- Data flow ----------
+    function loadUsers(){
+      showLoading(true);
+
+      if (!HAS_GAS){
+        showLoading(false);
+        document.getElementById('emptyState')?.classList.remove('hidden');
+        showStatus('ไม่สามารถเชื่อมต่อกับระบบได้ (google.script.run ไม่พร้อม)', false);
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(res=>{
+          showLoading(false);
+          if (res && res.success && Array.isArray(res.users) && res.users.length){
+            allUsers = res.users.slice().sort((a,b)=>{
+              const ra = String(a.role||'').toLowerCase()==='admin'?0:1;
+              const rb = String(b.role||'').toLowerCase()==='admin'?0:1;
+              if (ra!==rb) return ra-rb;
+              return String(a.username||'').localeCompare(String(b.username||''), 'th');
+            });
+            displayUsers(allUsers);
+            document.getElementById('usersTable')?.classList.remove('hidden');
+          }else{
+            document.getElementById('emptyState')?.classList.remove('hidden');
+          }
+        })
+        .withFailureHandler(err=>{
+          showLoading(false);
+          showStatus('เกิดข้อผิดพลาด: ' + (err && err.message ? err.message : err), false);
+        })
+        .getAllUsers();
+    }
+
+    function displayUsers(users){
+      const tbody = document.getElementById('usersList');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+      users.forEach(u=>{
+        const tr = document.createElement('tr');
+        tr.className = 'user-card';
+        tr.innerHTML = `
+          <td style="font-weight:600;">${escapeHtml(u.username)}</td>
+          <td>${escapeHtml(u.fullName || '-')}</td>
+          <td>${badge(u.role)}</td>
+          <td style="font-size:.8125rem;color:#6b7280;">${u.role === 'parent' ? escapeHtml(u.studentIds || '-') : ''}</td>
+          <td style="text-align:center;">
+            <div class="flex gap-2" style="justify-content:center;flex-wrap:wrap;">
+              <button class="btn btn-sm btn-success" data-action="edit" data-user="${escapeAttr(u.username)}">✏️ แก้ไข</button>
+              <button class="btn btn-sm btn-warning" data-action="reset" data-user="${escapeAttr(u.username)}">🔑 รีเซ็ต</button>
+              <button class="btn btn-sm btn-danger"  data-action="delete" data-user="${escapeAttr(u.username)}">🗑️ ลบ</button>
+            </div>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ---------- Search (debounce) ----------
+    function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
+    const doFilter = debounce(()=>{
+      const q = (document.getElementById('searchBox')?.value || '').toLowerCase();
+      const filtered = allUsers.filter(u=>{
+        const u1 = String(u.username||'').toLowerCase();
+        const n1 = String(u.fullName||'').toLowerCase();
+        return u1.includes(q) || n1.includes(q);
+      });
+      displayUsers(filtered);
+    }, 120);
+
+    // ---------- Edit Modal ----------
+    function openEditModal(username){
+      const user = allUsers.find(u => u.username === username);
+      if (!user) {
+        showStatus('ไม่พบข้อมูลผู้ใช้', false);
+        return;
+      }
+      
+      currentEditUser = user;
+      document.getElementById('editOriginalUsername').value = user.username;
+      document.getElementById('editUsername').value = user.username || '';
+      document.getElementById('editFullName').value = user.fullName || '';
+      document.getElementById('editRole').value = String(user.role || 'teacher').toLowerCase();
+      // studentIds
+      const sidEl = document.getElementById('editStudentIds');
+      const sidGroup = document.getElementById('editStudentIdsGroup');
+      if (sidEl) sidEl.value = user.studentIds || '';
+      if (sidGroup) sidGroup.style.display = (String(user.role||'').toLowerCase() === 'parent') ? 'block' : 'none';
+      document.getElementById('editUserModal').classList.add('active');
+    }
+    
+    function closeEditModal(){
+      document.getElementById('editUserModal').classList.remove('active');
+      currentEditUser = null;
+    }
+    
+    function confirmEditUser(){
+      const originalUsername = document.getElementById('editOriginalUsername').value;
+      const newUsername = document.getElementById('editUsername').value.trim();
+      const newFullName = document.getElementById('editFullName').value.trim();
+      const newRole = document.getElementById('editRole').value;
+      
+      if (!originalUsername) return;
+      if (!newUsername) {
+        alert('กรุณากรอกชื่อผู้ใช้');
+        return;
+      }
+      if (newUsername.length < 3) {
+        alert('ชื่อผู้ใช้ต้องมีความยาวอย่างน้อย 3 ตัวอักษร');
+        return;
+      }
+      
+      // ตรวจสอบชื่อผู้ใช้ซ้ำ (ถ้าเปลี่ยน)
+      if (newUsername !== originalUsername) {
+        const exists = allUsers.some(u => u.username.toLowerCase() === newUsername.toLowerCase());
+        if (exists) {
+          alert('ชื่อผู้ใช้นี้มีอยู่แล้วในระบบ');
+          return;
+        }
+      }
+
+      if (!HAS_GAS) {
+        showStatus('ไม่สามารถเชื่อมต่อกับระบบได้', false);
+        return;
+      }
+
+      // Disable button ระหว่างบันทึก
+      const btnConfirm = document.getElementById('btnConfirmEdit');
+      btnConfirm.disabled = true;
+      btnConfirm.textContent = '⏳ กำลังบันทึก...';
+
+      google.script.run
+        .withSuccessHandler(res=>{
+          btnConfirm.disabled = false;
+          btnConfirm.textContent = '💾 บันทึก';
+          
+          if (res && res.success){
+            showStatus(res.message || 'แก้ไขข้อมูลสำเร็จ', true);
+            closeEditModal();
+            loadUsers();
+          }else{
+            showStatus((res && res.message) || 'เกิดข้อผิดพลาด', false);
+          }
+        })
+        .withFailureHandler(err=>{
+          btnConfirm.disabled = false;
+          btnConfirm.textContent = '💾 บันทึก';
+          showStatus('เกิดข้อผิดพลาด: ' + (err && err.message ? err.message : err), false);
+        })
+        .updateUserAdmin({
+          originalUsername: originalUsername,
+          username: newUsername,
+          fullName: newFullName,
+          role: newRole,
+          studentIds: (document.getElementById('editStudentIds')?.value || '').trim()
+        });
+    }
+
+    // ---------- Reset Password Modal ----------
+    function openResetModal(username){
+      currentResetUser = username;
+      document.getElementById('resetUsername').textContent = username;
+      document.getElementById('newPassword').value = '';
+      document.getElementById('resetPasswordModal').classList.add('active');
+    }
+    
+    function closeResetModal(){
+      document.getElementById('resetPasswordModal').classList.remove('active');
+      currentResetUser = null;
+    }
+    
+    function confirmResetPassword(){
+      const newPw = document.getElementById('newPassword').value.trim();
+      if (!currentResetUser) return;
+      if (!newPw){ alert('กรุณากรอกรหัสผ่านใหม่'); return; }
+      if (newPw.length < 4){ alert('รหัสผ่านต้องมีความยาวอย่างน้อย 4 ตัวอักษร'); return; }
+
+      if (!HAS_GAS){ showStatus('ไม่สามารถเชื่อมต่อกับระบบได้', false); return; }
+
+      const btnConfirm = document.getElementById('btnConfirmReset');
+      const originalText = btnConfirm.innerHTML;
+      btnConfirm.disabled = true;
+      btnConfirm.innerHTML = '<span class="spinner-icon">⏳</span> กำลังรีเซ็ต...';
+
+      google.script.run
+        .withSuccessHandler(res=>{
+          btnConfirm.disabled = false;
+          btnConfirm.innerHTML = originalText;
+          if (res && res.success){
+            showStatus(res.message || 'รีเซ็ตรหัสผ่านสำเร็จ', true);
+            closeResetModal();
+          }else{
+            showStatus((res && res.message) || 'เกิดข้อผิดพลาด', false);
+          }
+        })
+        .withFailureHandler(err=>{
+          btnConfirm.disabled = false;
+          btnConfirm.innerHTML = originalText;
+          showStatus('เกิดข้อผิดพลาด: ' + (err && err.message ? err.message : err), false);
+        })
+        .resetUserPasswordAdmin({ username: currentResetUser, newPassword: newPw });
+    }
+
+    // ---------- Delete Modal ----------
+    function openDeleteModal(username){
+      currentDeleteUser = username;
+      document.getElementById('deleteUsername').textContent = username;
+      document.getElementById('deleteModal').classList.add('active');
+    }
+    
+    function closeDeleteModal(){
+      document.getElementById('deleteModal').classList.remove('active');
+      currentDeleteUser = null;
+    }
+    
+    function confirmDeleteUser(){
+      if (!currentDeleteUser) return;
+      if (!HAS_GAS){ showStatus('ไม่สามารถเชื่อมต่อกับระบบได้', false); return; }
+
+      const btnConfirm = document.getElementById('btnConfirmDelete');
+      const originalText = btnConfirm.innerHTML;
+      btnConfirm.disabled = true;
+      btnConfirm.innerHTML = '<span class="spinner-icon">⏳</span> กำลังลบ...';
+
+      google.script.run
+        .withSuccessHandler(res=>{
+          btnConfirm.disabled = false;
+          btnConfirm.innerHTML = originalText;
+          if (res && res.success){
+            showStatus(res.message || 'ลบผู้ใช้สำเร็จ', true);
+            closeDeleteModal();
+            loadUsers();
+          }else{
+            showStatus((res && res.message) || 'เกิดข้อผิดพลาด', false);
+          }
+        })
+        .withFailureHandler(err=>{
+          btnConfirm.disabled = false;
+          btnConfirm.innerHTML = originalText;
+          showStatus('เกิดข้อผิดพลาด: ' + (err && err.message ? err.message : err), false);
+        })
+        .deleteUserAdmin({ username: currentDeleteUser });
+    }
+
+    // ---------- Utilities ----------
+    function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m])); }
+    function escapeAttr(s){ return escapeHtml(s).replace(/"/g,'&quot;'); }
+
+    // Toggle studentIds field visibility in edit modal
+    window.__toggleEditStudentIds = function() {
+      const role = document.getElementById('editRole')?.value || '';
+      const sidGroup = document.getElementById('editStudentIdsGroup');
+      if (sidGroup) sidGroup.style.display = (role === 'parent') ? 'block' : 'none';
+    };
+
+    function addTrackedEvent(el, event, handler){
+      if (!el) return;
+      el.addEventListener(event, handler);
+      eventListeners.push({ el, event, handler });
+    }
+
+    // ---------- Wire up / init ----------
+    function initEvents(){
+      // refresh
+      addTrackedEvent(document.getElementById('refreshBtn'), 'click', loadUsers);
+
+      // search
+      addTrackedEvent(document.getElementById('searchBox'), 'input', doFilter);
+
+      // table buttons (event delegation)
+      addTrackedEvent(document.getElementById('usersList'), 'click', (e)=>{
+        const btn = e.target.closest('button[data-action]');
+        if (!btn) return;
+        const user = btn.getAttribute('data-user');
+        const action = btn.getAttribute('data-action');
+        if (action === 'edit')   openEditModal(user);
+        if (action === 'reset')  openResetModal(user);
+        if (action === 'delete') openDeleteModal(user);
+      });
+
+      // Edit modal buttons
+      addTrackedEvent(document.getElementById('btnConfirmEdit'), 'click', confirmEditUser);
+      addTrackedEvent(document.getElementById('btnCancelEdit'), 'click', closeEditModal);
+
+      // Reset modal buttons
+      addTrackedEvent(document.getElementById('btnConfirmReset'), 'click', confirmResetPassword);
+      addTrackedEvent(document.getElementById('btnCancelReset'), 'click', closeResetModal);
+
+      // Delete modal buttons
+      addTrackedEvent(document.getElementById('btnConfirmDelete'), 'click', confirmDeleteUser);
+      addTrackedEvent(document.getElementById('btnCancelDelete'), 'click', closeDeleteModal);
+    }
+
+    function initialize(){
+      const container = document.querySelector('.main-container');
+      setTimeout(()=>container?.classList.add('loaded'), 50);
+      
+      initEvents();
+      loadUsers();
+    }
+
+    // Cleanup function สำหรับ SPA
+    window.__admin_panel_cleanup__ = function() {
+      eventListeners.forEach(({ el, event, handler }) => {
+        el?.removeEventListener(event, handler);
+      });
+      eventListeners = [];
+      
+      allUsers = [];
+      currentEditUser = null;
+      currentResetUser = null;
+      currentDeleteUser = null;
+      
+      document.getElementById('editUserModal')?.classList.remove('active');
+      document.getElementById('resetPasswordModal')?.classList.remove('active');
+      document.getElementById('deleteModal')?.classList.remove('active');
+    };
+
+    if (document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', initialize, { once: true });
+    }else{
+      initialize();
+    }
+
+    window.AdminPanel = { reload: loadUsers };
+  })();
+  </script>
+</body>
+</html>

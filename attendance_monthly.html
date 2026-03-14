@@ -1,0 +1,2925 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ระบบเช็คชื่อรายเดือน</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet" />
+ 
+  <!-- SheetJS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+ 
+  <style>
+    /* ===== Base ===== */
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
+      min-height: 100vh;
+    }
+    .main-container {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 18px 45px -15px rgba(0,0,0,.25);
+      margin: 12px auto;
+      padding: 16px;
+      border: 1px solid rgba(0,0,0,.05);
+    }
+    /* ===== Pro Toolbar Styling ===== */
+    .pro-toolbar {
+      background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: 0 6px 18px rgba(0,0,0,.06);
+    }
+    .pro-toolbar .btn {
+      border-radius: 10px !important;
+      font-weight: 600;
+      letter-spacing: .2px;
+      transition: all .18s ease;
+    }
+    .btn-soft-primary {
+      background: #eef2ff;
+      color: #4338ca;
+      border: 1px solid #e0e7ff;
+    }
+    .btn-soft-primary:hover, .btn-soft-primary:focus {
+      background: #e0e7ff;
+      border-color: #c7d2fe;
+      transform: translateY(-1px);
+      box-shadow: 0 10px 18px rgba(79,70,229,.12);
+    }
+    .btn-soft-secondary {
+      background: #f3f4f6;
+      color: #374151;
+      border: 1px solid #e5e7eb;
+    }
+    .btn-soft-secondary:hover, .btn-soft-secondary:focus {
+      background: #e5e7eb;
+      border-color: #d1d5db;
+      transform: translateY(-1px);
+      box-shadow: 0 10px 18px rgba(17,24,39,.08);
+    }
+    .btn-soft-success {
+      background: #ecfdf5;
+      color: #065f46;
+      border: 1px solid #d1fae5;
+    }
+    .btn-soft-success:hover, .btn-soft-success:focus {
+      background: #d1fae5;
+      border-color: #a7f3d0;
+      transform: translateY(-1px);
+      box-shadow: 0 10px 18px rgba(5,150,105,.14);
+    }
+    .btn-soft-warning {
+      background: #fff7ed;
+      color: #92400e;
+      border: 1px solid #ffedd5;
+    }
+    .btn-soft-warning:hover, .btn-soft-warning:focus {
+      background: #ffedd5;
+      border-color: #fed7aa;
+      transform: translateY(-1px);
+      box-shadow: 0 10px 18px rgba(217,119,6,.12);
+    }
+    .btn-soft-danger {
+      background: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fee2e2;
+    }
+    .btn-soft-danger:hover, .btn-soft-danger:focus {
+      background: #fee2e2;
+      border-color: #fecaca;
+      transform: translateY(-1px);
+      box-shadow: 0 10px 18px rgba(220,38,38,.12);
+    }
+    .btn-icon {
+      width: 42px; height: 42px;
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 0 !important;
+    }
+    .btn-lg-pro {
+      padding: .6rem 1rem;
+      font-size: 1rem;
+      border-width: 1px;
+    }
+    .toolbar-title {
+      font-weight: 700;
+      color: #111827;
+    }
+    .toolbar-sub {
+      color: #6b7280;
+      font-size: .95rem;
+    }
+    /* Divider line */
+    .toolbar-divider {
+      width: 1px; background: #e5e7eb; align-self: stretch;
+      margin: 0 10px;
+    }
+    /* ===== Table & Status styles ===== */
+    /* 🔥 จัดกลางทุกช่อง */
+    .attendance-table th,
+    .attendance-table td {
+      text-align: center;
+      vertical-align: middle;
+      padding: 8px 3px;
+      font-size: 0.82rem;
+      line-height: 1.4;
+    }
+   
+    .sticky-col-idx { position: sticky; left: 0; background: #fff; z-index: 3; min-width: 38px; max-width: 38px; text-align: center; vertical-align: middle; font-size: 0.78rem; color: #6b7280; }
+    .sticky-col-name { position: sticky; left: 38px; background: #fff; z-index: 3; min-width: 160px; vertical-align: middle; font-weight: 400; font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 4px !important; }
+    .attendance-table thead .sticky-col-name { text-align: center !important; }
+    .attendance-table tbody .sticky-col-name { text-align: left !important; }
+    .status-present { background: #DCFCE7; color: #166534; cursor: pointer; padding: 4px 6px; border-radius: 5px; font-weight: 500; font-size: 0.75rem; display: inline-block; transition: all 0.2s ease; }
+    .status-leave { background: #FEF3C7; color: #92400E; cursor: pointer; padding: 4px 6px; border-radius: 5px; font-weight: 500; font-size: 0.75rem; display: inline-block; transition: all 0.2s ease; }
+    .status-absent { background: #FFE4E6; color: #BE123C; cursor: pointer; padding: 4px 6px; border-radius: 5px; font-weight: 500; font-size: 0.75rem; display: inline-block; transition: all 0.2s ease; }
+    .status-none { background: #F5F5F5; color: #bbb; cursor: pointer; padding: 4px 6px; border-radius: 5px; font-size: 0.75rem; display: inline-block; transition: all 0.2s ease; }
+    .status-present:hover, .status-leave:hover, .status-absent:hover, .status-none:hover { transform: scale(1.06); box-shadow: 0 4px 8px rgba(0,0,0,0.12); }
+    /* วันหยุดพิเศษ — soft amber */
+    th.holiday-bg, td.holiday-bg, .holiday-bg {
+      background: #FFF8E1 !important;
+      border: 1px solid #FFE082 !important;
+      font-weight: 600 !important;
+      color: #8D6E00 !important;
+    }
+    /* วันเสาร์ — soft slate blue */
+    th.sat-bg, td.sat-bg, .sat-bg {
+      background: #EEF2FF !important;
+      border: 1px solid #C7D2FE !important;
+      color: #4338CA !important;
+    }
+    /* วันอาทิตย์ — soft rose */
+    th.sun-bg, td.sun-bg, .sun-bg {
+      background: #FFF1F2 !important;
+      border: 1px solid #FECDD3 !important;
+      color: #BE123C !important;
+    }
+    .table-container { position: relative; max-height: 75vh; overflow: auto; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,.06); }
+   
+    /* Elegant Light Gray Theme */
+    .attendance-table thead th {
+      position: sticky;
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      color: #1e293b;
+      z-index: 2;
+      border-bottom: 2px solid #cbd5e1;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+      font-weight: 600;
+      font-size: 0.78rem;
+      text-align: center;
+      vertical-align: middle;
+      padding: 4px 3px;
+    }
+    .attendance-table thead tr:nth-of-type(1) th { top: 0; }
+    .attendance-table thead tr:nth-of-type(2) th { top: 30px; }
+    .attendance-table thead tr:nth-of-type(3) th { top: 60px; }
+    .attendance-table thead th.sticky-col-idx,
+    .attendance-table thead th.sticky-col-name {
+      z-index: 4;
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      border-right: 2px solid #cbd5e1;
+    }
+    /* Modal */
+    .modal-content { border-radius: 14px; box-shadow: 0 25px 50px -12px rgba(0,0,0,.22); }
+    .modal-header { background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); color: #1e293b; border-radius: 14px 14px 0 0; }
+    .modal-header .btn-close { filter: none; }
+    /* Statistics card */
+    .stats-card { background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%); color: white; border-radius: 12px; padding: 1.25rem; text-align: center; }
+    .stats-number { font-size: 2.3rem; font-weight: 800; }
+    .status-example-box {
+      display: inline-block;
+      width: 22px;
+      height: 18px;
+      border-radius: 4px;
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+    /* ===== Responsive - Mobile Optimization ===== */
+    @media (max-width: 768px) {
+      /* 🔥 Compact Mobile View - แสดงผลเต็มหน้าจอ */
+     
+      /* 1. ลด Container Padding ให้เหลือ 0 */
+      body {
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+     
+      .container-fluid {
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: 100% !important;
+      }
+     
+      .main-container {
+        margin: 0 !important;
+        padding: 8px 4px !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+      }
+     
+      /* 2. ย่อ Toolbar - ลด padding ให้แสดงเต็มพื้นที่ */
+      .pro-toolbar {
+        padding: 6px 4px !important;
+        gap: 4px !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+      }
+     
+      .pro-toolbar .d-flex {
+        gap: 4px !important;
+      }
+      
+      /* บังคับให้เดือน อยู่บรรทัดแรก และ ชั้น-ห้อง อยู่บรรทัดเดียวกัน */
+      .pro-toolbar > .d-flex {
+        display: flex !important;
+        flex-wrap: wrap !important;
+      }
+      
+      /* ลดขนาด form-select ในมือถือ */
+      .pro-toolbar .form-select {
+        font-size: 0.8rem !important;
+        padding: 4px 6px !important;
+      }
+      
+      /* ลดขนาดปุ่มเดือน */
+      .pro-toolbar .btn-group {
+        gap: 0 !important;
+      }
+      
+      .pro-toolbar #attendanceMonth {
+        min-width: 120px !important;
+        font-size: 0.8rem !important;
+      }
+     
+      .toolbar-title {
+        font-size: 1.1rem !important;
+        margin-bottom: 4px !important;
+      }
+     
+      .toolbar-sub {
+        font-size: 0.75rem !important;
+        margin-bottom: 8px !important;
+      }
+     
+      /* 3. ลดขนาดปุ่ม */
+      .btn-lg-pro {
+        font-size: 0.8rem !important;
+        padding: 6px 10px !important;
+      }
+     
+      .btn-icon {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 0.9rem !important;
+      }
+     
+      .btn-sm {
+        font-size: 0.75rem !important;
+        padding: 4px 8px !important;
+      }
+     
+      /* 4. ลดขนาด Form Controls */
+      .form-select, .form-control {
+        font-size: 0.85rem !important;
+        padding: 6px 8px !important;
+        min-width: 80px !important;
+      }
+     
+      #attendanceMonth {
+        min-width: 140px !important;
+      }
+     
+      /* 5. ซ่อน Labels ที่ไม่จำเป็น */
+      .text-secondary.fw-semibold {
+        display: none !important;
+      }
+     
+      /* 6. ย่อ Date Navigation */
+      #currentMonthDisplay {
+        margin-bottom: 8px !important;
+      }
+     
+      #currentMonthDisplay h5 {
+        font-size: 0.95rem !important;
+      }
+     
+      /* 7. ปรับ Sticky Columns - ซ่อนลำดับ แสดงเฉพาะชื่อชิดซ้าย */
+      .sticky-col-idx {
+        display: none !important; /* ซ่อนคอลัมน์ลำดับในมือถือ */
+      }
+     
+      .sticky-col-name {
+        left: 0 !important; /* ชิดซ้ายสุด */
+        min-width: 75px !important;
+        max-width: 75px !important;
+        width: 75px !important;
+        font-size: 0.65rem !important;
+        padding: 4px 2px !important;
+        line-height: 1.2 !important;
+        word-break: break-word !important;
+        overflow-wrap: break-word !important;
+        font-weight: 400 !important;
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;
+        border-right: 1px solid #cbd5e1 !important;
+        color: #1e293b !important;
+        writing-mode: horizontal-tb !important;
+        text-orientation: mixed !important;
+        white-space: normal !important;
+        vertical-align: middle !important;
+      }
+      
+      /* ให้แน่ใจว่าชื่อแสดงแนวนอน */
+      .attendance-table tbody .sticky-col-name {
+        font-size: 0.65rem !important;
+        display: table-cell !important;
+        writing-mode: horizontal-tb !important;
+        transform: none !important;
+      }
+     
+      /* 8. ย่อตาราง - แสดงเต็มพื้นที่ */
+      .table-container {
+        max-height: 500px !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+        border-left: none !important;
+        border-right: none !important;
+      }
+      
+      .attendance-table {
+        margin: 0 !important;
+      }
+     
+      /* 9. ลดขนาด Table Headers */
+      .attendance-table thead th {
+        font-size: 0.7rem !important;
+        padding: 4px 2px !important;
+        line-height: 1.2 !important;
+      }
+     
+      /* ปรับ sticky header positions */
+      .attendance-table thead tr:nth-of-type(1) th {
+        top: 0 !important;
+        height: 32px !important;
+      }
+     
+      .attendance-table thead tr:nth-of-type(2) th {
+        top: 32px !important;
+        height: 32px !important;
+      }
+     
+      .attendance-table thead tr:nth-of-type(3) th {
+        top: 64px !important;
+        height: 32px !important;
+      }
+     
+      /* 10. ปรับขนาด Table Cells ให้ใหญ่ขึ้นเพื่อใช้พื้นที่เต็มที่ */
+      .attendance-table tbody td {
+        font-size: 0.7rem !important;
+        padding: 3px 5px !important;
+        min-width: 32px !important;
+        max-width: 32px !important;
+      }
+     
+      /* 11. ย่อ Status Badges */
+      .status-present, .status-leave, .status-absent, .status-none {
+        font-size: 0.65rem !important;
+        padding: 2px 4px !important;
+        border-radius: 4px !important;
+      }
+     
+      /* 12. ลดขนาด FAB */
+      .fab-save {
+        bottom: 80px !important;
+        right: 15px !important;
+      }
+     
+      .fab-save .btn {
+        width: 50px !important;
+        height: 50px !important;
+        font-size: 1.2rem !important;
+      }
+     
+      /* 13. ย่อ Statistics */
+      .stats-card {
+        padding: 0.75rem !important;
+        border-radius: 8px !important;
+      }
+     
+      .stats-number {
+        font-size: 1.5rem !important;
+      }
+     
+      .stats-card div:last-child {
+        font-size: 0.75rem !important;
+      }
+     
+      /* 14. ซ่อน Toolbar Divider */
+      .toolbar-divider {
+        display: none !important;
+      }
+     
+      /* 15. ปรับ Modal */
+      .modal-content {
+        margin: 10px !important;
+      }
+     
+      .modal-header {
+        padding: 12px !important;
+      }
+     
+      .modal-body {
+        padding: 12px !important;
+      }
+     
+      /* 16. Touch-friendly targets */
+      button, .btn, select, input[type="month"] {
+        min-height: 36px !important;
+      }
+     
+      /* 17. ย่อ Alert Messages */
+      .alert {
+        font-size: 0.8rem !important;
+        padding: 8px !important;
+        margin-bottom: 8px !important;
+      }
+    }
+
+    /* ===== Extra Small Phones (360px) ===== */
+    @media (max-width: 400px) {
+      .main-container {
+        margin: 0 !important;
+        padding: 4px 2px !important;
+      }
+     
+      .sticky-col-idx {
+        min-width: 30px !important;
+        max-width: 30px !important;
+      }
+     
+      .sticky-col-name {
+        left: 30px !important;
+        min-width: 70px !important;
+        max-width: 70px !important;
+        font-size: 0.6rem !important;
+      }
+     
+      .attendance-table tbody td {
+        min-width: 28px !important;
+        max-width: 28px !important;
+        padding: 2px 3px !important;
+      }
+     
+      .btn-lg-pro {
+        font-size: 0.75rem !important;
+      }
+    }
+    
+    /* ===== Mobile: ให้ select ชั้นและห้องกะทัดรัด ===== */
+    @media (max-width: 768px) {
+      #gradeSelect {
+        min-width: 60px !important;
+        max-width: 60px !important;
+      }
+      
+      #classSelect {
+        min-width: 50px !important;
+        max-width: 50px !important;
+      }
+    }
+    
+    /* ===== Desktop: ให้ select ชั้นและห้องกว้างขึ้น ===== */
+    @media (min-width: 769px) {
+      #gradeSelect {
+        min-width: 100px !important;
+      }
+      
+      #classSelect {
+        min-width: 90px !important;
+      }
+    }
+    
+    /* Dark mode */
+    @media (prefers-color-scheme: dark) {
+      .main-container { background: #111827; color: #e5e7eb; border-color: #1f2937; }
+      .pro-toolbar { background: #0f172a; border-color: #1f2937; }
+      .toolbar-title { color: #f9fafb; }
+      .toolbar-sub { color: #9ca3af; }
+      .table-container { border-color: #1f2937; }
+    }
+    /* ===== Floating Action Button (FAB) for Save ===== */
+.fab-save {
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    z-index: 1050;
+    animation: fab-enter 0.4s ease-out;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    touch-action: none;
+}
+.fab-save .btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    font-size: 1.5rem;
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+}
+.fab-save .btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
+}
+.fab-save:active {
+    opacity: 0.9;
+}
+@keyframes fab-enter {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+/* ให้ปุ่มในกลุ่มลอยอยู่เหนือ input เสมอ กันกรณีคลิกไม่ติด */
+.pro-toolbar .btn-group { position: relative; }
+.pro-toolbar .btn-group > .btn { position: relative; z-index: 2; }
+#attendanceMonth { position: relative; z-index: 1; }
+/* กันการบีบจนซ้อนทับบนจอแคบ */
+.pro-toolbar .btn-group { flex-wrap: nowrap; }
+
+/* === Mobile refinements (แทน/เติมท้ายของเดิม) === */
+@media (max-width: 768px) {
+  /* ซ่อนแถวควบคุมทั้งวัน (ปุ่มลูกศรวนคอลัมน์) เพื่อประหยัด vertical space */
+  #dayControlRow { display: none !important; }
+
+  /* ให้หัวตารางสองแถวแรกเตี้ยลง */
+  .attendance-table thead tr:nth-of-type(1) th { height: 28px !important; }
+  .attendance-table thead tr:nth-of-type(2) th { height: 28px !important; }
+
+  /* ปรับความหนาแน่นของช่อง ให้เลื่อนง่ายขึ้น */
+  .attendance-table tbody td {
+    min-width: 26px !important;
+    max-width: 26px !important;
+    padding: 2px 2px !important;
+  }
+
+  /* เลื่อนลื่นบน iOS/Android, เพิ่ม snap สำหรับช่วงวันที่ */
+  .table-container {
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+  }
+  .attendance-table thead th,
+  .attendance-table tbody td {
+    scroll-snap-align: start;
+  }
+
+  /* ซ่อนคอลัมน์ลำดับในจอเล็กมาก (เหลือชื่ออย่างเดียว) */
+  @media (max-width: 400px) {
+    .sticky-col-idx { display: none !important; }
+    .sticky-col-name { left: 0 !important; }
+  }
+
+  /* ปรับตำแหน่ง FAB ให้ไม่ชนคีย์บอร์ด/ขอบจอ (รองรับ iPhone safe area) */
+  .fab-save {
+    bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+    right: calc(12px + env(safe-area-inset-right)) !important;
+  }
+}
+
+/* เพิ่มเงาเล็กๆ ขอบซ้าย/ขวาเมื่อมีการเลื่อน เพื่อบอกผู้ใช้ว่าลากได้ */
+.table-container::before,
+.table-container::after {
+  content: "";
+  position: sticky;
+  top: 0;
+  width: 14px;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+.table-container::before { left: 0; box-shadow: inset 8px 0 10px -10px rgba(0,0,0,.4); }
+.table-container::after  { right: 0; box-shadow: inset -8px 0 10px -10px rgba(0,0,0,.4); }
+
+/* ลดขนาด tooltip บนมือถือให้ไม่บังตาราง */
+@media (max-width: 768px) {
+  .tooltip-inner { padding: .25rem .375rem; font-size: .7rem; }
+}
+/* === Quick actions: แถวเดียว, icon-only บนมือถือ === */
+@media (max-width: 767.98px) {
+  /* ให้ parent container แสดงในบรรทัดเดียว */
+  #currentMonthDisplay .d-flex.justify-content-between {
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 4px !important;
+  }
+  
+  /* ส่วนซ้าย: ชื่อเดือน + dateNavigation */
+  #currentMonthDisplay .d-flex.justify-content-between > div:first-child {
+    flex: 0 0 auto !important;
+    flex-wrap: nowrap !important;
+  }
+  
+  /* ซ่อน dateNavigation wrapper ที่มี gap-3 */
+  #currentMonthDisplay .d-flex.align-items-center.gap-3 {
+    gap: 0 !important;
+  }
+  
+  /* ปรับขนาดชื่อเดือนให้เล็กลง */
+  #currentMonthDisplay h5 {
+    font-size: 0.85rem !important;
+    white-space: nowrap !important;
+    margin-right: 4px !important;
+  }
+  
+  /* ไอคอนเดือนให้เล็กลง */
+  #currentMonthDisplay h5 .bi {
+    font-size: 0.85rem !important;
+  }
+  
+  /* ส่วนขวา: Quick actions - ให้อยู่ในบรรทัดเดียวกัน */
+  .quick-actions {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    justify-content: flex-end !important;
+    gap: 3px !important;
+    flex: 1 1 auto !important;
+    margin-left: auto !important;
+  }
+  
+  /* แก้ไข flex-fill ให้ไม่ขยาย */
+  .quick-actions .btn.flex-fill {
+    flex: 0 0 auto !important;
+  }
+  
+  .quick-actions .btn {
+    flex: 0 0 auto !important;
+    padding: 4px !important;
+    min-width: auto !important;
+    max-width: auto !important;
+    width: auto !important;
+    height: auto !important;
+    justify-content: center !important;
+    align-items: center !important;
+    display: flex !important;
+    /* ซ่อนพื้นหลังปุ่ม */
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+  
+  /* ปิด hover effect */
+  .quick-actions .btn:hover,
+  .quick-actions .btn:focus,
+  .quick-actions .btn:active {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+  }
+  
+  /* แสดงเฉพาะไอคอน */
+  .quick-actions .btn .bi {
+    margin: 0 !important;
+    font-size: 1.25rem !important;
+    line-height: 1 !important;
+  }
+  
+  /* กำหนดสีไอคอนตามประเภทปุ่ม */
+  .quick-actions .btn-success .bi {
+    color: #059669 !important;
+  }
+  
+  .quick-actions .btn-soft-danger .bi {
+    color: #dc2626 !important;
+  }
+  
+  .quick-actions .btn-soft-secondary .bi {
+    color: #6b7280 !important;
+  }
+  
+  .quick-actions .btn-soft-warning .bi {
+    color: #d97706 !important;
+  }
+  
+  .quick-actions .btn span {
+    display: none !important;
+  }
+}
+/* ซ่อนปุ่มช่วงวันที่บนจอ ≤ 768px */
+@media (max-width: 768px){
+  #dateNavigation { display: none !important; }
+}
+
+  </style>
+  
+  <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+<script src='https://cdn.jsdelivr.net/npm/@fullcalendar/bootstrap5@6.1.10/index.global.min.js'></script>
+
+<style>
+  /* ปรับแต่งปฏิทิน */
+  #calendar {
+    max-width: 100%;
+    margin: 0 auto;
+    font-family: 'Sarabun', sans-serif;
+    font-size: 0.9rem;
+  }
+  /* เปลี่ยนเมาส์เป็นรูปมือเมื่อชี้วันที่ */
+  .fc-daygrid-day:hover {
+    background-color: #f1f5f9 !important;
+    cursor: pointer;
+  }
+  /* ปรับสีเหตุการณ์ */
+  .fc-event {
+    cursor: pointer;
+    border: none;
+    padding: 2px 4px;
+  }
+</style>
+
+</head>
+<body>
+ <script>
+  // ประกาศ namespace ให้พร้อมตั้งแต่ต้น ป้องกัน ReferenceError
+  window.AttendanceMonthly = window.AttendanceMonthly || {};
+  // ====================================================
+  // 🛡️ PHASE 1 FIX: DateUtils, Validator, ErrorHandler
+  // ====================================================
+  
+  // 🆕 1. DateUtils - แก้ไขปัญหา Timezone
+  window.AttendanceMonthly.DateUtils = {
+    getLocalDateString() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    },
+    
+    getLocalMonthString() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      return `${year}-${month}`;
+    },
+    
+    parseLocalDate(dateStr) {
+      if (!dateStr) return null;
+      // รองรับทั้ง YYYY-MM-DD และ YYYY-MM
+      const parts = dateStr.split('-').map(Number);
+      if (parts.length === 2) {
+        return new Date(parts[0], parts[1] - 1, 1);
+      }
+      return new Date(parts[0], parts[1] - 1, parts[2] || 1);
+    },
+    
+    isWeekend(dateStr) {
+      const date = this.parseLocalDate(dateStr);
+      if (!date) return false;
+      const day = date.getDay();
+      return day === 0 || day === 6;
+    },
+    
+    formatThaiMonth(dateStr) {
+      const thMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+                        'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+      const d = this.parseLocalDate(dateStr + '-01');
+      if (!d) return '';
+      return `${thMonths[d.getMonth()]} ${d.getFullYear() + 543}`;
+    }
+  };
+  
+  // 🆕 2. Validator
+  window.AttendanceMonthly.Validator = {
+    isValidStatus(status) {
+      return ['present', 'absent', 'leave', 'none'].includes(status);
+    },
+    
+    isValidGrade(grade) {
+      const validGrades = ['ป.1', 'ป.2', 'ป.3', 'ป.4', 'ป.5', 'ป.6'];
+      return validGrades.includes(grade);
+    },
+    
+    isValidClassNo(classNo) {
+      const num = parseInt(classNo, 10);
+      return num >= 1 && num <= 10;
+    },
+    
+    isValidMonthFormat(monthStr) {
+      if (!monthStr) return false;
+      const regex = /^\d{4}-\d{2}$/;
+      return regex.test(monthStr);
+    },
+    
+    sanitizeString(str) {
+      if (!str) return '';
+      return String(str).trim().slice(0, 500);
+    }
+  };
+  
+  // 🆕 3. ErrorHandler
+  window.AttendanceMonthly.ErrorHandler = {
+    log(context, error, additionalInfo = {}) {
+      const errorInfo = {
+        timestamp: new Date().toISOString(),
+        context: context,
+        message: error?.message || String(error),
+        stack: error?.stack || null,
+        ...additionalInfo
+      };
+      
+      console.error(`❌ [Monthly:${context}]`, errorInfo);
+      return errorInfo;
+    },
+    
+    getUserMessage(error) {
+      const message = error?.message || String(error);
+      
+      if (message.includes('network') || message.includes('fetch')) {
+        return 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาตรวจสอบอินเทอร์เน็ต';
+      }
+      if (message.includes('timeout')) {
+        return 'การเชื่อมต่อใช้เวลานานเกินไป กรุณาลองใหม่อีกครั้ง';
+      }
+      if (message.includes('permission') || message.includes('denied')) {
+        return 'ไม่มีสิทธิ์เข้าถึงข้อมูล กรุณาติดต่อผู้ดูแลระบบ';
+      }
+      
+      return message;
+    }
+  };
+
+  // ฟังก์ชันบังคับให้ช่องเดือนมีค่าเสมอ (แบบย่อ)
+AttendanceMonthly.ensureMonthValue = function () {
+    const el = document.getElementById('attendanceMonth');
+    if (!el) return false;
+
+    // 🆕 ใช้ DateUtils แทน toISOString()
+    const DateUtils = window.AttendanceMonthly.DateUtils;
+    const cur = DateUtils.getLocalMonthString();
+
+    try { el.value = cur; } catch(_) {}
+    el.setAttribute('value', cur);
+    try { el.defaultValue = cur; } catch(_) {}
+
+    AttendanceMonthly.updateMonthDisplay?.();
+    return true;
+  };
+  // setCurrentMonth แบบย่อ (จะถูกแทนที่ด้วยตัวเต็มภายหลัง)
+  window.AttendanceMonthly.setCurrentMonth = function () {
+    window.AttendanceMonthly.ensureMonthValue();
+    const monthInput = document.getElementById('attendanceMonth');
+    if (monthInput) {
+      monthInput.dispatchEvent(new Event('input', { bubbles:true }));
+      monthInput.dispatchEvent(new Event('change', { bubbles:true }));
+    }
+    if (window.AttendanceMonthly.checkAndAutoLoad) window.AttendanceMonthly.checkAndAutoLoad();
+  };
+  // กัน error จาก onclick ที่เรียกก่อนโหลดตัวจริง: ใส่ no-op ไว้ก่อน
+  [
+    'changeMonth','updateMonthDisplay','checkAndAutoLoad',
+    'loadMonthlyAttendance','addDateNavigationButtons',
+    'handleMonthChange' // 👈 (ตัวนี้สำคัญ เพราะเราใช้ใน onchange)
+  ].forEach(n=>{
+    if (typeof window.AttendanceMonthly[n] !== 'function') {
+      window.AttendanceMonthly[n] = function(){ /* no-op until real script loads */ };
+    }
+  });
+</script>
+<div class="container-fluid">
+  <div class="main-container">
+    <!-- Header -->
+    <div class="mb-3">
+      <h1 class="mb-0 toolbar-title">
+        <i class="bi bi-calendar-check-fill me-2 text-primary"></i> บันทึกการเข้าเรียนรายเดือน
+      </h1>
+      <div class="toolbar-sub">
+        กรุณาเลือกชั้นเรียน ห้องเรียน และเดือนที่ประสงค์จะบันทึกข้อมูลการเข้าเรียนของนักเรียน
+      </div>
+    </div>
+    <div class="pro-toolbar mb-4">
+  <div class="d-flex flex-wrap align-items-center gap-2">
+    <!-- เดือน/ปี -->
+    <div class="d-flex align-items-center gap-2">
+      <span class="text-secondary fw-semibold d-none d-md-inline">เดือน/ปี</span>
+      <div class="btn-group" role="group">
+        <button class="btn btn-soft-secondary btn-icon" type="button"
+                onclick="AttendanceMonthly.changeMonth(-1)" title="เดือนก่อนหน้า">
+          <i class="bi bi-chevron-left"></i>
+        </button>
+        <input
+  type="month"
+  id="attendanceMonth"
+  class="form-control text-center fw-semibold"
+  style="min-width:140px"
+  onchange="AttendanceMonthly.handleMonthChange(event)"
+  oninput="AttendanceMonthly.handleMonthChange(event)"
+/>
+<script>
+(function(){
+  var m = document.getElementById('attendanceMonth');
+  if (m && !m.value) {
+    var cur = new Date().toISOString().slice(0,7);
+    try { m.value = cur; } catch(e){}
+    m.setAttribute('value', cur);
+    try { m.defaultValue = cur; } catch(e){}
+  }
+})();
+</script>
+
+    <button class="btn btn-soft-secondary btn-icon" type="button"
+                onclick="AttendanceMonthly.changeMonth(1)" title="เดือนถัดไป">
+          <i class="bi bi-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+    
+    <!-- ชั้น -->
+    <div class="d-flex align-items-center gap-1">
+      <span class="text-secondary fw-semibold d-none d-md-inline">ชั้น</span>
+      <select id="gradeSelect" class="form-select" style="min-width:70px">
+        <option value="">ชั้น</option>
+        <option>ป.1</option><option>ป.2</option><option>ป.3</option>
+        <option>ป.4</option><option>ป.5</option><option>ป.6</option>
+      </select>
+    </div>
+    
+    <!-- ห้อง -->
+    <div class="d-flex align-items-center gap-1">
+      <span class="text-secondary fw-semibold d-none d-md-inline">ห้อง</span>
+      <select id="classSelect" class="form-select" style="min-width:60px">
+        <option value="">ห้อง</option>
+        <option>1</option><option>2</option>
+      </select>
+    </div>
+
+    <!-- ปุ่มลัด (ย้ายมาอยู่ข้างปุ่มเลือกห้อง) -->
+    <div class="d-flex gap-1 flex-wrap quick-actions ms-auto">
+      <button class="btn btn-success btn-sm" onclick="AttendanceMonthly.markAllPresent()" title="ทำเครื่องหมายว่านักเรียนทุกคนมาเรียน (ยกเว้นวันหยุด)" aria-label="มาทั้งหมด">
+        <i class="bi bi-check-circle"></i>
+        <span class="d-none d-md-inline ms-1">มาทั้งหมด</span>
+      </button>
+      <button class="btn btn-soft-danger btn-sm" onclick="AttendanceMonthly.clearAllStatus()" title="ล้างสถานะการบันทึกการเข้าเรียนทั้งหมดในเดือนนี้" aria-label="ล้างสถานะ">
+        <i class="bi bi-x-circle"></i>
+        <span class="d-none d-md-inline ms-1">เคลียร์</span>
+      </button>
+      <button class="btn btn-soft-secondary btn-sm" onclick="AttendanceMonthly.showStatistics()" title="แสดงสถิติสรุปการเข้าเรียนของนักเรียนในเดือนนี้" aria-label="สถิติ">
+        <i class="bi bi-bar-chart"></i>
+        <span class="d-none d-md-inline ms-1">สถิติ</span>
+      </button>
+      <button class="btn btn-soft-warning btn-sm" onclick="AttendanceMonthly.openHolidayManager()" title="กำหนดและจัดการวันหยุดราชการหรือวันหยุดพิเศษ" aria-label="วันหยุด">
+        <i class="bi bi-calendar4-event"></i>
+        <span class="d-none d-md-inline ms-1">วันหยุด</span>
+      </button>
+    </div>
+        <script>
+(function () {
+  const m = document.getElementById('attendanceMonth');
+  const g = document.getElementById('gradeSelect');
+  const c = document.getElementById('classSelect');
+
+  function ensureMonthAndMaybeLoad() {
+    // 1) บังคับให้มีค่าเดือนปัจจุบัน ถ้ายังว่าง
+    if (m && !m.value) {
+      const cur = new Date().toISOString().slice(0,7); // YYYY-MM
+      try { m.value = cur; } catch(e){}
+      m.setAttribute('value', cur);
+      try { m.defaultValue = cur; } catch(e){}
+    }
+    // 2) อัปเดตหัวเดือนเสมอ
+    if (window.AttendanceMonthly?.updateMonthDisplay) {
+      window.AttendanceMonthly.updateMonthDisplay();
+    }
+    // 3) ถ้าครบ 3 ช่อง ⇒ โหลดทันที
+    if (m?.value && g?.value && c?.value) {
+      window.AttendanceMonthly?.loadMonthlyAttendance?.();
+    }
+  }
+
+  // ยิงทุกครั้งที่เปลี่ยนชั้น/ห้อง (รองรับทั้ง change และ input เผื่อเบราว์เซอร์/มือถือบางรุ่น)
+  g?.addEventListener('change', ensureMonthAndMaybeLoad, {passive:true});
+  g?.addEventListener('input',  ensureMonthAndMaybeLoad, {passive:true});
+  c?.addEventListener('change', ensureMonthAndMaybeLoad, {passive:true});
+  c?.addEventListener('input',  ensureMonthAndMaybeLoad, {passive:true});
+
+  // เรียกครั้งแรกด้วย เผื่อผู้ใช้เลือกชั้น/ห้องเร็วกว่า month พร้อม
+  ensureMonthAndMaybeLoad();
+})();
+</script>
+
+      </div>
+      <!-- ไม่มีปุ่ม “โหลดรายชื่อ” แล้ว -->
+    </div>
+  </div>
+</div>
+
+    <!-- แถวรวม: เดือน + ปุ่มช่วงวันที่ -->
+    <div id="currentMonthDisplay" class="mb-3" style="display:none;">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <!-- ซ้าย: ชื่อเดือน + ปุ่มช่วงวันที่ -->
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+          <h5 class="text-primary fw-bold mb-0">
+            <i class="bi bi-calendar-month me-2"></i>
+            <span id="monthDisplayText"></span>
+          </h5>
+          <div id="dateNavigation"></div>
+        </div>
+        <button class="btn btn-sm btn-outline-primary" onclick="AttendanceMonthly.toggleSort()" id="btnMonthSortToggle">
+          <i class="bi bi-arrow-down-up"></i> <span id="btnMonthSortLabel">ชาย→หญิง</span>
+        </button>
+      </div>
+          </div>
+
+    <!-- Legend ย้ายไปด้านบนตารางแล้ว -->
+
+    <!-- สถานะ (แสดงแบบ overlay ด้านบน) -->
+    <div id="statusMessage" class="alert" style="display:none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; min-width: 300px; max-width: 600px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);"></div>
+    <!-- สถิติ -->
+    <div id="statisticsRow" style="display: none;">
+      <!-- แถวที่ 1 -->
+      <div class="row mb-3">
+        <div class="col-md-6 col-6 mb-3 mb-md-0">
+          <div class="stats-card">
+            <div class="stats-number" id="totalStudents">0</div>
+            <div>นักเรียนทั้งหมด</div>
+          </div>
+        </div>
+        <div class="col-md-6 col-6">
+          <div class="stats-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+            <div class="stats-number" id="totalPresent">0</div>
+            <div>วันเรียนทั้งหมด</div>
+          </div>
+        </div>
+      </div>
+      <!-- แถวที่ 2 -->
+      <div class="row mb-4">
+        <div class="col-md-6 col-6 mb-3 mb-md-0">
+          <div class="stats-card" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+            <div class="stats-number" id="totalLeave">0</div>
+            <div>ลาทั้งหมด</div>
+          </div>
+        </div>
+        <div class="col-md-6 col-6">
+          <div class="stats-card" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+            <div class="stats-number" id="totalAbsent">0</div>
+            <div>ขาดทั้งหมด</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- ตาราง -->
+    <div class="table-container">
+      <table class="table table-bordered attendance-table" id="attendanceTable">
+        <thead>
+          <tr id="dayNumberRow"></tr>
+          <tr id="dayNameRow"></tr>
+          <tr id="dayControlRow"></tr>
+        </thead>
+        <tbody id="attendanceBody"></tbody>
+      </table>
+    </div>
+    <!-- Legend คำอธิบายสัญลักษณ์ -->
+    <div class="mt-2 px-1">
+      <div class="d-flex flex-wrap align-items-center gap-3 small text-muted">
+        <span class="d-flex align-items-center"><span class="badge bg-success me-1" style="font-size:.7rem">/</span> มาเรียน</span>
+        <span class="d-flex align-items-center"><span class="badge bg-warning text-dark me-1" style="font-size:.7rem">ล</span> ลา</span>
+        <span class="d-flex align-items-center"><span class="badge bg-danger me-1" style="font-size:.7rem">ข</span> ขาดเรียน</span>
+        <span class="d-flex align-items-center"><span class="badge bg-secondary me-1" style="font-size:.65rem">ว่าง</span> ยังไม่บันทึก</span>
+        <span class="d-flex align-items-center"><span class="status-example-box sat-bg me-1"></span> วันเสาร์</span>
+        <span class="d-flex align-items-center"><span class="status-example-box sun-bg me-1"></span> วันอาทิตย์</span>
+        <span class="d-flex align-items-center"><span class="status-example-box holiday-bg me-1"></span> วันหยุด</span>
+      </div>
+    </div>
+    <!-- Removed bottom save button - using FAB instead -->
+  </div>
+</div>
+<!-- Modal วันหยุด -->
+<div class="modal fade" id="holidayModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-white border-bottom-0">
+        <h5 class="modal-title text-primary fw-bold">
+          <i class="bi bi-calendar-week me-2"></i>จัดการวันหยุด
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      
+      <div class="modal-body p-0">
+        <div class="row g-0">
+          <div class="col-lg-3 border-end bg-light p-3 d-none d-lg-block">
+             <h6 class="text-muted fw-bold mb-3"><i class="bi bi-list-ul"></i> รายการวันหยุด</h6>
+             <div style="max-height: 500px; overflow-y: auto;">
+               <ul id="holidayListSide" class="list-group list-group-flush small bg-transparent">
+                 <li class="list-group-item bg-transparent text-muted text-center">กำลังโหลด...</li>
+               </ul>
+             </div>
+          </div>
+
+          <div class="col-lg-9 p-4 bg-white">
+             <div class="d-flex justify-content-between align-items-center mb-3">
+               <span class="badge bg-info text-dark"><i class="bi bi-info-circle"></i> คลิกที่ช่องวันที่เพื่อเพิ่มวันหยุด</span>
+               <span class="badge bg-warning text-dark">คลิกที่แถบสีเพื่อลบ</span>
+             </div>
+             <div id="calendar"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer bg-light border-top-0">
+        <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">ปิด</button>
+        <button type="button" class="btn btn-success rounded-pill px-4" onclick="AttendanceMonthly.saveHolidaysFromCalendar()">
+          <i class="bi bi-cloud-upload me-1"></i> บันทึกข้อมูลลงระบบ
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  // ============ NAMESPACE ============
+  window.AttendanceMonthly = window.AttendanceMonthly || {};
+  // ============ GLOBAL VARIABLES ============
+  window.AttendanceMonthly.statusArr = ["status-absent", "status-leave", "status-present", "status-none"];
+  window.AttendanceMonthly.textArr = ["ขาด", "ลา", "มา", ""];
+  window.AttendanceMonthly.attendanceStudents = [];
+  window.AttendanceMonthly.holidaysData = {};
+  window.AttendanceMonthly.holidaysArray = [];
+  window.AttendanceMonthly.changedRecords = {}; // ตัวแปรสำหรับเก็บข้อมูลที่เปลี่ยนแปลง
+  // ============ HELPER: Promise Wrapper for google.script.run ============
+  window.AttendanceMonthly.runGAS = function(fnName, ...args) {
+    return new Promise((resolve, reject) => {
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(reject)
+          [fnName](...args);
+      } else {
+        reject(new Error('Google Apps Script not available'));
+      }
+    });
+  };
+  // ============ INITIALIZATION ============
+  document.addEventListener('DOMContentLoaded', function () {
+    AttendanceMonthly.setCurrentMonth();
+    AttendanceMonthly.setupEventListeners();
+    AttendanceMonthly.loadInitialHolidays();
+    // เรียกซ้ำหลัง DOM เสถียร
+    setTimeout(() => AttendanceMonthly.ensureMonthValue(), 0);
+    setTimeout(() => AttendanceMonthly.ensureMonthValue(), 200);
+    setTimeout(() => AttendanceMonthly.checkAndAutoLoad(), 220);
+  });
+  // แทนที่ ensureMonthValue เดิมทั้งหมด
+AttendanceMonthly.ensureMonthValue = function () {
+  const el = document.getElementById('attendanceMonth');
+  if (!el) return false;
+
+  const cur = new Date().toISOString().slice(0, 7); // YYYY-MM
+
+  // ตั้งค่าแบบไม่ clone
+  try { el.value = cur; } catch(_) {}
+  el.setAttribute('value', cur);
+  try { el.defaultValue = cur; } catch(_) {}
+
+  // อัปเดตหัวเดือน (ถ้ามี)
+  AttendanceMonthly.updateMonthDisplay?.();
+  return true;
+};    
+  // === MONTH HEADER DISPLAY (ใส่เพิ่ม) ===
+  AttendanceMonthly.updateMonthDisplay = function () {
+    const monthInput = document.getElementById('attendanceMonth');
+    const displayEl = document.getElementById('currentMonthDisplay');
+    const textEl = document.getElementById('monthDisplayText');
+    if (!monthInput || !monthInput.value || !displayEl || !textEl) return;
+    const thMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+                      'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+    const d = new Date(monthInput.value + '-01');
+    textEl.textContent = `${thMonths[d.getMonth()]} ${d.getFullYear() + 543}`;
+    displayEl.style.display = 'block';
+    // อัปเดตปุ่มเลื่อนช่วงวันที่ให้ตรงเดือน
+    if (AttendanceMonthly.addDateNavigationButtons) {
+      AttendanceMonthly.addDateNavigationButtons();
+    }
+  };
+  // ============ HOLIDAYS ============
+  AttendanceMonthly.loadInitialHolidays = function() {
+    AttendanceMonthly.runGAS('loadHolidaysFromSheet')
+      .then(holidayArr => {
+        window.AttendanceMonthly.holidaysData = {};
+        if (holidayArr && Array.isArray(holidayArr)) {
+          holidayArr.forEach(([date, label]) => {
+            if (date && label) {
+              window.AttendanceMonthly.holidaysData[date] = label;
+            }
+          });
+        }
+        const attendanceBody = document.getElementById('attendanceBody');
+        const gradeSelect = document.getElementById('gradeSelect');
+        const classSelect = document.getElementById('classSelect');
+        if (attendanceBody && attendanceBody.rows.length > 0 && gradeSelect.value && classSelect.value) {
+          AttendanceMonthly.loadMonthlyAttendance();
+        }
+      })
+      .catch(error => {
+        console.error('Failed to load holidays:', error);
+      });
+  };
+  AttendanceMonthly.fetchHolidays = function () {
+    return new Promise((resolve) => {
+      AttendanceMonthly.runGAS('loadHolidaysFromSheet')
+        .then(rows => {
+          const map = {};
+          if (Array.isArray(rows)) {
+            rows.forEach(([date, detail]) => {
+              if (!date) return;
+              let d = date;
+              // กรณีเป็น Date จริงจากชีต
+              if (d instanceof Date) {
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                d = `${y}-${m}-${day}`; // ปี ค.ศ.
+              } else {
+                // กรณีเป็นสตริง: รองรับทั้งปี ค.ศ. และปี พ.ศ. เช่น "2568-05-01"
+                let s = String(d).trim();
+                // พยายามจับรูปแบบ yyyy-MM-dd
+                const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                if (m) {
+                  let yearNum = parseInt(m[1], 10);
+                  const monthNum = m[2];
+                  const dayNum = m[3];
+                  // ถ้าปีมากกว่า 2400 ให้ถือว่าเป็น พ.ศ. แล้วแปลงเป็น ค.ศ.
+                  if (yearNum >= 2400) {
+                    yearNum -= 543;
+                  }
+                  d = `${yearNum}-${monthNum}-${dayNum}`;
+                } else {
+                  // รูปแบบอื่น: ให้ลอง parse ด้วย Date ปกติ
+                  const parsed = new Date(s);
+                  if (!isNaN(parsed.getTime())) {
+                    const y = parsed.getFullYear();
+                    const mm = String(parsed.getMonth() + 1).padStart(2, '0');
+                    const dd = String(parsed.getDate()).padStart(2, '0');
+                    d = `${y}-${mm}-${dd}`;
+                  } else {
+                    // ถ้า parse ไม่ได้ ให้ข้ามรายการนี้
+                    // console.warn('Skip invalid holiday date:', s);
+                    return;
+                  }
+                }
+              }
+              map[d.toString()] = (detail || '').toString();
+            });
+          }
+          window.AttendanceMonthly.holidaysData = map;
+          resolve(map);
+        })
+        .catch(err => {
+          console.error('fetchHolidays failed:', err);
+          resolve(window.AttendanceMonthly.holidaysData || {});
+        });
+    });
+  };
+  /* === ฟังก์ชันกลาง เวลาที่เดือนเปลี่ยน === */
+  AttendanceMonthly.handleMonthChange = function (e) {
+    const el = document.getElementById('attendanceMonth');
+    const v = (e && e.target && e.target.value) ? e.target.value : (el ? el.value : '');
+    if (!v || !el) return;
+    // normalize ค่าให้แน่ใจว่าเขียนกลับลง input
+    if (el.value !== v) el.value = v;
+    // อัปเดตหัวเดือน + โหลดอัตโนมัติ
+    if (AttendanceMonthly.updateMonthDisplay) AttendanceMonthly.updateMonthDisplay();
+    if (AttendanceMonthly.checkAndAutoLoad) AttendanceMonthly.checkAndAutoLoad();
+  };
+  // ============ EVENT LISTENERS ============
+AttendanceMonthly.setupEventListeners = function () {
+  const monthEl = document.getElementById('attendanceMonth');
+  if (monthEl) {
+    // รีเซ็ต listener เดิมอย่างปลอดภัย (ไม่ต้อง clone แล้ว)
+    monthEl.addEventListener('input',  (e)=>AttendanceMonthly.handleMonthChange(e), {passive:true});
+    monthEl.addEventListener('change', (e)=>AttendanceMonthly.handleMonthChange(e), {passive:true});
+  }
+
+  const gradeEl = document.getElementById('gradeSelect');
+  const classEl = document.getElementById('classSelect');
+  if (gradeEl) gradeEl.addEventListener('change', AttendanceMonthly.checkAndAutoLoad, {passive:true});
+  if (classEl) classEl.addEventListener('change', AttendanceMonthly.checkAndAutoLoad, {passive:true});
+
+  // เรียกตามลำดับ: ใส่ค่าเดือน → อัปเดตหัว → เช็กโหลด
+  AttendanceMonthly.ensureMonthValue();
+  AttendanceMonthly.updateMonthDisplay?.();
+  AttendanceMonthly.checkAndAutoLoad();
+};
+
+  // 🔥 ฟังก์ชันเช็คและโหลดอัตโนมัติ
+  AttendanceMonthly.checkAndAutoLoad = function() {
+    const monthEl = document.getElementById('attendanceMonth');
+    const g = document.getElementById('gradeSelect')?.value;
+    const c = document.getElementById('classSelect')?.value;
+    // ถ้าเดือนยังว่าง ให้ตั้งเป็นเดือนปัจจุบันก่อน
+    if (!monthEl.value) {
+      AttendanceMonthly.setCurrentMonth();
+    } else {
+      // อัปเดตชื่อเดือนด้านบนให้ตรงค่าล่าสุดเสมอ
+      AttendanceMonthly.updateMonthDisplay();
+    }
+    // ครบ 3 ช่อง ⇒ โหลดทันที (ไม่ต้องกดปุ่มไหน)
+    if (monthEl.value && g && c) {
+      AttendanceMonthly.loadMonthlyAttendance();
+    }
+  };
+  // ============ STATUS MESSAGES ============
+  AttendanceMonthly.showStatusMessage = function(message, type = 'info') {
+    const statusEl = document.getElementById('statusMessage');
+    if (statusEl) {
+      statusEl.className = `alert alert-${type} alert-dismissible fade show`;
+      statusEl.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      `;
+      statusEl.style.display = 'block';
+     
+      if (type === 'success') {
+        setTimeout(() => {
+          if (statusEl.style.display !== 'none') {
+            const alert = bootstrap.Alert.getOrCreateInstance(statusEl);
+            alert.close();
+          }
+        }, 5000);
+      }
+    }
+  };
+  AttendanceMonthly.hideStatusMessage = function() {
+    const statusEl = document.getElementById('statusMessage');
+    if (statusEl) {
+      statusEl.style.display = 'none';
+    }
+  };
+  // ============ HOLIDAY IMPORT/EXPORT ============
+  AttendanceMonthly.importHolidaysFromFile = function() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv,.xlsx,.xls';
+   
+    input.onchange = function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+     
+      AttendanceMonthly.showStatusMessage(`🔄 กำลังนำเข้าวันหยุดจากไฟล์: ${file.name}`, 'info');
+     
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        try {
+          let holidayData = [];
+         
+          if (file.name.endsWith('.csv')) {
+            holidayData = AttendanceMonthly.parseHolidayCSV(event.target.result);
+          } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+            holidayData = AttendanceMonthly.parseHolidayExcel(event.target.result);
+          }
+         
+          if (holidayData.length > 0) {
+            holidayData.forEach(holiday => {
+              AttendanceMonthly.holidaysArray.push({
+                date: holiday.date,
+                detail: holiday.detail,
+                type: holiday.type || 'ราชการ'
+              });
+            });
+           
+            AttendanceMonthly.renderHolidayTable();
+            AttendanceMonthly.showStatusMessage(`✅ นำเข้าวันหยุดสำเร็จ ${holidayData.length} รายการ`, 'success');
+          } else {
+            AttendanceMonthly.showStatusMessage('⚠️ ไม่พบข้อมูลวันหยุดในไฟล์', 'warning');
+          }
+        } catch (error) {
+          AttendanceMonthly.showStatusMessage(`❌ เกิดข้อผิดพลาด: ${error.message}`, 'danger');
+        }
+      };
+     
+      if (file.name.endsWith('.csv')) {
+        reader.readAsText(file, 'UTF-8');
+      } else {
+        reader.readAsArrayBuffer(file);
+      }
+    };
+   
+    input.click();
+  };
+  AttendanceMonthly.parseHolidayCSV = function(csvText) {
+    const lines = csvText.trim().split('\n');
+    const data = [];
+   
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+     
+      const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+      if (values.length >= 2) {
+        let date = values[0];
+        const parsedDate = new Date(date);
+        if (isNaN(parsedDate.getTime())) {
+          // console.warn(`Invalid date skipped: ${date}`);
+          continue;
+        }
+        date = parsedDate.toISOString().split('T')[0];
+        data.push({
+          date: date,
+          detail: values[1],
+          type: values[2] || 'ราชการ'
+        });
+      }
+    }
+   
+    return data;
+  };
+  AttendanceMonthly.parseHolidayExcel = function(arrayBuffer) {
+    const workbook = XLSX.read(arrayBuffer, {type: 'array'});
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+   
+    const data = [];
+    for (let i = 1; i < jsonData.length; i++) {
+      const row = jsonData[i];
+      if (row && row.length >= 2) {
+        let date = row[0];
+        if (typeof date === 'number') {
+          date = XLSX.SSF.format('yyyy-mm-dd', date);
+        } else if (date instanceof Date) {
+          date = date.toISOString().split('T')[0];
+        }
+        const parsedDate = new Date(date);
+        if (isNaN(parsedDate.getTime())) {
+          // console.warn(`Invalid date skipped: ${date}`);
+          continue;
+        }
+        date = parsedDate.toISOString().split('T')[0];
+       
+        data.push({
+          date: date.toString(),
+          detail: row[1].toString(),
+          type: (row[2] || 'ราชการ').toString()
+        });
+      }
+    }
+   
+    return data;
+  };
+  AttendanceMonthly.exportHolidaysToCSV = function() {
+    const csvContent = [
+      'date,detail,type',
+      ...AttendanceMonthly.holidaysArray.map(h => `${h.date},"${h.detail}","${h.type || 'ราชการ'}"`)
+    ].join('\n');
+   
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+   
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'holidays.csv');
+    link.style.visibility = 'hidden';
+   
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+   
+    AttendanceMonthly.showStatusMessage('✅ ส่งออกวันหยุดเป็น CSV สำเร็จ', 'success');
+  };
+  // ============ SORT TOGGLE ============
+  window.AttendanceMonthly._sortMode = 'gender';
+  AttendanceMonthly.toggleSort = function() {
+    var m = window.AttendanceMonthly._sortMode;
+    window.AttendanceMonthly._sortMode = m === 'gender' ? 'id' : 'gender';
+    var label = document.getElementById('btnMonthSortLabel');
+    if (label) label.textContent = window.AttendanceMonthly._sortMode === 'gender' ? 'ชาย→หญิง' : 'เลขประจำตัว';
+    var tbody = document.getElementById('attendanceBody');
+    if (!tbody) return;
+    var rows = Array.from(tbody.querySelectorAll('tr'));
+    rows.sort(function(a, b) {
+      var idA = a.getAttribute('data-student-id') || '';
+      var idB = b.getAttribute('data-student-id') || '';
+      if (window.AttendanceMonthly._sortMode === 'gender') {
+        var tA = a.getAttribute('data-title') || '';
+        var tB = b.getAttribute('data-title') || '';
+        var maleA = tA.indexOf('ชาย') !== -1;
+        var maleB = tB.indexOf('ชาย') !== -1;
+        if (maleA && !maleB) return -1;
+        if (!maleA && maleB) return 1;
+      }
+      return String(idA).localeCompare(String(idB), undefined, {numeric: true});
+    });
+    rows.forEach(function(row, idx) {
+      tbody.appendChild(row);
+      var firstCell = row.querySelector('td:first-child');
+      if (firstCell) firstCell.textContent = idx + 1;
+    });
+  };
+
+  // ============ QUICK ACTIONS ============
+  AttendanceMonthly.clearAllStatus = function() {
+    if (confirm('ต้องการเคลียร์สถานะการเช็คชื่อทั้งหมดหรือไม่?')) {
+      document.querySelectorAll('.status-display').forEach(span => {
+        ['status-none','status-absent','status-leave','status-present'].forEach(cls => span.classList.remove(cls));
+        span.classList.add('status-none');
+        span.textContent = '';
+        AttendanceMonthly.updateSummaryRow(span.closest('tr'));
+      });
+      AttendanceMonthly.showStatusMessage('✅ เคลียร์สถานะทั้งหมดแล้ว', 'success');
+    }
+  };
+  // 🔥 ฟังก์ชันทำเครื่องหมายมาทั้งหมด (ยกเว้นวันหยุด)
+  AttendanceMonthly.markAllPresent = function() {
+    if (!confirm('ต้องการทำเครื่องหมาย "มา" ทั้งหมดหรือไม่?\n(ยกเว้นวันเสาร์ อาทิตย์ และวันหยุดพิเศษ)')) {
+      return;
+    }
+    const monthEl = document.getElementById('attendanceMonth');
+    if (!monthEl || !monthEl.value) {
+      AttendanceMonthly.showStatusMessage('⚠️ กรุณาเลือกเดือนก่อน', 'warning');
+      return;
+    }
+    const [year, month] = monthEl.value.split('-').map(Number);
+    const daysInMonth = new Date(year, month, 0).getDate();
+   
+    // สร้าง holidayMap
+    const holidayMap = {};
+    if (window.AttendanceMonthly.holidaysArray) {
+      window.AttendanceMonthly.holidaysArray.forEach(hol => {
+        holidayMap[hol.date] = hol.detail;
+      });
+    }
+    let markedCount = 0;
+    // วนทุกวันในเดือน
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month - 1, day);
+      const dow = date.getDay(); // 0=อาทิตย์, 6=เสาร์
+      const dateKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+     
+      // ข้าม: วันเสาร์ (6), อาทิตย์ (0), วันหยุดพิเศษ
+      if (dow === 0 || dow === 6 || holidayMap[dateKey]) {
+        continue;
+      }
+      // ทำเครื่องหมาย "มา" ทุกนักเรียนในวันนี้
+      document.querySelectorAll(`[data-day="${day}"] .status-display`).forEach(span => {
+        ['status-none', 'status-absent', 'status-leave', 'status-present'].forEach(cls => {
+          span.classList.remove(cls);
+        });
+        span.classList.add('status-present');
+        span.textContent = 'มา';
+       
+        // อัปเดต summary row
+        AttendanceMonthly.updateSummaryRow(span.closest('tr'));
+        markedCount++;
+      });
+    }
+    
+    // 🔥 อัปเดตสถิติรวมด้านบน
+    AttendanceMonthly.updateStatistics();
+    
+    AttendanceMonthly.showStatusMessage(`✅ ทำเครื่องหมาย "มา" แล้ว ${markedCount} รายการ`, 'success');
+  };
+  AttendanceMonthly.showStatistics = function() {
+    const statsRow = document.getElementById('statisticsRow');
+    if (statsRow.style.display === 'none') {
+      AttendanceMonthly.updateStatistics();
+      statsRow.style.display = 'block';
+    } else {
+      statsRow.style.display = 'none';
+    }
+  };
+  AttendanceMonthly.updateStatistics = function() {
+    const totalStudents = window.AttendanceMonthly.attendanceStudents.length;
+   
+    // 🔥 นับจำนวนวันที่มีการเช็คชื่อ (รวมเสาร์-อาทิตย์-วันหยุดที่มีการเรียนชดเชย)
+    let totalSchoolDays = 0;
+    const daysWithAttendance = new Set(); // เก็บวันที่มีการเช็คชื่อ
+    
+    // นับจากตารางว่ามีการเช็คชื่อวันไหนบ้าง
+    document.querySelectorAll('.attendance-table tbody tr').forEach(row => {
+      row.querySelectorAll('.status-display').forEach(span => {
+        const day = span.dataset.day;
+        // ถ้ามีการเช็คชื่อ (มา/ลา/ขาด) ให้นับเป็นวันเรียน
+        if (span.classList.contains('status-present') || 
+            span.classList.contains('status-leave') || 
+            span.classList.contains('status-absent')) {
+          daysWithAttendance.add(day);
+        }
+      });
+    });
+    
+    totalSchoolDays = daysWithAttendance.size;
+   
+    // 🔥 นับจำนวนครั้งที่ลา/ขาด (นับทุกวันที่มีการเช็คชื่อ)
+    let totalLeave = 0, totalAbsent = 0;
+    
+    document.querySelectorAll('.attendance-table tbody tr').forEach(row => {
+      row.querySelectorAll('.status-display').forEach(span => {
+        const day = span.dataset.day;
+        
+        // นับถ้าวันนั้นมีการเช็คชื่อ
+        if (daysWithAttendance.has(day)) {
+          if (span.classList.contains('status-leave')) totalLeave++;
+          else if (span.classList.contains('status-absent')) totalAbsent++;
+        }
+      });
+    });
+   
+    // อัปเดตเฉพาะ element ที่มีอยู่
+    const totalStudentsEl = document.getElementById('totalStudents');
+    const totalPresentEl = document.getElementById('totalPresent');
+    const totalLeaveEl = document.getElementById('totalLeave');
+    const totalAbsentEl = document.getElementById('totalAbsent');
+    
+    if (totalStudentsEl) totalStudentsEl.textContent = totalStudents;
+    if (totalPresentEl) totalPresentEl.textContent = totalSchoolDays;
+    if (totalLeaveEl) totalLeaveEl.textContent = totalLeave;
+    if (totalAbsentEl) totalAbsentEl.textContent = totalAbsent;
+  };
+  // ============ HOLIDAY MANAGEMENT ============
+  AttendanceMonthly.openHolidayManager = function() {
+    const modal = new bootstrap.Modal(document.getElementById('holidayModal'));
+    AttendanceMonthly.loadHolidaysFromSheet();
+    AttendanceMonthly.setupHolidayEventListeners();
+    modal.show();
+  };
+  AttendanceMonthly.loadHolidaysFromSheet = function() {
+    AttendanceMonthly.runGAS('loadHolidaysFromSheet')
+      .then(data => {
+        window.AttendanceMonthly.holidaysData = {};
+        AttendanceMonthly.holidaysArray = [];
+       
+        if (data && Array.isArray(data)) {
+          data.forEach(([date, detail]) => {
+            if (date && detail) {
+              window.AttendanceMonthly.holidaysData[date] = detail;
+              AttendanceMonthly.holidaysArray.push({
+                date: date,
+                detail: detail,
+                type: 'ราชการ'
+              });
+            }
+          });
+        }
+       
+        AttendanceMonthly.renderHolidayTable();
+      })
+      .catch(error => {
+        console.error('Failed to load holidays from sheet:', error);
+        AttendanceMonthly.showHolidayStatusMessage('ไม่สามารถโหลดข้อมูลวันหยุดได้', 'warning');
+      });
+  };
+  AttendanceMonthly.formatThaiDate = function(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    if (isNaN(date)) return '';
+    const days = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
+    const months = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+    return `วัน${days[date.getDay()]} ที่ ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear() + 543}`;
+  };
+  AttendanceMonthly.renderHolidayTable = function() {
+    const tbody = document.getElementById('holidayTableBody');
+    if (!tbody) return;
+   
+    tbody.innerHTML = '';
+   
+    if (AttendanceMonthly.holidaysArray.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" class="text-center text-muted py-3">
+            <i class="bi bi-calendar-x"></i> ยังไม่มีข้อมูลวันหยุด
+          </td>
+        </tr>
+      `;
+      return;
+    }
+   
+    AttendanceMonthly.holidaysArray.sort((a, b) => new Date(a.date) - new Date(b.date));
+   
+    AttendanceMonthly.holidaysArray.forEach((item, idx) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="text-center">${idx + 1}</td>
+        <td>
+          <input type="date" class="form-control form-control-sm" value="${item.date}" data-index="${idx}" data-field="date">
+          <div class="text-muted small mt-1">${AttendanceMonthly.formatThaiDate(item.date)}</div>
+        </td>
+        <td>
+          <input type="text" class="form-control form-control-sm" value="${item.detail || ''}" data-index="${idx}" data-field="detail" placeholder="รายละเอียดวันหยุด">
+        </td>
+        <td>
+          <select class="form-select form-select-sm" data-index="${idx}" data-field="type">
+            <option value="ราชการ" ${item.type === 'ราชการ' ? 'selected' : ''}>ราชการ</option>
+            <option value="ศาสนา" ${item.type === 'ศาสนา' ? 'selected' : ''}>ศาสนา</option>
+            <option value="โรงเรียน" ${item.type === 'โรงเรียน' ? 'selected' : ''}>โรงเรียน</option>
+            <option value="พิเศษ" ${item.type === 'พิเศษ' ? 'selected' : ''}>พิเศษ</option>
+          </select>
+        </td>
+        <td class="text-center">
+          <button class="btn btn-sm btn-danger" onclick="AttendanceMonthly.deleteHolidayByIndex(${idx})">
+            <i class="bi bi-trash"></i>
+          </button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  };
+  AttendanceMonthly.setupHolidayEventListeners = function() {
+    const addBtn = document.getElementById('addHolidayBtn');
+    const saveBtn = document.getElementById('saveAllHolidaysBtn');
+    const tbody = document.getElementById('holidayTableBody');
+   
+    if (addBtn) {
+      addBtn.replaceWith(addBtn.cloneNode(true));
+      const newAddBtn = document.getElementById('addHolidayBtn');
+      newAddBtn.addEventListener('click', AttendanceMonthly.addNewHolidayRow);
+    }
+   
+    if (saveBtn) {
+      saveBtn.replaceWith(saveBtn.cloneNode(true));
+      const newSaveBtn = document.getElementById('saveAllHolidaysBtn');
+      newSaveBtn.addEventListener('click', AttendanceMonthly.saveAllHolidays);
+    }
+   
+    if (tbody) {
+      tbody.addEventListener('input', function(e) {
+        const input = e.target;
+        const index = parseInt(input.dataset.index);
+        const field = input.dataset.field;
+       
+        if (!isNaN(index) && field && AttendanceMonthly.holidaysArray[index]) {
+          AttendanceMonthly.holidaysArray[index][field] = input.value;
+         
+          if (field === 'date') {
+            const thaiDateDiv = input.nextElementSibling;
+            if (thaiDateDiv) {
+              thaiDateDiv.textContent = AttendanceMonthly.formatThaiDate(input.value);
+            }
+          }
+        }
+      });
+      tbody.addEventListener('change', function(e) {
+        const select = e.target;
+        const index = parseInt(select.dataset.index);
+        const field = select.dataset.field;
+       
+        if (!isNaN(index) && field && AttendanceMonthly.holidaysArray[index]) {
+          AttendanceMonthly.holidaysArray[index][field] = select.value;
+        }
+      });
+    }
+  };
+  AttendanceMonthly.addNewHolidayRow = function() {
+    AttendanceMonthly.holidaysArray.push({
+      date: '',
+      detail: '',
+      type: 'ราชการ'
+    });
+    AttendanceMonthly.renderHolidayTable();
+    AttendanceMonthly.showHolidayStatusMessage('เพิ่มแถวใหม่แล้ว', 'info');
+    setTimeout(() => AttendanceMonthly.hideHolidayStatusMessage(), 2000);
+  };
+  AttendanceMonthly.deleteHolidayByIndex = function(index) {
+    if (AttendanceMonthly.holidaysArray[index]) {
+      const holidayName = AttendanceMonthly.holidaysArray[index].detail || 'รายการนี้';
+      if (confirm(`ต้องการลบ "${holidayName}" หรือไม่?`)) {
+        AttendanceMonthly.holidaysArray.splice(index, 1);
+        AttendanceMonthly.renderHolidayTable();
+        AttendanceMonthly.showHolidayStatusMessage('ลบรายการสำเร็จ', 'success');
+        setTimeout(() => AttendanceMonthly.hideHolidayStatusMessage(), 2000);
+      }
+    }
+  };
+  AttendanceMonthly.saveAllHolidays = function() {
+    const validHolidays = AttendanceMonthly.holidaysArray.filter(h => h.date && h.date.trim());
+   
+    if (validHolidays.length === 0) {
+      AttendanceMonthly.showHolidayStatusMessage('ไม่มีข้อมูลวันหยุดที่ถูกต้อง', 'warning');
+      return;
+    }
+   
+    AttendanceMonthly.showHolidayStatusMessage('กำลังบันทึกข้อมูล...', 'info');
+    window.AttendanceMonthly.holidaysData = {};
+    validHolidays.forEach(h => {
+      window.AttendanceMonthly.holidaysData[h.date] = h.detail || '';
+    });
+    const dataToSave = validHolidays.map(h => [h.date, h.detail || '']);
+    AttendanceMonthly.runGAS('saveHolidaySheet', dataToSave)
+      .then(result => {
+        AttendanceMonthly.showHolidayStatusMessage('✅ บันทึกข้อมูลวันหยุดเรียบร้อยแล้ว', 'success');
+       
+        window.AttendanceMonthly.holidaysData = {};
+        validHolidays.forEach(h => {
+          window.AttendanceMonthly.holidaysData[h.date] = h.detail;
+        });
+       
+        setTimeout(() => {
+          AttendanceMonthly.hideHolidayStatusMessage();
+        }, 3000);
+      })
+      .catch(error => {
+        console.error('Failed to save holidays:', error);
+        AttendanceMonthly.showHolidayStatusMessage('เกิดข้อผิดพลาดในการบันทึก: ' + error, 'danger');
+      });
+  };
+  AttendanceMonthly.saveHolidaysAndReload = function() {
+    AttendanceMonthly.saveAllHolidays();
+   
+    setTimeout(() => {
+      bootstrap.Modal.getInstance(document.getElementById('holidayModal')).hide();
+     
+      const gradeEl = document.getElementById('gradeSelect');
+      const classEl = document.getElementById('classSelect');
+     
+      if (gradeEl.value && classEl.value && window.AttendanceMonthly.attendanceStudents.length > 0) {
+        AttendanceMonthly.loadMonthlyAttendance();
+      }
+    }, 500);
+  };
+  AttendanceMonthly.showHolidayStatusMessage = function(message, type = 'info') {
+    const statusEl = document.getElementById('holidayStatusMessage');
+    if (statusEl) {
+      statusEl.className = `alert alert-${type}`;
+      statusEl.innerHTML = message;
+      statusEl.style.display = 'block';
+    }
+  };
+  AttendanceMonthly.hideHolidayStatusMessage = function() {
+    const statusEl = document.getElementById('holidayStatusMessage');
+    if (statusEl) {
+      statusEl.style.display = 'none';
+    }
+  };
+  // ============ MONTH MANAGEMENT ============
+AttendanceMonthly.setCurrentMonth = function() {
+    const el = document.getElementById('attendanceMonth');
+    if (!el) return;
+    
+    // 🆕 ใช้ DateUtils แทน toISOString()
+    const DateUtils = window.AttendanceMonthly.DateUtils;
+    el.value = DateUtils.getLocalMonthString();
+    
+    AttendanceMonthly.handleMonthChange({ target: el });
+    return el.value;
+  };
+  // ===== แทนที่ฟังก์ชัน changeMonth เดิม =====
+AttendanceMonthly.changeMonth = function (offset) {
+  const monthInput = document.getElementById('attendanceMonth');
+  if (!monthInput) return;
+
+  let d = new Date((monthInput.value || new Date().toISOString().slice(0,7)) + '-01');
+  if (isNaN(d)) d = new Date();
+  d.setMonth(d.getMonth() + (offset || 0));
+  const nextStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+
+  // ✅ โชว์สปินเนอร์เฉพาะตอนเลือกชั้น/ห้องครบแล้ว
+  if (isSelectionReady()) {
+    setMonthLoadingUI(true, nextStr);
+  }
+
+  monthInput.value = nextStr;
+  AttendanceMonthly.handleMonthChange({ target: monthInput });
+};
+
+  // ============ ATTENDANCE LOADING ============
+ AttendanceMonthly.loadMonthlyAttendance = async function () {
+    window.AttendanceMonthly.changedRecords = {};
+
+    const monthEl = document.getElementById('attendanceMonth');
+    const gradeEl = document.getElementById('gradeSelect');
+    const classEl = document.getElementById('classSelect');
+    const monthValue = monthEl?.value;
+    const grade = gradeEl?.value;
+    const classNo = classEl?.value;
+
+    // 🆕 ใช้ Validator
+    const Validator = window.AttendanceMonthly.Validator;
+    const ErrorHandler = window.AttendanceMonthly.ErrorHandler;
+    
+    if (!monthValue || !Validator.isValidMonthFormat(monthValue)) {
+      AttendanceMonthly.showStatusMessage('กรุณาเลือกเดือนให้ถูกต้อง', 'warning');
+      return;
+    }
+    
+    if (!grade || !Validator.isValidGrade(grade)) {
+      AttendanceMonthly.showStatusMessage('กรุณาเลือกระดับชั้น', 'warning');
+      return;
+    }
+    
+    if (!classNo || !Validator.isValidClassNo(classNo)) {
+      AttendanceMonthly.showStatusMessage('กรุณาเลือกห้องเรียน', 'warning');
+      return;
+    }
+
+    if (typeof isSelectionReady === 'function' && isSelectionReady()) {
+      setMonthLoadingUI(true, monthValue);
+    }
+
+    try {
+      await AttendanceMonthly.fetchHolidays();
+      const students = await AttendanceMonthly.runGAS('getStudentsForAttendance', grade, classNo);
+
+      if (!students || !Array.isArray(students)) {
+        AttendanceMonthly.hideStatusMessage();
+        AttendanceMonthly.updateMonthDisplay();
+        AttendanceMonthly.renderMonthlyHeader(`${monthValue}-01`, window.AttendanceMonthly.holidaysData);
+        AttendanceMonthly.renderMonthlyBody(`${monthValue}-01`, [], window.AttendanceMonthly.holidaysData, {});
+        AttendanceMonthly.addDateNavigationButtons();
+        AttendanceMonthly.showStatusMessage('ไม่พบข้อมูลนักเรียน', 'warning');
+        return;
+      }
+
+      // 🆕 Sanitize student data
+      students.forEach(s => {
+        s.id = Validator.sanitizeString(s.id || s.student_id || '');
+        s.firstname = Validator.sanitizeString(s.firstname || s.first_name || s.name || '');
+        s.lastname = Validator.sanitizeString(s.lastname || s.last_name || s.surname || '');
+        s.title = Validator.sanitizeString(s.title || s.prefix || '');
+      });
+
+      students.sort((a, b) => {
+        const idA = a.id || '';
+        const idB = b.id || '';
+        return String(idA).localeCompare(String(idB), undefined, {numeric: true});
+      });
+
+      window.AttendanceMonthly.attendanceStudents = students;
+
+      // 🆕 ใช้ DateUtils
+      const DateUtils = window.AttendanceMonthly.DateUtils;
+      const d = DateUtils.parseLocalDate(monthValue + '-01');
+      const year = d.getFullYear();
+      const month = d.getMonth();
+      
+      const saved = await AttendanceMonthly.runGAS('getSavedAttendance', grade, classNo, year, month);
+
+      // ✅ ใช้ holidays จาก getSavedAttendance response (ฝังมาจาก server)
+      if (saved && saved.holidays && Object.keys(saved.holidays).length > 0) {
+        window.AttendanceMonthly.holidaysData = saved.holidays;
+        // console.log('📅 Holidays from getSavedAttendance:', Object.keys(saved.holidays).length);
+      }
+
+      AttendanceMonthly.hideStatusMessage();
+      AttendanceMonthly.updateMonthDisplay();
+      AttendanceMonthly.renderMonthlyHeader(`${monthValue}-01`, window.AttendanceMonthly.holidaysData);
+      AttendanceMonthly.renderMonthlyBody(`${monthValue}-01`, students, window.AttendanceMonthly.holidaysData, saved?.records || {});
+      AttendanceMonthly.addDateNavigationButtons();
+
+      AttendanceMonthly.showStatusMessage(`โหลดข้อมูลสำเร็จ - พบนักเรียน ${students.length} คน`, 'success');
+      
+    } catch (error) {
+      // 🆕 ใช้ ErrorHandler
+      ErrorHandler.log('loadMonthlyAttendance', error, { monthValue, grade, classNo });
+      
+      AttendanceMonthly.hideStatusMessage();
+      const userMessage = ErrorHandler.getUserMessage(error);
+      AttendanceMonthly.showStatusMessage('ไม่สามารถโหลดข้อมูลได้: ' + userMessage, 'danger');
+      
+    } finally {
+      if (typeof setMonthLoadingUI === 'function') {
+        setMonthLoadingUI(false);
+      }
+    }
+  };
+
+  AttendanceMonthly.loadDailyStudents = AttendanceMonthly.loadMonthlyAttendance;
+  // ============ RENDER FUNCTIONS ============
+  AttendanceMonthly.renderMonthlyHeader = function(dateString, holidayMap) {
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+   
+    const dayNumberRow = document.getElementById('dayNumberRow');
+    const dayNameRow = document.getElementById('dayNameRow');
+    const dayControlRow = document.getElementById('dayControlRow');
+   
+    const thaiDays = ['อา','จ','อ','พ','พฤ','ศ','ส'];
+   
+    // 🔥 ใช้ rowspan="3" เพื่อผสานเซลล์ 3 แถว
+    // แสดง "ชื่อ" ในมือถือ และ "ชื่อ-นามสกุล" ในหน้าจอใหญ่
+    const isMobile = window.innerWidth <= 768;
+    const nameHeader = isMobile ? 'ชื่อ' : 'ชื่อ-นามสกุล';
+    let dayNumberHTML = `<th class="sticky-col-idx" rowspan="3" scope="col">ลำดับ</th><th class="sticky-col-name" rowspan="3" scope="col">${nameHeader}</th>`;
+    let dayNameHTML = ''; // ไม่ต้องมี sticky columns ในแถวที่ 2
+    let dayControlHTML = ''; // ไม่ต้องมี sticky columns ในแถวที่ 3
+   
+    for (let d = 1; d <= daysInMonth; d++) {
+      const currentDate = new Date(year, month, d);
+      const dow = currentDate.getDay();
+      const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const holidayName = holidayMap[dateKey];
+     
+      let cellClass = '';
+      let tooltip = '';
+     
+      if (holidayName) {
+        cellClass = 'holiday-bg';
+        tooltip = `data-bs-toggle="tooltip" data-bs-placement="top" title="${holidayName}"`;
+      } else if (dow === 0) {
+        cellClass = 'sun-bg';
+        tooltip = `data-bs-toggle="tooltip" data-bs-placement="top" title="วันอาทิตย์"`;
+      } else if (dow === 6) {
+        cellClass = 'sat-bg';
+        tooltip = `data-bs-toggle="tooltip" data-bs-placement="top" title="วันเสาร์"`;
+      }
+     
+      dayNumberHTML += `<th class="${cellClass}" style="min-width:40px" ${tooltip} scope="col">${d}</th>`;
+      dayNameHTML += `<th class="${cellClass}" ${tooltip} scope="col">${thaiDays[dow]}</th>`;
+      dayControlHTML += `<th class="${cellClass}" ${tooltip} scope="col">
+        <button class="btn btn-sm btn-outline-secondary" onclick="AttendanceMonthly.cycleDayStatus(this, ${d})"
+                data-cycle-state="0" title="เปลี่ยนสถานะทั้งวัน">
+          <i class="bi bi-arrow-repeat"></i>
+        </button>
+      </th>`;
+    }
+   
+    dayNumberHTML += '<th class="text-success" rowspan="3" scope="col">มา</th><th class="text-warning" rowspan="3" scope="col">ลา</th><th class="text-danger" rowspan="3" scope="col">ขาด</th>';
+    dayNameHTML += ''; // ไม่ต้องมี summary ในแถวที่ 2
+    dayControlHTML += ''; // ไม่ต้องมี summary ในแถวที่ 3
+   
+    dayNumberRow.innerHTML = dayNumberHTML;
+    dayNameRow.innerHTML = dayNameHTML;
+    dayControlRow.innerHTML = dayControlHTML;
+   
+    // 🔥 Initialize tooltips for header cells
+    setTimeout(() => {
+      document.querySelectorAll('thead [data-bs-toggle="tooltip"]').forEach(el => {
+        new bootstrap.Tooltip(el);
+      });
+    }, 100);
+  };
+  // ============ RENDER FUNCTIONS ============
+  AttendanceMonthly.renderMonthlyBody = function(dateString, students, holidayMap, savedStatus) {
+    const tbody = document.getElementById('attendanceBody');
+    const fab = document.getElementById('fabSaveContainer');
+    if (fab) fab.style.display = (students && students.length > 0) ? 'block' : 'none';
+   
+    if (!students || students.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="100%" class="text-center text-muted py-4"><i class="bi bi-person-x-fill fs-1 text-muted d-block mb-2"></i>ไม่พบข้อมูลนักเรียน กรุณาตรวจสอบการเลือกชั้นและห้อง</td></tr>';
+      return;
+    }
+   
+    const date = new Date(dateString);
+    const year = date.getFullYear(), month = date.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const rows = []; // Optimize: Use array.join for better perf
+    students.forEach((stu, i) => {
+      const studentId = stu.id || stu.student_id || `student_${i}`;
+      const title = stu.title || stu.prefix || '';
+      const firstname = stu.firstname || stu.first_name || stu.name || '';
+      const lastname = stu.lastname || stu.last_name || stu.surname || '';
+      
+      // 🔥 ตรวจสอบว่าเป็นมือถือหรือไม่ (หน้าจอแคบกว่า 768px)
+      const isMobile = window.innerWidth <= 768;
+      const fullName = isMobile 
+        ? firstname.trim() // แสดงเฉพาะชื่อ (ไม่มีนามสกุล)
+        : `${title}${firstname} ${lastname}`.trim(); // แสดงคำนำหน้า+ชื่อ+นามสกุล
+     
+      let tr = `<tr data-student-id="${studentId}" data-title="${title}">
+        <td class="sticky-col-idx text-center fw-semibold">${i + 1}</td>
+        <td class="sticky-col-name">${fullName || `นักเรียนคนที่ ${i + 1}`}</td>`;
+     
+      let nPresent = 0, nLeave = 0, nAbsent = 0;
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dow = new Date(year, month, d).getDay();
+        const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const holidayName = holidayMap[dateKey];
+        let initStatus = savedStatus?.[`${studentId}_${d}`];
+        let statusClass = 'status-none', statusText = '';
+       
+        // 🔥 นับทุกวันที่มีการเช็คชื่อ (รวมเสาร์-อาทิตย์-วันหยุดที่มีเรียนชดเชย)
+        if (initStatus === "present") {
+          statusClass = "status-present";
+          statusText = "มา";
+          nPresent++; // นับทุกวันที่มา
+        } else if (initStatus === "leave") {
+          statusClass = "status-leave";
+          statusText = "ลา";
+          nLeave++; // นับทุกวันที่ลา
+        } else if (initStatus === "absent") {
+          statusClass = "status-absent";
+          statusText = "ขาด";
+          nAbsent++; // นับทุกวันที่ขาด
+        } else {
+          statusClass = "status-none";
+          statusText = "";
+        }
+       
+        let cellClass = '';
+        if (holidayName) cellClass += 'holiday-bg ';
+        else if (dow === 0) cellClass += 'sun-bg ';
+        else if (dow === 6) cellClass += 'sat-bg ';
+       
+        let tooltip = '';
+        if (holidayName) tooltip = `data-bs-toggle="tooltip" title="${holidayName}"`;
+        else if (dow === 0) tooltip = `data-bs-toggle="tooltip" title="วันอาทิตย์"`;
+        else if (dow === 6) tooltip = `data-bs-toggle="tooltip" title="วันเสาร์"`;
+       
+        tr += `<td class="${cellClass.trim()}" style="text-align:center" ${tooltip} data-day="${d}">
+          <span class="status-display ${statusClass}" data-id="${studentId}" data-day="${d}" 
+                role="button" tabindex="0" aria-label="เปลี่ยนสถานะ" 
+                onclick="AttendanceMonthly.cycleStatus(this)" 
+                onkeydown="if(event.key==='Enter'||event.key===' ') AttendanceMonthly.cycleStatus(this)">${statusText}</span>
+        </td>`;
+      }
+      tr += `<td class="text-success fw-bold summary-present">${nPresent}</td>
+              <td class="text-warning fw-bold summary-leave">${nLeave}</td>
+              <td class="text-danger fw-bold summary-absent">${nAbsent}</td>
+      </tr>`;
+      rows.push(tr);
+    });
+ tbody.innerHTML = rows.join('');
+    
+    // รอให้ HTML วาดเสร็จแป๊บนึง แล้วค่อยสร้าง Tooltip
+    setTimeout(() => {
+      document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+        // ✅ แก้ไขตรงนี้: เพิ่ม trigger: 'hover' เพื่อไม่ให้ค้างตอนคลิก
+        new bootstrap.Tooltip(el, {
+          trigger: 'hover' 
+        });
+      }); // <--- (ที่ครูส่งมา ขาดวงเล็บปิดชุดนี้ครับ)
+    }, 150);
+  };
+  // ============ STATUS CYCLING ============
+  /**
+   * [แก้ไขใหม่] - เปลี่ยนสถานะของทั้งคอลัมน์ตามลำดับที่กำหนด:
+   * มา -> ขาด -> ลา -> ว่าง
+   */
+  AttendanceMonthly.cycleDayStatus = function(button, day) {
+      const spans = document.querySelectorAll(`.status-display[data-day="${day}"]`);
+      if (spans.length === 0) return;
+      const cycleOrder = [
+          { statusClass: "status-present", text: "มา", value: "present" },
+          { statusClass: "status-absent", text: "ขาด", value: "absent" },
+          { statusClass: "status-leave", text: "ลา", value: "leave" },
+          { statusClass: "status-none", text: "", value: "none" }
+      ];
+      let currentStateIndex = parseInt(button.dataset.cycleState || '0');
+      const nextState = cycleOrder[currentStateIndex];
+      spans.forEach(span => {
+          cycleOrder.forEach(order => span.classList.remove(order.statusClass));
+          span.classList.add(nextState.statusClass);
+          span.textContent = nextState.text;
+          AttendanceMonthly.updateSummaryRow(span.closest('tr'));
+          // ===== ⭐ บันทึกการเปลี่ยนแปลง ⭐ =====
+          const studentId = span.dataset.id;
+          const key = `${studentId}_${day}`;
+          window.AttendanceMonthly.changedRecords[key] = nextState.value;
+      });
+      button.dataset.cycleState = (currentStateIndex + 1) % cycleOrder.length;
+      
+      // 🔥 อัปเดตสถิติรวมด้านบน
+      AttendanceMonthly.updateStatistics();
+      
+      // console.log(`✏️ Cycle Day ${day}: ${spans.length} students to "${nextState.text}"`);
+  };
+// helper ตรวจว่ากำลังอยู่บนมือถือ (จอแคบหรือเป็นอุปกรณ์ touch)
+function isMobileView() {
+  return window.matchMedia('(max-width: 768px)').matches || ('ontouchstart' in window);
+}
+
+AttendanceMonthly.cycleStatus = function(span) {
+  // เดสก์ท็อป: ว่าง → ขาด → ลา → มา (เดิม)
+  let statusCycleArr = ["status-none", "status-absent", "status-leave", "status-present"];
+  let textCycleArr   = ["", "ขาด", "ลา", "มา"];
+  let valueCycleArr  = ["none", "absent", "leave", "present"];
+
+  // มือถือ: ว่าง → มา → ลา → ขาด (เริ่ม “มา” ทันที)
+  if (isMobileView()) {
+    statusCycleArr = ["status-none", "status-present", "status-leave", "status-absent"];
+    textCycleArr   = ["", "มา", "ลา", "ขาด"];
+    valueCycleArr  = ["none", "present", "leave", "absent"];
+  }
+
+  let now = statusCycleArr.findIndex(cl => span.classList.contains(cl));
+  let next = (now + 1) % statusCycleArr.length;
+
+  statusCycleArr.forEach(cl => span.classList.remove(cl));
+  span.classList.add(statusCycleArr[next]);
+  span.textContent = textCycleArr[next];
+
+  AttendanceMonthly.updateSummaryRow(span.closest('tr'));
+  
+  // 🔥 อัปเดตสถิติรวมด้านบนด้วย
+  AttendanceMonthly.updateStatistics();
+
+  const studentId = span.dataset.id;
+  const day = span.dataset.day;
+  window.AttendanceMonthly.changedRecords[`${studentId}_${day}`] = valueCycleArr[next];
+};
+
+  AttendanceMonthly.updateSummaryRow = function(tr) {
+    let nPresent = 0, nLeave = 0, nAbsent = 0;
+    tr.querySelectorAll('.status-display').forEach(sp => {
+      // 🔥 นับทุกวันที่มีการเช็คชื่อ (รวมเสาร์-อาทิตย์-วันหยุดที่มีเรียนชดเชย)
+      if (sp.classList.contains('status-present')) nPresent++;
+      if (sp.classList.contains('status-leave')) nLeave++;
+      if (sp.classList.contains('status-absent')) nAbsent++;
+    });
+    tr.querySelector('.summary-present').textContent = nPresent;
+    tr.querySelector('.summary-leave').textContent = nLeave;
+    tr.querySelector('.summary-absent').textContent = nAbsent;
+  };
+  // ============ DATE NAVIGATION ============
+AttendanceMonthly.addDateNavigationButtons = function () {
+  const nav = document.getElementById('dateNavigation');
+  const monthInput = document.getElementById('attendanceMonth');
+  if (!nav || !monthInput || !monthInput.value) return;
+
+  const isMobile = window.matchMedia('(max-width: 768px)').matches;
+  if (isMobile) { 
+    nav.innerHTML = '';           // ไม่ใส่อะไรเลยบนมือถือ
+    return; 
+  }
+
+  const d = new Date(monthInput.value + '-01');
+  const daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+
+  nav.innerHTML =
+    '<div class="btn-group btn-group-sm mb-2" role="group">' +
+      `<button class="btn btn-outline-primary" onclick="AttendanceMonthly.scrollToDate(1)">📌 วันที่ 1-7</button>` +
+      `<button class="btn btn-outline-primary" onclick="AttendanceMonthly.scrollToDate(8)">วันที่ 8-14</button>` +
+      `<button class="btn btn-outline-primary" onclick="AttendanceMonthly.scrollToDate(15)">วันที่ 15-21</button>` +
+      `<button class="btn btn-outline-primary" onclick="AttendanceMonthly.scrollToDate(22)">วันที่ 22-${daysInMonth}</button>` +
+    '</div>';
+};
+
+
+
+// เรียกใหม่เมื่อ resize เพื่อสลับโหมดอัตโนมัติ
+window.addEventListener('resize', () => {
+  AttendanceMonthly.addDateNavigationButtons?.();
+});
+
+  AttendanceMonthly.scrollToDate = function(day) {
+    const tableContainer = document.querySelector('.table-container');
+    if (!tableContainer) return;
+   
+    const cellWidth = 40;
+    const targetScrollLeft = (day > 1 ? (day - 3) : 0) * cellWidth;
+   
+    tableContainer.scrollTo({
+      left: targetScrollLeft,
+      behavior: 'smooth'
+    });
+  };
+  // ============ SAVE FUNCTION ============
+  AttendanceMonthly.saveMonthlyAttendanceClient = function() {
+    const Validator = window.AttendanceMonthly.Validator;
+    const ErrorHandler = window.AttendanceMonthly.ErrorHandler;
+    
+    if (!window.AttendanceMonthly.attendanceStudents || window.AttendanceMonthly.attendanceStudents.length === 0) {
+      AttendanceMonthly.showStatusMessage('กรุณาโหลดรายชื่อนักเรียนก่อน', 'warning');
+      return;
+    }
+    
+    const monthEl = document.getElementById('attendanceMonth');
+    const gradeEl = document.getElementById('gradeSelect');
+    const classEl = document.getElementById('classSelect');
+    const monthValue = monthEl?.value;
+    const grade = gradeEl?.value;
+    const classNo = classEl?.value;
+    
+    // 🆕 Validation
+    if (!monthValue || !Validator.isValidMonthFormat(monthValue)) {
+      AttendanceMonthly.showStatusMessage('กรุณาเลือกเดือนให้ถูกต้อง', 'warning');
+      return;
+    }
+    
+    if (!grade || !Validator.isValidGrade(grade)) {
+      AttendanceMonthly.showStatusMessage('กรุณาเลือกระดับชั้น', 'warning');
+      return;
+    }
+    
+    if (!classNo || !Validator.isValidClassNo(classNo)) {
+      AttendanceMonthly.showStatusMessage('กรุณาเลือกห้องเรียน', 'warning');
+      return;
+    }
+    
+    if (!window.AttendanceMonthly.changedRecords || Object.keys(window.AttendanceMonthly.changedRecords).length === 0) {
+      AttendanceMonthly.showStatusMessage('ℹ️ ยังไม่มีการเปลี่ยนแปลงข้อมูล', 'info');
+      return;
+    }
+    
+    // 🆕 Validate changedRecords
+    const validRecords = {};
+    let invalidCount = 0;
+    
+    for (const [key, value] of Object.entries(window.AttendanceMonthly.changedRecords)) {
+      if (!Validator.isValidStatus(value)) {
+        // console.warn(`Invalid status for ${key}: ${value}`);
+        invalidCount++;
+        continue;
+      }
+      validRecords[key] = value;
+    }
+    
+    if (invalidCount > 0) {
+      // console.warn(`⚠️ Filtered out ${invalidCount} invalid records`);
+    }
+    
+    if (Object.keys(validRecords).length === 0) {
+      AttendanceMonthly.showStatusMessage('ℹ️ ไม่มีข้อมูลที่ถูกต้องสำหรับบันทึก', 'warning');
+      return;
+    }
+
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    if (loadingOverlay) loadingOverlay.style.display = 'flex';
+    
+    // 🆕 ใช้ DateUtils
+    const DateUtils = window.AttendanceMonthly.DateUtils;
+    const date = DateUtils.parseLocalDate(monthValue + "-01");
+    
+    const payload = {
+      grade: grade,
+      classNo: classNo,
+      year: date.getFullYear(),
+      month: date.getMonth(),
+      records: validRecords // 🆕 ใช้ validRecords แทน
+    };
+    
+    AttendanceMonthly.showStatusMessage('🔄 กำลังบันทึกข้อมูลและอัปเดตสถิติ...', 'info');
+    
+    AttendanceMonthly.runGAS('saveMonthlyAttendanceOptimized', payload)
+      .then(result => {
+        const thaiMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+        const monthName = `${thaiMonths[date.getMonth()]}${date.getFullYear() + 543}`;
+        
+        return AttendanceMonthly.runGAS('fixAttendanceFormulas', monthName)
+          .then(fixResult => {
+            if (loadingOverlay) loadingOverlay.style.display = 'none';
+            
+            const message = result.message || 'บันทึกข้อมูลและอัปเดตสถิติสำเร็จ';
+            AttendanceMonthly.showStatusMessage('✅ ' + message + ' (สถิติอัปเดตแล้ว)', 'success');
+            
+            window.AttendanceMonthly.changedRecords = {};
+            
+            setTimeout(() => {
+              if (window.AppNavigation) window.AppNavigation.isLoading = false;
+              if (window.NavGuard) window.NavGuard.isLoadingSince = 0;
+              if (window.parent?.forceResetNavigation) window.parent.forceResetNavigation();
+              else if (typeof forceResetNavigation === 'function') forceResetNavigation();
+            }, 300);
+          })
+          .catch(fixError => {
+            if (loadingOverlay) loadingOverlay.style.display = 'none';
+            // console.warn('แก้ไขสูตรสถิติไม่สำเร็จ:', fixError);
+            AttendanceMonthly.showStatusMessage('✅ บันทึกสำเร็จ (แต่สถิติอาจไม่อัปเดต)', 'warning');
+            window.AttendanceMonthly.changedRecords = {};
+          });
+      })
+      .catch(error => {
+        if (loadingOverlay) loadingOverlay.style.display = 'none';
+        
+        // 🆕 ใช้ ErrorHandler
+        ErrorHandler.log('saveMonthlyAttendanceClient', error, { monthValue, grade, classNo });
+        
+        const userMessage = ErrorHandler.getUserMessage(error);
+        AttendanceMonthly.showStatusMessage('❌ ' + userMessage, 'danger');
+      });
+  };
+  // ============ EXPORTS ============
+  window.loadDailyStudents = AttendanceMonthly.loadDailyStudents;
+  window.saveMonthlyAttendanceClient = AttendanceMonthly.saveMonthlyAttendanceClient;
+  window.openHolidayManager = AttendanceMonthly.openHolidayManager;
+  window.changeMonth = AttendanceMonthly.changeMonth;
+  window.setCurrentMonth = AttendanceMonthly.setCurrentMonth;
+  window.cycleDayStatus = AttendanceMonthly.cycleDayStatus;
+  window.cycleStatus = AttendanceMonthly.cycleStatus;
+  window.scrollToDate = AttendanceMonthly.scrollToDate;
+  window.markAllPresent = AttendanceMonthly.markAllPresent; // 🔥 เพิ่ม
+
+// ==================================================
+// 🟢 STEP 3: โค้ดควบคุมปฏิทิน (วางใน <script>)
+// ==================================================
+
+// เก็บตัวแปรปฏิทินไว้ใช้งาน
+window.AttendanceMonthly.calendar = null;
+
+// 1. แก้ไขฟังก์ชันเปิด Modal ให้มาเริ่มสร้างปฏิทินด้วย
+AttendanceMonthly.openHolidayManager = function() {
+  const modalEl = document.getElementById('holidayModal');
+  const modal = new bootstrap.Modal(modalEl);
+  modal.show();
+
+  // รอให้ Modal เด้งขึ้นมาเสร็จก่อน ค่อยวาดปฏิทิน (ไม่งั้นปฏิทินจะเบี้ยว)
+  modalEl.addEventListener('shown.bs.modal', function () {
+    AttendanceMonthly.initCalendar();
+  }, { once: true });
+};
+
+// 2. ฟังก์ชันเริ่มวาดปฏิทิน (Init Calendar)
+AttendanceMonthly.initCalendar = function() {
+  AttendanceMonthly.ensureFullCalendarReady_()
+    .then(() => {
+      const calendarEl = document.getElementById('calendar');
+      if (!calendarEl) throw new Error('ไม่พบ element calendar');
+  
+      // แปลงข้อมูลวันหยุดที่มีอยู่ (holidaysData) ให้เป็น Event ของปฏิทิน
+      const currentEvents = [];
+      if (window.AttendanceMonthly.holidaysData) {
+        for (const [date, title] of Object.entries(window.AttendanceMonthly.holidaysData)) {
+          currentEvents.push({
+            title: title,
+            start: date,
+            allDay: true,
+            color: '#dc3545', // สีแดง (ของเดิมที่มีอยู่)
+            textColor: '#ffffff'
+          });
+        }
+      }
+
+      // สร้างปฏิทิน FullCalendar
+      if (window.AttendanceMonthly.calendar) {
+        window.AttendanceMonthly.calendar.destroy(); // ล้างอันเก่าก่อนถ้ามี
+      }
+
+      window.AttendanceMonthly.calendar = new FullCalendar.Calendar(calendarEl, {
+        themeSystem: 'bootstrap5',
+        initialView: 'dayGridMonth',
+        locale: 'th', // เมนูภาษาไทย
+        headerToolbar: {
+          left: 'prev,next today',
+          center: 'title',
+          right: '' // เอาปุ่มมุมขวาออกให้ดูสะอาด
+        },
+        events: currentEvents, // ใส่ข้อมูลวันหยุดลงไป
+        editable: true,       // ลากย้ายวันได้
+        selectable: true,     // คลิกเลือกวันได้
+        height: 550,          // ความสูงปฏิทิน
+
+        // ✅ เมื่อคลิกที่ช่องวันที่ว่างๆ -> เพิ่มวันหยุด
+        dateClick: function(info) {
+          // แปลงวันที่เป็นรูปแบบไทยสวยๆ เพื่อถามผู้ใช้
+          const d = new Date(info.dateStr);
+          const thaiDate = `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()+543}`;
+          
+          const title = prompt(`➕ เพิ่มวันหยุด: ${thaiDate}\nกรุณาระบุชื่อวันหยุด:`);
+          
+          if (title && title.trim()) {
+            // เพิ่มลงในปฏิทินทันที (สีเขียว = ยังไม่ได้บันทึก)
+            window.AttendanceMonthly.calendar.addEvent({
+              title: title.trim(),
+              start: info.dateStr,
+              allDay: true,
+              color: '#198754' 
+            });
+            AttendanceMonthly.updateSideList(); // อัปเดตลิสต์ด้านซ้าย
+          }
+        },
+
+        // ✅ เมื่อคลิกที่แถบสีวันหยุด -> ลบ หรือ แก้ไข
+        eventClick: function(info) {
+          if (confirm(`🗑️ ต้องการลบวันหยุด "${info.event.title}" หรือไม่?`)) {
+            info.event.remove(); // ลบออกจากหน้าจอ
+            AttendanceMonthly.updateSideList();
+          }
+        },
+
+        // ✅ เมื่อลากวันหยุดไปปล่อยวันอื่น
+        eventDrop: function(info) {
+          AttendanceMonthly.updateSideList();
+        }
+      });
+
+      window.AttendanceMonthly.calendar.render();
+      AttendanceMonthly.updateSideList(); // สร้างรายการด้านซ้ายครั้งแรก
+    })
+    .catch((err) => {
+      console.error('FullCalendar init failed:', err);
+      AttendanceMonthly.showStatusMessage('❌ ไม่สามารถโหลดปฏิทินได้: ' + (err?.message || err), 'danger');
+    });
+};
+
+AttendanceMonthly.ensureFullCalendarReady_ = function() {
+  const TIMEOUT_MS = 8000;
+  const start = Date.now();
+
+  const isReady = () => {
+    return typeof window.FullCalendar !== 'undefined' &&
+      window.FullCalendar &&
+      typeof window.FullCalendar.Calendar === 'function';
+  };
+
+  if (isReady()) return Promise.resolve();
+
+  return new Promise((resolve, reject) => {
+    const tick = () => {
+      if (isReady()) return resolve();
+      if (Date.now() - start > TIMEOUT_MS) {
+        return reject(new Error('FullCalendar library not ready (timeout)'));
+      }
+      setTimeout(tick, 150);
+    };
+    tick();
+  });
+};
+
+// 3. ฟังก์ชันอัปเดตรายการด้านซ้าย (Side List)
+AttendanceMonthly.updateSideList = function() {
+  const listEl = document.getElementById('holidayListSide');
+  if(!listEl) return;
+  
+  const events = window.AttendanceMonthly.calendar.getEvents();
+  
+  // เรียงตามวันที่
+  events.sort((a, b) => a.start - b.start);
+
+  let html = '';
+  if (events.length === 0) {
+    html = '<li class="list-group-item bg-transparent text-muted text-center">ไม่มีวันหยุด</li>';
+  } else {
+    events.forEach(ev => {
+      const d = ev.start;
+      const dateStr = `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()+543}`;
+      const badgeColor = ev.backgroundColor === '#198754' ? 'bg-success' : 'bg-danger'; // เขียว=ใหม่, แดง=เก่า
+      
+      html += `
+        <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0 py-2 border-bottom">
+          <div>
+            <div class="fw-bold small text-dark">${dateStr}</div>
+            <div class="small text-muted">${ev.title}</div>
+          </div>
+          <span class="badge ${badgeColor} rounded-circle p-1" style="width:10px;height:10px;"> </span>
+        </li>`;
+    });
+  }
+  listEl.innerHTML = html;
+};
+
+// 4. ฟังก์ชันบันทึก (Save) ส่งกลับไป Google Sheet
+AttendanceMonthly.saveHolidaysFromCalendar = function() {
+  if (!window.AttendanceMonthly.calendar) return;
+
+  const allEvents = window.AttendanceMonthly.calendar.getEvents();
+  
+  // แปลงข้อมูลเตรียมส่ง Backend (Format: [["YYYY-MM-DD", "ชื่อวันหยุด"], ...])
+  const dataToSave = allEvents.map(ev => {
+    // แก้ปัญหาเรื่อง Timezone ให้ได้วันที่ถูกต้อง
+    const d = ev.start;
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    
+    return [dateStr, ev.title];
+  });
+
+  // แสดง Loading
+  AttendanceMonthly.showStatusMessage('⏳ กำลังบันทึกข้อมูลลงชีต...', 'info');
+
+  // ส่งไปที่ไฟล์ .gs (ฟังก์ชัน saveHolidaySheet)
+  AttendanceMonthly.runGAS('saveHolidaySheet', dataToSave)
+    .then(() => {
+       AttendanceMonthly.showStatusMessage('✅ บันทึกวันหยุดเรียบร้อยแล้ว!', 'success');
+       
+       // ปิด Modal
+       bootstrap.Modal.getInstance(document.getElementById('holidayModal')).hide();
+       
+       // โหลดข้อมูลใหม่เข้าหน้าเช็คชื่อทันที (เพื่อให้ตารางเปลี่ยนสีแดง)
+       AttendanceMonthly.loadInitialHolidays(); 
+    })
+    .catch(err => {
+       console.error(err);
+       AttendanceMonthly.showStatusMessage('❌ เกิดข้อผิดพลาด: ' + err.message, 'danger');
+    });
+};
+
+</script>
+
+<div id="fabSaveContainer" class="fab-save" style="display: none; cursor: move;">
+    <button class="btn btn-primary" onclick="AttendanceMonthly.saveMonthlyAttendanceClient()" title="บันทึกข้อมูลการเช็คชื่อ">
+        <i class="bi bi-save"></i>
+    </button>
+</div>
+
+<!-- 🎯 FAB Draggable Script -->
+<script>
+(function() {
+  const fab = document.getElementById('fabSaveContainer');
+  if (!fab) return;
+
+  let isDragging = false;
+  let startX, startY;
+  let initialX, initialY;
+  let currentX, currentY;
+  let hasMoved = false;
+  let clickTimeout = null;
+
+  // โหลดตำแหน่งที่บันทึกไว้
+  function loadPosition() {
+    const savedPos = localStorage.getItem('fabPosition');
+    if (savedPos) {
+      const pos = JSON.parse(savedPos);
+      fab.style.right = 'auto';
+      fab.style.bottom = 'auto';
+      fab.style.left = pos.x + 'px';
+      fab.style.top = pos.y + 'px';
+      currentX = pos.x;
+      currentY = pos.y;
+    }
+  }
+
+  // บันทึกตำแหน่ง
+  function savePosition(x, y) {
+    localStorage.setItem('fabPosition', JSON.stringify({ x, y }));
+  }
+
+
+  // เริ่มลาก (Mouse)
+  function onMouseDown(e) {
+    // อนุญาตให้จับลากได้ทุกที่
+    hasMoved = false;
+    
+    const rect = fab.getBoundingClientRect();
+    startX = e.clientX;
+    startY = e.clientY;
+    initialX = rect.left;
+    initialY = rect.top;
+
+    // รอสักครู่ก่อนเริ่มโหมดลาก (เพื่อแยก click กับ drag)
+    clickTimeout = setTimeout(() => {
+      isDragging = true;
+      fab.style.transition = 'none';
+      fab.style.cursor = 'grabbing';
+    }, 150);
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+    
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  // ลาก (Mouse)
+  function onMouseMove(e) {
+    const deltaX = e.clientX - startX;
+    const deltaY = e.clientY - startY;
+    
+    // ถ้าเคลื่อนที่มากกว่า 5px ถือว่าเป็นการลาก
+    if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+      hasMoved = true;
+      if (clickTimeout) {
+        clearTimeout(clickTimeout);
+        clickTimeout = null;
+        isDragging = true;
+        fab.style.transition = 'none';
+        fab.style.cursor = 'grabbing';
+      }
+    }
+
+    if (!isDragging) return;
+
+    currentX = initialX + deltaX;
+    currentY = initialY + deltaY;
+
+    // จำกัดขอบเขต
+    const maxX = window.innerWidth - fab.offsetWidth;
+    const maxY = window.innerHeight - fab.offsetHeight;
+    
+    currentX = Math.max(0, Math.min(currentX, maxX));
+    currentY = Math.max(0, Math.min(currentY, maxY));
+
+    fab.style.right = 'auto';
+    fab.style.bottom = 'auto';
+    fab.style.left = currentX + 'px';
+    fab.style.top = currentY + 'px';
+  }
+
+  // หยุดลาก (Mouse)
+  function onMouseUp(e) {
+    if (clickTimeout) {
+      clearTimeout(clickTimeout);
+      clickTimeout = null;
+    }
+
+    if (isDragging) {
+      isDragging = false;
+      fab.style.transition = '';
+      fab.style.cursor = 'move';
+      if (hasMoved) {
+        savePosition(currentX, currentY);
+      }
+    }
+    
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+    
+    // ถ้าไม่ได้เคลื่อนที่เลย (เป็น click) ให้คลิกปุ่มปกติ
+    if (!hasMoved && e.target.closest('.btn')) {
+      // ไม่ทำอะไร ให้ onclick ของปุ่มทำงานตามปกติ
+    }
+  }
+
+  // เริ่มลาก (Touch)
+  function onTouchStart(e) {
+    hasMoved = false;
+    
+    const touch = e.touches[0];
+    const rect = fab.getBoundingClientRect();
+    
+    startX = touch.clientX;
+    startY = touch.clientY;
+    initialX = rect.left;
+    initialY = rect.top;
+
+    // รอสักครู่ก่อนเริ่มโหมดลาก
+    clickTimeout = setTimeout(() => {
+      isDragging = true;
+      fab.style.transition = 'none';
+      fab.style.cursor = 'grabbing';
+    }, 150);
+    
+    e.preventDefault();
+  }
+
+  // ลาก (Touch)
+  function onTouchMove(e) {
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - startX;
+    const deltaY = touch.clientY - startY;
+    
+    // ถ้าเคลื่อนที่มากกว่า 5px ถือว่าเป็นการลาก
+    if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+      hasMoved = true;
+      if (clickTimeout) {
+        clearTimeout(clickTimeout);
+        clickTimeout = null;
+        isDragging = true;
+        fab.style.transition = 'none';
+        fab.style.cursor = 'grabbing';
+      }
+    }
+
+    if (!isDragging) return;
+
+    currentX = initialX + deltaX;
+    currentY = initialY + deltaY;
+
+    // จำกัดขอบเขต
+    const maxX = window.innerWidth - fab.offsetWidth;
+    const maxY = window.innerHeight - fab.offsetHeight;
+    
+    currentX = Math.max(0, Math.min(currentX, maxX));
+    currentY = Math.max(0, Math.min(currentY, maxY));
+
+    fab.style.right = 'auto';
+    fab.style.bottom = 'auto';
+    fab.style.left = currentX + 'px';
+    fab.style.top = currentY + 'px';
+    
+    e.preventDefault();
+  }
+
+  // หยุดลาก (Touch)
+  function onTouchEnd() {
+    if (clickTimeout) {
+      clearTimeout(clickTimeout);
+      clickTimeout = null;
+    }
+
+    if (isDragging) {
+      isDragging = false;
+      fab.style.transition = '';
+      fab.style.cursor = 'move';
+      if (hasMoved) {
+        savePosition(currentX, currentY);
+      }
+    }
+  }
+
+  // เพิ่ม Event Listeners
+  fab.addEventListener('mousedown', onMouseDown);
+  fab.addEventListener('touchstart', onTouchStart, { passive: false });
+  fab.addEventListener('touchmove', onTouchMove, { passive: false });
+  fab.addEventListener('touchend', onTouchEnd);
+
+  // โหลดตำแหน่งเมื่อเริ่มต้น
+  loadPosition();
+
+  // ปรับตำแหน่งเมื่อหมุนหน้าจอ
+  window.addEventListener('resize', function() {
+    if (currentX !== undefined && currentY !== undefined) {
+      const maxX = window.innerWidth - fab.offsetWidth;
+      const maxY = window.innerHeight - fab.offsetHeight;
+      
+      currentX = Math.max(0, Math.min(currentX, maxX));
+      currentY = Math.max(0, Math.min(currentY, maxY));
+      
+      fab.style.left = currentX + 'px';
+      fab.style.top = currentY + 'px';
+    }
+  });
+})();
+</script>
+<!-- 🔥 Loading Spinner Overlay -->
+<div id="loadingOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center;">
+  <div style="text-align: center; color: white;">
+    <div class="spinner-border" style="width: 5rem; height: 5rem; border-width: 0.5rem;" role="status">
+      <span class="visually-hidden">กำลังบันทึก...</span>
+    </div>
+    <div style="margin-top: 1.5rem; font-size: 1.25rem; font-weight: 600;">
+      <div>กำลังบันทึกข้อมูล...</div>
+      <div style="font-size: 0.9rem; margin-top: 0.5rem; opacity: 0.9;">กรุณารอสักครู่</div>
+    </div>
+  </div>
+</div>
+<script>
+// ===== Helper: แสดง/ซ่อนสถานะกำลังโหลดข้างช่องเดือน =====
+function setMonthLoadingUI(isLoading, monthStr) {
+  const monthInput = document.getElementById('attendanceMonth');
+  if (!monthInput) return;
+
+  // ปุ่มในกลุ่มเดียวกัน (◀ ▶)
+  const group = monthInput.closest('.btn-group');
+  const buttons = group ? group.querySelectorAll('button') : [];
+
+  // สร้าง spinner overlay แบบ fixed position
+  let spin = document.getElementById('monthLoadingSpinner');
+  if (!spin) {
+    spin = document.createElement('div');
+    spin.id = 'monthLoadingSpinner';
+    spin.style.cssText = `
+      display: none;
+      position: fixed;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9998;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 12px 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      border: 1px solid #e5e7eb;
+    `;
+    
+    // อัพเดตข้อความให้แสดงเดือนที่กำลังโหลด
+    const thMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+                      'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+    let label = 'กำลังโหลด…';
+    if (monthStr) {
+      const d = new Date(monthStr + '-01');
+      if (!isNaN(d)) label = `กำลังโหลด ${thMonths[d.getMonth()]} ${d.getFullYear() + 543}...`;
+    }
+    
+    spin.innerHTML =
+      '<span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span> ' +
+      `<span class="small ms-2">${label}</span>`;
+    document.body.appendChild(spin);
+  } else if (monthStr && isLoading) {
+    // อัพเดตข้อความถ้ามีการเปลี่ยนเดือน
+    const thMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+                      'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+    let label = 'กำลังโหลด…';
+    const d = new Date(monthStr + '-01');
+    if (!isNaN(d)) label = `กำลังโหลด ${thMonths[d.getMonth()]} ${d.getFullYear() + 543}...`;
+    
+    spin.innerHTML =
+      '<span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span> ' +
+      `<span class="small ms-2">${label}</span>`;
+  }
+
+  // เปิด/ปิด UI
+  if (spin) spin.style.display = isLoading ? 'block' : 'none';
+  buttons.forEach(b => b.disabled = !!isLoading);
+  monthInput.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+
+  // ❌ ไม่แสดง statusMessage overlay (ปิดไว้)
+}
+</script>
+
+<script>
+(function attachMonthInputLoading(){
+  const monthEl = document.getElementById('attendanceMonth');
+  if (!monthEl) return;
+  const fire = (e) => {
+    const v = e?.target?.value || monthEl.value || '';
+    // ✅ แสดงสปินเนอร์ก็ต่อเมื่อเลือกชั้น/ห้องครบ
+    if (v && isSelectionReady()) {
+      setMonthLoadingUI(true, v);
+    }
+    // flow เดิม: handleMonthChange → checkAndAutoLoad → loadMonthlyAttendance
+  };
+  monthEl.addEventListener('change', fire, {passive:true});
+  monthEl.addEventListener('input',  fire, {passive:true});
+})();
+
+</script>
+<script>
+function isSelectionReady() {
+  const g = document.getElementById('gradeSelect')?.value;
+  const c = document.getElementById('classSelect')?.value;
+  return !!(g && c);
+}
+</script>
+
+</body>
+</html>

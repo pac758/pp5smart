@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ส่งออกรายชื่อนักเรียน</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Sarabun', sans-serif; background: #f4f6fb; min-height: 100vh; }
+
+    /* ── TOP ACCENT BAR ── */
+    .top-bar {
+      height: 4px;
+      background: linear-gradient(90deg, #6366f1, #8b5cf6, #10b981);
+    }
+
+    /* ── PAGE WRAPPER ── */
+    .page-wrapper {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 48px 20px 64px;
+    }
+
+    /* ── HEADER ── */
+    .page-header { text-align: center; margin-bottom: 36px; }
+    .header-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: #ede9fe; color: #7c3aed;
+      padding: 4px 14px; border-radius: 20px;
+      font-size: 12px; font-weight: 700;
+      letter-spacing: .05em; text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+    .page-header h1 {
+      font-size: 28px; font-weight: 700; color: #111827;
+      margin: 0 0 8px; line-height: 1.25;
+    }
+    .page-header p { font-size: 15px; color: #6b7280; margin: 0; }
+
+    /* ── CARD ── */
+    .card {
+      background: #fff;
+      border-radius: 20px;
+      border: 1px solid #e9ecf3;
+      box-shadow: 0 4px 24px rgba(99,102,241,.07), 0 1px 4px rgba(0,0,0,.04);
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .card-header {
+      padding: 20px 28px;
+      border-bottom: 1px solid #f1f3f9;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .card-header-icon {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: linear-gradient(135deg,#ede9fe,#ddd6fe);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; flex-shrink: 0;
+    }
+    .card-header h2 { font-size: 15px; font-weight: 700; color: #111827; margin: 0; }
+    .card-header p  { font-size: 12.5px; color: #9ca3af; margin: 0; }
+    .card-body { padding: 28px; }
+
+    /* ── FILTER GRID ── */
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .field-group {}
+    .field-label {
+      font-size: 12.5px; font-weight: 700; color: #374151;
+      margin-bottom: 7px; display: block;
+    }
+    .field-select {
+      width: 100%;
+      padding: 10px 34px 10px 13px;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 10px;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 14px; color: #374151;
+      background: #fafafa url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%239ca3af' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E") no-repeat right 11px center;
+      appearance: none; cursor: pointer; transition: all .18s;
+    }
+    .field-select:hover { border-color: #c4b5fd; background-color: #fff; }
+    .field-select:focus {
+      outline: none; border-color: #8b5cf6; background-color: #fff;
+      box-shadow: 0 0 0 3px rgba(139,92,246,.1);
+    }
+
+    /* ── DIVIDER ── */
+    .divider { height: 1px; background: #f3f4f6; margin-bottom: 24px; }
+
+    /* ── BUTTONS ── */
+    .btn-row {
+      display: flex; align-items: center;
+      gap: 10px; flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 11px 22px; border-radius: 10px;
+      font-family: 'Sarabun', sans-serif;
+      font-size: 15px; font-weight: 600;
+      border: none; cursor: pointer; transition: all .2s;
+      flex-shrink: 0;
+    }
+    .btn-pdf {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #fff;
+      box-shadow: 0 3px 10px rgba(99,102,241,.3);
+    }
+    .btn-pdf:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(99,102,241,.38); }
+    .btn-pdf:active { transform: translateY(0); }
+    .btn-excel {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #fff;
+      box-shadow: 0 3px 10px rgba(16,185,129,.28);
+    }
+    .btn-excel:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(16,185,129,.36); }
+    .btn-excel:active { transform: translateY(0); }
+    .btn-reset {
+      background: #fff; color: #6b7280;
+      border: 1.5px solid #e5e7eb;
+    }
+    .btn-reset:hover { background: #f9fafb; border-color: #d1d5db; color: #374151; }
+
+    /* ── STATUS ── */
+    #status { margin-top: 20px; }
+    .status-box {
+      display: flex; align-items: center; gap: 10px;
+      padding: 13px 18px; border-radius: 12px;
+      font-size: 14px; font-weight: 500;
+      animation: fadeUp .3s ease;
+    }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+    .s-loading { background: #fefce8; border: 1px solid #fde68a; color: #92400e; }
+    .s-success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+    .s-error   { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+    .spinner {
+      width: 17px; height: 17px; flex-shrink: 0;
+      border: 2px solid #fde68a; border-top-color: #f59e0b;
+      border-radius: 50%; animation: spin .75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── LOG ── */
+    .log-section { margin-top: 20px; }
+    .log-label { font-size: 11.5px; font-weight: 700; color: #9ca3af; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 8px; }
+    .log-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; border-radius: 9px;
+      background: #fafafa; border: 1px solid #f1f3f9;
+      font-size: 13px; color: #374151; margin-bottom: 7px;
+      animation: fadeUp .3s ease;
+    }
+    .log-badge { padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+    .lb-pdf   { background: #ede9fe; color: #7c3aed; }
+    .lb-excel { background: #d1fae5; color: #065f46; }
+    .log-time { color: #9ca3af; font-size: 12px; margin-left: auto; flex-shrink: 0; }
+
+    /* ── INFO CARD ── */
+    .info-card {
+      background: #eff6ff; border: 1px solid #bfdbfe;
+      border-radius: 12px; padding: 13px 18px;
+      display: flex; align-items: center; gap: 9px;
+      font-size: 13.5px; color: #1d4ed8; font-weight: 500;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 580px) {
+      .filter-grid { grid-template-columns: 1fr; }
+      .btn-row { flex-direction: column; width: 100%; }
+      .btn { width: 100%; justify-content: center; }
+      .page-header h1 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="top-bar"></div>
+
+<div class="page-wrapper">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-badge">📋 Export Tool</div>
+    <h1>ส่งออกรายชื่อนักเรียน</h1>
+    <p>เลือกเงื่อนไขการกรองข้อมูลและดาวน์โหลดเป็น PDF หรือ Excel</p>
+  </div>
+
+  <!-- Main Form Card -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-header-icon">🔍</div>
+      <div>
+        <h2>เงื่อนไขการกรองข้อมูล</h2>
+        <p>เว้นว่างไว้เพื่อดึงข้อมูลนักเรียนทั้งหมด</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <form id="exportForm">
+
+        <div class="filter-grid">
+          <div class="field-group">
+            <label class="field-label" for="grade">🎓 ระดับชั้น</label>
+            <select id="grade" class="field-select">
+              <option value="">ทุกระดับชั้น</option>
+              <option value="อ.1">อนุบาล 1</option>
+              <option value="อ.2">อนุบาล 2</option>
+              <option value="อ.3">อนุบาล 3</option>
+              <option value="ป.1">ประถมศึกษาปีที่ 1</option>
+              <option value="ป.2">ประถมศึกษาปีที่ 2</option>
+              <option value="ป.3">ประถมศึกษาปีที่ 3</option>
+              <option value="ป.4">ประถมศึกษาปีที่ 4</option>
+              <option value="ป.5">ประถมศึกษาปีที่ 5</option>
+              <option value="ป.6">ประถมศึกษาปีที่ 6</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="classNo">🏫 ห้องเรียน</label>
+            <select id="classNo" class="field-select">
+              <option value="">ทุกห้อง</option>
+              <option value="1">ห้อง 1</option>
+              <option value="2">ห้อง 2</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="gender">👥 เพศ</label>
+            <select id="gender" class="field-select">
+              <option value="">ทุกเพศ</option>
+              <option value="ชาย">ชาย</option>
+              <option value="หญิง">หญิง</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="btn-row">
+          <button type="submit" name="action" value="pdf" class="btn btn-pdf">
+            📄 ส่งออก PDF
+          </button>
+          <button type="submit" name="action" value="excel" class="btn btn-excel">
+            📊 ส่งออก Excel
+          </button>
+          <button type="button" class="btn btn-reset" onclick="resetForm()">
+            ↺ ล้างค่า
+          </button>
+        </div>
+
+      </form>
+
+      <!-- Status -->
+      <div id="status"></div>
+
+      <!-- Log -->
+      <div class="log-section" id="logSection" style="display:none">
+        <div class="log-label">ประวัติการส่งออก</div>
+        <div id="logList"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Info Card -->
+  <div class="info-card">
+    <span style="font-size:16px;flex-shrink:0">💡</span>
+    หากไม่เลือกเงื่อนไขใด ระบบจะส่งออกรายชื่อนักเรียนทั้งหมด
+  </div>
+
+</div><!-- /page-wrapper -->
+
+<script>
+  function resetForm() {
+    ['grade','classNo','gender'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('status').innerHTML = '';
+  }
+
+  function getFilterLabel() {
+    const g = document.getElementById('grade');
+    const c = document.getElementById('classNo');
+    const s = document.getElementById('gender');
+    const parts = [];
+    if (g.value) parts.push(g.options[g.selectedIndex].text);
+    if (c.value) parts.push(c.options[c.selectedIndex].text);
+    if (s.value) parts.push(s.value);
+    return parts.length ? parts.join(' · ') : 'ทั้งหมด';
+  }
+
+  function addLog(type, label) {
+    document.getElementById('logSection').style.display = 'block';
+    const time = new Date().toLocaleTimeString('th-TH', { hour:'2-digit', minute:'2-digit' });
+    const el = document.createElement('div');
+    el.className = 'log-item';
+    el.innerHTML = `
+      <span class="log-badge lb-${type}">${type.toUpperCase()}</span>
+      <span>${label}</span>
+      <span class="log-time">${time}</span>`;
+    const list = document.getElementById('logList');
+    list.prepend(el);
+    if (list.children.length > 5) list.removeChild(list.lastChild);
+  }
+
+  document.getElementById("exportForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+
+    const grade   = document.getElementById("grade").value;
+    const classNo = document.getElementById("classNo").value;
+    const gender  = document.getElementById("gender").value;
+    const status  = document.getElementById("status");
+    const action  = e.submitter ? e.submitter.value : 'pdf';
+    const isExcel = action === 'excel';
+    const label   = isExcel ? 'Excel' : 'PDF';
+    const filterLabel = getFilterLabel();
+
+    status.innerHTML = `
+      <div class="status-box s-loading">
+        <div class="spinner"></div>
+        <span>กำลังสร้างไฟล์ <strong>${label}</strong> · ${filterLabel}</span>
+      </div>`;
+      
+const successHandler = url => {
+  if (url && url.startsWith('http')) {
+
+    // ✅ แทนที่ window.open — ใช้วิธีนี้แทนเพื่อ trigger download โดยตรง
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    addLog(action, filterLabel);
+    status.innerHTML = `
+      <div class="status-box s-success">
+        <span style="font-size:17px">✅</span>
+        <span>ส่งออก <strong>${label}</strong> สำเร็จ ·
+          <a href="${url}" style="color:#16a34a;font-weight:700;text-decoration:underline">ดาวน์โหลดอีกครั้ง</a>
+        </span>
+      </div>`;
+  } else {
+    failureHandler({ message: url });
+  }
+};
+
+    const failureHandler = err => {
+      status.innerHTML = `
+        <div class="status-box s-error">
+          <span style="font-size:17px">❌</span>
+          <span>${err.message || 'ไม่สามารถส่งออกได้'}</span>
+        </div>`;
+    };
+
+    const runner = google.script.run
+      .withSuccessHandler(successHandler)
+      .withFailureHandler(failureHandler);
+
+    isExcel
+      ? runner.generateStudentListExcel(grade, classNo, gender)
+      : runner.generateStudentListPDF(grade, classNo, gender);
+  });
+</script>
+</body>
+</html>

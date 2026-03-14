@@ -1,0 +1,259 @@
+<!-- 
+  ============================================================
+  🔐 AUTH HELPER - ใส่ไว้ในหน้าที่ต้องการป้องกัน
+  ============================================================
+  วิธีใช้: <?!= include('auth_helper'); ?>
+-->
+
+<script>
+/**
+ * ✅ Auth Helper Module
+ * ใช้จัดการ session และตรวจสอบ token
+ */
+const AuthHelper = (() => {
+  
+  // Storage utilities
+  const storage = {
+    get: (k) => { try { return localStorage.getItem(k); } catch(_){ return null; } },
+    set: (k,v) => { try { localStorage.setItem(k,v); } catch(_){} },
+    remove: (k) => { try { localStorage.removeItem(k); } catch(_){} },
+    clear: () => { try { localStorage.clear(); } catch(_){} }
+  };
+
+  /**
+   * ✅ ดึง Auth Token
+   */
+  function getToken() {
+    return storage.get('authToken');
+  }
+
+  /**
+   * ✅ ดึงข้อมูล User
+   */
+  function getUser() {
+    return {
+      username: storage.get('username'),
+      role: storage.get('role'),
+      firstName: storage.get('firstName'),
+      lastName: storage.get('lastName'),
+      displayName: storage.get('displayName'),
+      className: storage.get('className')
+    };
+  }
+
+  /**
+   * ✅ ตรวจสอบว่า login อยู่หรือไม่
+   */
+  function isLoggedIn() {
+    return storage.get('loggedIn') === 'true' && !!storage.get('authToken');
+  }
+
+  /**
+   * ✅ Logout และ redirect ไปหน้า login
+   */
+  function logout() {
+    storage.clear();
+    var _fix = function(s) { try { var r=document.referrer||''; if(r){var b=r.split('?')[0].replace(/\/dev$/,'/exec'); if(b.endsWith('/exec')){if(s){var m=s.match(/\/s\/([^\/]+)\/exec/); if(m&&b.includes(m[1]))return b;} return b;}} } catch(_){} return s||''; };
+    
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      // ✅ ล้าง server session ก่อนแล้วค่อย redirect
+      google.script.run
+        .withSuccessHandler((url) => {
+          // ล้าง server session ด้วย
+          google.script.run
+            .withSuccessHandler(() => {
+              var base = _fix(url) || location.origin + location.pathname;
+              location.replace(base + '?page=login');
+            })
+            .withFailureHandler(() => {
+              var base = _fix(url) || location.origin + location.pathname;
+              location.replace(base + '?page=login');
+            })
+            .clearLoginSession();
+        })
+        .withFailureHandler(() => {
+          var base = _fix('') || location.origin + location.pathname;
+          location.replace(base + '?page=login');
+        })
+        .getDeploymentUrl();
+    } else {
+      var base = _fix('') || location.origin + location.pathname;
+      location.replace(base + '?page=login');
+    }
+  }
+
+  /**
+   * ✅ ตรวจสอบ session และ redirect ถ้าไม่ valid
+   */
+  function requireAuth(callback) {
+    const token = getToken();
+    
+    if (!token) {
+      // console.warn('⚠️ No auth token found');
+      logout();
+      return;
+    }
+
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      google.script.run
+        .withSuccessHandler((result) => {
+          if (result && result.valid) {
+            // Token valid -> execute callback
+            if (callback) callback(result.username);
+          } else {
+            // Token invalid -> logout
+            // console.warn('⚠️ Token invalid:', result?.reason);
+            logout();
+          }
+        })
+        .withFailureHandler((err) => {
+          console.error('Auth check failed:', err);
+          // Error -> ให้ลองใช้งานต่อ (graceful degradation)
+          if (callback) callback(getUser().username);
+        })
+        .validateToken(token);
+    } else {
+      // ไม่มี google.script.run -> ใช้งานต่อ
+      if (callback) callback(getUser().username);
+    }
+  }
+
+  /**
+   * ✅ เรียก server function พร้อม token
+   */
+  function callProtectedApi(functionName, ...args) {
+    return new Promise((resolve, reject) => {
+      const token = getToken();
+      
+      if (!token) {
+        reject({ error: 'NO_TOKEN', message: 'กรุณาเข้าสู่ระบบ' });
+        return;
+      }
+
+      if (typeof google === 'undefined' || !google.script || !google.script.run) {
+        reject({ error: 'NO_CONNECTION', message: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้' });
+        return;
+      }
+
+      // เพิ่ม token เป็น argument แรก
+      const argsWithToken = [token, ...args];
+
+      google.script.run
+        .withSuccessHandler((result) => {
+          if (result && result.error === 'UNAUTHORIZED') {
+            // Token หมดอายุ -> logout
+            logout();
+            reject(result);
+          } else {
+            resolve(result);
+          }
+        })
+        .withFailureHandler((err) => {
+          reject({ error: 'SERVER_ERROR', message: err.message || String(err) });
+        })
+        [functionName](...argsWithToken);
+    });
+  }
+
+  /**
+   * ✅ Refresh token (ต่ออายุ)
+   */
+  function refreshToken() {
+    const token = getToken();
+    if (!token) return Promise.reject({ error: 'NO_TOKEN' });
+
+    return new Promise((resolve, reject) => {
+      if (typeof google === 'undefined' || !google.script || !google.script.run) {
+        reject({ error: 'NO_CONNECTION' });
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler((result) => {
+          if (result && result.success) {
+            storage.set('authToken', result.token);
+            resolve(result);
+          } else {
+            reject(result);
+          }
+        })
+        .withFailureHandler((err) => {
+          reject({ error: 'SERVER_ERROR', message: String(err) });
+        })
+        .refreshToken(token);
+    });
+  }
+
+  // Public API
+  return {
+    getToken,
+    getUser,
+    isLoggedIn,
+    logout,
+    requireAuth,
+    callProtectedApi,
+    refreshToken
+  };
+})();
+
+// ============================================================
+// 🚀 AUTO-CHECK ON PAGE LOAD
+// ============================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+  // ตรวจสอบว่า login อยู่หรือไม่
+  if (!AuthHelper.isLoggedIn()) {
+    // console.warn('⚠️ Not logged in, redirecting to login page...');
+    AuthHelper.logout();
+    return;
+  }
+
+  // ตรวจสอบ token กับ server
+  AuthHelper.requireAuth((username) => {
+    // console.log('✅ Authenticated as:', username);
+    
+    // Optional: Refresh token ทุก 30 นาที
+    setInterval(() => {
+      AuthHelper.refreshToken()
+        .then(() => console.log('🔄 Token refreshed'))
+        .catch(err => console.warn('Token refresh failed:', err));
+    }, 30 * 60 * 1000);
+  });
+});
+
+// ============================================================
+// 📤 GLOBAL FUNCTIONS
+// ============================================================
+
+/**
+ * ✅ Global logout function (เรียกจาก UI ได้)
+ */
+function logout() {
+  AuthHelper.logout();
+}
+
+/**
+ * ✅ Global function สำหรับโหลดหน้าพร้อม token
+ */
+function loadPageWithAuth(pageName) {
+  const token = AuthHelper.getToken();
+  
+  if (!token) {
+    AuthHelper.logout();
+    return;
+  }
+
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler((html) => {
+        const container = document.getElementById('main-content') || document.body;
+        container.innerHTML = html;
+      })
+      .withFailureHandler((err) => {
+        console.error('Load page failed:', err);
+        alert('เกิดข้อผิดพลาดในการโหลดหน้า');
+      })
+      .getPageContent(pageName, token);
+  }
+}
+</script>

@@ -1,0 +1,285 @@
+<style>
+  .opr-page { max-width: 900px; margin: 0 auto; }
+  .opr-header {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border-radius: 16px; padding: 1.5rem 2rem; color: #fff; margin-bottom: 1.5rem;
+  }
+  .opr-header h2 { font-weight: 700; font-size: 1.4rem; margin: 0; }
+  .opr-header p { opacity: 0.85; margin: 0.3rem 0 0; font-size: 0.9rem; }
+  .opr-card {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
+    padding: 1.25rem; margin-bottom: 1rem;
+  }
+  .opr-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; margin-bottom: 1rem; }
+  .opr-field { display: flex; flex-direction: column; gap: 4px; }
+  .opr-field label { font-size: 0.82rem; font-weight: 600; color: #475569; }
+  .opr-field select { padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; min-width: 140px; }
+  .opr-btn {
+    padding: 8px 20px; border: none; border-radius: 8px; font-size: 0.9rem;
+    font-weight: 600; cursor: pointer; transition: all 0.2s;
+  }
+  .opr-btn-primary { background: #10b981; color: #fff; }
+  .opr-btn-primary:hover { background: #059669; }
+  .opr-btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
+  .opr-btn-outline { background: #fff; color: #10b981; border: 1.5px solid #10b981; }
+  .opr-btn-outline:hover { background: #ecfdf5; }
+  .opr-list { max-height: 320px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 10px; }
+  .opr-item {
+    display: flex; align-items: center; gap: 10px; padding: 8px 14px;
+    border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background 0.15s;
+  }
+  .opr-item:hover { background: #f0fdf4; }
+  .opr-item:last-child { border-bottom: none; }
+  .opr-item input[type=checkbox] { width: 16px; height: 16px; accent-color: #10b981; }
+  .opr-item .no { font-weight: 600; color: #64748b; min-width: 28px; text-align: center; font-size: 0.85rem; }
+  .opr-item .name { font-size: 0.92rem; color: #1e293b; }
+  .opr-toolbar { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+  .opr-toolbar .count { font-size: 0.82rem; color: #64748b; margin-left: auto; }
+  .opr-progress { margin-top: 1rem; }
+  .opr-pbar { height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin-top: 6px; }
+  .opr-pbar-fill { height: 100%; background: #10b981; transition: width 0.3s; border-radius: 4px; }
+  .opr-status { font-size: 0.85rem; color: #475569; margin-top: 4px; }
+  .opr-step { font-size: 0.8rem; color: #64748b; margin-top: 4px; display: flex; align-items: center; gap: 6px; }
+  .opr-step .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #e2e8f0; border-top-color: #10b981; border-radius: 50%; animation: opr-spin 0.6s linear infinite; }
+  @keyframes opr-spin { to { transform: rotate(360deg); } }
+  .opr-results { margin-top: 1rem; }
+  .opr-result-item {
+    display: flex; align-items: center; gap: 8px; padding: 6px 12px;
+    background: #f0fdf4; border-radius: 8px; margin-bottom: 4px; font-size: 0.88rem;
+  }
+  .opr-result-item a { color: #059669; text-decoration: none; font-weight: 600; }
+  .opr-result-item a:hover { text-decoration: underline; }
+  .opr-result-item.error { background: #fef2f2; }
+  .opr-result-item.error span { color: #dc2626; }
+  .opr-empty { text-align: center; padding: 2rem; color: #94a3b8; font-size: 0.9rem; }
+</style>
+
+<div class="opr-page animate-fade-in">
+  <div class="opr-header">
+    <h2><i class="bi bi-file-earmark-text me-2"></i>รายงานผลการพัฒนาคุณภาพผู้เรียน (หน้าเดียว)</h2>
+    <p>สร้าง PDF รายงานหน้าเดียว พร้อมเกรดรายภาค สรุปผลประเมิน และลายเซ็น</p>
+  </div>
+
+  <div class="opr-card">
+    <div class="opr-row">
+      <div class="opr-field">
+        <label>ระดับชั้น</label>
+        <select id="oprGrade" onchange="oprLoadClasses()">
+          <option value="">-- เลือกชั้น --</option>
+        </select>
+      </div>
+      <div class="opr-field">
+        <label>ห้อง</label>
+        <select id="oprClass" onchange="oprLoadStudents()" disabled>
+          <option value="">-- เลือกห้อง --</option>
+        </select>
+      </div>
+      <button class="opr-btn opr-btn-primary" id="oprGenBtn" onclick="oprGenerate()" disabled>
+        <i class="bi bi-printer me-1"></i>สร้าง PDF
+      </button>
+    </div>
+
+    <div class="opr-toolbar">
+      <button class="opr-btn opr-btn-outline" onclick="oprSelectAll(true)" style="font-size:0.8rem;padding:4px 10px;">เลือกทั้งหมด</button>
+      <button class="opr-btn opr-btn-outline" onclick="oprSelectAll(false)" style="font-size:0.8rem;padding:4px 10px;">ยกเลิกทั้งหมด</button>
+      <span class="count" id="oprCount">0 คน</span>
+    </div>
+
+    <div class="opr-list" id="oprList">
+      <div class="opr-empty">กรุณาเลือกชั้นและห้อง</div>
+    </div>
+
+    <div class="opr-progress" id="oprProgress" style="display:none;">
+      <div style="display:flex;justify-content:space-between;font-size:0.85rem;">
+        <span id="oprPLabel">กำลังสร้าง...</span>
+        <span id="oprPPct">0%</span>
+      </div>
+      <div class="opr-pbar"><div class="opr-pbar-fill" id="oprPBar" style="width:0%"></div></div>
+      <div class="opr-step" id="oprPStep"></div>
+      <div class="opr-status" id="oprPStatus"></div>
+    </div>
+
+    <div class="opr-results" id="oprResults"></div>
+  </div>
+</div>
+
+<script>
+var oprStudentData = {};
+
+function oprInit() {
+  google.script.run.withSuccessHandler(function(grades) {
+    var sel = document.getElementById('oprGrade');
+    (grades || []).forEach(function(g) {
+      var o = document.createElement('option');
+      o.value = g; o.textContent = g;
+      sel.appendChild(o);
+    });
+  }).withFailureHandler(function(e) {
+    console.error('Load grades error:', e);
+  }).getAvailableGrades();
+}
+
+function oprLoadClasses() {
+  var grade = document.getElementById('oprGrade').value;
+  var cls = document.getElementById('oprClass');
+  cls.innerHTML = '<option value="">-- เลือกห้อง --</option>';
+  cls.disabled = !grade;
+  document.getElementById('oprList').innerHTML = '<div class="opr-empty">กรุณาเลือกชั้นและห้อง</div>';
+  document.getElementById('oprGenBtn').disabled = true;
+  if (!grade) return;
+
+  google.script.run.withSuccessHandler(function(classes) {
+    (classes || []).forEach(function(c) {
+      var o = document.createElement('option');
+      o.value = c; o.textContent = 'ห้อง ' + c;
+      cls.appendChild(o);
+    });
+    cls.disabled = false;
+  }).withFailureHandler(function(e) {
+    console.error('Load classes error:', e);
+  }).getAvailableClasses(grade);
+}
+
+function oprLoadStudents() {
+  var grade = document.getElementById('oprGrade').value;
+  var classNo = document.getElementById('oprClass').value;
+  var list = document.getElementById('oprList');
+  list.innerHTML = '<div class="opr-empty">กำลังโหลด...</div>';
+  document.getElementById('oprGenBtn').disabled = true;
+  document.getElementById('oprResults').innerHTML = '';
+  if (!grade || !classNo) {
+    list.innerHTML = '<div class="opr-empty">กรุณาเลือกชั้นและห้อง</div>';
+    return;
+  }
+
+  google.script.run.withSuccessHandler(function(data) {
+    oprStudentData = data || {};
+    var students = (oprStudentData[grade] && oprStudentData[grade][classNo]) || [];
+    if (students.length === 0) {
+      list.innerHTML = '<div class="opr-empty">ไม่พบนักเรียน</div>';
+      return;
+    }
+    var html = '';
+    students.forEach(function(s, i) {
+      html += '<label class="opr-item">' +
+        '<input type="checkbox" class="oprChk" value="'+s.id+'" checked onchange="oprUpdateCount()">' +
+        '<span class="no">'+(i+1)+'</span>' +
+        '<span class="name">'+s.fullName+'</span>' +
+        '</label>';
+    });
+    list.innerHTML = html;
+    oprUpdateCount();
+    document.getElementById('oprGenBtn').disabled = false;
+  }).withFailureHandler(function(e) {
+    list.innerHTML = '<div class="opr-empty" style="color:#dc2626;">โหลดข้อมูลผิดพลาด: '+e.message+'</div>';
+  }).getAllStudentDataOptimized();
+}
+
+function oprSelectAll(checked) {
+  document.querySelectorAll('.oprChk').forEach(function(c) { c.checked = checked; });
+  oprUpdateCount();
+}
+
+function oprUpdateCount() {
+  var checked = document.querySelectorAll('.oprChk:checked').length;
+  document.getElementById('oprCount').textContent = checked + ' คน';
+  document.getElementById('oprGenBtn').disabled = checked === 0;
+}
+
+function oprGenerate() {
+  var ids = [];
+  document.querySelectorAll('.oprChk:checked').forEach(function(c) { ids.push(c.value); });
+  if (ids.length === 0) return;
+
+  var prog = document.getElementById('oprProgress');
+  var bar = document.getElementById('oprPBar');
+  var pct = document.getElementById('oprPPct');
+  var label = document.getElementById('oprPLabel');
+  var step = document.getElementById('oprPStep');
+  var status = document.getElementById('oprPStatus');
+  var results = document.getElementById('oprResults');
+  prog.style.display = 'block';
+  results.innerHTML = '';
+  status.textContent = '';
+  document.getElementById('oprGenBtn').disabled = true;
+
+  var total = ids.length, done = 0, errors = 0;
+  var stepTimer = null;
+  var steps = [
+    'ดึงข้อมูลนักเรียน...',
+    'ดึงคะแนนรายวิชา...',
+    'สร้างเอกสาร Google Doc...',
+    'สร้างตารางผลการเรียน...',
+    'สร้างตารางประเมิน...',
+    'สร้างส่วนลงชื่อ + อนุมัติ...',
+    'รวมเซลล์ตาราง (Merge)...',
+    'แปลงเป็น PDF...',
+    'บันทึกลง Google Drive...'
+  ];
+
+  function animateSteps() {
+    var si = 0;
+    step.innerHTML = '<span class="spinner"></span> ' + steps[si];
+    stepTimer = setInterval(function() {
+      si++;
+      if (si < steps.length) {
+        step.innerHTML = '<span class="spinner"></span> ' + steps[si];
+      } else {
+        si = 0;
+        step.innerHTML = '<span class="spinner"></span> ' + steps[si];
+      }
+    }, 2500);
+  }
+
+  function stopSteps() {
+    if (stepTimer) { clearInterval(stepTimer); stepTimer = null; }
+    step.innerHTML = '';
+  }
+
+  function updateBar() {
+    var pp = Math.round((done / total) * 100);
+    bar.style.width = pp + '%';
+    pct.textContent = pp + '%';
+  }
+
+  function next() {
+    if (done >= total) {
+      stopSteps();
+      bar.style.width = '100%'; pct.textContent = '100%';
+      label.textContent = '✅ เสร็จสิ้น!';
+      status.textContent = 'สำเร็จ ' + (total - errors) + '/' + total + ' รายการ' + (errors > 0 ? ' (ผิดพลาด '+errors+')' : '');
+      document.getElementById('oprGenBtn').disabled = false;
+      return;
+    }
+    var id = ids[done];
+    var chk = document.querySelector('.oprChk[value="'+id+'"]');
+    var name = chk ? chk.closest('.opr-item').querySelector('.name').textContent : id;
+    label.textContent = '📄 สร้าง ' + (done+1) + '/' + total + ': ' + name;
+    updateBar();
+    animateSteps();
+
+    google.script.run
+      .withSuccessHandler(function(url) {
+        stopSteps();
+        done++;
+        updateBar();
+        results.innerHTML += '<div class="opr-result-item"><i class="bi bi-check-circle-fill" style="color:#10b981"></i>' +
+          '<span>' + name + '</span><a href="'+url+'" target="_blank">เปิด PDF</a></div>';
+        next();
+      })
+      .withFailureHandler(function(e) {
+        stopSteps();
+        done++; errors++;
+        updateBar();
+        results.innerHTML += '<div class="opr-result-item error"><i class="bi bi-x-circle-fill" style="color:#dc2626"></i>' +
+          '<span>' + name + ': ' + e.message + '</span></div>';
+        next();
+      })
+      .generateOnePageReportPdf(id);
+  }
+  next();
+}
+
+// Auto-init
+if (typeof google !== 'undefined' && google.script) { oprInit(); }
+</script>

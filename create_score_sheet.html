@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>📋 สร้างตารางคะแนนรายวิชา</title>
+    <style>
+        body {
+            font-family: 'Sarabun', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+
+        .create-score-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        .create-score-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid #e9ecef;
+        }
+
+        .create-score-title {
+            color: #0d6efd;
+            text-align: center;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .create-score-subtitle {
+            text-align: center;
+            color: #6c757d;
+            margin-bottom: 2rem;
+        }
+
+        .create-score-form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .create-score-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .create-score-select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 1rem;
+            background: white;
+            transition: all 0.3s ease;
+        }
+
+        .create-score-select:focus {
+            outline: none;
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+        }
+
+        .create-score-btn {
+            background: linear-gradient(135deg, #0d6efd 0%, #6610f2 100%);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: block;
+            margin: 1rem auto;
+            min-width: 200px;
+        }
+
+        .create-score-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(13, 110, 253, 0.3);
+        }
+
+        .create-score-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .create-score-status {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .create-score-status.show {
+            display: block;
+        }
+
+        .create-score-status.success {
+            background-color: #d1e7dd;
+            border: 1px solid #badbcc;
+            color: #0f5132;
+        }
+
+        .create-score-status.error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c2c7;
+            color: #842029;
+        }
+
+        .create-score-status.info {
+            background-color: #cff4fc;
+            border: 1px solid #b6effb;
+            color: #055160;
+        }
+
+        .create-score-status.warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffecb5;
+            color: #664d03;
+        }
+
+        .create-score-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .student-preview {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .student-preview.show {
+            display: block;
+        }
+
+        .student-preview h5 {
+            color: #0d6efd;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        .student-count {
+            color: #28a745;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .subject-selection-area {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border: 2px solid #dee2e6;
+        }
+
+        .subject-header h5 {
+            color: #0d6efd;
+            margin-bottom: 0.5rem;
+        }
+
+        .subject-checkbox-list {
+            max-height: 400px;
+            overflow-y: auto;
+            background: white;
+            border-radius: 6px;
+            padding: 0.5rem;
+        }
+
+        .subject-checkbox-item {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem;
+            border-bottom: 1px solid #e9ecef;
+            transition: background 0.2s ease;
+        }
+
+        .subject-checkbox-item:hover {
+            background: #f8f9fa;
+        }
+
+        .subject-checkbox-item:last-child {
+            border-bottom: none;
+        }
+
+        .subject-checkbox-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 1rem;
+            cursor: pointer;
+        }
+
+        .subject-info {
+            flex: 1;
+        }
+
+        .subject-code {
+            color: #0d6efd;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .subject-name {
+            color: #495057;
+            font-size: 1rem;
+            margin-left: 0.5rem;
+        }
+
+        .subject-hour {
+            color: #6c757d;
+            font-size: 0.85rem;
+            margin-left: 1rem;
+        }
+
+        /* ✅ เพิ่ม badge สำหรับแสดงสถานะชีต */
+        .sheet-status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+
+        .sheet-status-badge.exists {
+            background-color: #d1e7dd;
+            color: #0f5132;
+        }
+
+        .sheet-status-badge.new {
+            background-color: #cff4fc;
+            color: #055160;
+        }
+
+        .select-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .select-btn:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        /* ✅ เพิ่ม progress bar */
+        .progress-container {
+            margin: 1rem 0;
+            display: none;
+        }
+
+        .progress-container.show {
+            display: block;
+        }
+
+        .progress-bar-wrapper {
+            width: 100%;
+            height: 30px;
+            background: #e9ecef;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #0d6efd, #6610f2);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        /* ✅ Checking Status แบบ Inline */
+.checking-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    color: #856404;
+    animation: fadeIn 0.3s ease;
+}
+
+.checking-status .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #ffc107;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ปรับปุ่ม select ให้เล็กลง */
+.select-btn {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+    </style>
+</head>
+<body>
+    <div class="create-score-container">
+        <div class="create-score-card">
+            <h4 class="create-score-title">
+                📋 สร้างตารางบันทึกคะแนนรายวิชา
+            </h4>
+            <p class="create-score-subtitle">
+                กรุณาเลือกระดับชั้น ห้องเรียน และรายวิชาที่ต้องการ
+            </p>
+                
+            <!-- Form -->
+            <div class="create-score-row">
+                <div class="create-score-form-group">
+                    <label class="create-score-label">1. เลือกระดับชั้น</label>
+                    <select id="gradeSelect" class="create-score-select" onchange="handleGradeChange()">
+                        <option value="">⏳ กรุณารอสักครู่...</option>
+                    </select>
+                </div>
+                <div class="create-score-form-group">
+                    <label class="create-score-label">2. เลือกห้องเรียน</label>
+                    <select id="classSelect" class="create-score-select" onchange="handleClassChange()">
+                        <option value="">-- เลือกระดับชั้นก่อน --</option>
+                    </select>
+                </div>
+            </div>
+
+<!-- Subject Selection Area -->
+<div id="subjectSelectionArea" class="subject-selection-area" style="display: none;">
+    <div class="subject-header">
+        <h5>📚 เลือกรายวิชาที่ต้องการสร้างตาราง</h5>
+        <div style="display: flex; gap: 1rem; margin-bottom: 1rem; align-items: center;">
+            <button onclick="selectAllSubjects()" class="select-btn">✅ เลือกทั้งหมด</button>
+            <button onclick="deselectAllSubjects()" class="select-btn">❌ ยกเลิกทั้งหมด</button>
+            
+            <!-- ✅ Checking Status -->
+            <div id="checkingStatus" class="checking-status" style="display: none;">
+                <div class="spinner"></div>
+                <span>กำลังตรวจสอบตารางที่มีอยู่...</span>
+            </div>
+            
+            <span id="selectedCount" style="color: #28a745; font-weight: 600; margin-left: auto;"></span>
+        </div>
+    </div>
+    <div id="subjectCheckboxList" class="subject-checkbox-list"></div>
+</div>
+    <!-- ✅ เพิ่มตรงนี้ -->
+<!-- Student Preview -->
+<div id="studentPreview" class="student-preview">
+    <h5>👥 นักเรียนในห้อง</h5>
+    <div class="student-count" id="studentCount"></div>
+    <div id="studentList"></div>
+</div>
+
+<!-- Progress Bar -->
+<div id="progressContainer" class="progress-container">
+    <div class="progress-bar-wrapper">
+        <div id="progressBarFill" class="progress-bar-fill" style="width: 0%;">0%</div>
+    </div>
+</div>
+
+<!-- Status Message -->
+<div id="statusDiv" class="create-score-status"></div>
+
+<!-- Create Button -->
+<button id="createBtn" class="create-score-btn" onclick="createSheets()" disabled>
+    ✨ สร้างตาราง
+</button>
+
+    </div> <!-- ปิด create-score-card -->
+    <script>
+    (function(){
+        window.selectedSubjects = [];
+        window.selectedStudents = null;
+        window.allSubjects = [];
+        window.existingSheets = {}; // ✅ เก็บชีตที่มีอยู่แล้ว
+        window.isGoogleScriptAvailable = false;
+
+        window.debugLog = function(message, data) {
+            const timestamp = new Date().toLocaleTimeString();
+            let logMessage = `[${timestamp}] ${message}`;
+            if (data) {
+                logMessage += `\nData: ${JSON.stringify(data, null, 2)}`;
+            }
+            // console.log(logMessage);
+        };
+
+        window.showStatus = function(message, type = 'info') {
+            const statusDiv = document.getElementById('statusDiv');
+            if (!statusDiv) return;
+            statusDiv.className = `create-score-status show ${type}`;
+            statusDiv.innerHTML = `
+                <strong>${type === 'success' ? '✅' : type === 'error' ? '❌' : type === 'warning' ? '⚠️' : 'ℹ️'} ${message}</strong>
+            `;
+            if (type === 'success') {
+                setTimeout(() => {
+                    statusDiv.classList.remove('show');
+                }, 5000);
+            }
+        };
+
+        // ✅ ฟังก์ชันแสดง progress
+        window.updateProgress = function(current, total) {
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBarFill = document.getElementById('progressBarFill');
+            
+            if (total > 0) {
+                progressContainer.classList.add('show');
+                const percent = Math.round((current / total) * 100);
+                progressBarFill.style.width = `${percent}%`;
+                progressBarFill.textContent = `${current}/${total} (${percent}%)`;
+            } else {
+                progressContainer.classList.remove('show');
+            }
+        };
+
+        window.updateCreateButton = function() {
+            const gradeSelect = document.getElementById('gradeSelect');
+            const classSelect = document.getElementById('classSelect');
+            const createBtn = document.getElementById('createBtn');
+            if (!gradeSelect || !classSelect || !createBtn) {
+                debugLog('❌ Missing form elements');
+                return;
+            }
+            const hasAllSelections = gradeSelect.value && classSelect.value && 
+                                   window.selectedSubjects.length > 0 && 
+                                   window.selectedStudents && window.selectedStudents.length > 0;
+            createBtn.disabled = !hasAllSelections || !window.isGoogleScriptAvailable;
+            
+            if (window.selectedSubjects.length > 0) {
+                const existingCount = window.selectedSubjects.filter(s => {
+                    const sheetName = generateSheetName(s.name, gradeSelect.value, classSelect.value);
+                    return window.existingSheets[sheetName];
+                }).length;
+                
+                if (existingCount > 0) {
+                    createBtn.textContent = `✨ สร้าง/อัปเดตตาราง (${window.selectedSubjects.length} วิชา)`;
+                } else {
+                    createBtn.textContent = `✨ สร้างตาราง (${window.selectedSubjects.length} วิชา)`;
+                }
+            } else {
+                createBtn.textContent = '✨ สร้างตาราง';
+            }
+            
+            debugLog('Update create button', {
+                grade: gradeSelect.value,
+                class: classSelect.value,
+                selectedSubjectsCount: window.selectedSubjects.length,
+                studentsCount: window.selectedStudents ? window.selectedStudents.length : 0,
+                isEnabled: !createBtn.disabled
+            });
+        };
+
+        // ✅ ฟังก์ชันสร้างชื่อชีต (ต้องตรงกับฝั่ง GAS)
+        window.generateSheetName = function(subjectName, grade, classNo) {
+            const cleanGrade = grade.replace(/[\/\.]/g, '');
+            return `${subjectName} ${cleanGrade}-${classNo}`;
+        };
+
+        // ✅ ฟังก์ชันตรวจสอบชีตที่มีอยู่แล้ว
+        window.checkExistingSheets = function(grade, classNo) {
+            if (!window.isGoogleScriptAvailable || !window.allSubjects || window.allSubjects.length === 0) {
+                return;
+            }
+
+            debugLog('Checking existing sheets...', { grade, classNo });
+            showStatus('กำลังตรวจสอบตารางที่มีอยู่แล้ว...', 'info');
+
+            const sheetNames = window.allSubjects.map(subject => 
+                generateSheetName(subject.name, grade, classNo)
+            );
+
+            google.script.run
+                .withSuccessHandler(function(existingSheetNames) {
+                    debugLog('Existing sheets:', existingSheetNames);
+                    window.existingSheets = {};
+                    
+                    if (existingSheetNames && existingSheetNames.length > 0) {
+                        existingSheetNames.forEach(name => {
+                            window.existingSheets[name] = true;
+                        });
+                        showStatus(`✅ พบตารางที่มีอยู่แล้ว: ${existingSheetNames.length} วิชา`, 'success');
+                    } else {
+                        showStatus('ไม่พบตารางที่มีอยู่แล้ว', 'info');
+                    }
+                    
+                    // อัปเดตการแสดงผล
+                    displaySubjectCheckboxes(window.allSubjects);
+                })
+                .withFailureHandler(function(err) {
+                    debugLog('Failed to check existing sheets', err);
+                    window.existingSheets = {};
+                })
+                .checkMultipleSheets(sheetNames);
+        };
+/**
+ * ✅ ตรวจสอบชีตที่มีอยู่แล้ว แล้วค่อยแสดง checkbox
+ */
+window.checkExistingSheetsAndDisplay = function(grade, classNo) {
+    const checkingStatus = document.getElementById('checkingStatus');
+    
+    if (!window.isGoogleScriptAvailable || !window.allSubjects || window.allSubjects.length === 0) {
+        // console.warn('Cannot check existing sheets: no subjects or GAS unavailable');
+        displaySubjectCheckboxes(window.allSubjects);
+        return;
+    }
+
+    debugLog('Checking existing sheets before display...', { grade: grade, classNo: classNo });
+    
+    if (checkingStatus) {
+        checkingStatus.style.display = 'inline-flex';
+        checkingStatus.innerHTML = '';
+        const spinner = document.createElement('div');
+        spinner.className = 'spinner';
+        const text = document.createElement('span');
+        text.textContent = 'กำลังตรวจสอบตารางที่มีอยู่...';
+        checkingStatus.appendChild(spinner);
+        checkingStatus.appendChild(text);
+        checkingStatus.style.background = '#fff3cd';
+        checkingStatus.style.borderColor = '#ffc107';
+    }
+
+    const sheetNames = window.allSubjects.map(function(subject) {
+        return generateSheetName(subject.name, grade, classNo);
+    });
+
+    if (!google.script.run.checkMultipleSheets) {
+        console.error('❌ checkMultipleSheets function not available');
+        
+        if (checkingStatus) {
+            checkingStatus.innerHTML = '';
+            const errorText = document.createElement('span');
+            errorText.textContent = '⚠️ ไม่สามารถตรวจสอบได้';
+            errorText.style.color = '#dc3545';
+            checkingStatus.appendChild(errorText);
+            checkingStatus.style.background = '#f8d7da';
+            checkingStatus.style.borderColor = '#f5c2c7';
+            
+            setTimeout(function() {
+                checkingStatus.style.display = 'none';
+            }, 3000);
+        }
+        
+        window.existingSheets = {};
+        displaySubjectCheckboxes(window.allSubjects);
+        showStatus('⚠️ กรุณารีเฟรชหน้าเว็บ (Ctrl+Shift+R)', 'warning');
+        return;
+    }
+
+    google.script.run
+        .withSuccessHandler(function(existingSheetNames) {
+            debugLog('Existing sheets found:', existingSheetNames);
+            
+            if (checkingStatus) {
+                checkingStatus.style.display = 'none';
+            }
+            
+            window.existingSheets = {};
+            
+            if (existingSheetNames && Array.isArray(existingSheetNames) && existingSheetNames.length > 0) {
+                existingSheetNames.forEach(function(name) {
+                    window.existingSheets[name] = true;
+                });
+                showStatus('✅ พบตารางที่มีอยู่แล้ว: ' + existingSheetNames.length + ' วิชา', 'success');
+            } else {
+                showStatus('✅ โหลดรายวิชาเรียบร้อย', 'success');
+            }
+            
+            displaySubjectCheckboxes(window.allSubjects);
+        })
+        .withFailureHandler(function(err) {
+            debugLog('Failed to check existing sheets', err);
+            console.error('checkMultipleSheets error:', err);
+            
+            if (checkingStatus) {
+                checkingStatus.innerHTML = '';
+                const errorText = document.createElement('span');
+                errorText.textContent = '❌ ตรวจสอบล้มเหลว';
+                errorText.style.color = '#dc3545';
+                checkingStatus.appendChild(errorText);
+                checkingStatus.style.background = '#f8d7da';
+                checkingStatus.style.borderColor = '#f5c2c7';
+                
+                setTimeout(function() {
+                    checkingStatus.style.display = 'none';
+                }, 3000);
+            }
+            
+            const errorMsg = err && err.message ? err.message : 'Unknown error';
+            showStatus('⚠️ ไม่สามารถตรวจสอบชีตที่มีอยู่ได้: ' + errorMsg, 'warning');
+            
+            window.existingSheets = {};
+            displaySubjectCheckboxes(window.allSubjects);
+        })
+        .checkMultipleSheets(sheetNames);
+};
+
+
+window.showStatus = function(message, type) {
+    if (typeof type === 'undefined') type = 'info';
+    const statusDiv = document.getElementById('statusDiv');
+    if (!statusDiv) return;
+    
+    if (message.includes('กำลังตรวจสอบ')) {
+        return;
+    }
+    
+    statusDiv.className = 'create-score-status show ' + type;
+    statusDiv.innerHTML = '';
+    const strong = document.createElement('strong');
+    
+    var icon = '';
+    if (type === 'success') icon = '✅ ';
+    else if (type === 'error') icon = '❌ ';
+    else if (type === 'warning') icon = '⚠️ ';
+    else icon = 'ℹ️ ';
+    
+    strong.textContent = icon + message;
+    statusDiv.appendChild(strong);
+    
+    if (type === 'success') {
+        setTimeout(function() {
+            statusDiv.classList.remove('show');
+        }, 5000);
+    }
+};
+        window.handleGradeChange = function() {
+            const gradeSelect = document.getElementById('gradeSelect');
+            const classSelect = document.getElementById('classSelect');
+            const subjectSelectionArea = document.getElementById('subjectSelectionArea');
+            const studentPreview = document.getElementById('studentPreview');
+            
+            if (!gradeSelect || !classSelect || !subjectSelectionArea || !studentPreview) {
+                debugLog('❌ Missing elements in handleGradeChange');
+                return;
+            }
+            const grade = gradeSelect.value;
+            debugLog('Grade changed to:', grade);
+            
+            classSelect.innerHTML = '<option value="">-- เลือกระดับชั้นก่อน --</option>';
+            subjectSelectionArea.style.display = 'none';
+            window.selectedSubjects = [];
+            window.allSubjects = [];
+            window.selectedStudents = null;
+            window.existingSheets = {};
+            studentPreview.classList.remove('show');
+            updateCreateButton();
+
+            if (grade && window.isGoogleScriptAvailable) {
+                classSelect.innerHTML = '<option value="">🔄 กำลังโหลดห้องเรียน...</option>';
+                debugLog('Loading classes for grade:', grade);
+                google.script.run
+                    .withSuccessHandler(populateClassSelect)
+                    .withFailureHandler(function(err) {
+                        debugLog('Failed to load classes', err);
+                        showStatus(`เกิดข้อผิดพลาดในการโหลดห้องเรียน: ${err.message}`, 'error');
+                    })
+                    .getAvailableClasses(grade);
+            }
+        };
+
+       window.handleClassChange = function() {
+    const gradeSelect = document.getElementById('gradeSelect');
+    const classSelect = document.getElementById('classSelect');
+    const subjectSelectionArea = document.getElementById('subjectSelectionArea');
+    const studentPreview = document.getElementById('studentPreview');
+    
+    if (!gradeSelect || !classSelect || !subjectSelectionArea || !studentPreview) return;
+    
+    const grade = gradeSelect.value;
+    const classNo = classSelect.value;
+    
+    debugLog('Class changed to:', classNo);
+    
+    window.selectedStudents = null;
+    window.selectedSubjects = [];
+    window.allSubjects = [];
+    window.existingSheets = {};
+    subjectSelectionArea.style.display = 'none';
+    studentPreview.classList.remove('show');
+    updateCreateButton();
+
+    if (grade && classNo && window.isGoogleScriptAvailable) {
+        showStatus('กำลังโหลดข้อมูล...', 'info');
+        
+        let studentsData = null;
+        let subjectsData = null;
+        let completedTasks = 0;
+        const totalTasks = 2;
+        
+        function checkComplete() {
+            completedTasks++;
+            if (completedTasks === totalTasks) {
+                if (studentsData && studentsData.length > 0) {
+                    window.selectedStudents = studentsData;
+                    displayStudentPreview(studentsData, grade, classNo);
+                } else {
+                    showStatus('❌ ไม่พบนักเรียนในชั้น ' + grade + '/' + classNo, 'error');
+                }
+                
+                if (subjectsData && subjectsData.length > 0) {
+                    window.allSubjects = subjectsData;
+                    subjectSelectionArea.style.display = 'block';
+                    
+                    // ✅ เรียกฟังก์ชันใหม่แทน
+                    checkExistingSheetsAndDisplay(grade, classNo);
+                } else {
+                    showStatus('❌ ไม่พบรายวิชาสำหรับระดับชั้นนี้', 'error');
+                }
+                
+                updateCreateButton();
+            }
+        }
+        
+        // โหลดนักเรียน
+        google.script.run
+            .withSuccessHandler(function(students) {
+                // console.log('===== STUDENTS LOADED =====');
+                // console.log('Count:', students ? students.length : 'null');
+                studentsData = students;
+                checkComplete();
+            })
+            .withFailureHandler(function(err) {
+                console.error('❌ Failed to load students:', err);
+                showStatus('❌ เกิดข้อผิดพลาด: ' + err.message, 'error');
+                checkComplete();
+            })
+            .getStudentsByClass(grade, classNo);
+        
+        // โหลดรายวิชา
+        google.script.run
+            .withSuccessHandler(function(subjects) {
+                // console.log('===== SUBJECTS LOADED =====');
+                // console.log('Count:', subjects ? subjects.length : 'null');
+                subjectsData = subjects;
+                checkComplete();
+            })
+            .withFailureHandler(function(err) {
+                console.error('❌ Failed to load subjects:', err);
+                showStatus('❌ เกิดข้อผิดพลาดในการโหลดรายวิชา: ' + err.message, 'error');
+                checkComplete();
+            })
+            .getSubjectsForGrade(grade);
+    }
+}; 
+
+   window.displaySubjectCheckboxes = function(subjects) {
+    const checkboxList = document.getElementById('subjectCheckboxList');
+    const gradeSelect = document.getElementById('gradeSelect');
+    const classSelect = document.getElementById('classSelect');
+    
+    if (!checkboxList || !gradeSelect || !classSelect) return;
+    
+    const grade = gradeSelect.value;
+    const classNo = classSelect.value;
+    
+    checkboxList.innerHTML = '';
+    
+    subjects.forEach(function(subject, index) {
+        const item = document.createElement('div');
+        item.className = 'subject-checkbox-item';
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = 'subject-' + index;
+        checkbox.value = JSON.stringify(subject);
+        checkbox.onchange = handleSubjectCheckboxChange;
+        
+        const sheetName = generateSheetName(subject.name, grade, classNo);
+        const exists = window.existingSheets[sheetName];
+        
+        const label = document.createElement('label');
+        label.htmlFor = 'subject-' + index;
+        label.className = 'subject-info';
+        label.style.cursor = 'pointer';
+        
+        // สร้าง HTML elements แทนการใช้ innerHTML
+        const codeSpan = document.createElement('span');
+        codeSpan.className = 'subject-code';
+        codeSpan.textContent = '[' + subject.code + ']';
+        
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'subject-name';
+        nameSpan.textContent = subject.name;
+        
+        const hourSpan = document.createElement('span');
+        hourSpan.className = 'subject-hour';
+        hourSpan.textContent = '(' + subject.hour + ' ชม.)';
+        
+        const badgeSpan = document.createElement('span');
+        badgeSpan.className = 'sheet-status-badge ' + (exists ? 'exists' : 'new');
+        badgeSpan.textContent = exists ? '✓ มีอยู่แล้ว' : 'สร้างใหม่';
+        
+        label.appendChild(codeSpan);
+        label.appendChild(nameSpan);
+        label.appendChild(hourSpan);
+        label.appendChild(badgeSpan);
+        
+        item.appendChild(checkbox);
+        item.appendChild(label);
+        checkboxList.appendChild(item);
+    });
+    
+    updateSelectedCount();
+};     
+
+        window.handleSubjectCheckboxChange = function() {
+            window.selectedSubjects = [];
+            const checkboxes = document.querySelectorAll('#subjectCheckboxList input[type="checkbox"]:checked');
+            checkboxes.forEach(cb => {
+                try {
+                    window.selectedSubjects.push(JSON.parse(cb.value));
+                } catch (e) {
+                    console.error('Error parsing subject:', e);
+                }
+            });
+            updateSelectedCount();
+            updateCreateButton();
+        };
+
+        window.updateSelectedCount = function() {
+            const countSpan = document.getElementById('selectedCount');
+            if (countSpan) {
+                const count = window.selectedSubjects.length;
+                if (count > 0) {
+                    countSpan.textContent = `เลือกแล้ว ${count} วิชา`;
+                } else {
+                    countSpan.textContent = '';
+                }
+            }
+        };
+
+        window.selectAllSubjects = function() {
+            const checkboxes = document.querySelectorAll('#subjectCheckboxList input[type="checkbox"]');
+            checkboxes.forEach(cb => cb.checked = true);
+            handleSubjectCheckboxChange();
+        };
+
+        window.deselectAllSubjects = function() {
+            const checkboxes = document.querySelectorAll('#subjectCheckboxList input[type="checkbox"]');
+            checkboxes.forEach(cb => cb.checked = false);
+            handleSubjectCheckboxChange();
+        };
+
+       window.displayStudentPreview = function(students, grade, classNo) {
+    const studentPreview = document.getElementById('studentPreview');
+    const studentCount = document.getElementById('studentCount');
+    const studentList = document.getElementById('studentList');
+    
+    if (!studentPreview || !studentCount || !studentList) return;
+    
+    if (students && students.length > 0) {
+        studentCount.textContent = 'จำนวนนักเรียน: ' + students.length + ' คน (' + grade + '/' + classNo + ')';
+        
+        const maxDisplay = 10;
+        var listHtml = '<div style="font-size: 0.9rem; color: #666; line-height: 1.8;">';
+        
+        // สร้างข้อความแบบต่อกันในบรรทัดเดียว
+        var studentNames = [];
+        for (var i = 0; i < Math.min(students.length, maxDisplay); i++) {
+            var student = students[i];
+            var displayName = student.name;
+            
+            if (!displayName) {
+                var fullName = '';
+                if (student.title) fullName += student.title;
+                if (student.firstname) fullName += student.firstname + ' ';
+                if (student.lastname) fullName += student.lastname;
+                displayName = fullName.trim();
+            }
+            
+            if (!displayName) {
+                displayName = student.id ? student.id : 'นักเรียนคนที่ ' + (i + 1);
+            }
+            
+            var displayId = student.studentId || student.id || '';
+            
+            // เพิ่มในรูปแบบ "1. ชื่อ (รหัส)"
+            studentNames.push((i + 1) + '. ' + displayName + ' <span style="color: #999;">(' + displayId + ')</span>');
+        }
+        
+        // แสดงแบบต่อกันคั่นด้วย "  " (2 spaces)
+        listHtml += studentNames.join('  ');
+        
+        if (students.length > maxDisplay) {
+            listHtml += ' <span style="color: #0d6efd; font-style: italic;">... และอีก ' + 
+                        (students.length - maxDisplay) + ' คน</span>';
+        }
+        
+        listHtml += '</div>';
+        studentList.innerHTML = listHtml;
+        studentPreview.classList.add('show');
+    } else {
+        studentCount.textContent = 'ไม่พบนักเรียนในห้องนี้';
+        studentList.innerHTML = '';
+        studentPreview.classList.add('show');
+    }
+};
+        window.createSheets = function() {
+            debugLog('Create sheets button clicked');
+            if (!window.isGoogleScriptAvailable) {
+                showStatus('ไม่สามารถเชื่อมต่อ Google Apps Script ได้', 'error');
+                return;
+            }
+            if (!window.selectedSubjects || window.selectedSubjects.length === 0) {
+                showStatus('กรุณาเลือกรายวิชาอย่างน้อย 1 วิชา', 'error');
+                return;
+            }
+            if (!window.selectedStudents || window.selectedStudents.length === 0) {
+                showStatus('ไม่พบรายชื่อนักเรียน', 'error');
+                return;
+            }
+            
+            const gradeSelect = document.getElementById('gradeSelect');
+            const classSelect = document.getElementById('classSelect');
+            const grade = gradeSelect ? gradeSelect.value : '';
+            const classNo = classSelect ? classSelect.value : '';
+            
+            if (!grade || !classNo) {
+                showStatus('กรุณาเลือกระดับชั้นและห้องเรียนให้ครบถ้วน', 'error');
+                return;
+            }
+            
+            // console.log('===== CREATING MULTIPLE SHEETS =====');
+            // console.log('Subjects count:', window.selectedSubjects.length);
+            // console.log('Students count:', window.selectedStudents.length);
+            // console.log('====================================');
+            
+            const createBtn = document.getElementById('createBtn');
+            if (createBtn) {
+                createBtn.disabled = true;
+            }
+            showStatus(`กำลังสร้าง/อัปเดต ${window.selectedSubjects.length} ตาราง กรุณารอสักครู่...`, 'info');
+            
+            let completed = 0;
+            let success = 0;
+            let updated = 0;
+            let errors = [];
+            
+            updateProgress(0, window.selectedSubjects.length);
+            
+            window.selectedSubjects.forEach((subject, index) => {
+                setTimeout(() => {
+                    const sheetName = generateSheetName(subject.name, grade, classNo);
+                    const exists = window.existingSheets[sheetName];
+                    
+                    google.script.run
+                        .withSuccessHandler(function(message) {
+                            completed++;
+                            
+                            if (message.includes('อัปเดต') || message.includes('update')) {
+                                updated++;
+                                debugLog(`Sheet ${completed}/${window.selectedSubjects.length} updated`, message);
+                            } else {
+                                success++;
+                                debugLog(`Sheet ${completed}/${window.selectedSubjects.length} created`, message);
+                            }
+                            
+                            updateProgress(completed, window.selectedSubjects.length);
+                            
+                            if (completed === window.selectedSubjects.length) {
+                                if (createBtn) {
+                                    createBtn.disabled = false;
+                                }
+                                
+                                if (errors.length === 0) {
+                                    const msg = updated > 0 
+                                        ? `✅ สำเร็จ! สร้างใหม่ ${success} วิชา, อัปเดต ${updated} วิชา`
+                                        : `✅ สร้างตารางสำเร็จทั้งหมด ${success} วิชา!`;
+                                    showStatus(msg, 'success');
+                                } else {
+                                    showStatus(`⚠️ สำเร็จ ${success + updated} วิชา, ล้มเหลว ${errors.length} วิชา`, 'warning');
+                                    console.error('Errors:', errors);
+                                }
+                                
+                                window.selectedSubjects = [];
+                                deselectAllSubjects();
+                                updateCreateButton();
+                                
+                                // รีเฟรชการตรวจสอบชีต
+                                setTimeout(() => {
+                                    checkExistingSheets(grade, classNo);
+                                }, 1000);
+                            } else {
+                                showStatus(`กำลังดำเนินการ... (${completed}/${window.selectedSubjects.length})`, 'info');
+                            }
+                        })
+                        .withFailureHandler(function(error) {
+                            completed++;
+                            errors.push({subject: subject.name, error: error.message});
+                            debugLog(`Failed to create/update sheet for ${subject.name}`, error);
+                            
+                            updateProgress(completed, window.selectedSubjects.length);
+                            
+                            if (completed === window.selectedSubjects.length) {
+                                if (createBtn) {
+                                    createBtn.disabled = false;
+                                }
+                                
+                                const successTotal = success + updated;
+                                if (successTotal > 0) {
+                                    showStatus(`⚠️ สำเร็จ ${successTotal} วิชา, ล้มเหลว ${errors.length} วิชา`, 'warning');
+                                } else {
+                                    showStatus(`❌ การสร้างตารางล้มเหลว: ${errors.map(e => e.subject).join(', ')}`, 'error');
+                                }
+                                
+                                console.error('All errors:', errors);
+                                window.selectedSubjects = [];
+                                deselectAllSubjects();
+                                updateCreateButton();
+                            }
+                        })
+                        .createScoreSheetWithStudents(
+                            subject.code,
+                            subject.name,
+                            subject.hour,
+                            grade,
+                            classNo,
+                            window.selectedStudents
+                        );
+                }, index * 1000);
+            });
+        };
+
+        window.populateGradeSelect = function(grades) {
+            debugLog('Populating grade select', grades);
+            const gradeSelect = document.getElementById('gradeSelect');
+            if (!gradeSelect) {
+                debugLog('❌ Grade select element not found');
+                return;
+            }
+            gradeSelect.innerHTML = '<option value="">-- เลือกระดับชั้น --</option>';
+            if (grades && grades.length > 0) {
+                grades.forEach(function(grade) {
+                    const option = document.createElement('option');
+                    option.value = grade;
+                    option.textContent = grade;
+                    gradeSelect.appendChild(option);
+                });
+                showStatus(`โหลดระดับชั้นสำเร็จ: พบ ${grades.length} ระดับ`, 'success');
+            } else {
+                gradeSelect.innerHTML = '<option value="">-- ไม่พบระดับชั้น --</option>';
+                showStatus('ไม่พบข้อมูลระดับชั้น', 'error');
+            }
+        };
+
+        window.populateClassSelect = function(classes) {
+            debugLog('Populating class select', classes);
+            const classSelect = document.getElementById('classSelect');
+            if (!classSelect) {
+                debugLog('❌ Class select element not found');
+                return;
+            }
+            classSelect.innerHTML = '<option value="">-- เลือกห้องเรียน --</option>';
+            if (classes && classes.length > 0) {
+                classes.forEach(function(cls) {
+                    const option = document.createElement('option');
+                    option.value = cls;
+                    option.textContent = `ห้อง ${cls}`;
+                    classSelect.appendChild(option);
+                });
+                showStatus(`โหลดห้องเรียนสำเร็จ: พบ ${classes.length} ห้อง`, 'success');
+            } else {
+                classSelect.innerHTML = '<option value="">-- ไม่พบห้องเรียน --</option>';
+                showStatus('ไม่พบห้องเรียนสำหรับระดับชั้นนี้', 'error');
+            }
+        };
+
+        window.initializePage = function() {
+            debugLog('Initializing page...');
+            if (typeof google !== 'undefined' && google.script) {
+                window.isGoogleScriptAvailable = true;
+                debugLog('Google Apps Script available');
+                showStatus('เชื่อมต่อ Google Apps Script สำเร็จ', 'success');
+            } else {
+                window.isGoogleScriptAvailable = false;
+                debugLog('Google Apps Script not available');
+                showStatus('⚠️ ไม่สามารถเชื่อมต่อ Google Apps Script ได้', 'error');
+            }
+            
+            if (window.isGoogleScriptAvailable) {
+                debugLog('Loading initial grades...');
+                google.script.run
+                    .withSuccessHandler(populateGradeSelect)
+                    .withFailureHandler(function(err) {
+                        debugLog('Failed to load initial grades', err);
+                        showStatus(`ไม่สามารถโหลดข้อมูลเริ่มต้นได้: ${err.message}`, 'error');
+                    })
+                    .getAvailableGrades();
+            } else {
+                populateGradeSelect(['ป.1', 'ป.2', 'ป.3', 'ป.4', 'ป.5', 'ป.6']);
+            }
+        };
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', window.initializePage);
+        } else {
+            window.initializePage();
+        }
+        setTimeout(window.initializePage, 1000);
+    })();
+    </script>
+</body>
+</html>

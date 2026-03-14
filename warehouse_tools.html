@@ -1,0 +1,219 @@
+<div class="animate-fade-in">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0 text-primary">
+      <i class="fas fa-archive"></i> คลังคะแนนรวม (Scores Warehouse)
+    </h2>
+  </div>
+
+  <div class="alert alert-info">
+    <i class="fas fa-info-circle"></i>
+    <strong>คำอธิบาย:</strong> รวมคะแนนทุกวิชาของนักเรียนไว้ในชีตเดียว เพื่อให้สร้าง PDF ได้เร็วขึ้น
+  </div>
+
+  <form id="warehouseForm">
+    <div class="row g-3 mb-4">
+      <div class="col-md-4">
+        <label for="whGrade" class="form-label">
+          <i class="bi bi-mortarboard"></i> ระดับชั้น
+        </label>
+        <select id="whGrade" class="form-select" required>
+          <option value="">-- เลือกระดับชั้น --</option>
+          <option value="ป.1">ประถมศึกษาปีที่ 1</option>
+          <option value="ป.2">ประถมศึกษาปีที่ 2</option>
+          <option value="ป.3">ประถมศึกษาปีที่ 3</option>
+          <option value="ป.4">ประถมศึกษาปีที่ 4</option>
+          <option value="ป.5">ประถมศึกษาปีที่ 5</option>
+          <option value="ป.6">ประถมศึกษาปีที่ 6</option>
+        </select>
+      </div>
+
+      <div class="col-md-4">
+        <label for="whClassNo" class="form-label">
+          <i class="bi bi-door-open"></i> ห้อง
+        </label>
+        <select id="whClassNo" class="form-select">
+          <option value="">-- ทั้งชั้น --</option>
+          <option value="1">ห้อง 1</option>
+          <option value="2">ห้อง 2</option>
+        </select>
+      </div>
+
+      <div class="col-md-4">
+        <label for="whYear" class="form-label">
+          <i class="bi bi-calendar"></i> ปีการศึกษา
+        </label>
+        <input id="whYear" type="text" class="form-control" placeholder="เช่น 2568" pattern="\d{4}">
+      </div>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-md-3">
+        <button type="button" class="btn btn-warning w-100" onclick="rebuildWarehouse('class')">
+          <i class="fas fa-sync-alt"></i> รีบิลด์เฉพาะห้อง
+        </button>
+      </div>
+      <div class="col-md-3">
+        <button type="button" class="btn btn-info w-100" onclick="rebuildWarehouse('grade')">
+          <i class="fas fa-layer-group"></i> รีบิลด์ทั้งชั้น
+        </button>
+      </div>
+      <div class="col-md-3">
+        <button type="button" class="btn btn-danger w-100" onclick="rebuildWarehouse('all')">
+          <i class="fas fa-database"></i> รีบิลด์ทั้งไฟล์
+        </button>
+      </div>
+      <!-- ✨ ปุ่มใหม่: ลบ Backup -->
+      <div class="col-md-3">
+        <button type="button" class="btn btn-outline-danger w-100" onclick="cleanupWarehouseBackups()">
+          <i class="fas fa-trash-alt"></i> ลบชีต Backup
+        </button>
+      </div>
+    </div>
+  </form>
+
+  <div id="warehouseResult" class="mt-4"></div>
+</div>
+
+<style>
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.btn {
+  transition: all 0.3s ease;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+</style>
+
+<script>
+/**
+ * ฟังก์ชันรีบิลด์คลังคะแนน
+ */
+function rebuildWarehouse(mode) {
+  const grade = document.getElementById('whGrade').value;
+  const classNo = document.getElementById('whClassNo').value;
+  const year = document.getElementById('whYear').value;
+  const resultDiv = document.getElementById('warehouseResult');
+
+  // Validation
+  if (mode === 'class' && (!grade || !classNo)) {
+    resultDiv.innerHTML = `
+      <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        กรุณาเลือกระดับชั้นและห้องสำหรับการรีบิลด์เฉพาะห้อง
+      </div>
+    `;
+    return;
+  }
+
+  if (mode === 'grade' && !grade) {
+    resultDiv.innerHTML = `
+      <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        กรุณาเลือกระดับชั้นสำหรับการรีบิลด์ทั้งชั้น
+      </div>
+    `;
+    return;
+  }
+
+  if (mode === 'all' && (!year || !/^\d{4}$/.test(year))) {
+    resultDiv.innerHTML = `
+      <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        กรุณากรอกปีการศึกษาให้ถูกต้อง (เช่น 2568)
+      </div>
+    `;
+    return;
+  }
+
+  // แสดง Loading
+  resultDiv.innerHTML = `
+    <div class="alert alert-info">
+      <div class="spinner-border spinner-border-sm me-2" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      กำลังรีบิลด์คลังคะแนน กรุณารอสักครู่...
+    </div>
+  `;
+
+  // เรียก Google Apps Script
+  const functionName = mode === 'class' ? 'rebuildScoresWarehouseForClass' :
+                      mode === 'grade' ? 'rebuildScoresWarehouseForGrade' :
+                      'rebuildScoresWarehouseAll';
+
+  const args = mode === 'class' ? [grade, classNo, year] :
+               mode === 'grade' ? [grade, year] :
+               [year];
+
+  google.script.run
+    .withSuccessHandler(function(response) {
+      resultDiv.innerHTML = `
+        <div class="alert alert-success">
+          <i class="fas fa-check-circle"></i>
+          <strong>สำเร็จ!</strong> ${response}
+        </div>
+      `;
+    })
+    .withFailureHandler(function(error) {
+      resultDiv.innerHTML = `
+        <div class="alert alert-danger">
+          <i class="fas fa-times-circle"></i>
+          <strong>เกิดข้อผิดพลาด:</strong> ${error.message}
+        </div>
+      `;
+    })[functionName](...args);
+}
+
+/**
+ * ✨ ฟังก์ชันใหม่: ลบชีต Backup Warehouse ทั้งหมด
+ */
+function cleanupWarehouseBackups() {
+  // ยืนยันก่อนลบ
+  if (!confirm('⚠️ คุณแน่ใจหรือไม่ที่จะลบชีต backup warehouse ทั้งหมด?\n\nข้อมูลจะถูกลบถาวร!')) {
+    return;
+  }
+  
+  const resultDiv = document.getElementById('warehouseResult');
+  
+  // แสดง Loading
+  resultDiv.innerHTML = `
+    <div class="alert alert-warning">
+      <div class="spinner-border spinner-border-sm me-2" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      กำลังลบชีต backup warehouse... กรุณารอสักครู่
+    </div>
+  `;
+  
+  // เรียก Google Apps Script
+  google.script.run
+    .withSuccessHandler(function(message) {
+      resultDiv.innerHTML = `
+        <div class="alert alert-success">
+          <i class="fas fa-check-circle"></i>
+          <strong>สำเร็จ!</strong> ${message}
+        </div>
+      `;
+    })
+    .withFailureHandler(function(error) {
+      resultDiv.innerHTML = `
+        <div class="alert alert-danger">
+          <i class="fas fa-times-circle"></i>
+          <strong>เกิดข้อผิดพลาด:</strong> ${error.message}
+        </div>
+      `;
+    })
+    .deleteAllWarehouseBackups();
+}
+
+// console.log('✅ Warehouse Tools page loaded');
+</script>

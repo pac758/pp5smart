@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ติดตั้งระบบ ปพ.5 — Setup Wizard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Sarabun', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .wizard-container {
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    width: 100%;
+    max-width: 600px;
+    overflow: hidden;
+  }
+  .wizard-header {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff;
+    padding: 32px;
+    text-align: center;
+  }
+  .wizard-header .icon { font-size: 3rem; margin-bottom: 8px; }
+  .wizard-header h1 { font-size: 1.6rem; font-weight: 700; margin-bottom: 6px; }
+  .wizard-header p { opacity: 0.85; font-size: 0.95rem; }
+
+  /* Steps indicator */
+  .steps-bar {
+    display: flex;
+    background: #f8fafc;
+    border-bottom: 2px solid #e2e8f0;
+  }
+  .step-tab {
+    flex: 1;
+    padding: 14px 8px;
+    text-align: center;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s;
+  }
+  .step-tab.active { color: #667eea; border-bottom-color: #667eea; font-weight: 700; }
+  .step-tab.done { color: #10b981; }
+  .step-tab .step-num {
+    display: inline-block;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    color: #64748b;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 22px;
+    margin-right: 4px;
+  }
+  .step-tab.active .step-num { background: #667eea; color: #fff; }
+  .step-tab.done .step-num { background: #10b981; color: #fff; }
+
+  /* Form */
+  .wizard-body { padding: 32px; }
+  .step-panel { display: none; }
+  .step-panel.active { display: block; }
+  .step-title { font-size: 1.2rem; font-weight: 700; color: #1e293b; margin-bottom: 20px; }
+  .step-title span { color: #667eea; }
+
+  .form-group { margin-bottom: 18px; }
+  .form-group label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 6px;
+  }
+  .form-group label .req { color: #ef4444; }
+  .form-control {
+    width: 100%;
+    padding: 10px 14px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-family: inherit;
+    transition: border-color 0.2s;
+    background: #f8fafc;
+  }
+  .form-control:focus { outline: none; border-color: #667eea; background: #fff; }
+  .form-control.error { border-color: #ef4444; }
+  .form-hint { font-size: 0.8rem; color: #94a3b8; margin-top: 4px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* Info box */
+  .info-box {
+    background: #eff6ff;
+    border: 2px solid #93c5fd;
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+    color: #1e40af;
+    line-height: 1.6;
+  }
+  .info-box strong { display: block; margin-bottom: 4px; }
+
+  /* Summary */
+  .summary-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+  .summary-table tr td { padding: 8px 12px; border-bottom: 1px solid #e2e8f0; }
+  .summary-table tr td:first-child { color: #64748b; width: 40%; }
+  .summary-table tr td:last-child { font-weight: 600; color: #1e293b; }
+
+  /* Buttons */
+  .wizard-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 2px solid #f1f5f9;
+  }
+  .btn {
+    padding: 12px 28px;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff;
+  }
+  .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-secondary { background: #f1f5f9; color: #64748b; }
+  .btn-secondary:hover { background: #e2e8f0; }
+  .btn-success { background: linear-gradient(135deg, #10b981, #059669); color: #fff; }
+  .btn-success:hover { opacity: 0.9; }
+
+  /* Loading */
+  .loading-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 999;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+    color: #fff;
+    font-size: 1.1rem;
+  }
+  .loading-overlay.show { display: flex; }
+  .spinner {
+    width: 48px; height: 48px;
+    border: 5px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Success */
+  .success-box {
+    text-align: center;
+    padding: 20px;
+  }
+  .success-box .success-icon { font-size: 4rem; margin-bottom: 16px; }
+  .success-box h2 { color: #10b981; font-size: 1.5rem; margin-bottom: 8px; }
+  .success-box p { color: #64748b; line-height: 1.7; }
+  .sheet-link {
+    display: inline-block;
+    margin-top: 16px;
+    padding: 10px 20px;
+    background: #eff6ff;
+    border: 2px solid #93c5fd;
+    border-radius: 10px;
+    color: #1d4ed8;
+    text-decoration: none;
+    font-weight: 600;
+    word-break: break-all;
+    font-size: 0.85rem;
+  }
+
+  /* Error */
+  .error-msg {
+    background: #fff5f5;
+    border: 2px solid #fca5a5;
+    border-radius: 10px;
+    padding: 12px 16px;
+    color: #dc2626;
+    font-size: 0.9rem;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .error-msg.show { display: block; }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div id="loadingText">กำลังติดตั้งระบบ...</div>
+</div>
+
+<div class="wizard-container">
+  <div class="wizard-header">
+    <div class="icon">🏫</div>
+    <h1>ติดตั้งระบบจัดการนักเรียน</h1>
+    <p>ระบบ ปพ.5 — กรอกข้อมูลโรงเรียนเพื่อเริ่มใช้งาน</p>
+  </div>
+
+  <div class="steps-bar">
+    <div class="step-tab active" id="tab1">
+      <span class="step-num">1</span>ข้อมูลโรงเรียน
+    </div>
+    <div class="step-tab" id="tab2">
+      <span class="step-num">2</span>ผู้ดูแลระบบ
+    </div>
+    <div class="step-tab" id="tab3">
+      <span class="step-num">3</span>การเรียนการสอน
+    </div>
+    <div class="step-tab" id="tab4">
+      <span class="step-num">4</span>ยืนยัน
+    </div>
+  </div>
+
+  <div class="wizard-body">
+    <div id="errorMsg" class="error-msg"></div>
+
+    <!-- Step 1: ข้อมูลโรงเรียน -->
+    <div class="step-panel active" id="step1">
+      <div class="step-title">🏫 ข้อมูล<span>โรงเรียน</span></div>
+      <div class="info-box" id="boundScriptInfo" style="background:#f0fdf4;border-color:#86efac;color:#166534;display:none;">
+        <strong>📢 คุณคัดลอก Spreadsheet มาใช่ไหม?</strong>
+        วาง URL ของ Spreadsheet ที่คัดลอกมาด้านล่าง ระบบจะใช้ Spreadsheet นั้นเป็นฐานข้อมูลแทนการสร้างใหม่
+      </div>
+      <div class="form-group">
+        <label>URL ของ Spreadsheet ที่คัดลอกมา (ไม่บังคับ — เว้นว่างจะสร้างใหม่)</label>
+        <input type="text" class="form-control" id="spreadsheetUrl" placeholder="https://docs.google.com/spreadsheets/d/xxxxx/edit" oninput="toggleBoundInfo()">
+        <div class="form-hint">ถ้าคัดลอก Spreadsheet มา ให้วาง URL ที่นี่ | ถ้าเว้นว่างระบบจะสร้าง Spreadsheet ใหม่ให้</div>
+      </div>
+      <div class="info-box">
+        <strong>📌 ข้อมูลนี้จะแสดงในรายงานและเอกสารทุกฉบับ</strong>
+        กรอกให้ตรงกับข้อมูลจริงของโรงเรียนท่าน
+      </div>
+      <div class="form-group">
+        <label>ชื่อโรงเรียน <span class="req">*</span></label>
+        <input type="text" class="form-control" id="schoolName" placeholder="เช่น โรงเรียนบ้านทดสอบ">
+      </div>
+      <div class="form-group">
+        <label>ที่อยู่โรงเรียน</label>
+        <input type="text" class="form-control" id="schoolAddress" placeholder="เช่น ต.บ้านใหม่ อ.เมือง จ.เชียงใหม่">
+      </div>
+      <div class="form-group">
+        <label>สำนักงานเขตพื้นที่ (เขต)</label>
+        <input type="text" class="form-control" id="schoolDistrict" placeholder="เช่น สพป.เชียงใหม่ เขต 1">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>เบอร์โทรศัพท์</label>
+          <input type="text" class="form-control" id="schoolPhone" placeholder="053-123456">
+        </div>
+        <div class="form-group">
+          <label>ชื่อผู้อำนวยการ</label>
+          <input type="text" class="form-control" id="directorName" placeholder="นาย/นาง/นางสาว...">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>ตำแหน่งผู้อำนวยการ</label>
+        <input type="text" class="form-control" id="directorTitle" value="ผู้อำนวยการสถานศึกษา" placeholder="ผู้อำนวยการสถานศึกษา">
+      </div>
+      <div class="form-group">
+        <label>ชื่อหัวหน้างานวิชาการ</label>
+        <input type="text" class="form-control" id="academicHead" placeholder="นาย/นาง/นางสาว...">
+      </div>
+    </div>
+
+    <!-- Step 2: ผู้ดูแลระบบ -->
+    <div class="step-panel" id="step2">
+      <div class="step-title">👤 บัญชี<span>ผู้ดูแลระบบ</span></div>
+      <div class="info-box">
+        <strong>🔐 บัญชีนี้มีสิทธิ์สูงสุดในระบบ</strong>
+        เก็บรหัสผ่านไว้อย่างปลอดภัย และสามารถสร้างบัญชีครูเพิ่มเติมภายหลังได้
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>ชื่อ <span class="req">*</span></label>
+          <input type="text" class="form-control" id="adminFirstName" placeholder="ชื่อ">
+        </div>
+        <div class="form-group">
+          <label>นามสกุล <span class="req">*</span></label>
+          <input type="text" class="form-control" id="adminLastName" placeholder="นามสกุล">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>ชื่อผู้ใช้ (Username) <span class="req">*</span></label>
+        <input type="text" class="form-control" id="adminUsername" placeholder="เช่น admin หรืออีเมล">
+        <div class="form-hint">ใช้ตัวอักษรภาษาอังกฤษ ตัวเลข ไม่มีช่องว่าง</div>
+      </div>
+      <div class="form-group">
+        <label>รหัสผ่าน <span class="req">*</span></label>
+        <input type="password" class="form-control" id="adminPassword" placeholder="อย่างน้อย 6 ตัวอักษร">
+      </div>
+      <div class="form-group">
+        <label>ยืนยันรหัสผ่าน <span class="req">*</span></label>
+        <input type="password" class="form-control" id="adminPasswordConfirm" placeholder="กรอกรหัสผ่านอีกครั้ง">
+      </div>
+      <div class="form-group">
+        <label>อีเมล (ไม่บังคับ)</label>
+        <input type="email" class="form-control" id="adminEmail" placeholder="admin@school.ac.th">
+      </div>
+    </div>
+
+    <!-- Step 3: การเรียนการสอน -->
+    <div class="step-panel" id="step3">
+      <div class="step-title">📚 ข้อมูล<span>การเรียนการสอน</span></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>ปีการศึกษา <span class="req">*</span></label>
+          <input type="number" class="form-control" id="academicYear" placeholder="เช่น 2568" min="2560" max="2580">
+        </div>
+        <div class="form-group">
+          <label>ภาคเรียนปัจจุบัน <span class="req">*</span></label>
+          <select class="form-control" id="semester">
+            <option value="1">ภาคเรียนที่ 1</option>
+            <option value="2">ภาคเรียนที่ 2</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>ระดับชั้นที่เปิดสอน (เลือกได้หลายข้อ)</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;" id="gradeCheckboxes">
+          <!-- สร้างจาก JS -->
+        </div>
+      </div>
+      <div class="info-box" style="background:#f0fdf4;border-color:#86efac;color:#166534;">
+        <strong>💡 ไม่ต้องกังวล!</strong>
+        สามารถเพิ่ม/แก้ไขรายวิชา ชั้นเรียน และครูได้ภายหลังในหน้าตั้งค่าระบบ
+      </div>
+    </div>
+
+    <!-- Step 4: ยืนยัน -->
+    <div class="step-panel" id="step4">
+      <div class="step-title">✅ ยืนยัน<span>การติดตั้ง</span></div>
+      <div class="info-box">
+        <strong>📋 ตรวจสอบข้อมูลก่อนติดตั้ง</strong>
+        เมื่อกด "ติดตั้งระบบ" ระบบจะสร้าง Google Spreadsheet ใหม่สำหรับโรงเรียนของท่านโดยอัตโนมัติ
+      </div>
+      <table class="summary-table" id="summaryTable">
+        <!-- สร้างจาก JS -->
+      </table>
+    </div>
+
+    <!-- Success panel -->
+    <div class="step-panel" id="stepSuccess">
+      <div class="success-box">
+        <div class="success-icon">🎉</div>
+        <h2>ติดตั้งสำเร็จ!</h2>
+        <p id="successMsg">ระบบพร้อมใช้งานแล้วสำหรับโรงเรียนของท่าน</p>
+        <br>
+        <p style="font-size:0.85rem;color:#94a3b8;">Spreadsheet ที่สร้างขึ้น:</p>
+        <a class="sheet-link" id="sheetLink" href="#" target="_blank">📊 เปิด Spreadsheet</a>
+        <br><br>
+        <button class="btn btn-primary" onclick="goToApp()">🚀 เข้าสู่ระบบ</button>
+      </div>
+    </div>
+
+    <div class="wizard-footer" id="wizardFooter">
+      <button class="btn btn-secondary" id="btnBack" onclick="prevStep()" style="display:none">← ย้อนกลับ</button>
+      <span></span>
+      <button class="btn btn-primary" id="btnNext" onclick="nextStep()">ถัดไป →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentStep = 1;
+const totalSteps = 4;
+
+const grades = ['ป.1','ป.2','ป.3','ป.4','ป.5','ป.6','ม.1','ม.2','ม.3','ม.4','ม.5','ม.6'];
+
+// สร้าง grade checkboxes
+window.onload = function() {
+  // ตั้งค่าปีการศึกษาปัจจุบัน
+  const now = new Date();
+  const thYear = now.getFullYear() + 543;
+  document.getElementById('academicYear').value = thYear;
+
+  const container = document.getElementById('gradeCheckboxes');
+  grades.forEach(g => {
+    const label = document.createElement('label');
+    label.style.cssText = 'display:flex;align-items:center;gap:6px;background:#f1f5f9;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:0.9rem;border:2px solid transparent;transition:all 0.2s';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.value = g;
+    cb.name = 'grade';
+    cb.style.cursor = 'pointer';
+    cb.addEventListener('change', function() {
+      label.style.borderColor = this.checked ? '#667eea' : 'transparent';
+      label.style.background = this.checked ? '#eff6ff' : '#f1f5f9';
+    });
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(g));
+    container.appendChild(label);
+  });
+};
+
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = '⚠️ ' + msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 5000);
+}
+
+function validateStep(step) {
+  if (step === 1) {
+    const name = document.getElementById('schoolName').value.trim();
+    if (!name) { showError('กรุณากรอกชื่อโรงเรียน'); return false; }
+  }
+  if (step === 2) {
+    const fn = document.getElementById('adminFirstName').value.trim();
+    const ln = document.getElementById('adminLastName').value.trim();
+    const un = document.getElementById('adminUsername').value.trim();
+    const pw = document.getElementById('adminPassword').value;
+    const pw2 = document.getElementById('adminPasswordConfirm').value;
+    if (!fn || !ln) { showError('กรุณากรอกชื่อและนามสกุล Admin'); return false; }
+    if (!un) { showError('กรุณากรอก Username'); return false; }
+    if (!/^[a-zA-Z0-9_@.\-]+$/.test(un)) { showError('Username ต้องเป็นตัวอักษรภาษาอังกฤษ ตัวเลข หรือ @ . _ -'); return false; }
+    if (pw.length < 6) { showError('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'); return false; }
+    if (pw !== pw2) { showError('รหัสผ่านไม่ตรงกัน'); return false; }
+  }
+  if (step === 3) {
+    const yr = document.getElementById('academicYear').value;
+    if (!yr || yr < 2560 || yr > 2580) { showError('กรุณาระบุปีการศึกษาที่ถูกต้อง (2560-2580)'); return false; }
+  }
+  return true;
+}
+
+function nextStep() {
+  if (!validateStep(currentStep)) return;
+  if (currentStep === totalSteps) {
+    doInstall();
+    return;
+  }
+  currentStep++;
+  updateUI();
+}
+
+function prevStep() {
+  if (currentStep > 1) {
+    currentStep--;
+    updateUI();
+  }
+}
+
+function updateUI() {
+  // Panels
+  for (let i = 1; i <= totalSteps; i++) {
+    document.getElementById('step' + i).classList.remove('active');
+    const tab = document.getElementById('tab' + i);
+    tab.classList.remove('active', 'done');
+    if (i < currentStep) tab.classList.add('done');
+    else if (i === currentStep) tab.classList.add('active');
+  }
+  document.getElementById('step' + currentStep).classList.add('active');
+
+  // Buttons
+  document.getElementById('btnBack').style.display = currentStep > 1 ? 'inline-block' : 'none';
+  const btnNext = document.getElementById('btnNext');
+  if (currentStep === totalSteps) {
+    btnNext.textContent = '🚀 ติดตั้งระบบ';
+    btnNext.className = 'btn btn-success';
+    buildSummary();
+  } else {
+    btnNext.textContent = 'ถัดไป →';
+    btnNext.className = 'btn btn-primary';
+  }
+}
+
+function buildSummary() {
+  const checkedGrades = [...document.querySelectorAll('input[name=grade]:checked')].map(c => c.value);
+  const rows = [
+    ['🏫 ชื่อโรงเรียน', document.getElementById('schoolName').value],
+    ['📍 ที่อยู่', document.getElementById('schoolAddress').value || '(ไม่ระบุ)'],
+    ['📞 โทรศัพท์', document.getElementById('schoolPhone').value || '(ไม่ระบุ)'],
+    ['👨‍💼 ผู้อำนวยการ', (document.getElementById('directorTitle').value || '') + ' ' + (document.getElementById('directorName').value || '') || '(ไม่ระบุ)'],
+    ['🎓 หัวหน้าวิชาการ', document.getElementById('academicHead').value || '(ไม่ระบุ)'],
+    ['🏢 เขต', document.getElementById('schoolDistrict').value || '(ไม่ระบุ)'],
+    ['👤 Admin Username', document.getElementById('adminUsername').value],
+    ['📅 ปีการศึกษา', document.getElementById('academicYear').value],
+    ['📖 ภาคเรียน', 'ภาคเรียนที่ ' + document.getElementById('semester').value],
+    ['🎓 ระดับชั้น', checkedGrades.length ? checkedGrades.join(', ') : '(ยังไม่ได้เลือก)']
+  ];
+  const table = document.getElementById('summaryTable');
+  table.innerHTML = rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
+}
+
+function doInstall() {
+  document.getElementById('loadingOverlay').classList.add('show');
+  document.getElementById('loadingText').textContent = 'กำลังสร้าง Spreadsheet...';
+
+  const checkedGrades = [...document.querySelectorAll('input[name=grade]:checked')].map(c => c.value);
+
+  const formData = {
+    schoolName: document.getElementById('schoolName').value.trim(),
+    schoolAddress: document.getElementById('schoolAddress').value.trim(),
+    schoolPhone: document.getElementById('schoolPhone').value.trim(),
+    directorName: document.getElementById('directorName').value.trim(),
+    directorTitle: document.getElementById('directorTitle').value.trim(),
+    academicHead: document.getElementById('academicHead').value.trim(),
+    schoolDistrict: document.getElementById('schoolDistrict').value.trim(),
+    adminFirstName: document.getElementById('adminFirstName').value.trim(),
+    adminLastName: document.getElementById('adminLastName').value.trim(),
+    adminUsername: document.getElementById('adminUsername').value.trim(),
+    adminPassword: document.getElementById('adminPassword').value,
+    adminEmail: document.getElementById('adminEmail').value.trim(),
+    academicYear: parseInt(document.getElementById('academicYear').value),
+    semester: parseInt(document.getElementById('semester').value),
+    grades: checkedGrades,
+    spreadsheetUrl: document.getElementById('spreadsheetUrl').value.trim()
+  };
+
+  google.script.run
+    .withSuccessHandler(function(result) {
+      document.getElementById('loadingOverlay').classList.remove('show');
+      if (result.success) {
+        document.getElementById('wizardFooter').style.display = 'none';
+        for (let i = 1; i <= totalSteps; i++) {
+          document.getElementById('step' + i).classList.remove('active');
+        }
+        document.getElementById('stepSuccess').classList.add('active');
+        document.getElementById('successMsg').textContent = result.message;
+        const link = document.getElementById('sheetLink');
+        link.href = 'https://docs.google.com/spreadsheets/d/' + result.spreadsheetId;
+        link.textContent = '📊 ' + result.schoolName + ' — เปิด Spreadsheet';
+      } else {
+        showError(result.message);
+      }
+    })
+    .withFailureHandler(function(err) {
+      document.getElementById('loadingOverlay').classList.remove('show');
+      showError('เกิดข้อผิดพลาด: ' + err.message);
+    })
+    .setupNewSchool(formData);
+}
+
+function goToApp() {
+  const baseUrl = window.location.href.split('?')[0];
+  window.location.href = baseUrl + '?page=login';
+}
+
+function toggleBoundInfo() {
+  var url = document.getElementById('spreadsheetUrl').value.trim();
+  document.getElementById('boundScriptInfo').style.display = url ? 'block' : 'none';
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <!-- เพิ่ม Viewport ให้รองรับมือถือ -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📅 จัดการวันหยุด</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <style>
+    body {
+      background-color: #f0f2f5; /* ปรับสีพื้นหลังให้อ่อนลงเล็กน้อยเพื่อความสบายตา */
+      font-family: 'Sarabun', sans-serif; /* แนะนำให้ใช้ font เดียวกับหน้าเช็คชื่อถ้าทำได้ */
+    }
+    .container {
+      max-width: 900px;
+    }
+    .card {
+      border: none;
+      border-radius: 15px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+    .card-header {
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+      color: white;
+      border-radius: 15px 15px 0 0 !important;
+      padding: 15px;
+    }
+    table th, table td {
+      font-size: 14px;
+      padding: 10px;
+      text-align: center;
+      vertical-align: middle;
+    }
+    #holidayTable thead th {
+      background-color: #f8f9fa;
+      color: #495057;
+      font-weight: 600;
+    }
+    #holidayBody tr {
+      transition: background-color 0.2s;
+    }
+    #holidayBody tr:hover {
+      background-color: #f1f5f9;
+    }
+    /* ปรับแต่ง input ให้ดูทันสมัยขึ้น */
+    .form-control-sm {
+      border-radius: 8px;
+      border: 1px solid #dee2e6;
+      padding: 6px 10px;
+    }
+    .form-control-sm:focus {
+      border-color: #4f46e5;
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+    .btn {
+      border-radius: 10px;
+      font-weight: 500;
+    }
+  </style>
+  <!-- นำเข้า Font Sarabun เพื่อความสวยงาม (Optional) -->
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="container py-5">
+  <div class="card">
+    <div class="card-header text-center">
+      <h4 class="mb-0">📅 จัดการวันหยุดประจำปี</h4>
+    </div>
+    <div class="card-body p-4">
+      
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="text-muted small">
+          <i class="bi bi-info-circle"></i> ข้อมูลจะถูกนำไปใช้แจ้งเตือนในหน้าเช็คชื่อ
+        </div>
+        <div class="d-flex gap-2">
+           <button class="btn btn-success btn-sm px-3" id="addHolidayBtn">
+             <span>➕</span> เพิ่มวันหยุด
+           </button>
+           <button class="btn btn-primary btn-sm px-3" id="saveHolidayBtn">
+             <span>💾</span> บันทึกทั้งหมด
+           </button>
+        </div>
+      </div>
+
+      <div class="table-responsive border rounded-3">
+        <table class="table table-hover mb-0" id="holidayTable">
+          <thead>
+            <tr>
+              <th style="width: 10%;">ลำดับ</th>
+              <th style="width: 30%;">วันที่</th>
+              <th style="width: 50%;">รายละเอียดวันหยุด</th>
+              <th style="width: 10%;">ลบ</th>
+            </tr>
+          </thead>
+          <tbody id="holidayBody">
+             <!-- Data rows will be inserted here -->
+          </tbody>
+        </table>
+      </div>
+      
+      <div id="loadingState" class="text-center py-4" style="display:none;">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2 text-muted small">กำลังโหลดข้อมูล...</p>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- SweetAlert2 for nicer alerts (Optional but recommended) -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+function setupHolidayFormPage() {
+  const tbody = document.getElementById('holidayBody');
+  const addBtn = document.getElementById('addHolidayBtn');
+  const saveBtn = document.getElementById('saveHolidayBtn');
+  const loadingEl = document.getElementById('loadingState');
+
+  if (!window.holidays) window.holidays = [];
+
+  // ✨ ฟังก์ชันเรียงลำดับวันหยุด
+  function sortHolidays() {
+    window.holidays.sort((a, b) => {
+      if (!a.date) return 1; 
+      if (!b.date) return -1;
+      return a.date.localeCompare(b.date);
+    });
+  }
+
+  function formatThaiDate(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    if (isNaN(date)) return '';
+    const days = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
+    const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear() + 543}`;
+  }
+
+  function renderTable() {
+    sortHolidays();
+    tbody.innerHTML = '';
+    
+    if (window.holidays.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-muted py-4">ยังไม่มีข้อมูลวันหยุด กดปุ่ม "เพิ่มวันหยุด" เพื่อเริ่มใช้งาน</td></tr>`;
+        return;
+    }
+
+    window.holidays.forEach((item, idx) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${idx + 1}</td>
+        <td>
+          <input type="date" class="form-control form-control-sm" value="${item.date || ''}">
+          <div class="text-muted small mt-1" style="font-size: 12px;">${formatThaiDate(item.date)}</div>
+        </td>
+        <td>
+          <input type="text" class="form-control form-control-sm" placeholder="เช่น วันขึ้นปีใหม่" value="${item.detail || ''}">
+        </td>
+        <td>
+          <button class="btn btn-sm btn-outline-danger border-0" data-action="delete" data-index="${idx}" type="button" title="ลบรายการ">
+            🗑️
+          </button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  tbody.addEventListener('input', function(e) {
+    const row = e.target.closest('tr');
+    if (!row) return;
+    // หา index ที่แท้จริง (เผื่อกรณีมีการ sort)
+    const idx = [...tbody.children].indexOf(row); 
+    
+    // อัปเดตข้อมูลใน array (ระวัง: ถ้า renderTable() ใหม่ทันทีตอนพิมพ์ input text focus จะหลุด)
+    if (e.target.type === 'date') {
+       window.holidays[idx].date = e.target.value;
+       // เฉพาะวันที่ ที่เราอนุญาตให้ render ใหม่เลยเพื่อให้เรียงลำดับ
+       renderTable(); 
+       // พยายาม focus กลับไปที่ input เดิม (อาจจะไม่สมบูรณ์ 100% แต่ช่วยได้)
+    }
+    if (e.target.type === 'text') {
+       window.holidays[idx].detail = e.target.value;
+       // ไม่ renderTable() ที่นี่ เพื่อไม่ให้ focus หลุดตอนพิมพ์
+    }
+  });
+
+  tbody.addEventListener('click', function(e) {
+    if (e.target.closest('[data-action="delete"]')) {
+      const btn = e.target.closest('[data-action="delete"]');
+      const idx = Number(btn.dataset.index);
+      
+      // ลบแบบมี Animation เล็กน้อย (Optional)
+      const row = btn.closest('tr');
+      row.style.background = '#ffebee';
+      setTimeout(() => {
+          window.holidays.splice(idx, 1);
+          renderTable();
+      }, 200);
+    }
+  });
+
+  addBtn.addEventListener('click', function() {
+    window.holidays.push({ date: '', detail: '' });
+    renderTable();
+    // Focus ที่ input วันที่แถวสุดท้าย
+    setTimeout(() => {
+        const rows = tbody.querySelectorAll('tr');
+        if(rows.length > 0) {
+            const lastRow = rows[rows.length - 1];
+            const dateInput = lastRow.querySelector('input[type="date"]');
+            if(dateInput) dateInput.focus();
+        }
+    }, 50);
+  });
+
+  saveBtn.addEventListener('click', function() {
+    sortHolidays();
+    const data = window.holidays.filter(h => h.date && h.detail); // กรองแถวว่าง
+
+    // Show Loading
+    const originalBtnText = saveBtn.innerHTML;
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> กำลังบันทึก...';
+
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      google.script.run
+        .withSuccessHandler((res) => {
+          saveBtn.disabled = false;
+          saveBtn.innerHTML = originalBtnText;
+          
+          Swal.fire({
+            icon: 'success',
+            title: 'บันทึกสำเร็จ!',
+            text: res.message || 'ข้อมูลวันหยุดถูกบันทึกเรียบร้อยแล้ว',
+            timer: 2000,
+            showConfirmButton: false
+          });
+          
+          loadHolidays(); // โหลดข้อมูลซ้ำเพื่อความชัวร์
+        })
+        .withFailureHandler((err) => {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalBtnText;
+            Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: err.message });
+        })
+        .saveHolidaySheet(data.map(h => [h.date, h.detail]));
+    } else {
+      alert('บันทึก (Simulation Mode): ' + JSON.stringify(data));
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = originalBtnText;
+    }
+  });
+
+  function loadHolidays() {
+    loadingEl.style.display = 'block';
+    tbody.style.display = 'none';
+
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      google.script.run.withSuccessHandler(function(data) {
+        window.holidays = (data || []).map(row => ({ date: row[0], detail: row[1] }));
+        loadingEl.style.display = 'none';
+        tbody.style.display = 'table-row-group';
+        renderTable();
+      }).loadHolidaysFromSheet();
+    } else {
+      // Mock data for testing without GAS
+      setTimeout(() => {
+          window.holidays = [
+            { date: '2025-01-01', detail: 'วันขึ้นปีใหม่' },
+            { date: '2025-04-13', detail: 'วันสงกรานต์' }
+          ];
+          loadingEl.style.display = 'none';
+          tbody.style.display = 'table-row-group';
+          renderTable();
+      }, 1000);
+    }
+  }
+
+  loadHolidays();
+}
+
+setupHolidayFormPage();
+</script>
+</body>
+</html>

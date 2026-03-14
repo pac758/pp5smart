@@ -1,0 +1,200 @@
+<script>
+/**
+ * GradeClassHelper — Shared utility สำหรับ auto-select ห้อง + จำค่าล่าสุด + quick-select
+ * 
+ * วิธีใช้: ใส่ <?!= include('grade_class_helper') ?> ในทุกหน้าที่มี gradeSelect/classSelect
+ * แล้วเรียก GradeClassHelper.init() หลัง DOM พร้อม
+ * 
+ * Features:
+ *  1. Auto-select ห้อง 1 ถ้าชั้นนั้นมีห้องเดียว
+ *  2. จำค่าชั้น/ห้องล่าสุดด้วย localStorage
+ *  3. Quick-select bar "ป.1/1 ป.2/1 ..." กดครั้งเดียวจบ
+ */
+window.GradeClassHelper = (function() {
+  const STORAGE_KEY = 'lastGradeClass';
+  
+  // ============ LocalStorage ============
+  function saveSelection(grade, classNo) {
+    if (!grade) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ grade, classNo, ts: Date.now() }));
+    } catch(e) {}
+  }
+  
+  function loadSelection() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch(e) { return null; }
+  }
+  
+  // ============ Auto-select ห้อง ============
+  function autoSelectClassIfSingle(classSelectEl) {
+    if (!classSelectEl) return;
+    const options = Array.from(classSelectEl.options).filter(o => o.value && o.value !== '');
+    if (options.length === 1) {
+      classSelectEl.value = options[0].value;
+      classSelectEl.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }
+  
+  // ============ Quick-select bar ============
+  function createQuickBar(gradeSelectEl, classSelectEl, grades) {
+    if (!gradeSelectEl) return;
+    
+    // ลบ bar เดิม (ถ้ามี)
+    const existingBar = document.getElementById('gcQuickBar');
+    if (existingBar) existingBar.remove();
+    
+    const bar = document.createElement('div');
+    bar.id = 'gcQuickBar';
+    bar.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;margin:0 0 8px 0;justify-content:center;';
+    
+    const gradeList = grades || ['ป.1','ป.2','ป.3','ป.4','ป.5','ป.6'];
+    
+    gradeList.forEach(g => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-outline-primary btn-sm gc-quick-btn';
+      btn.textContent = g + '/1';
+      btn.dataset.grade = g;
+      btn.dataset.classNo = '1';
+      btn.style.cssText = 'min-width:50px;font-weight:500;border-radius:16px;transition:all 0.2s;padding:4px 10px;font-size:0.8rem;';
+      
+      btn.addEventListener('click', function() {
+        // highlight
+        document.querySelectorAll('.gc-quick-btn').forEach(b => {
+          b.classList.remove('btn-primary');
+          b.classList.add('btn-outline-primary');
+        });
+        btn.classList.remove('btn-outline-primary');
+        btn.classList.add('btn-primary');
+        
+        selectGradeClass(gradeSelectEl, classSelectEl, g, '1');
+      });
+      bar.appendChild(btn);
+    });
+    
+    // ใส่ bar ที่ด้านบนสุดของ card/container
+    const card = gradeSelectEl.closest('.card') || 
+                 gradeSelectEl.closest('.score-entry-controls-row') ||
+                 gradeSelectEl.closest('.create-score-row') ||
+                 gradeSelectEl.closest('.pro-toolbar');
+    if (card) {
+      card.insertBefore(bar, card.firstChild);
+    } else {
+      const container = gradeSelectEl.closest('.form-group') || gradeSelectEl.parentElement;
+      if (container && container.parentElement) {
+        container.parentElement.insertBefore(bar, container);
+      }
+    }
+  }
+  
+  // ============ Select grade + class programmatically ============
+  function selectGradeClass(gradeSelectEl, classSelectEl, grade, classNo) {
+    if (!gradeSelectEl) return;
+    
+    // set grade
+    gradeSelectEl.value = grade;
+    gradeSelectEl.dispatchEvent(new Event('change', { bubbles: true }));
+    
+    // class ต้อง set หลังจาก grade change handler โหลด options เสร็จ
+    // ใช้ MutationObserver + timeout fallback
+    if (classSelectEl && classNo) {
+      const trySetClass = (attempts) => {
+        if (attempts <= 0) return;
+        const options = Array.from(classSelectEl.options).filter(o => o.value !== '');
+        if (options.length > 0) {
+          classSelectEl.value = classNo;
+          if (classSelectEl.value === classNo) {
+            classSelectEl.dispatchEvent(new Event('change', { bubbles: true }));
+            saveSelection(grade, classNo);
+            highlightQuickBtn(grade, classNo);
+          }
+        } else {
+          setTimeout(() => trySetClass(attempts - 1), 300);
+        }
+      };
+      setTimeout(() => trySetClass(10), 200);
+    } else {
+      saveSelection(grade, classNo || '1');
+    }
+  }
+  
+  function highlightQuickBtn(grade, classNo) {
+    document.querySelectorAll('.gc-quick-btn').forEach(b => {
+      if (b.dataset.grade === grade && b.dataset.classNo === classNo) {
+        b.classList.remove('btn-outline-primary');
+        b.classList.add('btn-primary');
+      } else {
+        b.classList.remove('btn-primary');
+        b.classList.add('btn-outline-primary');
+      }
+    });
+  }
+  
+  // ============ Hook into existing change events ============
+  function hookChangeEvents(gradeSelectEl, classSelectEl) {
+    if (!gradeSelectEl || !classSelectEl) return;
+    
+    // เมื่อ class options โหลดเสร็จ (dynamic) → auto-select ถ้ามีห้องเดียว
+    const observer = new MutationObserver(() => {
+      autoSelectClassIfSingle(classSelectEl);
+    });
+    observer.observe(classSelectEl, { childList: true });
+    
+    // เมื่อ grade เปลี่ยน → auto-select class ถ้า options มีอยู่แล้ว (hardcoded)
+    gradeSelectEl.addEventListener('change', () => {
+      saveSelection(gradeSelectEl.value, '');
+      // delay เล็กน้อยเพื่อให้ handler เดิมทำงานก่อน แล้ว auto-select
+      setTimeout(() => autoSelectClassIfSingle(classSelectEl), 400);
+    });
+    
+    // เมื่อเปลี่ยนค่า class → จำไว้
+    classSelectEl.addEventListener('change', () => {
+      const grade = gradeSelectEl.value;
+      const classNo = classSelectEl.value;
+      if (grade && classNo) {
+        saveSelection(grade, classNo);
+        highlightQuickBtn(grade, classNo);
+      }
+    });
+  }
+  
+  // ============ Init ============
+  function init(options) {
+    const opts = options || {};
+    const gradeId = opts.gradeId || 'gradeSelect';
+    const classId = opts.classId || 'classSelect';
+    const grades = opts.grades || null; // null = ใช้ default ป.1-6
+    const noQuickBar = opts.noQuickBar || false;
+    const autoRestore = opts.autoRestore !== false; // default true
+    
+    const gradeEl = document.getElementById(gradeId);
+    const classEl = document.getElementById(classId);
+    
+    if (!gradeEl) return; // ไม่มี dropdown = ไม่ต้องทำอะไร
+    
+    // 1. Hook auto-select + save
+    hookChangeEvents(gradeEl, classEl);
+    
+    // 2. Quick bar
+    if (!noQuickBar) {
+      createQuickBar(gradeEl, classEl, grades);
+    }
+    
+    // 3. Restore ค่าล่าสุด
+    if (autoRestore) {
+      const last = loadSelection();
+      if (last && last.grade) {
+        // delay เล็กน้อยให้ DOM พร้อม
+        setTimeout(() => {
+          selectGradeClass(gradeEl, classEl, last.grade, last.classNo || '1');
+        }, 500);
+      }
+    }
+  }
+  
+  return { init, selectGradeClass, saveSelection, loadSelection, autoSelectClassIfSingle };
+})();
+</script>

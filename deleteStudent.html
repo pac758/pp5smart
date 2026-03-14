@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🗑️ ลบข้อมูลนักเรียน</title>
+</head>
+<body>
+    <div class="animate-fade-in" style="max-width: 800px; margin: auto;">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-0 text-danger"><i class="bi bi-trash3-fill"></i> ลบข้อมูลนักเรียน</h2>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header fw-bold">🔍 ค้นหานักเรียนที่ต้องการลบ</div>
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label for="searchType" class="form-label">ค้นหาด้วย:</label>
+                        <select id="searchType" class="form-select">
+                            <option value="student_id">รหัสนักเรียน</option>
+                            <option value="name">ชื่อ-สกุล</option>
+                            <option value="id_card">เลขบัตรประชาชน</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="searchValue" class="form-label">คำค้นหา:</label>
+                        <input type="text" id="searchValue" class="form-control">
+                    </div>
+                    <div class="col-md-2">
+                        <button id="searchBtn" class="btn btn-primary w-100">ค้นหา</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="resultContainer"></div>
+        
+        <div id="status" class="mt-3"></div>
+    </div>
+
+    <script>
+        let currentStudentId = null;
+
+        // --- Event Listeners ---
+        document.getElementById('searchBtn').addEventListener('click', searchStudent);
+        document.getElementById('searchValue').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchStudent();
+            }
+        });
+        
+        // Event Delegation for delete button
+        document.getElementById('resultContainer').addEventListener('click', function(event) {
+            if (event.target.id === 'confirmDeleteBtn') {
+                confirmDelete();
+            }
+        });
+
+        // --- Functions ---
+        function searchStudent() {
+            const searchType = document.getElementById('searchType').value;
+            const searchValue = document.getElementById('searchValue').value.trim();
+            if (!searchValue) {
+                alert('กรุณากรอกคำค้นหา');
+                return;
+            }
+            
+            showStatus('กำลังค้นหา...', 'info');
+
+            google.script.run
+                .withSuccessHandler(student => {
+                    const container = document.getElementById('resultContainer');
+                    if (student) {
+                        currentStudentId = student.id;
+                        container.innerHTML = `
+                            <div class="card shadow-sm border-danger">
+                                <div class="card-header bg-danger text-white fw-bold">ยืนยันการลบข้อมูล</div>
+                                <div class="card-body">
+                                    <p>คุณต้องการลบข้อมูลของนักเรียนคนนี้ใช่หรือไม่?</p>
+                                    <ul class="list-group list-group-flush mb-3">
+                                        <li class="list-group-item"><strong>รหัส:</strong> ${student.id}</li>
+                                        <li class="list-group-item"><strong>ชื่อ:</strong> ${student.name}</li>
+                                        <li class="list-group-item"><strong>ชั้น/ห้อง:</strong> ${student.grade}/${student.classNo}</li>
+                                    </ul>
+                                    <p class="text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill"></i> คำเตือน: การดำเนินการนี้ไม่สามารถย้อนกลับได้!</p>
+                                    <div class="text-end">
+                                        <button id="confirmDeleteBtn" class="btn btn-danger">ยืนยันการลบ</button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        showStatus(''); // Clear loading message
+                    } else {
+                        container.innerHTML = '<div class="alert alert-warning">ไม่พบข้อมูลนักเรียนที่ค้นหา</div>';
+                        showStatus('');
+                    }
+                })
+                .withFailureHandler(handleError)
+                .searchStudentBy(searchType, searchValue);
+        }
+
+        function confirmDelete() {
+            if (!currentStudentId) return;
+
+            if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบนักเรียนรหัส ${currentStudentId} ออกจากระบบอย่างถาวร?`)) {
+                showStatus('กำลังลบข้อมูล...', 'info');
+
+                google.script.run
+                    .withSuccessHandler(result => {
+                        if (result.success) {
+                            showStatus(result.message, 'success');
+                            document.getElementById('resultContainer').innerHTML = '';
+                            document.getElementById('searchValue').value = '';
+                            currentStudentId = null;
+                        } else {
+                            showStatus(result.message, 'danger');
+                        }
+                    })
+                    .withFailureHandler(handleError)
+                    .deleteStudent(currentStudentId);
+            }
+        }
+        
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            if (!message) {
+                statusDiv.innerHTML = '';
+                return;
+            }
+            statusDiv.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+        }
+        
+        function handleError(error) {
+            showStatus(`เกิดข้อผิดพลาด: ${error.message}`, 'danger');
+        }
+    </script>
+</body>
+</html>

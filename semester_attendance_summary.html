@@ -1,0 +1,1983 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>📊 รายงานสรุปการมาเรียน (Smart Attendance Summary)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+  <!-- เพิ่ม Chart.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  
+  <style>
+    body { font-family: 'Sarabun', sans-serif; background: #f9f9f9; }
+    
+    /* Animation สำหรับ cards */
+    .stat-card {
+      transition: all 0.3s ease;
+      border: none;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    .stat-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    
+    .stat-card .card-body {
+      position: relative;
+      z-index: 2;
+    }
+    
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+      z-index: 1;
+    }
+    
+    /* Gradient backgrounds สำหรับ stat cards */
+    .stat-present {
+      background: linear-gradient(135deg, #28a745, #20c997);
+      color: white;
+    }
+    
+    .stat-leave {
+      background: linear-gradient(135deg, #ffc107, #fd7e14);
+      color: white;
+    }
+    
+    .stat-absent {
+      background: linear-gradient(135deg, #dc3545, #e83e8c);
+      color: white;
+    }
+    
+    .stat-percentage {
+      background: linear-gradient(135deg, #007bff, #6f42c1);
+      color: white;
+    }
+    
+    /* ปรับปรุงตาราง */
+    .modern-table {
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+    
+.modern-table thead th {
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef); /* เปลี่ยนเป็นขาว-เทาอ่อน */
+  color: #495057; /* เปลี่ยนตัวอักษรเป็นสีเข้ม */
+  border: none;
+  font-weight: 600;
+  padding: 15px 10px;
+}
+    
+    .modern-table tbody tr {
+      transition: all 0.2s ease;
+    }
+    
+    .modern-table tbody tr:hover {
+      background-color: #f8f9fa;
+      transform: scale(1.01);
+    }
+    
+    .modern-table td {
+      padding: 12px 10px;
+      vertical-align: middle;
+      border-color: #e9ecef;
+    }
+    
+    /* ปรับปรุง badges */
+    .modern-badge {
+      font-size: 0.85rem;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-weight: 500;
+    }
+    
+    /* Loading animation */
+    .loading-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+    }
+    
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #007bff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    /* Chart container */
+    .chart-container {
+      position: relative;
+      height: 300px;
+      margin: 20px 0;
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    }
+    
+    /* Progress bars */
+    .progress-modern {
+      height: 8px;
+      border-radius: 10px;
+      background: #e9ecef;
+      overflow: hidden;
+    }
+    
+    .progress-bar-modern {
+      height: 100%;
+      border-radius: 10px;
+      transition: width 0.6s ease;
+    }
+    
+    /* แก้ไข header */
+    .header-main { 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+      color: #fff; 
+      padding: 32px 0 24px 0; 
+      text-align: center; 
+      border-radius: 0 0 2rem 2rem; 
+      margin-bottom: 36px; 
+      box-shadow: 0 4px 20px rgba(102,126,234,0.14);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .header-main::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 2px,
+        rgba(255,255,255,0.05) 2px,
+        rgba(255,255,255,0.05) 4px
+      );
+      animation: move 20s linear infinite;
+    }
+    
+    @keyframes move {
+      0% { transform: translate(-50%, -50%) rotate(0deg); }
+      100% { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+    
+    .header-main h2 { font-weight: 800; letter-spacing: 1px; margin-bottom: 8px; position: relative; z-index: 2; }
+    .header-main p { font-weight: 400; color: #e0e7ff; margin-bottom: 0; position: relative; z-index: 2; }
+    .result-table { background: #fff; border-radius: 14px; box-shadow: 0 2px 10px rgba(51,65,85,0.09);}
+    .table-summary th, .table-summary td { text-align: center; vertical-align: middle; }
+    .table-summary th { background: #eef2ff; }
+    .spinner-border { margin-right: 10px; }
+    .export-btn-area { text-align: right; margin-bottom: 8px; }
+    
+    /* Tooltip สำหรับ month input */
+    #monthSelect {
+      position: relative;
+    }
+
+    #monthSelect:hover::after {
+      content: attr(title);
+      position: absolute;
+      bottom: 100%;
+      left: 0;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      white-space: nowrap;
+      z-index: 1000;
+      opacity: 1;
+      transition: opacity 0.3s;
+    }
+
+    /* เพิ่มสีแดงเมื่อเลือกเดือนไม่ถูกต้อง */
+    #monthSelect.invalid {
+      border-color: #dc3545;
+      box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+    }
+
+    /* แสดงข้อความช่วยเหลือ */
+    .month-help-text {
+      font-size: 0.875rem;
+      color: #6c757d;
+      margin-top: 4px;
+    }
+    
+    /* Responsive improvements */
+    @media (max-width: 767px) {
+      .header-main { padding: 18px 0 12px 0; }
+      .header-main h2 { font-size: 1.3rem; }
+      .result-table { font-size: 0.92rem; }
+      .stat-card { margin-bottom: 15px; }
+      .chart-container { height: 250px; padding: 15px; }
+    }
+
+    /* ===== CSS เพิ่มเติมสำหรับสรุปรายเดือน ===== */
+
+/* ส่วนสถิติรายเดือน */
+.monthly-stats-card {
+  transition: all 0.3s ease;
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.monthly-stats-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.12);
+}
+
+.monthly-stats-card .card-body {
+  padding: 1rem;
+}
+
+.monthly-stats-card h6 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: #333;
+}
+
+.monthly-stats-card .badge {
+  font-size: 0.75rem;
+  padding: 0.4em 0.6em;
+  border-radius: 15px;
+  font-weight: 500;
+}
+
+.monthly-stats-card small {
+  font-size: 0.7rem;
+  line-height: 1.2;
+}
+
+/* ส่วนหัวภาคเรียน */
+.semester-header {
+  border-left: 4px solid;
+  padding-left: 12px;
+  margin-bottom: 1rem;
+}
+
+.semester-header.semester-1 {
+  border-left-color: #007bff;
+}
+
+.semester-header.semester-2 {
+  border-left-color: #28a745;
+}
+
+/* กราฟแนวโน้ม */
+.trend-chart-container {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 20px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+}
+
+.trend-chart-container h6 {
+  color: #495057;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+/* สถานะการมาเรียน */
+.status-excellent {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+}
+
+.status-good {
+  background: linear-gradient(135deg, #17a2b8, #6f42c1);
+  color: white;
+}
+
+.status-fair {
+  background: linear-gradient(135deg, #ffc107, #fd7e14);
+  color: white;
+}
+
+.status-poor {
+  background: linear-gradient(135deg, #dc3545, #e83e8c);
+  color: white;
+}
+
+.status-no-data {
+  background: #6c757d;
+  color: white;
+}
+
+/* Animation สำหรับโหลดข้อมูล */
+.loading-monthly {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  min-height: 150px;
+}
+
+.loading-monthly .spinner-border {
+  width: 2rem;
+  height: 2rem;
+  margin-right: 0.75rem;
+}
+
+/* Responsive สำหรับหน้าจอเล็ก */
+@media (max-width: 768px) {
+  .monthly-stats-card {
+    margin-bottom: 0.75rem;
+  }
+  
+  .monthly-stats-card .card-body {
+    padding: 0.75rem;
+  }
+  
+  .monthly-stats-card h6 {
+    font-size: 0.8rem;
+  }
+  
+  .trend-chart-container {
+    padding: 15px;
+    margin-top: 15px;
+  }
+  
+  .semester-header {
+    margin-bottom: 0.75rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .col-6.mb-3 {
+    flex: 0 0 50%;
+    max-width: 50%;
+  }
+  
+  .monthly-stats-card .card-body {
+    padding: 0.5rem;
+  }
+  
+  .monthly-stats-card h6 {
+    font-size: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .monthly-stats-card small {
+    font-size: 0.65rem;
+  }
+}
+
+/* แต่งแต่ง badge ให้สวยงาม */
+.badge.bg-success {
+  background: linear-gradient(135deg, #28a745, #20c997) !important;
+}
+
+.badge.bg-info {
+  background: linear-gradient(135deg, #17a2b8, #6f42c1) !important;
+}
+
+.badge.bg-warning {
+  background: linear-gradient(135deg, #ffc107, #fd7e14) !important;
+}
+
+.badge.bg-danger {
+  background: linear-gradient(135deg, #dc3545, #e83e8c) !important;
+}
+
+.badge.bg-secondary {
+  background: linear-gradient(135deg, #6c757d, #5a6268) !important;
+}
+
+/* ปรับแต่งกราฟ container */
+.chart-container canvas {
+  border-radius: 8px;
+}
+
+/* สำหรับ tooltip ของกราฟ */
+.chart-tooltip {
+  background: rgba(0,0,0,0.8);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+/* ===== [ใหม่] Loading Overlay ===== */
+.loading-overlay {
+    position: fixed; /* คลุมทั้งหน้าจอ */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.8); /* พื้นหลังโปร่งแสงสีขาว */
+    backdrop-filter: blur(4px); /* เอฟเฟกต์เบลอพื้นหลัง (ดูทันสมัย) */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 1060; /* ให้อยู่เหนือสุด */
+    transition: opacity 0.3s ease;
+}
+
+/* อนิเมชันแบบจุดกระพริบ */
+.loader {
+    display: flex;
+    gap: 10px;
+}
+.loader div {
+    width: 16px;
+    height: 16px;
+    background: #667eea; /* สีหลักของธีม */
+    border-radius: 50%;
+    animation: pulse 1.4s infinite ease-in-out both;
+}
+.loader div:nth-child(1) { animation-delay: -0.32s; }
+.loader div:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes pulse {
+    0%, 80%, 100% { transform: scale(0); }
+    40% { transform: scale(1.0); }
+}
+
+.loading-overlay p {
+    margin-top: 20px;
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: #4f46e5;
+}
+/* Loading Indicator ตรงกลาง */
+#loadingIndicator {
+  animation: fadeIn 0.3s ease-in;
+  font-weight: 500;
+  vertical-align: middle;
+  display: inline-block;
+  padding: 8px 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+#loadingIndicator .spinner-border-sm {
+  width: 1.2rem;
+  height: 1.2rem;
+  border-width: 0.15em;
+}
+
+/* Loading แบบ Fixed ตรงกลางจอ */
+#centerLoadingIndicator {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 30px 50px;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+  z-index: 1070;
+  animation: fadeIn 0.3s ease-in;
+}
+
+  </style>
+</head>
+<body>
+  <div class="header-main">
+    <h2>📊 รายงานสรุปการมาเรียน (Attendance Summary)</h2>
+    <p>ตรวจสอบสถิติการมาเรียนแต่ละเดือน-ทั้งปี หรือรายคน <span id="schoolInfo" style="display:inline"></span></p>
+  </div>
+  <div class="container pb-5">
+    <!-- ฟอร์มตัวเลือก -->
+    <div class="row g-2 mb-3 align-items-end">
+      <div class="col-md-2 col-6">
+        <label class="form-label">ปีการศึกษา</label>
+        <select id="yearSelect" class="form-select"></select>
+      </div>
+      <div class="col-md-2 col-6">
+        <label class="form-label">ระดับชั้น</label>
+        <select id="gradeSelect" class="form-select">
+          <option value="">เลือกชั้น</option>
+          <option value="ป.1">ป.1</option>
+          <option value="ป.2">ป.2</option>
+          <option value="ป.3">ป.3</option>
+          <option value="ป.4">ป.4</option>
+          <option value="ป.5">ป.5</option>
+          <option value="ป.6">ป.6</option>
+        </select>
+      </div>
+      <div class="col-md-2 col-6">
+        <label class="form-label">ห้อง</label>
+        <select id="classSelect" class="form-select">
+          <option value="">เลือกห้อง</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+        </select>
+      </div>
+      <div class="col-md-3 col-12">
+        <label class="form-label">ประเภทรายงาน</label>
+<select id="reportMode" class="form-select">
+  <option value="month">สรุปรายเดือน</option>
+  <option value="monthlyAttendance">แสดงสรุปวันมาแต่ละเดือน</option>
+  <option value="semester">สรุปรายภาคเรียน</option>
+  <option value="year">สรุปรวมทั้งปี</option>
+  <option value="student">รายงานรายคน</option>
+</select>
+      </div>
+   <!-- ช่องเลือกเดือน (แสดงเมื่อเลือกรายเดือน) -->
+<div class="col-md-2 col-7" id="monthGroup">
+  <label class="form-label">เลือกเดือน</label>
+  <input type="month" id="monthSelect" class="form-control">
+</div>
+</div>
+
+<!-- ช่องเลือกภาคเรียน (แสดงเมื่อเลือกรายภาคเรียน) -->
+<div class="col-md-2 col-7" id="semesterGroup" style="display: none;">
+  <label class="form-label">เลือกภาคเรียน</label>
+  <select id="semesterSelect" class="form-select">
+    <option value="">กรุณาเลือกภาคเรียน</option>
+    <option value="1">ภาคเรียนที่ 1 (พ.ค.-ต.ค.)</option>
+    <option value="2">ภาคเรียนที่ 2 (พ.ย.-มี.ค.)</option>
+  </select>
+</div>
+
+<!-- ช่องเลือกนักเรียน (แสดงเมื่อเลือกรายคน) -->
+<div class="col-md-2 col-7" id="studentGroup" style="display: none;">
+  <label class="form-label">เลือกนักเรียน</label>
+  <select id="studentSelect" class="form-select">
+    <option value="">กรุณาเลือกนักเรียน</option>
+  </select>
+</div>
+
+<!-- รวมปุ่มทั้งหมดในแถวเดียว -->
+<div class="row mb-3 align-items-center">
+    <!-- ปุ่มแสดงผล (ซ้าย) -->
+    <div class="col-md-6 col-12 text-md-start text-center mb-2 mb-md-0">
+        <button class="btn btn-primary" id="btnLoad">
+            <i class="bi bi-search"></i> แสดงผล
+        </button>
+        
+        <span id="loadingIndicator" style="display: none;" class="ms-3">
+            <span class="spinner-border spinner-border-sm text-primary me-2" role="status"></span>
+            <span class="text-primary fw-medium">กำลังประมวลผล...</span>
+        </span>
+    </div>
+    
+    <!-- ปุ่มส่งออก/บันทึก (ขวา) -->
+    <div class="col-md-6 col-12 text-md-end text-center">
+        <span id="exportBtnArea"></span>
+    </div>
+</div>
+
+<!-- 🆕 เพิ่มส่วนนี้ -->
+<div class="row">
+    <div class="col-12">
+        <!-- Container สำหรับแสดงตาราง -->
+        <div id="reportTableContainer"></div>
+        
+        <!-- Spinner สำหรับ loading (ซ่อนไว้) -->
+        <div id="spinner" style="display: none;" class="text-center my-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">กำลังโหลด...</span>
+            </div>
+            <p class="mt-2">กำลังประมวลผล...</p>
+        </div>
+    </div>
+</div>
+<div id="loadingOverlay" class="loading-overlay" style="display: none;">
+    <div class="loader">
+        <div></div>
+        <div></div>
+        <div></div>
+    </div>
+    <p id="loadingText">กำลังโหลดข้อมูล...</p>
+</div>
+  
+  <!-- Toast แจ้งบันทึกสำเร็จ -->
+  <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
+    <div id="saveToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body">
+          ✅ บันทึกข้อมูลสำเร็จ!
+        </div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+  // ===== ฟังก์ชันหาปีการศึกษาปัจจุบัน =====
+  function getCurrentAcademicYear() {
+    const today = new Date();
+    const currentYear = today.getFullYear() + 543; // แปลงเป็น พ.ศ.
+    const currentMonth = today.getMonth() + 1; // เดือน 1-12
+    
+    // ถ้าเดือนมกราคม-เมษายน = ปีการศึกษาปีก่อน
+    // ถ้าเดือนพฤษภาคม-ธันวาคม = ปีการศึกษาปีนั้น
+    if (currentMonth >= 1 && currentMonth <= 4) {
+      return currentYear - 1; // ปีการศึกษาปีก่อน
+    } else {
+      return currentYear; // ปีการศึกษาปีนั้น
+    }
+  }
+
+  // ===== ฟังก์ชันแปลงเลขเดือนเป็นชื่อไทย =====
+  function getThaiMonthName(monthNumber) {
+    const thaiMonths = [
+      '', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+      'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+    ];
+    return thaiMonths[monthNumber] || '';
+  }
+
+  // ===== UI ส่วนปีการศึกษา (เริ่มที่ 2568 ไปข้างหน้า 10 ปี) =====
+  function fillYearSelect() {
+    const yearSel = document.getElementById('yearSelect');
+    yearSel.innerHTML = '';
+    
+    const currentAcademicYear = getCurrentAcademicYear();
+    const startYear = 2568; // ปีเริ่มต้นของระบบ
+    const endYear = startYear + 10; // ไปข้างหน้า 10 ปี (2568-2578)
+    
+    // สร้างตัวเลือกจาก 2568 ถึง 2578
+    for (let year = startYear; year <= endYear; year++) {
+      const opt = document.createElement('option');
+      opt.value = year;
+      opt.textContent = year;
+      yearSel.appendChild(opt);
+    }
+    
+    // ตั้งค่าเริ่มต้นเป็นปีการศึกษาปัจจุบัน (ถ้าอยู่ในช่วง)
+    if (currentAcademicYear >= startYear && currentAcademicYear <= endYear) {
+      yearSel.value = currentAcademicYear;
+    } else if (currentAcademicYear < startYear) {
+      yearSel.value = startYear; // ถ้าปีปัจจุบันน้อยกว่า 2568 ให้เลือก 2568
+    } else {
+      yearSel.value = endYear; // ถ้าปีปัจจุบันมากกว่า 2578 ให้เลือก 2578
+    }
+    
+    // เมื่อเปลี่ยนปีการศึกษา ให้อัพเดทช่วงเดือนที่เลือกได้
+    yearSel.addEventListener('change', updateMonthSelectRange);
+  }
+
+  // ===== ฟังก์ชันอัพเดทช่วงเดือนที่เลือกได้ =====
+  function updateMonthSelectRange() {
+    const academicYear = parseInt(document.getElementById('yearSelect').value);
+    const monthSel = document.getElementById('monthSelect');
+    
+    if (!academicYear) return;
+    
+    // คำนวณช่วงเดือนของปีการศึกษา
+    const yearCE = academicYear - 543; // แปลงเป็น ค.ศ.
+    const startMonth = `${yearCE}-05`; // พฤษภาคม
+    const endMonth = `${yearCE + 1}-03`; // มีนาคมปีถัดไป
+    
+    // ตั้งค่า min และ max ให้ input
+    monthSel.setAttribute('min', startMonth);
+    monthSel.setAttribute('max', endMonth);
+    
+    // ตรวจสอบว่าค่าปัจจุบันอยู่ในช่วงหรือไม่
+    const currentValue = monthSel.value;
+    if (currentValue && (currentValue < startMonth || currentValue > endMonth)) {
+      // ถ้าไม่อยู่ในช่วง ให้ตั้งเป็นเดือนเริ่มต้นของปีการศึกษา
+      monthSel.value = startMonth;
+    }
+    
+    // เพิ่ม tooltip แสดงช่วงเดือนที่เลือกได้
+    const startMonthName = getThaiMonthName(5) + ' ' + academicYear;
+    const endMonthName = getThaiMonthName(3) + ' ' + (academicYear + 1);
+    monthSel.setAttribute('title', `ช่วงปีการศึกษา: ${startMonthName} - ${endMonthName}`);
+  }
+
+  // ===== ฟังก์ชันตรวจสอบความถูกต้องของเดือนที่เลือก =====
+  function validateMonthSelection() {
+    const academicYear = parseInt(document.getElementById('yearSelect').value);
+    const monthValue = document.getElementById('monthSelect').value;
+    
+    if (!academicYear || !monthValue) return false;
+    
+    const [yearCE, month] = monthValue.split('-').map(Number);
+    const yearBE = yearCE + 543;
+    
+    // ตรวจสอบว่าเดือนที่เลือกอยู่ในปีการศึกษาหรือไม่
+    const isValidMonth = (
+      (yearBE === academicYear && month >= 5) || // พฤษภาคม-ธันวาคม ของปีการศึกษา
+      (yearBE === academicYear + 1 && month <= 3) // มกราคม-มีนาคม ของปีถัดไป
+    );
+    
+    return isValidMonth;
+  }
+
+  // ===== ฟังก์ชันตั้งค่าเดือนเริ่มต้น =====
+  function setDefaultMonth() {
+    const monthSel = document.getElementById('monthSelect');
+    const today = new Date();
+    const currentYear = today.getFullYear(); // ค.ศ.
+    const currentMonth = today.getMonth() + 1; // เดือน 1-12
+    
+    // ตั้งค่าเป็นเดือนปัจจุบัน
+    let yyyy = currentYear;
+    let mm = currentMonth;
+    
+    if (mm < 10) mm = '0' + mm;
+    monthSel.value = yyyy + '-' + mm;
+    
+    // อัพเดทช่วงเดือนที่เลือกได้ตามปีการศึกษาเริ่มต้น
+    setTimeout(() => {
+      updateMonthSelectRange();
+    }, 100);
+  }
+
+  // เรียกใช้ทันทีหลังประกาศ
+  fillYearSelect();
+  setDefaultMonth();
+
+  // ===== การจัดการแสดง/ซ่อนช่องตัวเลือก =====
+  document.getElementById('reportMode').addEventListener('change', function() {
+  const mode = this.value;
+  const monthGroup = document.getElementById('monthGroup');
+  const semesterGroup = document.getElementById('semesterGroup');
+  const studentGroup = document.getElementById('studentGroup');
+  
+  if (mode === 'month') {
+    monthGroup.style.display = 'block';
+    semesterGroup.style.display = 'none';
+    studentGroup.style.display = 'none';
+  } else if (mode === 'semester') {
+    monthGroup.style.display = 'none';
+    semesterGroup.style.display = 'block';
+    studentGroup.style.display = 'none';
+  } else if (mode === 'student') {
+    monthGroup.style.display = 'none';
+    semesterGroup.style.display = 'none';
+    studentGroup.style.display = 'block';
+    loadStudentsList();
+  } else if (mode === 'monthlyAttendance') {
+    monthGroup.style.display = 'none';
+    semesterGroup.style.display = 'none';
+    studentGroup.style.display = 'none';
+  } else {
+    monthGroup.style.display = 'none';
+    semesterGroup.style.display = 'none';
+    studentGroup.style.display = 'none';
+  }
+});
+
+  // ===== ฟังก์ชันโหลดรายชื่อนักเรียน =====
+  function loadStudentsList() {
+    const grade = document.getElementById('gradeSelect').value;
+    const classNo = document.getElementById('classSelect').value;
+    const studentSelect = document.getElementById('studentSelect');
+    
+    if (!grade || !classNo) {
+      studentSelect.innerHTML = '<option value="">กรุณาเลือกชั้น/ห้องก่อน</option>';
+      return;
+    }
+    
+    studentSelect.innerHTML = '<option value="">🔄 กำลังโหลด...</option>';
+    
+    google.script.run
+      .withSuccessHandler(function(students) {
+        studentSelect.innerHTML = '<option value="">เลือกนักเรียน</option>';
+        students.forEach(student => {
+          const option = document.createElement('option');
+          option.value = student.id;
+          option.textContent = `${student.id} - ${student.name}`;
+          studentSelect.appendChild(option);
+        });
+      })
+      .withFailureHandler(function(error) {
+        studentSelect.innerHTML = '<option value="">❌ โหลดข้อมูลไม่สำเร็จ</option>';
+        console.error('Error loading students:', error);
+      })
+      .getStudentsList(grade, classNo);
+  }
+
+  // Event เมื่อเปลี่ยนชั้น/ห้อง ให้อัพเดทรายชื่อนักเรียน
+  document.getElementById('gradeSelect').addEventListener('change', function() {
+    if (document.getElementById('reportMode').value === 'student') {
+      loadStudentsList();
+    }
+  });
+
+  document.getElementById('classSelect').addEventListener('change', function() {
+    if (document.getElementById('reportMode').value === 'student') {
+      loadStudentsList();
+    }
+  });
+
+  // ===== ปุ่มโหลดข้อมูล =====
+document.getElementById('btnLoad').addEventListener('click', function() {
+    const year = document.getElementById('yearSelect').value;
+    const grade = document.getElementById('gradeSelect').value;
+    const classNo = document.getElementById('classSelect').value;
+    const mode = document.getElementById('reportMode').value;
+
+    if (!grade || !classNo) return alert('กรุณาเลือกชั้น/ห้อง');
+
+    // ตรวจสอบการเลือกตามโหมด
+    if (mode === 'month') {
+        const monthStr = document.getElementById('monthSelect').value;
+        if (!monthStr) {
+            return alert('กรุณาเลือกเดือน');
+        }
+        if (!validateMonthSelection()) {
+            const academicYear = parseInt(year);
+            const startMonthName = getThaiMonthName(5) + ' ' + academicYear;
+            const endMonthName = getThaiMonthName(3) + ' ' + (academicYear + 1);
+            return alert(`กรุณาเลือกเดือนในช่วงปีการศึกษา ${academicYear}\n(${startMonthName} - ${endMonthName})`);
+        }
+    } else if (mode === 'semester') {
+        const semester = document.getElementById('semesterSelect').value;
+        if (!semester) {
+            return alert('กรุณาเลือกภาคเรียน');
+        }
+    } else if (mode === 'student') {
+        const studentId = document.getElementById('studentSelect').value;
+        if (!studentId) {
+            return alert('กรุณาเลือกนักเรียน');
+        }
+    }
+
+    // [แก้ไข] แสดง loading overlay
+    document.getElementById('loadingOverlay').style.display = 'flex'; 
+    document.getElementById('reportTableContainer').innerHTML = '';
+    document.getElementById('exportBtnArea').innerHTML = '';
+
+    // เรียกฟังก์ชันตามโหมด
+    if (mode === 'month') {
+        const monthStr = document.getElementById('monthSelect').value;
+        const [yearSel, mSel] = monthStr.split('-').map(Number);
+        google.script.run.withSuccessHandler(function(data) {
+            document.getElementById('loadingOverlay').style.display = 'none'; // [แก้ไข] ซ่อน loading overlay
+            renderTableMonth(data, yearSel, mSel, grade, classNo, year);
+        }).getMonthlyAttendanceSummary(grade, classNo, yearSel, mSel);
+
+    } else if (mode === 'semester') {
+        const semester = document.getElementById('semesterSelect').value;
+        google.script.run.withSuccessHandler(function(data) {
+            document.getElementById('loadingOverlay').style.display = 'none'; // [แก้ไข] ซ่อน loading overlay
+            renderTableSemester(data, grade, classNo, year, semester);
+        }).withFailureHandler(function(error) {
+            document.getElementById('loadingOverlay').style.display = 'none'; // [แก้ไข] ซ่อน loading overlay
+            alert('เกิดข้อผิดพลาด: ' + error.message);
+        }).getSemesterAttendanceSummary(grade, classNo, semester, year);
+
+    } else if (mode === 'year') {
+        google.script.run.withSuccessHandler(function(data) {
+            document.getElementById('loadingOverlay').style.display = 'none'; // [แก้ไข] ซ่อน loading overlay
+            renderTableYear(data, grade, classNo, year);
+        }).withFailureHandler(function(error) {
+            document.getElementById('loadingOverlay').style.display = 'none'; // [แก้ไข] ซ่อน loading overlay
+            alert('เกิดข้อผิดพลาด: ' + error.message);
+        }).getYearlyAttendanceSummary(grade, classNo, year);
+
+    } else if (mode === 'student') {
+        const studentId = document.getElementById('studentSelect').value;
+        google.script.run.withSuccessHandler(function(data) {
+            document.getElementById('loadingOverlay').style.display = 'none'; // [แก้ไข] ซ่อน loading overlay
+            renderTableStudent(data, grade, classNo, year);
+        }).withFailureHandler(function(error) {
+            document.getElementById('loadingOverlay').style.display = 'none'; // [แก้ไข] ซ่อน loading overlay
+            alert('เกิดข้อผิดพลาด: ' + error.message);
+        }).getStudentAttendanceDetail(grade, classNo, studentId, year);
+
+    } else if (mode === 'monthlyAttendance') {
+        google.script.run.withSuccessHandler(function(data) {
+            document.getElementById('loadingOverlay').style.display = 'none'; // [แก้ไข] ซ่อน loading overlay
+            renderMonthlyAttendanceTable(data, grade, classNo, year);
+        }).withFailureHandler(function(error) {
+            document.getElementById('loadingOverlay').style.display = 'none'; // [แก้ไข] ซ่อน loading overlay
+            alert('เกิดข้อผิดพลาด: ' + error.message);
+        }).getMonthlyAttendanceMatrix(grade, classNo, year);
+    }
+});
+
+  // ===== ฟังก์ชันแสดงผลรายเดือน (เดิม) =====
+function renderTableMonth(data, year, month, grade, classNo, yearDisplay) {
+    // --- เพิ่มโค้ดเรียงลำดับข้อมูลนักเรียนตาม ID ---
+    if (data && Array.isArray(data)) {
+        data.sort((a, b) => String(a.studentId).localeCompare(String(b.studentId)));
+    }
+    // --- สิ้นสุดโค้ดที่เพิ่ม ---
+
+    const thaiMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+    let html = `<div class="result-table p-3"><h5 class="mb-3"><i class="bi bi-calendar-event"></i> รายงานสรุปรายเดือน (${thaiMonths[month-1]} ${yearDisplay})</h5>`;
+    if (!data || !data.length) { html += `<div class="text-danger">ไม่พบข้อมูลในเดือนนี้</div></div>`; document.getElementById('reportTableContainer').innerHTML = html; return; }
+    html += `<div class="table-responsive"><table class="table table-bordered table-summary">
+      <thead><tr>
+        <th>ลำดับ</th><th>รหัส</th><th class="text-start">ชื่อ-สกุล</th>
+        <th>มา</th><th>ลา</th><th>ขาด</th><th>รวมวันเรียน</th><th>ร้อยละมาเรียน</th>
+      </tr></thead><tbody>`;
+    data.forEach((stu, idx) => {
+      const total = stu.total || (stu.present + stu.leave + stu.absent);
+      const percent = total > 0 ? ((stu.present/total)*100).toFixed(1) : "0.0";
+      html += `<tr>
+        <td>${idx+1}</td>
+        <td>${stu.studentId}</td>
+        <td class="text-start">${stu.name||'-'}</td>
+        <td>${stu.present}</td>
+        <td>${stu.leave}</td>
+        <td>${stu.absent}</td>
+        <td>${total}</td>
+        <td>${percent}%</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div></div>`;
+    document.getElementById('reportTableContainer').innerHTML = html;
+
+    // ปุ่มส่งออก PDF + ปุ่มบันทึกชีต
+    document.getElementById('exportBtnArea').innerHTML = `
+  &nbsp; <button id="exportPdfBtn" class="btn btn-success me-2">
+        <i class="bi bi-file-earmark-pdf"></i> ส่งออก PDF
+      </button>
+      <button id="saveSheetBtn" class="btn btn-warning">
+        <i class="bi bi-save"></i> บันทึกลงชีต
+      </button>
+    `;
+document.getElementById('exportPdfBtn').onclick = function() {
+  document.getElementById('centerLoadingIndicator').style.display = 'block'; // ✅ แก้แล้ว
+  
+  google.script.run
+    .withSuccessHandler(function(pdfUrl) {
+      document.getElementById('centerLoadingIndicator').style.display = 'none'; // ✅
+      window.open(pdfUrl, '_blank');
+    })
+    .withFailureHandler(function(error) {
+      document.getElementById('centerLoadingIndicator').style.display = 'none'; // ✅
+      alert('ส่งออก PDF ไม่สำเร็จ: ' + error.message);
+    })
+    .exportMonthlyAttendancePDF(grade, classNo, year, month);
+};
+
+    document.getElementById('saveSheetBtn').onclick = function() {
+      const summaryData = data.map(stu => ({
+        studentId: stu.studentId, name: stu.name, present: stu.present,
+        leave: stu.leave, absent: stu.absent,
+        total: stu.total || (stu.present + stu.leave + stu.absent),
+        grade: grade, classNo: classNo, year: yearDisplay
+      }));
+      document.getElementById('centerLoadingIndicator').style.display = 'block';  // ✅
+      google.script.run
+        .withSuccessHandler(function(){
+          document.getElementById('centerLoadingIndicator').style.display = 'none';
+          var toastEl = document.getElementById('saveToast');
+          var toast = new bootstrap.Toast(toastEl);
+          toast.show();
+        })
+        .withFailureHandler(function(e){
+          document.getElementById('centerLoadingIndicator').style.display = 'none';
+          alert("❌ บันทึกไม่สำเร็จ: " + (e.message || e));
+        })
+        .saveAttendanceSummaryToSheet(summaryData, yearDisplay);
+    };
+}
+
+ // ===== ฟังก์ชันแสดงผลรวมทั้งปี (เพิ่มสรุปรายเดือน) =====
+function renderTableYear(data, grade, classNo, yearDisplay) {
+    // --- เพิ่มโค้ดเรียงลำดับข้อมูลนักเรียนตาม ID ---
+    if (data && Array.isArray(data)) {
+        data.sort((a, b) => String(a.studentId).localeCompare(String(b.studentId)));
+    }
+    // --- สิ้นสุดโค้ดที่เพิ่ม ---
+
+    let html = `<div class="result-table p-4">
+    <h5 class="mb-4"><i class="bi bi-calendar-check"></i> รายงานสรุปรวมทั้งปี (ปีการศึกษา ${yearDisplay})</h5>`;
+    
+    if (!data || !data.length) { 
+    html += `<div class="alert alert-warning"><i class="bi bi-exclamation-triangle"></i> ไม่พบข้อมูลสำหรับปีการศึกษานี้</div></div>`; 
+    document.getElementById('reportTableContainer').innerHTML = html; 
+    return; 
+    }
+    
+    // คำนวณสถิติรวม
+    let totalPresent = 0, totalLeave = 0, totalAbsent = 0, totalDays = 0;
+    data.forEach(stu => {
+    totalPresent += stu.present || 0;
+    totalLeave += stu.leave || 0;
+    totalAbsent += stu.absent || 0;
+    totalDays += stu.total || 0;
+    });
+    
+    const avgAttendance = totalDays > 0 ? ((totalPresent / totalDays) * 100).toFixed(1) : "0.0";
+    
+    // แสดงสถิติรวมแบบ modern cards
+    html += `
+    <div class="row mb-4">
+      <div class="col-md-3 col-6">
+        <div class="card stat-card stat-present">
+          <div class="card-body text-center py-3">
+            <i class="bi bi-check-circle fs-2 mb-2"></i>
+            <h4 class="mb-1">${totalPresent.toLocaleString()}</h4>
+            <p class="mb-0">วันมาเรียน</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3 col-6">
+        <div class="card stat-card stat-leave">
+          <div class="card-body text-center py-3">
+            <i class="bi bi-exclamation-circle fs-2 mb-2"></i>
+            <h4 class="mb-1">${totalLeave.toLocaleString()}</h4>
+            <p class="mb-0">วันลา</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3 col-6">
+        <div class="card stat-card stat-absent">
+          <div class="card-body text-center py-3">
+            <i class="bi bi-x-circle fs-2 mb-2"></i>
+            <h4 class="mb-1">${totalAbsent.toLocaleString()}</h4>
+            <p class="mb-0">วันขาด</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3 col-6">
+        <div class="card stat-card stat-percentage">
+          <div class="card-body text-center py-3">
+            <i class="bi bi-percent fs-2 mb-2"></i>
+            <h4 class="mb-1">${avgAttendance}%</h4>
+            <p class="mb-0">เฉลี่ยการมาเรียน</p>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+    // 🆕 เพิ่มส่วนสรุปรายเดือน
+    html += `
+    <div class="card mb-4">
+      <div class="card-header bg-primary text-white">
+        <h6 class="mb-0"><i class="bi bi-calendar3"></i> สรุปการมาเรียนแต่ละเดือน</h6>
+      </div>
+      <div class="card-body">
+        <div id="monthlyStatsContainer">
+          <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">กำลังโหลด...</span>
+            </div>
+            <p class="mt-2">กำลังโหลดข้อมูลรายเดือน...</p>
+          </div>
+        </div>
+      </div>
+    </div>`;
+    
+    // กราฟแสดงสถิติ
+    html += `
+    <div class="row mb-4">
+      <div class="col-md-6">
+        <div class="chart-container">
+          <h6 class="text-center mb-3">📊 สัดส่วนการเข้าเรียนทั้งปี</h6>
+          <canvas id="attendancePieChart"></canvas>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="chart-container">
+          <h6 class="text-center mb-3">📈 การกระจายเปอร์เซ็นต์การมาเรียน</h6>
+          <canvas id="attendanceBarChart"></canvas>
+        </div>
+      </div>
+    </div>`;
+    
+    // ตารางข้อมูลแบบ modern
+    const percentGroups = { 'ดีมาก (≥80%)': 0, 'ดี (70-79%)': 0, 'พอใช้ (60-69%)': 0, 'ต้องปรับปรุง (<60%)': 0 };
+    
+    html += `
+    <div class="modern-table">
+      <table class="table table-bordered mb-0">
+        <thead><tr>
+          <th>ลำดับ</th><th>รหัส</th><th class="text-start">ชื่อ-สกุล</th>
+          <th>มา</th><th>ลา</th><th>ขาด</th><th>รวม</th><th>%มาเรียน</th><th>สถานะ</th>
+        </tr></thead>
+        <tbody>`;
+    
+    data.forEach((stu, idx) => {
+    const total = stu.total || (stu.present + stu.leave + stu.absent);
+    const percent = total > 0 ? ((stu.present/total)*100).toFixed(1) : "0.0";
+    const percentNum = parseFloat(percent);
+    
+    // จัดกลุ่มข้อมูล
+    if (percentNum >= 80) percentGroups['ดีมาก (≥80%)']++;
+    else if (percentNum >= 70) percentGroups['ดี (70-79%)']++;
+    else if (percentNum >= 60) percentGroups['พอใช้ (60-69%)']++;
+    else percentGroups['ต้องปรับปรุง (<60%)']++;
+    
+    // กำหนดสถานะ
+    let status = "", badgeClass = "";
+    if (percentNum >= 80) { status = "ดีมาก"; badgeClass = "bg-success"; }
+    else if (percentNum >= 70) { status = "ดี"; badgeClass = "bg-info"; }
+    else if (percentNum >= 60) { status = "พอใช้"; badgeClass = "bg-warning"; }
+    else { status = "ต้องปรับปรุง"; badgeClass = "bg-danger"; }
+    
+    html += `<tr>
+      <td>${idx+1}</td>
+      <td><strong>${stu.studentId}</strong></td>
+      <td class="text-start">${stu.name||'-'}</td>
+      <td><span class="badge modern-badge bg-success">${stu.present}</span></td>
+      <td><span class="badge modern-badge bg-warning text-dark">${stu.leave}</span></td>
+      <td><span class="badge modern-badge bg-danger">${stu.absent}</span></td>
+      <td><strong>${total}</strong></td>
+      <td>
+        <div class="d-flex align-items-center">
+          <div class="progress-modern flex-grow-1 me-2">
+            <div class="progress-bar-modern bg-primary" style="width: ${percent}%"></div>
+          </div>
+          <span><strong>${percent}%</strong></span>
+        </div>
+      </td>
+      <td><span class="badge modern-badge ${badgeClass}">${status}</span></td>
+    </tr>`;
+    });
+    
+    html += `</tbody></table></div></div>`;
+    document.getElementById('reportTableContainer').innerHTML = html;
+    
+    // สร้างกราฟ
+    setTimeout(() => {
+    createAttendanceCharts(totalPresent, totalLeave, totalAbsent, percentGroups);
+    }, 100);
+
+    // 🆕 โหลดข้อมูลสรุปรายเดือน
+    setTimeout(() => {
+    loadMonthlyStats(grade, classNo, yearDisplay);
+    }, 200);
+    
+    // เพิ่มปุ่มต่างๆ
+document.getElementById('exportBtnArea').innerHTML = `
+  <button id="exportPdfBtn" class="btn btn-success me-2">
+      <i class="bi bi-file-earmark-pdf"></i> ส่งออก PDF
+  </button>
+  <button id="saveYearSheetBtn" class="btn btn-warning">
+      <i class="bi bi-save"></i> บันทึกลงชีต
+  </button>
+`;
+
+// ✅ แก้ไข Event Handler
+// Event handlers
+document.getElementById('exportPdfBtn').onclick = function() {
+    document.getElementById('centerLoadingIndicator').style.display = 'block';  // ✅
+    google.script.run.withSuccessHandler(function(pdfUrl) {
+      document.getElementById('centerLoadingIndicator').style.display = 'none';  // ✅
+      window.open(pdfUrl, '_blank');
+    }).withFailureHandler(function(error) {
+      document.getElementById('centerLoadingIndicator').style.display = 'none';  // ✅
+      alert('ส่งออก PDF ไม่สำเร็จ: ' + error.message);
+    }).exportMonthlyAttendanceMatrixPDF(grade, classNo, yearDisplay);
+};
+    
+    document.getElementById('saveYearSheetBtn').onclick = function() {
+    const summaryData = data.map(stu => ({
+      studentId: stu.studentId, name: stu.name, present: stu.present,
+      leave: stu.leave, absent: stu.absent,
+      total: stu.total || (stu.present + stu.leave + stu.absent),
+      grade: grade, classNo: classNo, year: yearDisplay
+    }));
+    
+     document.getElementById('centerLoadingIndicator').style.display = 'block';
+    google.script.run
+      .withSuccessHandler(function(){
+        document.getElementById('centerLoadingIndicator').style.display = 'none';
+        var toastEl = document.getElementById('saveToast');
+        var toast = new bootstrap.Toast(toastEl);
+        toast.show();
+      })
+      .withFailureHandler(function(e){
+        document.getElementById('centerLoadingIndicator').style.display = 'none';
+        alert("❌ บันทึกไม่สำเร็จ: " + (e.message || e));
+      })
+      .saveAttendanceSummaryToSheet(summaryData, yearDisplay);
+    };
+}
+
+
+// 🆕 ฟังก์ชันโหลดข้อมูลสถิติรายเดือน
+function loadMonthlyStats(grade, classNo, academicYear) {
+  // console.log(`🔍 Loading monthly stats for ${grade}/${classNo}/${academicYear}`);
+  
+  google.script.run
+    .withSuccessHandler(function(monthlyStats) {
+      // console.log('✅ Monthly stats loaded:', monthlyStats);
+      renderMonthlyStats(monthlyStats);
+    })
+    .withFailureHandler(function(error) {
+      console.error('❌ Error loading monthly stats:', error);
+      document.getElementById('monthlyStatsContainer').innerHTML = `
+        <div class="alert alert-danger">
+          <i class="bi bi-exclamation-triangle"></i> 
+          ไม่สามารถโหลดข้อมูลรายเดือนได้: ${error.message}
+        </div>
+      `;
+    })
+    .getMonthlyAttendanceStats(grade, classNo, academicYear);
+}
+
+// 🆕 ฟังก์ชันแสดงผลสถิติรายเดือน
+function renderMonthlyStats(monthlyStats) {
+  if (!monthlyStats || monthlyStats.length === 0) {
+    document.getElementById('monthlyStatsContainer').innerHTML = `
+      <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> ไม่พบข้อมูลรายเดือนสำหรับปีการศึกษานี้
+      </div>
+    `;
+    return;
+  }
+
+  // แยกข้อมูลตามภาคเรียน
+  const semester1 = monthlyStats.filter(m => m.semester === 1);
+  const semester2 = monthlyStats.filter(m => m.semester === 2);
+
+  let html = ``;
+
+  // แสดงภาคเรียนที่ 1
+  if (semester1.length > 0) {
+    html += createSemesterSection('ภาคเรียนที่ 1', semester1, 'primary');
+  }
+
+  // แสดงภาคเรียนที่ 2
+  if (semester2.length > 0) {
+    html += createSemesterSection('ภาคเรียนที่ 2', semester2, 'success');
+  }
+
+  // กราฟแนวโน้มรายเดือน
+  html += `
+    <div class="mt-4">
+      <h6 class="mb-3"><i class="bi bi-graph-up"></i> แนวโน้มการมาเรียนตลอดปี</h6>
+      <div class="chart-container" style="height: 350px;">
+        <canvas id="monthlyTrendChart"></canvas>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('monthlyStatsContainer').innerHTML = html;
+
+  // สร้างกราฟแนวโน้ม
+  setTimeout(() => {
+    createMonthlyTrendChart(monthlyStats);
+  }, 100);
+}
+
+// 🆕 ฟังก์ชันสร้างส่วนแสดงแต่ละภาคเรียน
+function createSemesterSection(semesterName, semesterData, colorClass) {
+  let html = `
+    <div class="mb-4">
+      <h6 class="mb-3 text-${colorClass}"><i class="bi bi-calendar2-range"></i> ${semesterName}</h6>
+      <div class="row">
+  `;
+
+  semesterData.forEach(month => {
+    const hasData = month.studentsWithData > 0;
+    const cardClass = hasData ? '' : 'text-muted';
+    const badgeClass = hasData ? getBadgeClass(month.avgPresent) : 'bg-secondary';
+    
+    html += `
+      <div class="col-lg-2 col-md-3 col-sm-4 col-6 mb-3">
+        <div class="card h-100 ${cardClass}">
+          <div class="card-body p-3 text-center">
+            <h6 class="card-title mb-2" style="font-size: 0.9rem;">${month.monthName}</h6>
+            <div class="mb-2">
+              <span class="badge ${badgeClass} mb-1">${month.avgPresentStr}</span>
+              <br>
+              <small class="text-muted">${month.statusText}</small>
+            </div>
+            ${hasData ? `
+              <div style="font-size: 0.8rem;">
+                <div>มา: <strong>${month.totalPresent}</strong></div>
+                <div>ลา: ${month.totalLeave}</div>
+                <div>ขาด: ${month.totalAbsent}</div>
+                <div class="text-muted">นักเรียน: ${month.studentsWithData} คน</div>
+              </div>
+            ` : `
+              <div style="font-size: 0.8rem;" class="text-muted">
+                ไม่มีข้อมูล
+              </div>
+            `}
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  html += `
+      </div>
+    </div>
+  `;
+
+  return html;
+}
+
+// 🆕 ฟังก์ชันกำหนดสี badge ตามเปอร์เซ็นต์
+function getBadgeClass(percentage) {
+  if (percentage >= 80) return 'bg-success';
+  if (percentage >= 70) return 'bg-info';
+  if (percentage >= 60) return 'bg-warning';
+  return 'bg-danger';
+}
+
+// 🆕 ฟังก์ชันสร้างกราฟแนวโน้มรายเดือน
+function createMonthlyTrendChart(monthlyStats) {
+  const ctx = document.getElementById('monthlyTrendChart');
+  if (!ctx) return;
+
+  // เตรียมข้อมูลสำหรับกราฟ
+  const labels = monthlyStats.map(m => m.monthName);
+  const presentData = monthlyStats.map(m => m.avgPresent);
+  const leaveData = monthlyStats.map(m => m.avgLeave);
+  const absentData = monthlyStats.map(m => m.avgAbsent);
+
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'มาเรียน (%)',
+          data: presentData,
+          borderColor: '#28a745',
+          backgroundColor: 'rgba(40, 167, 69, 0.1)',
+          borderWidth: 3,
+          fill: true,
+          tension: 0.4
+        },
+        {
+          label: 'ลา (%)',
+          data: leaveData,
+          borderColor: '#ffc107',
+          backgroundColor: 'rgba(255, 193, 7, 0.1)',
+          borderWidth: 2,
+          fill: false,
+          tension: 0.4
+        },
+        {
+          label: 'ขาด (%)',
+          data: absentData,
+          borderColor: '#dc3545',
+          backgroundColor: 'rgba(220, 53, 69, 0.1)',
+          borderWidth: 2,
+          fill: false,
+          tension: 0.4
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        title: {
+          display: true,
+          text: 'แนวโน้มเปอร์เซ็นต์การเข้าเรียนแต่ละเดือน'
+        },
+        legend: {
+          position: 'top'
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 100,
+          ticks: {
+            callback: function(value) {
+              return value + '%';
+            }
+          }
+        },
+        x: {
+          title: {
+            display: true,
+            text: 'เดือน'
+          }
+        }
+      },
+      elements: {
+        point: {
+          radius: 5,
+          hoverRadius: 8
+        }
+      }
+    }
+  });
+}
+
+  // ===== ฟังก์ชันแสดงผลรายคน =====
+  function renderTableStudent(data, grade, classNo, yearDisplay) {
+    let html = `<div class="result-table p-3">
+      <h5 class="mb-3"><i class="bi bi-person-circle"></i> รายงานการเข้าเรียนรายคน</h5>`;
+    
+    if (!data) { 
+      html += `<div class="text-danger">ไม่พบข้อมูลของนักเรียนคนนี้</div></div>`; 
+      document.getElementById('reportTableContainer').innerHTML = html; 
+      return; 
+    }
+    
+    // ข้อมูลนักเรียน
+    html += `
+      <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+          <h6 class="mb-0"><i class="bi bi-person-badge"></i> ข้อมูลนักเรียน</h6>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <p><strong>รหัสนักเรียน:</strong> ${data.student.id}</p>
+              <p><strong>ชื่อ-นามสกุล:</strong> ${data.student.fullname}</p>
+            </div>
+            <div class="col-md-6">
+              <p><strong>ชั้น:</strong> ${grade} ห้อง ${classNo}</p>
+              <p><strong>ปีการศึกษา:</strong> ${data.academicYear}</p>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    
+    // สถิติรวม
+    html += `
+      <div class="row mb-4">
+        <div class="col-md-3 col-6">
+          <div class="card text-center">
+            <div class="card-body py-3">
+              <h5 class="card-title text-success"><i class="bi bi-check-circle"></i></h5>
+              <h4 class="mb-1 text-success">${data.summary.totalPresent}</h4>
+              <p class="card-text">วันมาเรียน</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 col-6">
+          <div class="card text-center">
+            <div class="card-body py-3">
+              <h5 class="card-title text-warning"><i class="bi bi-exclamation-circle"></i></h5>
+              <h4 class="mb-1 text-warning">${data.summary.totalLeave}</h4>
+              <p class="card-text">วันลา</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 col-6">
+          <div class="card text-center">
+            <div class="card-body py-3">
+              <h5 class="card-title text-danger"><i class="bi bi-x-circle"></i></h5>
+              <h4 class="mb-1 text-danger">${data.summary.totalAbsent}</h4>
+              <p class="card-text">วันขาด</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 col-6">
+          <div class="card text-center">
+            <div class="card-body py-3">
+              <h5 class="card-title text-info"><i class="bi bi-percent"></i></h5>
+              <h4 class="mb-1 text-info">${data.summary.percentage}%</h4>
+              <p class="card-text">เปอร์เซ็นต์การมาเรียน</p>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    
+    // ผลการประเมิน
+    const gradeColorMap = {
+      'success': 'success', 'info': 'info', 'warning': 'warning', 
+      'secondary': 'secondary', 'danger': 'danger'
+    };
+    
+    html += `
+      <div class="alert alert-${gradeColorMap[data.summary.gradeClass]} text-center mb-4">
+        <h5><i class="bi bi-award"></i> ผลการประเมิน: <strong>${data.summary.gradeLevel}</strong></h5>
+        <p class="mb-0">จากการเข้าเรียนทั้งหมด ${data.summary.totalDays} วัน</p>
+      </div>`;
+    
+    // ตารางสรุปรายเดือน
+    html += `
+      <h6><i class="bi bi-calendar3"></i> สรุปการเข้าเรียนรายเดือน</h6>
+      <div class="table-responsive">
+        <table class="table table-bordered table-sm">
+          <thead class="table-light">
+            <tr>
+              <th>เดือน</th><th>ปี</th><th>มา</th><th>ลา</th><th>ขาด</th><th>รวม</th><th>%มาเรียน</th><th>สถานะ</th>
+            </tr>
+          </thead>
+          <tbody>`;
+    
+    data.monthlyData.forEach(month => {
+      if (month.total > 0) { // แสดงเฉพาะเดือนที่มีข้อมูล
+        const percentNum = parseFloat(month.percentage);
+        let statusBadge = "";
+        if (percentNum >= 80) statusBadge = "success";
+        else if (percentNum >= 70) statusBadge = "info";
+        else if (percentNum >= 60) statusBadge = "warning";
+        else statusBadge = "danger";
+        
+        html += `<tr>
+          <td>${month.monthName}</td>
+          <td>${month.year}</td>
+          <td><span class="badge bg-success">${month.present}</span></td>
+          <td><span class="badge bg-warning">${month.leave}</span></td>
+          <td><span class="badge bg-danger">${month.absent}</span></td>
+          <td>${month.total}</td>
+          <td><strong>${month.percentage}%</strong></td>
+          <td><span class="badge bg-${statusBadge}">${month.percentage}%</span></td>
+        </tr>`;
+      }
+    });
+    
+    html += `</tbody></table></div></div>`;
+    document.getElementById('reportTableContainer').innerHTML = html;
+    
+    // ปุ่มส่งออก PDF สำหรับรายงานรายคน
+document.getElementById('exportBtnArea').innerHTML = `
+  <button id="exportPdfBtn" class="btn btn-success me-2">
+      <i class="bi bi-file-earmark-pdf"></i> ส่งออก PDF รายงานรายคน
+  </button>
+`;
+
+// ✅ แก้ไข Event Handler
+document.getElementById('exportPdfBtn').onclick = function() { // เปลี่ยนจาก exportStudentPdfBtn
+  const studentId = document.getElementById('studentSelect').value;
+  document.getElementById('centerLoadingIndicator').style.display = 'block';
+  
+  google.script.run
+    .withSuccessHandler(function(pdfUrl) {
+      document.getElementById('centerLoadingIndicator').style.display = 'none';
+      window.open(pdfUrl, '_blank');
+    })
+    .withFailureHandler(function(error) {
+      document.getElementById('centerLoadingIndicator').style.display = 'none';
+      alert('ส่งออก PDF ไม่สำเร็จ: ' + error.message);
+    })
+    .exportStudentAttendancePDF(grade, classNo, studentId, yearDisplay);
+};
+}
+  // ===== ฟังก์ชันสร้างกราฟ =====
+  function createAttendanceCharts(present, leave, absent, percentGroups) {
+    // กราฟ Pie Chart - สัดส่วนการเข้าเรียน
+    const pieCtx = document.getElementById('attendancePieChart');
+    if (pieCtx) {
+      new Chart(pieCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['มาเรียน', 'ลา', 'ขาด'],
+          datasets: [{
+            data: [present, leave, absent],
+            backgroundColor: ['#28a745', '#ffc107', '#dc3545'],
+            borderWidth: 3,
+            borderColor: '#fff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { padding: 20, usePointStyle: true }
+            }
+          }
+        }
+      });
+    }
+    
+    // กราฟ Bar Chart - การกระจายเปอร์เซ็นต์
+    const barCtx = document.getElementById('attendanceBarChart');
+    if (barCtx) {
+      new Chart(barCtx, {
+        type: 'bar',
+        data: {
+          labels: Object.keys(percentGroups),
+          datasets: [{
+            label: 'จำนวนนักเรียน',
+            data: Object.values(percentGroups),
+            backgroundColor: ['#28a745', '#17a2b8', '#ffc107', '#dc3545'],
+            borderColor: ['#1e7e34', '#117a8b', '#e0a800', '#c82333'],
+            borderWidth: 2,
+            borderRadius: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 1 } }
+          },
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+  }
+
+  // ===== ปรับปรุงการแสดง loading =====
+  function showModernLoading(message = 'กำลังโหลดข้อมูล...') {
+    document.getElementById('reportTableContainer').innerHTML = `
+      <div class="loading-container">
+        <div class="loading-spinner"></div>
+        <span class="ms-3">${message}</span>
+      </div>
+    `;
+  }
+  // ===== ฟังก์ชันแสดงผลตารางสรุปวันมาแต่ละเดือน =====
+// ===== ฟังก์ชันแสดงผลตารางสรุปวันมาแต่ละเดือน =====
+function renderMonthlyAttendanceTable(data, grade, classNo, yearDisplay) {
+    // --- เพิ่มโค้ดเรียงลำดับข้อมูลนักเรียนตาม ID (ใช้ data.students และ property คือ id) ---
+    if (data && data.students && Array.isArray(data.students)) {
+        data.students.sort((a, b) => String(a.id).localeCompare(String(b.id)));
+    }
+    // --- สิ้นสุดโค้ดที่เพิ่ม ---
+
+    let html = `<div class="result-table p-4">
+    <h5 class="mb-4"><i class="bi bi-calendar-week"></i> สรุปวันมาแต่ละเดือน (ปีการศึกษา ${yearDisplay})</h5>`;
+    
+    if (!data || !data.students || data.students.length === 0) { 
+    html += `<div class="alert alert-warning"><i class="bi bi-exclamation-triangle"></i> ไม่พบข้อมูลสำหรับปีการศึกษานี้</div></div>`; 
+    document.getElementById('reportTableContainer').innerHTML = html; 
+    return; 
+    }
+    
+    // สร้างตาราง
+    html += `
+    <div class="table-responsive">
+      <table class="table table-bordered modern-table">
+        <thead>
+          <tr>
+            <th rowspan="2" class="text-center align-middle">ที่</th>
+            <th rowspan="2" class="text-center align-middle">รหัส</th>
+            <th rowspan="2" class="text-center align-middle">ชื่อ-นามสกุล</th>`;
+    
+    // หัวตารางเดือน
+    data.months.forEach(month => {
+    html += `<th class="text-center">${month.shortName}</th>`;
+    });
+    html += `<th rowspan="2" class="text-center align-middle bg-light">รวมวันมา/ร้อยละ</th>`;
+    html += `</tr><tr>`;
+    
+    // แถวย่อยแสดงปี
+    data.months.forEach(month => {
+    html += `<th class="text-center text-muted" style="font-size: 0.8rem;">${month.year}</th>`;
+    });
+    html += `</tr></thead><tbody>`;
+    
+    // ข้อมูลนักเรียน
+    data.students.forEach((student, index) => {
+    html += `<tr>
+      <td class="text-center">${index + 1}</td>
+      <td class="text-center"><strong>${student.id}</strong></td>
+      <td class="text-start">${student.name}</td>`;
+    
+    // วันมาแต่ละเดือน
+    data.months.forEach(month => {
+      const attendanceCount = student.monthlyData[month.key] || 0;
+      const cellClass = attendanceCount > 0 ? 'text-success fw-bold' : 'text-muted';
+      html += `<td class="text-center ${cellClass}">${attendanceCount || '-'}</td>`;
+    });
+    
+    // รวมและร้อยละ
+    const totalDays = student.totalPresent;
+    const percentage = student.percentage;
+    const percentageClass = percentage >= 80 ? 'text-success' : 
+                          percentage >= 70 ? 'text-warning' : 'text-danger';
+    
+    html += `<td class="text-center">
+      <div class="${percentageClass} fw-bold">${totalDays} วัน</div>
+      <div class="${percentageClass}" style="font-size: 0.9rem;">(${percentage}%)</div>
+    </td>`;
+    html += `</tr>`;
+    });
+    
+    html += `</tbody></table></div>`;
+    
+    // สถิติสรุป
+    const totalStudents = data.students.length;
+    const avgAttendance = data.students.reduce((sum, s) => sum + s.percentage, 0) / totalStudents;
+    const excellentCount = data.students.filter(s => s.percentage >= 80).length;
+    const goodCount = data.students.filter(s => s.percentage >= 70 && s.percentage < 80).length;
+    const fairCount = data.students.filter(s => s.percentage >= 60 && s.percentage < 70).length;
+    const poorCount = data.students.filter(s => s.percentage < 60).length;
+    
+    html += `
+    <div class="row mt-4">
+      <div class="col-md-3 col-6">
+        <div class="card text-center">
+          <div class="card-body py-3">
+            <h5 class="card-title text-primary"><i class="bi bi-people"></i></h5>
+            <h4 class="mb-1 text-primary">${totalStudents}</h4>
+            <p class="card-text">นักเรียนทั้งหมด</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3 col-6">
+        <div class="card text-center">
+          <div class="card-body py-3">
+            <h5 class="card-title text-info"><i class="bi bi-percent"></i></h5>
+            <h4 class="mb-1 text-info">${avgAttendance.toFixed(1)}%</h4>
+            <p class="card-text">เฉลี่ยการมาเรียน</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3 col-6">
+        <div class="card text-center">
+          <div class="card-body py-3">
+            <h5 class="card-title text-success"><i class="bi bi-award"></i></h5>
+            <h4 class="mb-1 text-success">${excellentCount}</h4>
+            <p class="card-text">ดีมาก (≥80%)</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3 col-6">
+        <div class="card text-center">
+          <div class="card-body py-3">
+            <h5 class="card-title text-warning"><i class="bi bi-exclamation-triangle"></i></h5>
+            <h4 class="mb-1 text-warning">${poorCount}</h4>
+            <p class="card-text">ต้องปรับปรุง (<60%)</p>
+          </div>
+        </div>
+      </div>
+    </div>`;
+    
+    html += `</div>`;
+    document.getElementById('reportTableContainer').innerHTML = html;
+    
+    // เพิ่มปุ่มส่งออก PDF
+    document.getElementById('exportBtnArea').innerHTML = `
+  &nbsp; <button id="exportPdfBtn" class="btn btn-success me-2">
+      <i class="bi bi-file-earmark-pdf"></i> ส่งออก PDF สรุปวันมาแต่ละเดือน
+    </button>
+    <button id="saveMonthlyAttendanceSheetBtn" class="btn btn-warning">
+      <i class="bi bi-save"></i> บันทึกลงชีต
+    </button>
+    `;
+    
+    // Event handlers
+// Event handlers
+document.getElementById('exportPdfBtn').onclick = function() {
+    document.getElementById('centerLoadingIndicator').style.display = 'block';  // ✅ เปลี่ยนเป็น centerLoadingIndicator
+    google.script.run.withSuccessHandler(function(pdfUrl) {
+      document.getElementById('centerLoadingIndicator').style.display = 'none';  // ✅
+      window.open(pdfUrl, '_blank');
+    }).withFailureHandler(function(error) {
+      document.getElementById('centerLoadingIndicator').style.display = 'none';  // ✅
+      alert('ส่งออก PDF ไม่สำเร็จ: ' + error.message);
+    }).exportMonthlyAttendanceMatrixPDF(grade, classNo, yearDisplay);
+};
+
+document.getElementById('saveMonthlyAttendanceSheetBtn').onclick = function() {
+    document.getElementById('centerLoadingIndicator').style.display = 'block';  // ✅ เปลี่ยนเป็น centerLoadingIndicator
+    google.script.run
+      .withSuccessHandler(function(){
+        document.getElementById('centerLoadingIndicator').style.display = 'none';  // ✅
+        var toastEl = document.getElementById('saveToast');
+        var toast = new bootstrap.Toast(toastEl);
+        toast.show();
+      })
+      .withFailureHandler(function(e){
+        document.getElementById('centerLoadingIndicator').style.display = 'none';  // ✅
+        alert("❌ บันทึกไม่สำเร็จ: " + (e.message || e));
+      })
+      .saveMonthlyAttendanceMatrixToSheet(data, grade, classNo, yearDisplay);
+};
+}
+// ===== ฟังก์ชันแสดงผลรายภาคเรียน =====
+function renderTableSemester(data, grade, classNo, yearDisplay, semester) {
+    // --- เพิ่มโค้ดเรียงลำดับข้อมูลนักเรียนตาม ID ---
+    if (data && Array.isArray(data)) {
+        data.sort((a, b) => String(a.studentId).localeCompare(String(b.studentId)));
+    }
+    // --- สิ้นสุดโค้ดที่เพิ่ม ---
+
+    const semesterName = semester === '1' ? 'ภาคเรียนที่ 1 (พฤษภาคม - ตุลาคม)' : 'ภาคเรียนที่ 2 (พฤศจิกายน - มีนาคม)';
+    
+    let html = `<div class="result-table p-4">
+    <h5 class="mb-4"><i class="bi bi-calendar-range"></i> รายงานสรุปรายภาคเรียน (ปีการศึกษา ${yearDisplay})</h5>`;
+    
+    if (!data || !data.length) { 
+    html += `<div class="alert alert-warning"><i class="bi bi-exclamation-triangle"></i> ไม่พบข้อมูลสำหรับภาคเรียนนี้</div></div>`; 
+    document.getElementById('reportTableContainer').innerHTML = html; 
+    return; 
+    }
+    
+    // คำนวณสถิติรวม
+    let totalPresent = 0, totalLeave = 0, totalAbsent = 0, totalDays = 0;
+    data.forEach(stu => {
+    totalPresent += stu.present || 0;
+    totalLeave += stu.leave || 0;
+    totalAbsent += stu.absent || 0;
+    totalDays += stu.total || 0;
+    });
+    
+    const avgAttendance = totalDays > 0 ? ((totalPresent / totalDays) * 100).toFixed(1) : "0.0";
+    
+    // แสดงสถิติรวมแบบ modern cards
+    html += `
+    <div class="alert alert-info text-center mb-4">
+      <h6 class="mb-0">${semesterName}</h6>
+    </div>
+    
+    <div class="row mb-4">
+      <div class="col-md-3 col-6">
+        <div class="card stat-card stat-present">
+          <div class="card-body text-center py-3">
+            <i class="bi bi-check-circle fs-2 mb-2"></i>
+            <h4 class="mb-1">${totalPresent.toLocaleString()}</h4>
+            <p class="mb-0">วันมาเรียน</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3 col-6">
+        <div class="card stat-card stat-leave">
+          <div class="card-body text-center py-3">
+            <i class="bi bi-exclamation-circle fs-2 mb-2"></i>
+            <h4 class="mb-1">${totalLeave.toLocaleString()}</h4>
+            <p class="mb-0">วันลา</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3 col-6">
+        <div class="card stat-card stat-absent">
+          <div class="card-body text-center py-3">
+            <i class="bi bi-x-circle fs-2 mb-2"></i>
+            <h4 class="mb-1">${totalAbsent.toLocaleString()}</h4>
+            <p class="mb-0">วันขาด</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3 col-6">
+        <div class="card stat-card stat-percentage">
+          <div class="card-body text-center py-3">
+            <i class="bi bi-percent fs-2 mb-2"></i>
+            <h4 class="mb-1">${avgAttendance}%</h4>
+            <p class="mb-0">เฉลี่ยการมาเรียน</p>
+          </div>
+        </div>
+      </div>
+    </div>`;
+    
+    // ตารางข้อมูลแบบ modern
+    const percentGroups = { 'ดีมาก (≥80%)': 0, 'ดี (70-79%)': 0, 'พอใช้ (60-69%)': 0, 'ต้องปรับปรุง (<60%)': 0 };
+    
+    html += `
+    <div class="modern-table">
+      <table class="table table-bordered mb-0">
+        <thead><tr>
+          <th>ลำดับ</th><th>รหัส</th><th class="text-start">ชื่อ-สกุล</th>
+          <th>มา</th><th>ลา</th><th>ขาด</th><th>รวม</th><th>%มาเรียน</th><th>สถานะ</th>
+        </tr></thead>
+        <tbody>`;
+    
+    data.forEach((stu, idx) => {
+    const total = stu.total || (stu.present + stu.leave + stu.absent);
+    const percent = total > 0 ? ((stu.present/total)*100).toFixed(1) : "0.0";
+    const percentNum = parseFloat(percent);
+    
+    // จัดกลุ่มข้อมูล
+    if (percentNum >= 80) percentGroups['ดีมาก (≥80%)']++;
+    else if (percentNum >= 70) percentGroups['ดี (70-79%)']++;
+    else if (percentNum >= 60) percentGroups['พอใช้ (60-69%)']++;
+    else percentGroups['ต้องปรับปรุง (<60%)']++;
+    
+    // กำหนดสถานะ
+    let status = "", badgeClass = "";
+    if (percentNum >= 80) { status = "ดีมาก"; badgeClass = "bg-success"; }
+    else if (percentNum >= 70) { status = "ดี"; badgeClass = "bg-info"; }
+    else if (percentNum >= 60) { status = "พอใช้"; badgeClass = "bg-warning"; }
+    else { status = "ต้องปรับปรุง"; badgeClass = "bg-danger"; }
+    
+    html += `<tr>
+      <td>${idx+1}</td>
+      <td><strong>${stu.studentId}</strong></td>
+      <td class="text-start">${stu.name||'-'}</td>
+      <td><span class="badge modern-badge bg-success">${stu.present}</span></td>
+      <td><span class="badge modern-badge bg-warning text-dark">${stu.leave}</span></td>
+      <td><span class="badge modern-badge bg-danger">${stu.absent}</span></td>
+      <td><strong>${total}</strong></td>
+      <td>
+        <div class="d-flex align-items-center">
+          <div class="progress-modern flex-grow-1 me-2">
+            <div class="progress-bar-modern bg-primary" style="width: ${percent}%"></div>
+          </div>
+          <span><strong>${percent}%</strong></span>
+        </div>
+      </td>
+      <td><span class="badge modern-badge ${badgeClass}">${status}</span></td>
+    </tr>`;
+    });
+    
+    html += `</tbody></table></div></div>`;
+    document.getElementById('reportTableContainer').innerHTML = html;
+    
+    // เพิ่มปุ่มส่งออก
+document.getElementById('exportBtnArea').innerHTML = `
+  <button id="exportPdfBtn" class="btn btn-success me-2">
+      <i class="bi bi-file-earmark-pdf"></i> ส่งออก PDF
+  </button>
+  <button id="saveSemesterSheetBtn" class="btn btn-warning">
+      <i class="bi bi-save"></i> บันทึกลงชีต
+  </button>
+`;
+
+// ✅ แก้ไข Event Handler  
+document.getElementById('exportPdfBtn').onclick = function() { // เปลี่ยนจาก exportSemesterPdfBtn
+  document.getElementById('centerLoadingIndicator').style.display = 'block';
+  
+  google.script.run
+    .withSuccessHandler(function(pdfUrl) {
+      document.getElementById('centerLoadingIndicator').style.display = 'none';
+      window.open(pdfUrl, '_blank');
+    })
+    .withFailureHandler(function(error) {
+      document.getElementById('centerLoadingIndicator').style.display = 'none';
+      alert('ส่งออก PDF ไม่สำเร็จ: ' + error.message);
+    })
+    .exportSemesterAttendancePDF(grade, classNo, semester, yearDisplay);
+};
+    
+    document.getElementById('saveSemesterSheetBtn').onclick = function() {
+    const summaryData = data.map(stu => ({
+      studentId: stu.studentId, name: stu.name, present: stu.present,
+      leave: stu.leave, absent: stu.absent,
+      total: stu.total || (stu.present + stu.leave + stu.absent),
+      grade: grade, classNo: classNo, year: yearDisplay, semester: semester
+    }));
+    
+    document.getElementById('centerLoadingIndicator').style.display = 'block';
+    google.script.run
+      .withSuccessHandler(function(){
+        document.getElementById('centerLoadingIndicator').style.display = 'block';
+        var toastEl = document.getElementById('saveToast');
+        var toast = new bootstrap.Toast(toastEl);
+        toast.show();
+      })
+      .withFailureHandler(function(e){
+        document.getElementById('centerLoadingIndicator').style.display = 'block';
+        alert("❌ บันทึกไม่สำเร็จ: " + (e.message || e));
+      })
+      .saveSemesterSummaryToSheet(summaryData, yearDisplay, semester);
+    };
+}
+</script>
+  
+  <!-- เพิ่ม Loading แบบ Fixed ตรงกลางจอ -->
+  <div id="centerLoadingIndicator" style="display: none;">
+    <div class="text-center">
+      <div class="spinner-border text-primary mb-2" role="status" style="width: 3rem; height: 3rem;">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p class="text-primary fw-bold">กำลังสร้าง PDF...</p>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

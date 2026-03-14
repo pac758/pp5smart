@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบรายงานผลการเรียน - PP5 Smart</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #667eea;
+      --primary-light: #8b9cf7;
+      --primary-dark: #5a67d8;
+      --accent: #764ba2;
+      --accent-2: #9f7aea;
+      --success: #48bb78;
+      --warning: #ed8936;
+      --danger: #fc5c65;
+      --surface: rgba(255,255,255,.08);
+      --surface-solid: #ffffff;
+      --glass: rgba(255,255,255,.12);
+      --glass-border: rgba(255,255,255,.18);
+      --gray-50: #f8fafc;
+      --gray-100: #f1f5f9;
+      --gray-200: #e2e8f0;
+      --gray-300: #cbd5e1;
+      --gray-500: #64748b;
+      --gray-600: #475569;
+      --gray-700: #334155;
+      --gray-800: #1e293b;
+      --gray-900: #0f172a;
+      --radius: 20px;
+      --radius-sm: 14px;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,.08);
+      --shadow-md: 0 4px 20px rgba(0,0,0,.08);
+      --shadow-lg: 0 12px 40px rgba(0,0,0,.12);
+      --shadow-xl: 0 24px 60px rgba(0,0,0,.18);
+      --shadow-glow: 0 0 30px rgba(102,126,234,.15);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Noto Sans Thai', 'Segoe UI', system-ui, sans-serif;
+      background-color: #1a1a2e;
+      background-image: linear-gradient(160deg, #1a1a2e 0%, #16213e 35%, #2c3e6b 65%, #1a1a2e 100%);
+      background-attachment: fixed;
+      min-height: 100vh;
+      color: var(--gray-900);
+      overflow-x: hidden;
+    }
+
+    /* ═══════════════════════════════════════
+       ANIMATED BACKGROUND
+       ═══════════════════════════════════════ */
+    .bg-mesh {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    .bg-mesh .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: .35;
+      animation: float 20s ease-in-out infinite;
+    }
+    .bg-mesh .orb:nth-child(1) {
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, #667eea, transparent 70%);
+      top: -10%; left: -5%;
+      animation-delay: 0s;
+    }
+    .bg-mesh .orb:nth-child(2) {
+      width: 350px; height: 350px;
+      background: radial-gradient(circle, #764ba2, transparent 70%);
+      top: 30%; right: -10%;
+      animation-delay: -7s;
+      animation-duration: 25s;
+    }
+    .bg-mesh .orb:nth-child(3) {
+      width: 300px; height: 300px;
+      background: radial-gradient(circle, #06b6d4, transparent 70%);
+      bottom: -5%; left: 20%;
+      animation-delay: -14s;
+      animation-duration: 22s;
+    }
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      25% { transform: translate(30px, -40px) scale(1.05); }
+      50% { transform: translate(-20px, 20px) scale(.95); }
+      75% { transform: translate(40px, 30px) scale(1.02); }
+    }
+
+    /* ═══════════════════════════════════════
+       TOP BAR (Glass Navbar)
+       ═══════════════════════════════════════ */
+    .top-bar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(15,23,42,.6);
+      backdrop-filter: blur(20px) saturate(1.8);
+      -webkit-backdrop-filter: blur(20px) saturate(1.8);
+      border-bottom: 1px solid rgba(255,255,255,.1);
+    }
+    .top-bar-inner {
+      max-width: 720px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+    }
+    .top-bar .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 17px;
+      color: #fff;
+    }
+    .top-bar .brand i {
+      font-size: 22px;
+      background: linear-gradient(135deg, var(--primary-light), var(--accent));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .btn-logout {
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      color: rgba(255,255,255,.75);
+      padding: 7px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all .25s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: inherit;
+    }
+    .btn-logout:hover {
+      background: rgba(255,255,255,.15);
+      color: #fff;
+      border-color: rgba(255,255,255,.25);
+    }
+
+    /* ═══════════════════════════════════════
+       HERO SECTION
+       ═══════════════════════════════════════ */
+    .hero {
+      position: relative;
+      padding: 40px 20px 64px;
+      text-align: center;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 50% 0%, rgba(102,126,234,.25) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-content {
+      position: relative;
+      z-index: 2;
+    }
+    .hero-icon {
+      width: 68px; height: 68px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, var(--primary), var(--accent-2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+      box-shadow: 0 8px 32px rgba(102,126,234,.35);
+      animation: pulse-glow 3s ease-in-out infinite;
+    }
+    .hero-icon i { font-size: 30px; color: #fff; }
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 8px 32px rgba(102,126,234,.35); }
+      50% { box-shadow: 0 8px 48px rgba(102,126,234,.55); }
+    }
+    .hero h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
+      margin: 0 0 8px;
+      letter-spacing: -.3px;
+    }
+    .hero .sub {
+      font-size: 14px;
+      color: rgba(255,255,255,.6);
+      font-weight: 400;
+    }
+
+    /* ═══════════════════════════════════════
+       MAIN CONTENT AREA
+       ═══════════════════════════════════════ */
+    .content {
+      max-width: 720px;
+      margin: -28px auto 0;
+      padding: 0 16px 40px;
+      position: relative;
+      z-index: 10;
+    }
+
+    /* ═══════════════════════════════════════
+       STUDENT CARD (Glassmorphism)
+       ═══════════════════════════════════════ */
+    .s-card {
+      background: rgba(255,255,255,.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: var(--radius);
+      border: 1px solid rgba(255,255,255,.5);
+      box-shadow: var(--shadow-md), var(--shadow-glow);
+      margin-bottom: 18px;
+      overflow: hidden;
+      transition: transform .35s cubic-bezier(.22,1,.36,1), box-shadow .35s;
+      animation: cardEnter .5s ease-out both;
+    }
+    @keyframes cardEnter {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .s-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg), 0 0 40px rgba(102,126,234,.12);
+    }
+    .s-card-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 20px 20px 14px;
+    }
+    .avatar {
+      width: 56px; height: 56px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, var(--primary), var(--accent-2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 20px;
+      font-weight: 700;
+      flex-shrink: 0;
+      box-shadow: 0 4px 16px rgba(102,126,234,.3);
+      position: relative;
+    }
+    .avatar::after {
+      content: '';
+      position: absolute;
+      inset: -3px;
+      border-radius: 19px;
+      background: linear-gradient(135deg, var(--primary-light), var(--accent));
+      z-index: -1;
+      opacity: .4;
+    }
+    .s-info { flex: 1; min-width: 0; }
+    .s-name {
+      font-size: 17px;
+      font-weight: 600;
+      margin: 0;
+      color: var(--gray-800);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .s-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 5px;
+      flex-wrap: wrap;
+    }
+    .badge-grade {
+      background: linear-gradient(135deg, var(--primary), var(--accent-2));
+      color: #fff;
+      padding: 3px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: .2px;
+    }
+    .badge-id {
+      color: var(--gray-500);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    /* ─── Action Buttons Grid ─── */
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      padding: 6px 20px 20px;
+    }
+    .act-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 16px 8px;
+      border-radius: var(--radius-sm);
+      border: none;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+      transition: all .3s cubic-bezier(.22,1,.36,1);
+      position: relative;
+      overflow: hidden;
+      color: #fff;
+    }
+    .act-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      background: linear-gradient(180deg, rgba(255,255,255,.2) 0%, transparent 100%);
+      transition: opacity .3s;
+    }
+    .act-btn:hover::before { opacity: 1; }
+    .act-btn:hover { transform: translateY(-2px); }
+    .act-btn:active { transform: scale(.96) translateY(0); }
+    .act-btn i { font-size: 24px; }
+    .act-btn.scores {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      box-shadow: 0 4px 16px rgba(37,99,235,.3);
+    }
+    .act-btn.attend {
+      background: linear-gradient(135deg, #06b6d4, #0891b2);
+      box-shadow: 0 4px 16px rgba(6,182,212,.3);
+    }
+    .act-btn.report {
+      background: linear-gradient(135deg, #10b981, #059669);
+      box-shadow: 0 4px 16px rgba(16,185,129,.3);
+    }
+
+    /* ═══════════════════════════════════════
+       LOADING / EMPTY STATES
+       ═══════════════════════════════════════ */
+    .state-msg {
+      text-align: center;
+      padding: 56px 24px;
+      color: rgba(255,255,255,.5);
+    }
+    .state-msg i { font-size: 56px; opacity: .35; display: block; margin-bottom: 16px; }
+    .state-msg h4 { color: rgba(255,255,255,.7); margin-bottom: 8px; font-weight: 600; }
+    .state-msg p { color: rgba(255,255,255,.45); }
+    .loader {
+      display: none;
+      text-align: center;
+      padding: 56px 20px;
+    }
+    .loader .spinner {
+      width: 44px; height: 44px;
+      border: 3px solid rgba(255,255,255,.15);
+      border-top-color: var(--primary-light);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ═══════════════════════════════════════
+       MODAL (Bottom Sheet / Center on Desktop)
+       ═══════════════════════════════════════ */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1050;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      align-items: flex-end;
+      justify-content: center;
+      animation: fadeIn .2s;
+    }
+    .modal-overlay.active { display: flex; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .modal-panel {
+      background: #fff;
+      border-radius: 24px 24px 0 0;
+      width: 100%;
+      max-width: 640px;
+      max-height: 88vh;
+      display: flex;
+      flex-direction: column;
+      animation: slideUp .35s cubic-bezier(.22,1,.36,1);
+      box-shadow: var(--shadow-xl);
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(0); }
+    }
+
+    .modal-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--gray-200);
+      flex-shrink: 0;
+    }
+    .modal-bar::before {
+      content: '';
+      position: absolute;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 36px;
+      height: 4px;
+      border-radius: 4px;
+      background: var(--gray-300);
+    }
+    .modal-bar h5 { margin: 0; font-size: 16px; font-weight: 600; color: var(--gray-800); }
+    .modal-close {
+      width: 34px; height: 34px;
+      border-radius: 10px;
+      border: none;
+      background: var(--gray-100);
+      color: var(--gray-500);
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .2s;
+    }
+    .modal-close:hover { background: var(--gray-200); color: var(--gray-700); }
+    .modal-body-content {
+      padding: 22px;
+      overflow-y: auto;
+      flex: 1;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* ═══════════════════════════════════════
+       FOOTER
+       ═══════════════════════════════════════ */
+    .footer {
+      text-align: center;
+      padding: 20px 16px;
+      color: rgba(255,255,255,.3);
+      font-size: 12px;
+      font-weight: 400;
+    }
+
+    /* ═══════════════════════════════════════
+       RESPONSIVE
+       ═══════════════════════════════════════ */
+    @media (min-width: 640px) {
+      .hero { padding: 52px 20px 72px; }
+      .hero h1 { font-size: 28px; }
+      .hero .sub { font-size: 15px; }
+      .content { padding: 0 24px 48px; }
+      .s-card-header { padding: 22px 24px 16px; }
+      .actions { padding: 6px 24px 22px; gap: 12px; }
+      .act-btn { padding: 18px 8px; font-size: 13px; border-radius: 16px; }
+      .act-btn i { font-size: 26px; }
+      .modal-panel {
+        border-radius: 24px;
+        max-height: 80vh;
+        margin: auto;
+      }
+      .modal-overlay { align-items: center; }
+      .modal-bar::before { display: none; }
+      @keyframes slideUp {
+        from { transform: translateY(40px) scale(.97); opacity: 0; }
+        to   { transform: translateY(0) scale(1); opacity: 1; }
+      }
+    }
+    @media (min-width: 768px) {
+      .actions { grid-template-columns: repeat(3, 1fr); gap: 14px; }
+      .act-btn {
+        flex-direction: row;
+        padding: 16px 22px;
+        font-size: 14px;
+        justify-content: center;
+      }
+      .act-btn i { font-size: 22px; }
+    }
+
+    /* ═══════════════════════════════════════
+       UTILITY CLASSES (used in JS modals)
+       ═══════════════════════════════════════ */
+    .text-success-custom { color: var(--success); }
+    .text-warning-custom { color: var(--warning); }
+    .text-danger-custom  { color: var(--danger); }
+    .progress-thin {
+      height: 8px;
+      border-radius: 4px;
+      background: var(--gray-200);
+      overflow: hidden;
+    }
+    .progress-thin .bar {
+      height: 100%;
+      border-radius: 4px;
+      transition: width .6s cubic-bezier(.22,1,.36,1);
+    }
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .stat-card {
+      text-align: center;
+      padding: 16px 8px;
+      border-radius: 14px;
+      background: var(--gray-50);
+      border: 1px solid var(--gray-100);
+    }
+    .stat-card .num { font-size: 26px; font-weight: 700; line-height: 1; }
+    .stat-card .lbl { font-size: 12px; color: var(--gray-500); margin-top: 4px; font-weight: 500; }
+    .score-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .score-table th {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: #fff;
+      padding: 11px 10px;
+      font-weight: 600;
+      text-align: center;
+    }
+    .score-table th:first-child { border-radius: 10px 0 0 0; }
+    .score-table th:last-child  { border-radius: 0 10px 0 0; }
+    .score-table th:nth-child(2) { text-align: left; }
+    .score-table td {
+      padding: 10px;
+      border-bottom: 1px solid var(--gray-100);
+      text-align: center;
+    }
+    .score-table td:nth-child(2) { text-align: left; }
+    .score-table tr:hover { background: var(--gray-50); }
+    .score-table tbody tr:last-child td { border-bottom: none; }
+    .grade-pill {
+      display: inline-block;
+      padding: 3px 12px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .grade-hi  { background: #dcfce7; color: #166534; }
+    .grade-mid { background: #fef9c3; color: #854d0e; }
+    .grade-lo  { background: #fee2e2; color: #991b1b; }
+    .grade-def { background: var(--gray-100); color: var(--gray-700); }
+  </style>
+</head>
+<body>
+
+<!-- ═══ Animated Background ═══ -->
+<div class="bg-mesh">
+  <div class="orb"></div>
+  <div class="orb"></div>
+  <div class="orb"></div>
+</div>
+
+<!-- ═══ Top Bar ═══ -->
+<div class="top-bar">
+  <div class="top-bar-inner">
+    <div class="brand"><i class="bi bi-mortarboard-fill"></i> Powered by ครูเทือง</div>
+    <button class="btn-logout" onclick="logout()"><i class="bi bi-box-arrow-right"></i> ออกจากระบบ</button>
+  </div>
+</div>
+
+<!-- ═══ Hero ═══ -->
+<div class="hero">
+  <div class="hero-content">
+    <div class="hero-icon" id="heroIconWrap"><img id="heroLogo" src="" alt="Logo" style="width:64px;height:64px;border-radius:16px;object-fit:contain;display:none"><i id="heroIconFallback" class="bi bi-book-half"></i></div>
+    <h1 id="heroTitle">ระบบรายงานผลการเรียน</h1>
+    <div class="sub" id="schoolInfo">กำลังโหลดข้อมูล...</div>
+  </div>
+</div>
+
+<!-- ═══ Content ═══ -->
+<div class="content">
+
+  <!-- ═══ Admin Preview Search ═══ -->
+  <div id="adminSearchPanel" class="d-none" style="margin-bottom:24px">
+    <div style="background:linear-gradient(135deg,#1e293b,#1a1a2e);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:20px 24px;box-shadow:0 4px 24px rgba(0,0,0,.25)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <span style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;padding:4px 12px;border-radius:8px;font-size:12px;font-weight:700">🔧 โหมดตรวจสอบ</span>
+        <span style="color:rgba(255,255,255,.65);font-size:13px">ค้นหานักเรียนเพื่อดูผลการเรียนในมุมมองผู้ปกครอง</span>
+      </div>
+      <div style="display:flex;gap:10px">
+        <div style="flex:1;position:relative">
+          <i class="bi bi-search" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,.4)"></i>
+          <input id="adminSearchInput" type="text" placeholder="ค้นหาชื่อ, รหัส, หรือชั้นเรียน..." style="width:100%;padding:12px 14px 12px 42px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff;font-size:15px;font-family:inherit;outline:none;transition:border-color .2s" onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='rgba(255,255,255,.2)'">
+        </div>
+        <button onclick="searchStudentsAdmin()" style="padding:12px 24px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;font-weight:600;font-family:inherit;cursor:pointer;white-space:nowrap;transition:opacity .2s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'"><i class="bi bi-search"></i> ค้นหา</button>
+        <button onclick="searchStudentsAdmin('')" style="padding:12px 18px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:rgba(255,255,255,.8);font-weight:500;font-family:inherit;cursor:pointer;white-space:nowrap;transition:background .2s" onmouseover="this.style.background='rgba(255,255,255,.15)'" onmouseout="this.style.background='rgba(255,255,255,.1)'">ดูทั้งหมด</button>
+      </div>
+      <div id="adminSearchStatus" style="margin-top:10px;font-size:13px;color:rgba(255,255,255,.6)"></div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div class="loader" id="loadingSpinner">
+    <div class="spinner" style="margin:0 auto 16px"></div>
+    <p style="color:rgba(255,255,255,.55)">กำลังดึงข้อมูลนักเรียน...</p>
+  </div>
+
+  <!-- Students -->
+  <div id="studentsContainer"></div>
+
+  <!-- No Students -->
+  <div class="state-msg d-none" id="noStudentsMessage">
+    <i class="bi bi-person-x"></i>
+    <h4>ไม่พบข้อมูลนักเรียน</h4>
+    <p>ไม่พบนักเรียนที่ท่านดูแลในระบบ กรุณาติดต่อผู้ดูแลระบบ</p>
+  </div>
+</div>
+
+<div class="footer">Powered by PP5 Smart</div>
+
+<!-- ═══ Modal ═══ -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-panel">
+    <div class="modal-bar">
+      <h5 id="modalTitle"></h5>
+      <button class="modal-close" onclick="closeModal()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body-content" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+var currentUser = null;
+var students = [];
+var isAdminPreview = false;
+
+/* ═══════════════════════════════════════
+   DATA LOADING
+   ═══════════════════════════════════════ */
+function getCurrentUser() {
+  google.script.run.withSuccessHandler(function(user) {
+    if (user && user.success) {
+      currentUser = user;
+      var displayName = user.displayName || user.firstName || '';
+
+      // Admin/Teacher → แสดงโหมดตรวจสอบ
+      if (user.role === 'admin' || user.role === 'teacher') {
+        isAdminPreview = true;
+        document.getElementById('heroTitle').textContent = 'โหมดตรวจสอบ — ดูผลเรียนนักเรียน';
+        document.getElementById('adminSearchPanel').classList.remove('d-none');
+        document.getElementById('loadingSpinner').style.display = 'none';
+        loadSchoolInfo();
+        // โหลดนักเรียนทั้งหมดอัตโนมัติ
+        searchStudentsAdmin('');
+        // Enter key → search
+        document.getElementById('adminSearchInput').addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') searchStudentsAdmin();
+        });
+        return;
+      }
+
+      // Parent → flow เดิม
+      if (displayName) {
+        document.getElementById('heroTitle').textContent = 'สวัสดีคุณ' + displayName;
+      }
+      loadParentStudents();
+      loadSchoolInfo();
+    } else {
+      redirectToLogin();
+    }
+  }).withFailureHandler(function() {
+    redirectToLogin();
+  }).getCurrentUser();
+}
+
+/* ═══════════════════════════════════════
+   ADMIN PREVIEW — SEARCH
+   ═══════════════════════════════════════ */
+function searchStudentsAdmin(overrideQuery) {
+  var query = (overrideQuery !== undefined) ? overrideQuery : (document.getElementById('adminSearchInput').value || '').trim();
+  var status = document.getElementById('adminSearchStatus');
+  status.textContent = '🔍 กำลังค้นหา...';
+  document.getElementById('studentsContainer').innerHTML = '';
+  document.getElementById('noStudentsMessage').classList.add('d-none');
+
+  google.script.run.withSuccessHandler(function(result) {
+    if (!result || result.success === false) {
+      status.textContent = '❌ ' + (result && result.message || 'ค้นหาไม่สำเร็จ');
+      return;
+    }
+    var arr = result.data || [];
+    if (arr.length > 0) {
+      students = arr;
+      status.textContent = '✅ พบ ' + arr.length + ' คน' + (result.total > 50 ? ' (แสดง 50 คนแรก)' : '');
+      renderStudents(arr);
+    } else {
+      status.textContent = '⚠️ ไม่พบนักเรียนที่ค้นหา';
+      document.getElementById('noStudentsMessage').classList.remove('d-none');
+    }
+  }).withFailureHandler(function(err) {
+    status.textContent = '❌ เกิดข้อผิดพลาด: ' + (err.message || err);
+  }).getStudentsForAdminPreview(query);
+}
+
+function loadParentStudents() {
+  document.getElementById('loadingSpinner').style.display = 'block';
+  document.getElementById('studentsContainer').innerHTML = '';
+  document.getElementById('noStudentsMessage').classList.add('d-none');
+
+  google.script.run.withSuccessHandler(function(result) {
+    document.getElementById('loadingSpinner').style.display = 'none';
+    if (!result || result.success === false) {
+      showToast('ไม่สามารถดึงข้อมูลนักเรียนได้');
+      return;
+    }
+    var arr = result;
+    if (result && typeof result === 'object' && result.success !== undefined) {
+      if (result.success && result.data) arr = result.data;
+    }
+    if (!Array.isArray(arr)) { showToast('รูปแบบข้อมูลไม่ถูกต้อง'); return; }
+    if (arr.length > 0) {
+      students = arr;
+      renderStudents(arr);
+    } else {
+      document.getElementById('noStudentsMessage').classList.remove('d-none');
+    }
+  }).withFailureHandler(function() {
+    document.getElementById('loadingSpinner').style.display = 'none';
+    showToast('ไม่สามารถดึงข้อมูลนักเรียนได้ กรุณาลองใหม่');
+  }).getParentStudents();
+}
+
+function loadSchoolInfo() {
+  google.script.run.withSuccessHandler(function(s) {
+    if (s && s['ชื่อโรงเรียน']) {
+      var yr = s['ปีการศึกษา'] || '';
+      document.getElementById('schoolInfo').textContent =
+        s['ชื่อโรงเรียน'] + (yr ? ' \u2022 ปีการศึกษา ' + yr : '');
+    }
+    // โหลดโลโก้โรงเรียน
+    var logoUrl = s && (s.logo || s.schoolLogo || s.logoUrl_lh3 || '');
+    if (logoUrl) {
+      var img = document.getElementById('heroLogo');
+      var fallback = document.getElementById('heroIconFallback');
+      img.onload = function() { img.style.display = 'block'; if (fallback) fallback.style.display = 'none'; };
+      img.onerror = function() { img.style.display = 'none'; if (fallback) fallback.style.display = ''; };
+      img.src = logoUrl;
+    }
+  }).withFailureHandler(function(){}).getGlobalSettings();
+}
+
+/* ═══════════════════════════════════════
+   RENDER STUDENTS
+   ═══════════════════════════════════════ */
+function renderStudents(list) {
+  var c = document.getElementById('studentsContainer');
+  c.innerHTML = '';
+  list.forEach(function(st, idx) {
+    var initials = ((st.firstName||'').charAt(0) + (st.lastName||'').charAt(0)).toUpperCase() || 'S';
+    var fullName = (st.title||'') + (st.firstName||'') + ' ' + (st.lastName||'');
+
+    var card = document.createElement('div');
+    card.className = 's-card';
+    card.style.animationDelay = (idx * 80) + 'ms';
+    card.innerHTML =
+      '<div class="s-card-header">' +
+        '<div class="avatar">' + esc(initials) + '</div>' +
+        '<div class="s-info">' +
+          '<p class="s-name">' + esc(fullName) + '</p>' +
+          '<div class="s-meta">' +
+            '<span class="badge-grade">' + esc('ป.' + (st.grade||'') + '/' + (st.classNo||'')) + '</span>' +
+            '<span class="badge-id">ID ' + esc(st.studentId||'') + '</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="actions">' +
+        '<button class="act-btn scores"  data-sid="' + esc(st.studentId) + '" data-name="' + esc(st.firstName) + '" data-action="scores"><i class="bi bi-bar-chart-line-fill"></i><span>คะแนน</span></button>' +
+        '<button class="act-btn attend"  data-sid="' + esc(st.studentId) + '" data-name="' + esc(st.firstName) + '" data-action="attend"><i class="bi bi-calendar2-check-fill"></i><span>เข้าเรียน</span></button>' +
+        '<button class="act-btn report"  data-sid="' + esc(st.studentId) + '" data-name="' + esc(st.firstName) + '" data-action="report"><i class="bi bi-file-earmark-pdf-fill"></i><span>ใบรายงาน</span></button>' +
+      '</div>';
+
+    c.appendChild(card);
+  });
+
+  // Delegate click
+  c.onclick = function(e) {
+    var btn = e.target.closest('.act-btn');
+    if (!btn) return;
+    var sid = btn.dataset.sid, name = btn.dataset.name, action = btn.dataset.action;
+    if (action === 'scores')  viewScores(sid, name);
+    if (action === 'attend')  viewAttendance(sid, name);
+    if (action === 'report')  viewReportCard(sid, name);
+  };
+}
+
+/* ═══════════════════════════════════════
+   VIEW: SCORES
+   ═══════════════════════════════════════ */
+function viewScores(studentId, studentName) {
+  openModal('คะแนนวิชา', loadingHtml('กำลังโหลดข้อมูลคะแนน'));
+  google.script.run.withSuccessHandler(function(data) {
+    if (data && data.success && data.scores && data.scores.length > 0) {
+      // แยกวิชาปกติและวิชากิจกรรม
+      var regular = [], activity = [];
+      data.scores.forEach(function(s) { (s.isActivity ? activity : regular).push(s); });
+
+      var html = '<div style="overflow-x:auto">';
+
+      // ตารางวิชาปกติ
+      if (regular.length > 0) {
+        html += '<table class="score-table"><thead><tr>';
+        html += '<th style="width:70px">รหัส</th><th>วิชา</th><th>เทอม 1</th><th>เทอม 2</th><th>เฉลี่ย</th><th>เกรด</th>';
+        html += '</tr></thead><tbody>';
+        regular.forEach(function(s) {
+          var g = String(s.grade||'');
+          var gc = 'grade-def';
+          if (g==='4'||g==='4.0'||g==='3.5'||g==='3') gc = 'grade-hi';
+          else if (g==='2.5'||g==='2'||g==='1.5') gc = 'grade-mid';
+          else if (g==='1'||g==='0.5'||g==='0'||g==='0.0'||g==='ร'||g==='มส') gc = 'grade-lo';
+          html += '<tr>';
+          html += '<td style="color:var(--gray-500);font-size:12px">' + esc(s.subjectCode||'') + '</td>';
+          html += '<td>' + esc(s.name||'') + '</td>';
+          html += '<td>' + (s.term1Score||'-') + '</td>';
+          html += '<td>' + (s.term2Score||'-') + '</td>';
+          html += '<td><strong>' + (s.average||'-') + '</strong></td>';
+          html += '<td><span class="grade-pill ' + gc + '">' + esc(g||'-') + '</span></td>';
+          html += '</tr>';
+        });
+        html += '</tbody></table>';
+      }
+
+      // ตารางกิจกรรมพัฒนาผู้เรียน
+      if (activity.length > 0) {
+        html += '<div style="margin-top:20px;padding-top:16px;border-top:2px solid var(--gray-200)">';
+        html += '<h6 style="font-weight:600;margin-bottom:10px;color:var(--gray-700)"><i class="bi bi-stars"></i> กิจกรรมพัฒนาผู้เรียน</h6>';
+        html += '<table class="score-table"><thead><tr>';
+        html += '<th style="width:70px">รหัส</th><th>กิจกรรม</th><th>ผลการประเมิน</th>';
+        html += '</tr></thead><tbody>';
+        activity.forEach(function(s) {
+          var ag = s.activityGrade || '';
+          var agClass = '';
+          if (ag === 'ผ่าน') agClass = 'grade-hi';
+          else if (ag === 'ไม่ผ่าน') agClass = 'grade-lo';
+          else agClass = 'grade-def';
+          var agText = ag || 'ยังไม่ประเมิน';
+          html += '<tr>';
+          html += '<td style="color:var(--gray-500);font-size:12px">' + esc(s.subjectCode||'') + '</td>';
+          html += '<td>' + esc(s.name||'') + '</td>';
+          html += '<td><span class="grade-pill ' + agClass + '">' + esc(agText) + '</span></td>';
+          html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+      }
+
+      html += '</div>';
+      openModal('คะแนนวิชา \u2022 ' + studentName, html);
+    } else if (data && data.success) {
+      openModal('คะแนนวิชา \u2022 ' + studentName, emptyHtml('ไม่พบข้อมูลคะแนน'));
+    } else {
+      openModal('คะแนนวิชา \u2022 ' + studentName, errorHtml(data && data.message ? data.message : 'ไม่สามารถดึงข้อมูลได้'));
+    }
+  }).withFailureHandler(function(err) {
+    openModal('คะแนนวิชา \u2022 ' + studentName, errorHtml(err.message));
+  }).getParentStudentScores(studentId);
+}
+
+/* ═══════════════════════════════════════
+   VIEW: ATTENDANCE
+   ═══════════════════════════════════════ */
+function viewAttendance(studentId, studentName) {
+  openModal('สรุปเวลาเรียน', loadingHtml('กำลังโหลดข้อมูลการเข้าเรียน'));
+  google.script.run.withSuccessHandler(function(data) {
+    if (data && data.success && data.attendance) {
+      var a = data.attendance;
+      if (a.totalDays === 0) {
+        openModal('สรุปเวลาเรียน \u2022 ' + studentName, emptyHtml('ยังไม่มีข้อมูลการเข้าเรียนในปีการศึกษานี้'));
+        return;
+      }
+      var pct = (a.percentage||0).toFixed(1);
+      var pColor = a.percentage >= 80 ? 'var(--success)' : (a.percentage >= 60 ? 'var(--warning)' : 'var(--danger)');
+      var html = '';
+
+      // ── Summary Header ──
+      html += '<div style="text-align:center;margin-bottom:20px">';
+      html += '<div style="font-size:48px;font-weight:700;color:' + pColor + ';line-height:1">' + pct + '<span style="font-size:20px">%</span></div>';
+      html += '<div style="font-size:13px;color:var(--gray-500);margin-top:4px">อัตราการมาเรียน</div>';
+      html += '<div class="progress-thin" style="margin-top:12px"><div class="bar" style="width:' + pct + '%;background:' + pColor + '"></div></div>';
+      html += '</div>';
+
+      // ── Stat Cards ──
+      html += '<div class="stat-grid">';
+      html += '<div class="stat-card"><div class="num" style="color:var(--success)">' + (a.totalPresent||0) + '</div><div class="lbl">มาเรียน</div></div>';
+      html += '<div class="stat-card"><div class="num" style="color:var(--warning)">' + (a.totalLeave||0) + '</div><div class="lbl">ลา</div></div>';
+      html += '<div class="stat-card"><div class="num" style="color:var(--danger)">' + (a.totalAbsent||0) + '</div><div class="lbl">ขาด</div></div>';
+      html += '</div>';
+      html += '<div style="text-align:center;margin-top:8px;font-size:13px;color:var(--gray-500)">รวมทั้งหมด ' + (a.totalDays||0) + ' วัน</div>';
+
+      // ── Monthly Bar Chart ──
+      var monthly = a.monthly || [];
+      var hasMonthly = monthly.some(function(m){ return m.total > 0; });
+      if (hasMonthly) {
+        var maxDays = Math.max.apply(null, monthly.map(function(m){ return m.total; })) || 1;
+        html += '<div style="margin-top:24px;padding-top:16px;border-top:2px solid var(--gray-200)">';
+        html += '<h6 style="font-weight:600;margin-bottom:14px;color:var(--gray-700)"><i class="bi bi-bar-chart-fill"></i> สถิติรายเดือน</h6>';
+        html += '<div style="display:flex;align-items:flex-end;gap:4px;height:140px;padding-bottom:24px;position:relative">';
+
+        monthly.forEach(function(m) {
+          if (m.total === 0) {
+            html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;position:relative">';
+            html += '<div style="width:100%;height:2px;background:var(--gray-200);border-radius:2px"></div>';
+            html += '<div style="font-size:10px;color:var(--gray-500);margin-top:4px;position:absolute;bottom:-20px;white-space:nowrap">' + m.month + '</div>';
+            html += '</div>';
+          } else {
+            var pctH = Math.round((m.present / maxDays) * 100);
+            var lH = Math.round((m.leave / maxDays) * 100);
+            var abH = Math.round((m.absent / maxDays) * 100);
+            var totalH = pctH + lH + abH;
+            if (totalH < 4) pctH = 4; // min height
+
+            html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;position:relative">';
+            html += '<div style="font-size:10px;font-weight:600;color:var(--gray-700);margin-bottom:3px">' + m.present + '</div>';
+            html += '<div style="width:100%;border-radius:4px 4px 2px 2px;overflow:hidden;display:flex;flex-direction:column">';
+            if (m.absent > 0) html += '<div style="height:' + abH + '%;min-height:' + (abH > 0 ? 3 : 0) + 'px;background:var(--danger)"></div>';
+            if (m.leave > 0) html += '<div style="height:' + lH + '%;min-height:' + (lH > 0 ? 3 : 0) + 'px;background:var(--warning)"></div>';
+            html += '<div style="height:' + pctH + '%;min-height:4px;background:var(--success)"></div>';
+            html += '</div>';
+            html += '<div style="font-size:10px;color:var(--gray-500);margin-top:4px;position:absolute;bottom:-20px;white-space:nowrap">' + m.month + '</div>';
+            html += '</div>';
+          }
+        });
+        html += '</div>';
+
+        // Legend
+        html += '<div style="display:flex;justify-content:center;gap:16px;margin-top:28px;font-size:11px;color:var(--gray-500)">';
+        html += '<div style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:var(--success);display:inline-block"></span>มาเรียน</div>';
+        html += '<div style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:var(--warning);display:inline-block"></span>ลา</div>';
+        html += '<div style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:var(--danger);display:inline-block"></span>ขาด</div>';
+        html += '</div>';
+        html += '</div>';
+
+        // ── Monthly Table ──
+        html += '<div style="margin-top:20px;overflow-x:auto">';
+        html += '<table class="score-table"><thead><tr>';
+        html += '<th>เดือน</th><th>มาเรียน</th><th>ลา</th><th>ขาด</th><th>รวม</th>';
+        html += '</tr></thead><tbody>';
+        monthly.forEach(function(m) {
+          if (m.total === 0) return;
+          html += '<tr>';
+          html += '<td style="text-align:left;font-weight:500">' + m.month + '</td>';
+          html += '<td style="color:var(--success);font-weight:600">' + m.present + '</td>';
+          html += '<td style="color:var(--warning);font-weight:600">' + m.leave + '</td>';
+          html += '<td style="color:' + (m.absent > 0 ? 'var(--danger)' : 'var(--gray-500)') + ';font-weight:600">' + m.absent + '</td>';
+          html += '<td>' + m.total + '</td>';
+          html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+      }
+
+      openModal('สรุปเวลาเรียน \u2022 ' + studentName, html);
+    } else if (data && data.success) {
+      openModal('สรุปเวลาเรียน \u2022 ' + studentName, emptyHtml('ไม่พบข้อมูลการเข้าเรียน'));
+    } else {
+      openModal('สรุปเวลาเรียน \u2022 ' + studentName, errorHtml(data && data.message ? data.message : 'ไม่สามารถดึงข้อมูลได้'));
+    }
+  }).withFailureHandler(function(err) {
+    openModal('สรุปเวลาเรียน \u2022 ' + studentName, errorHtml(err.message));
+  }).getParentStudentAttendance(studentId);
+}
+
+/* ═══════════════════════════════════════
+   VIEW: REPORT CARD
+   ═══════════════════════════════════════ */
+function viewReportCard(studentId, studentName) {
+  openModal('ใบรายงานผลการเรียน', loadingHtml('กำลังสร้างใบรายงาน<br><span style="font-size:12px;color:var(--gray-500)">อาจใช้เวลา 10-30 วินาที</span>'));
+  google.script.run.withSuccessHandler(function(result) {
+    if (result && result.success && result.viewUrl) {
+      // เปิด PDF ในแท็บใหม่ผ่าน GAS proxy (ใช้ได้ทั้ง LINE + Desktop)
+      window.open(result.viewUrl, '_blank');
+      // แสดงข้อความสำเร็จ + ลิงก์สำรอง
+      var html = '<div style="text-align:center;padding:24px 0">';
+      html += '<div style="width:64px;height:64px;border-radius:50%;background:#d1fae5;display:flex;align-items:center;justify-content:center;margin:0 auto 16px"><i class="bi bi-check-lg" style="font-size:32px;color:#059669"></i></div>';
+      html += '<h5 style="margin:0 0 8px;font-weight:600">สร้างใบรายงานสำเร็จ!</h5>';
+      html += '<p style="color:var(--gray-500);font-size:13px;margin-bottom:16px">ใบรายงานของ ' + esc(studentName) + ' เปิดในแท็บใหม่แล้ว</p>';
+      html += '<a href="' + result.viewUrl + '" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:var(--primary);color:#fff;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px"><i class="bi bi-file-earmark-pdf-fill"></i>เปิดดูอีกครั้ง</a>';
+      html += '</div>';
+      openModal('ใบรายงาน \u2022 ' + studentName, html);
+    } else if (result && result.success === false) {
+      openModal('ใบรายงาน \u2022 ' + studentName, errorHtml(result.message || 'ไม่สามารถสร้างใบรายงานได้'));
+    } else {
+      var txt = typeof result === 'string' ? result : JSON.stringify(result);
+      openModal('ใบรายงาน \u2022 ' + studentName, errorHtml(txt));
+    }
+  }).withFailureHandler(function(err) {
+    openModal('ใบรายงาน \u2022 ' + studentName, errorHtml(err.message));
+  }).generateParentReportCard(studentId);
+}
+
+/* ═══════════════════════════════════════
+   MODAL
+   ═══════════════════════════════════════ */
+function openModal(title, content) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').innerHTML = content;
+  document.getElementById('modalOverlay').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+/* ═══════════════════════════════════════
+   PDF DOWNLOAD
+   ═══════════════════════════════════════ */
+function redownloadPdf() {
+  if (window._lastPdfBase64) {
+    var a = document.createElement('a');
+    a.href = 'data:application/pdf;base64,' + window._lastPdfBase64;
+    a.download = window._lastPdfName || 'report.pdf';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+}
+
+/* ═══════════════════════════════════════
+   HELPERS
+   ═══════════════════════════════════════ */
+function esc(t) {
+  if (t == null) return '';
+  return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function loadingHtml(msg) {
+  return '<div style="text-align:center;padding:32px 0"><div class="spinner" style="margin:0 auto 16px;width:36px;height:36px;border:3px solid var(--gray-200);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite"></div><p style="color:var(--gray-500);font-size:14px">' + msg + '</p></div>';
+}
+function emptyHtml(msg) {
+  return '<div style="text-align:center;padding:32px 0;color:var(--gray-500)"><i class="bi bi-inbox" style="font-size:40px;opacity:.4;display:block;margin-bottom:12px"></i><p>' + esc(msg) + '</p></div>';
+}
+function errorHtml(msg) {
+  return '<div style="text-align:center;padding:24px 0"><div style="width:48px;height:48px;border-radius:50%;background:#fee2e2;display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><i class="bi bi-exclamation-triangle-fill" style="font-size:22px;color:var(--danger)"></i></div><p style="color:var(--danger);font-size:14px">' + esc(msg) + '</p></div>';
+}
+function showToast(msg) {
+  var t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--gray-900);color:#fff;padding:12px 24px;border-radius:12px;font-size:14px;z-index:9999;box-shadow:var(--shadow-lg);animation:fadeIn .2s;backdrop-filter:blur(8px)';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function(){ t.remove(); }, 3000);
+}
+/* ═══════════════════════════════════════
+   REDIRECT TO LOGIN (standalone mode)
+   ═══════════════════════════════════════ */
+function redirectToLogin() {
+  console.log('🔀 redirectToLogin called');
+  try {
+    google.script.run.withSuccessHandler(function(url) {
+      var loginUrl = (url || '') + '?page=login';
+      window.top.location.href = loginUrl;
+    }).withFailureHandler(function() {
+      window.top.location.href = window.location.origin + window.location.pathname.replace(/\/dev$/, '/exec') + '?page=login';
+    }).getDeploymentUrl();
+  } catch(e) {
+    console.error('redirectToLogin error:', e);
+  }
+}
+
+/* ═══════════════════════════════════════
+   LOGOUT
+   ═══════════════════════════════════════ */
+function logout() {
+  if (!confirm('ต้องการออกจากระบบหรือไม่?')) return;
+  document.body.style.opacity = '0.5';
+  try { localStorage.clear(); } catch(_) {}
+  try { sessionStorage.clear(); } catch(_) {}
+  
+  google.script.run
+    .withSuccessHandler(function(url) {
+      google.script.run
+        .withSuccessHandler(function() { _showLogoutSuccess(url); })
+        .withFailureHandler(function() { _showLogoutSuccess(url); })
+        .clearLoginSession();
+    })
+    .withFailureHandler(function() { _showLogoutSuccess(''); })
+    .getDeploymentUrl();
+}
+function _showLogoutSuccess(url) {
+  var base = url || '';
+  if (!base) { try { var r = document.referrer || ''; base = r.split('?')[0]; } catch(_) {} }
+  var loginUrl = base ? base + '?page=login&_t=' + Date.now() : '';
+  document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);font-family:Sarabun,sans-serif;margin:0;padding:20px">'
+    + '<div style="background:#fff;border-radius:15px;padding:40px;box-shadow:0 15px 35px rgba(0,0,0,.2);text-align:center;max-width:420px;width:100%">'
+    + '<div style="font-size:48px;margin-bottom:20px">✅</div>'
+    + '<h2 style="color:#333;margin-bottom:12px;font-weight:600">ออกจากระบบสำเร็จ</h2>'
+    + '<p style="color:#666;margin-bottom:24px;line-height:1.6">คลิกปุ่มด้านล่างเพื่อกลับไปหน้าเข้าสู่ระบบ</p>'
+    + (loginUrl ? '<a href="' + loginUrl + '" target="_top" style="display:inline-block;width:100%;padding:14px 20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;text-decoration:none;border-radius:10px;font-weight:700;font-size:16px">กลับไปหน้าเข้าสู่ระบบ</a>' : '')
+    + '</div></div>';
+}
+
+/* ═══════════════════════════════════════
+   INIT (รองรับทั้ง standalone และ SPA-injected)
+   ═══════════════════════════════════════ */
+(function() {
+  function init() {
+    getCurrentUser();
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeModal(); });
+    var overlay = document.getElementById('modalOverlay');
+    if (overlay) overlay.addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+</body>
+</html>

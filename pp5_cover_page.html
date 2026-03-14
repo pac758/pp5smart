@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>ปก ปพ.5 รวมวิชา</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <style>
+    body { 
+      font-family: 'Sarabun', sans-serif; 
+      padding: 20px; 
+      background: #f8f9fa; 
+    }
+    .card { 
+      max-width: 600px; 
+      margin: auto; 
+      border-radius: 16px; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      border: none;
+    }
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    .spinner-border {
+      width: 3rem;
+      height: 3rem;
+    }
+    .btn-success {
+      background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+      border: none;
+      border-radius: 8px;
+      padding: 12px;
+      font-weight: 600;
+    }
+    .btn-success:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+    }
+    .form-select {
+      border-radius: 8px;
+      border: 2px solid #e9ecef;
+      padding: 10px 12px;
+    }
+    .form-select:focus {
+      border-color: #28a745;
+      box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+    }
+    .status-ready { color: #28a745; font-weight: 600; }
+    .status-error { color: #dc3545; font-weight: 600; }
+    .status-processing { color: #007bff; font-weight: 600; }
+    .status-warning { color: #ffc107; font-weight: 600; }
+    
+    /* Pulse animation for waiting */
+    .pulse {
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.7; }
+      100% { opacity: 1; }
+    }
+    
+    .api-check {
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 8px;
+      border: 2px solid #ddd;
+    }
+    
+    .api-check.success {
+      border-color: #28a745;
+      background: #d4edda;
+    }
+    
+    .api-check.error {
+      border-color: #dc3545;
+      background: #f8d7da;
+    }
+    
+    .api-check.warning {
+      border-color: #ffc107;
+      background: #fff3cd;
+    }
+  </style>
+</head>
+<body>
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="text-center text-white">
+      <div class="spinner-border text-light" role="status"></div>
+      <div class="mt-2">กำลังสร้าง PDF...</div>
+    </div>
+  </div>
+
+  <div class="card p-4 bg-white">
+    <h4 class="mb-4 text-primary">
+      <i class="bi bi-file-earmark-bar-graph me-2"></i>
+      แบบรายงานผลการพัฒนาคุณภาพผู้เรียน (ปพ.5)
+    </h4>
+    
+    <!-- API Status Check -->
+    <div id="apiCheck" class="api-check warning">
+      <div class="d-flex align-items-center">
+        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+        <span>กำลังตรวจสอบระบบ Google Apps Script...</span>
+      </div>
+    </div>
+    
+    <div class="mb-3">
+      <label for="gradeSelect" class="form-label fw-semibold">
+        <i class="bi bi-layers me-1"></i>ระดับชั้น
+      </label>
+      <select id="gradeSelect" class="form-select" disabled>
+        <option value="">-- เลือกระดับชั้น --</option>
+      </select>
+    </div>
+    
+    <div class="mb-3">
+      <label for="classSelect" class="form-label fw-semibold">
+        <i class="bi bi-door-open me-1"></i>ห้อง
+      </label>
+      <select id="classSelect" class="form-select" disabled>
+        <option value="">-- เลือกห้อง --</option>
+      </select>
+    </div>
+    
+    <div class="d-grid">
+      <button id="exportBtn" class="btn btn-success btn-lg" disabled>
+        <i class="bi bi-file-earmark-pdf me-2"></i>
+        สร้าง PDF ปพ.5
+      </button>
+    </div>
+    
+    <div id="status" class="mt-3 text-center">
+      <div class="status-processing pulse">
+        <i class="bi bi-hourglass-split me-1"></i>
+        กำลังเตรียมระบบ...
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ✅ Global variables
+    window.PP5App = {
+      version: '3.1-simplified',
+      startTime: Date.now(),
+      logs: [],
+      apiReady: false,
+      initialized: false,
+      processing: false,
+      attempts: 0,
+      maxAttempts: 50,
+      checkInterval: 300
+    };
+
+    // ✅ Debug functions
+    function debugLog(message) {
+      const timestamp = Date.now() - window.PP5App.startTime;
+      const logEntry = `[${timestamp}ms] ${message}`;
+      window.PP5App.logs.push(logEntry);
+      // console.log('🔍 PP5:', logEntry);
+    }
+
+    function updateStatus(message, type = 'processing') {
+      const statusEl = document.getElementById('status');
+      if (!statusEl) return;
+
+      const icons = {
+        ready: 'check-circle-fill',
+        error: 'exclamation-triangle-fill',
+        processing: 'hourglass-split',
+        warning: 'exclamation-triangle',
+        success: 'check-circle-fill'
+      };
+
+      statusEl.innerHTML = `
+        <div class="status-${type} ${type === 'processing' ? 'pulse' : ''}">
+          <i class="bi bi-${icons[type]} me-1"></i>
+          ${message}
+        </div>
+      `;
+      
+      debugLog(`Status: ${message} (${type})`);
+    }
+
+    // ✅ Environment detection
+    function detectEnvironment() {
+      const env = {
+        isGoogleAppsScript: false,
+        hasGoogleObject: typeof google !== 'undefined',
+        hasScriptObject: false,
+        hasRunObject: false,
+        hasFunctionObject: false,
+        userAgent: navigator.userAgent,
+        currentUrl: window.location.href
+      };
+
+      if (env.hasGoogleObject) {
+        env.hasScriptObject = typeof google.script !== 'undefined';
+        if (env.hasScriptObject) {
+          env.hasRunObject = typeof google.script.run !== 'undefined';
+          if (env.hasRunObject) {
+            env.hasFunctionObject = typeof google.script.run.exportPp5CoverPDF === 'function';
+            env.isGoogleAppsScript = true;
+          }
+        }
+      }
+
+      debugLog('Environment detected: ' + JSON.stringify(env));
+      return env;
+    }
+
+    // ✅ Enhanced API checking
+    function checkGoogleScriptAPI() {
+      return new Promise((resolve, reject) => {
+        window.PP5App.attempts = 0;
+        
+        function check() {
+          window.PP5App.attempts++;
+          debugLog(`API Check attempt ${window.PP5App.attempts}/${window.PP5App.maxAttempts}`);
+          
+          const env = detectEnvironment();
+          
+          // ✅ ตรวจสอบความพร้อม
+          if (env.isGoogleAppsScript && env.hasFunctionObject) {
+            debugLog('✅ Google Script API พร้อมใช้งาน');
+            updateAPIStatus('success', 'ระบบพร้อมใช้งาน');
+            window.PP5App.apiReady = true;
+            resolve(true);
+            return;
+          }
+          
+          // ✅ ยังไม่พร้อม - ลองต่อ
+          if (window.PP5App.attempts < window.PP5App.maxAttempts) {
+            debugLog(`⏳ รอ Google Script API... (${window.PP5App.attempts}/${window.PP5App.maxAttempts})`);
+            updateAPIStatus('warning', `รอระบบ... (${window.PP5App.attempts}/${window.PP5App.maxAttempts})`);
+            setTimeout(check, window.PP5App.checkInterval);
+            return;
+          }
+          
+          // ✅ หมดเวลา - แสดง error และให้ทางเลือก
+          debugLog('❌ Google Script API ไม่พร้อมใช้งาน');
+          updateAPIStatus('error', 'ระบบไม่พร้อม - ลองรีเฟรชหน้า');
+          
+          reject(new Error('Google Script API ไม่พร้อมใช้งานภายในเวลาที่กำหนด'));
+        }
+        
+        check();
+      });
+    }
+
+    // ✅ อัพเดทสถานะ API
+    function updateAPIStatus(type, message) {
+      const apiCheck = document.getElementById('apiCheck');
+      if (!apiCheck) return;
+
+      apiCheck.className = `api-check ${type}`;
+      
+      const icons = {
+        success: 'check-circle-fill',
+        error: 'x-circle-fill',
+        warning: 'exclamation-triangle-fill'
+      };
+
+      apiCheck.innerHTML = `
+        <div class="d-flex align-items-center">
+          <i class="bi bi-${icons[type]} me-2"></i>
+          <span>${message}</span>
+        </div>
+      `;
+    }
+
+    // ✅ Enable/Disable form elements
+    function setFormEnabled(enabled) {
+      const elements = ['gradeSelect', 'classSelect', 'exportBtn'];
+      elements.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.disabled = !enabled;
+        }
+      });
+    }
+
+    // ✅ หลักการทำงานของปุ่มสร้าง PDF (ปรับปรุงแล้ว - ไม่มี spinner ในปุ่ม)
+    async function createPDF() {
+      if (window.PP5App.processing) {
+        debugLog('❌ ปฏิเสธการประมวลผลซ้ำ');
+        return;
+      }
+
+      const gradeEl = document.getElementById("gradeSelect");
+      const classEl = document.getElementById("classSelect");
+      const btn = document.getElementById("exportBtn");
+      const loadingOverlay = document.getElementById("loadingOverlay");
+
+      if (!gradeEl || !classEl || !btn) {
+        debugLog('❌ ไม่พบ DOM elements ที่จำเป็น');
+        updateStatus('เกิดข้อผิดพลาด: ไม่พบองค์ประกอบ UI', 'error');
+        return;
+      }
+
+      const grade = gradeEl.value.trim();
+      const classNo = classEl.value.trim();
+
+      debugLog(`📋 เริ่มสร้าง PDF: ${grade} ห้อง ${classNo}`);
+
+      if (!grade || !classNo) {
+        alert("⚠️ กรุณาเลือกระดับชั้นและห้องให้ครบถ้วน");
+        debugLog('❌ ข้อมูลไม่ครบถ้วน');
+        return;
+      }
+
+      if (!window.PP5App.apiReady) {
+        alert("⚠️ ระบบยังไม่พร้อม กรุณารอสักครู่หรือรีเฟรชหน้า");
+        debugLog('❌ Google Script API ยังไม่พร้อม');
+        return;
+      }
+
+      // เริ่มการประมวลผล
+      window.PP5App.processing = true;
+      btn.disabled = true;
+      btn.innerHTML = '<i class="bi bi-file-earmark-pdf me-2"></i>กำลังสร้าง...'; // ✅ ไม่มี spinner ในปุ่ม
+      
+      if (loadingOverlay) {
+        loadingOverlay.style.display = 'flex'; // ✅ ใช้แค่ loading overlay
+      }
+      
+      updateStatus('🔄 กำลังสร้าง PDF กรุณารอสักครู่...', 'processing');
+
+      try {
+        debugLog('📡 เรียก Google Apps Script function');
+
+        const url = await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            debugLog('⏰ Timeout: การสร้าง PDF ใช้เวลานานเกินไป');
+            reject(new Error('การสร้าง PDF ใช้เวลานานเกินไป (60 วินาที)'));
+          }, 60000);
+
+          google.script.run
+            .withSuccessHandler((result) => {
+              clearTimeout(timeout);
+              debugLog('✅ ได้รับผลลัพธ์: ' + JSON.stringify(result));
+              resolve(result);
+            })
+            .withFailureHandler((error) => {
+              clearTimeout(timeout);
+              debugLog('❌ เกิดข้อผิดพลาด: ' + error.message);
+              reject(error);
+            })
+            .exportPp5CoverPDF(grade, classNo);
+        });
+
+        // ประมวลผลสำเร็จ
+        if (url && url.length > 0) {
+          debugLog('🎉 สร้าง PDF สำเร็จ: ' + url);
+          updateStatus(
+            `<a href="${url}" target="_blank" class="text-success text-decoration-none fw-bold">
+              <i class="bi bi-file-earmark-pdf me-1"></i>📄 คลิกเพื่อเปิดไฟล์ PDF
+            </a>`, 
+            'success'
+          );
+          
+          setTimeout(() => {
+            debugLog('🔗 เปิดไฟล์ PDF อัตโนมัติ');
+            window.open(url, '_blank');
+          }, 800);
+          
+        } else {
+          throw new Error('ไม่ได้รับ URL ของไฟล์ PDF');
+        }
+
+      } catch (error) {
+        debugLog('💥 เกิดข้อผิดพลาด: ' + error.message);
+        updateStatus(`❌ เกิดข้อผิดพลาด: ${error.message}`, 'error');
+        
+        console.error('PP5 Error Details:', {
+          error: error,
+          grade: grade,
+          classNo: classNo,
+          apiReady: window.PP5App.apiReady,
+          logs: window.PP5App.logs,
+          version: window.PP5App.version
+        });
+        
+      } finally {
+        // รีเซ็ตสถานะ
+        window.PP5App.processing = false;
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-file-earmark-pdf me-2"></i>สร้าง PDF ปพ.5'; // ✅ กลับเป็นปกติ
+        
+        if (loadingOverlay) {
+          loadingOverlay.style.display = 'none';
+        }
+        
+        debugLog('🔄 รีเซ็ตสถานะการประมวลผลเสร็จสิ้น');
+      }
+    }
+
+    // ✅ Setup main page (ปรับปรุงแล้ว - เอาส่วน Debug ออก)
+    async function setupPage() {
+      if (window.PP5App.initialized) {
+        debugLog('⚠️ หน้าถูกตั้งค่าแล้ว');
+        return;
+      }
+
+      try {
+        debugLog('🚀 เริ่มตั้งค่าหน้า PP5 Cover v' + window.PP5App.version);
+        updateStatus('⏳ กำลังตรวจสอบระบบ...', 'processing');
+
+        // รอให้ Google Script API พร้อม
+        await checkGoogleScriptAPI();
+
+        // ตั้งค่า Event Listeners
+        const btn = document.getElementById("exportBtn");
+        if (btn) {
+          btn.removeEventListener('click', createPDF);
+          btn.addEventListener('click', createPDF);
+          debugLog('✅ ตั้งค่า Export Button Event Listener');
+        }
+
+        // โหลด dropdown ชั้นเรียนจาก backend
+        await loadGradesFromBackend();
+
+        // ตั้งค่า event เปลี่ยนชั้น -> โหลดห้อง
+        var gradeSelect = document.getElementById('gradeSelect');
+        if (gradeSelect) {
+          gradeSelect.addEventListener('change', function() {
+            var classSelect = document.getElementById('classSelect');
+            classSelect.innerHTML = '<option value="">-- กำลังโหลด... --</option>';
+            classSelect.disabled = true;
+            if (this.value) {
+              google.script.run
+                .withSuccessHandler(function(classes) {
+                  classSelect.innerHTML = '<option value="">-- เลือกห้อง --</option>';
+                  if (classes && classes.length > 0) {
+                    classes.forEach(function(c) { classSelect.add(new Option(c, c)); });
+                  }
+                  classSelect.disabled = false;
+                })
+                .withFailureHandler(function(err) {
+                  classSelect.innerHTML = '<option value="">-- โหลดไม่สำเร็จ --</option>';
+                  classSelect.disabled = false;
+                  debugLog('❌ โหลดห้องไม่สำเร็จ: ' + (err.message || err));
+                })
+                .getAvailableClasses(this.value);
+            } else {
+              classSelect.innerHTML = '<option value="">-- เลือกห้อง --</option>';
+              classSelect.disabled = false;
+            }
+          });
+        }
+
+        // เปิดใช้งาน form
+        setFormEnabled(true);
+
+        // เสร็จสิ้นการตั้งค่า
+        window.PP5App.initialized = true;
+        updateStatus('✅ พร้อมใช้งาน - เลือกระดับชั้นและห้อง แล้วคลิกสร้าง PDF', 'ready');
+        debugLog('🎉 การตั้งค่าหน้าเสร็จสิ้นสมบูรณ์');
+
+      } catch (error) {
+        debugLog('💥 เกิดข้อผิดพลาดในการตั้งค่าหน้า: ' + error.message);
+        updateStatus(`❌ เกิดข้อผิดพลาด: ${error.message} - ลองรีเฟรชหน้า`, 'error');
+        console.error('Setup error:', error);
+      }
+    }
+
+    // ✅ Export functions for external calls
+    window.setupPp5_coverPage = setupPage;
+    window.initPage = setupPage;
+    window.init = setupPage;
+
+    // ✅ Initialize
+    function initializePage() {
+      debugLog('🔄 เริ่มต้นการโหลดหน้า');
+      
+      if (document.readyState === 'loading') {
+        debugLog('⏳ รอให้ DOM โหลดเสร็จ');
+        document.addEventListener('DOMContentLoaded', setupPage);
+      } else {
+        debugLog('✅ DOM โหลดเสร็จแล้ว เริ่มตั้งค่าทันที');
+        setupPage();
+      }
+    }
+
+    // ✅ Start initialization
+    initializePage();
+
+    // ✅ Global error handlers
+    window.addEventListener('error', function(event) {
+      debugLog('💥 Global Error: ' + event.message);
+      console.error('PP5 Global Error:', event);
+    });
+
+    window.addEventListener('unhandledrejection', function(event) {
+      debugLog('💥 Unhandled Promise Rejection: ' + event.reason);
+      console.error('PP5 Promise Error:', event);
+    });
+
+    // ✅ โหลดระดับชั้นจาก backend
+    function loadGradesFromBackend() {
+      return new Promise(function(resolve) {
+        google.script.run
+          .withSuccessHandler(function(grades) {
+            var gradeSelect = document.getElementById('gradeSelect');
+            if (grades && grades.length > 0) {
+              grades.forEach(function(g) { gradeSelect.add(new Option(g, g)); });
+              debugLog('✅ โหลดระดับชั้นสำเร็จ: ' + grades.length + ' รายการ');
+            } else {
+              debugLog('⚠️ ไม่พบข้อมูลระดับชั้น');
+            }
+            resolve();
+          })
+          .withFailureHandler(function(err) {
+            debugLog('❌ โหลดระดับชั้นไม่สำเร็จ: ' + (err.message || err));
+            resolve();
+          })
+          .getAvailableGrades();
+      });
+    }
+
+    // ✅ Debug summary (เก็บไว้ใน console เท่านั้น)
+    setTimeout(() => {
+      console.log('📊 PP5 Debug Summary:', {
+        version: window.PP5App.version,
+        totalTime: Date.now() - window.PP5App.startTime + 'ms',
+        apiReady: window.PP5App.apiReady,
+        initialized: window.PP5App.initialized,
+        attempts: window.PP5App.attempts,
+        logs: window.PP5App.logs
+      });
+    }, 3000);
+  </script>
+</body>
+</html>

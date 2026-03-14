@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบประเมินคุณลักษณะอันพึงประสงค์</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+    
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background-color: #f9fafb;
+    }
+    
+    .header-gradient {
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    }
+    
+    .table-container {
+      overflow-x: auto;
+      border-radius: 0.5rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    
+    table {
+      border-collapse: separate;
+      border-spacing: 0;
+      width: 100%;
+    }
+    
+    th, td {
+      padding: 0.75rem;
+      vertical-align: middle;
+      text-align: center;
+      border: 1px solid #e5e7eb;
+    }
+    
+    th {
+      position: sticky;
+      top: 0;
+      background-color: #3b82f6;
+      color: white;
+      font-weight: 600;
+      z-index: 10;
+    }
+    
+    .characteristic-header {
+      background-color: #2563eb;
+      color: white;
+      font-weight: 600;
+    }
+    
+    .result-header {
+      background-color: #1d4ed8;
+      color: white;
+      font-weight: 600;
+    }
+    
+    tbody tr {
+      background-color: #ffffff;
+    }
+    
+    tbody tr:hover {
+      background-color: #f9fafb;
+    }
+    
+    .score-cell {
+      position: relative;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .score-cell:hover {
+      background-color: #eff6ff;
+    }
+    
+    .score-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: white;
+      border-radius: 0.375rem;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      z-index: 20;
+      display: none;
+      width: 120px;
+    }
+    
+    .score-dropdown.active {
+      display: block;
+    }
+    
+    .score-option {
+      padding: 0.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    .score-option:hover {
+      background-color: #eff6ff;
+    }
+    
+    .score-0 { background-color: #fee2e2; color: #b91c1c; }
+    .score-1 { background-color: #fef3c7; color: #92400e; }
+    .score-2 { background-color: #d1fae5; color: #065f46; }
+    .score-3 { background-color: #dbeafe; color: #1e40af; }
+    
+    .result-fail { background-color: #fee2e2; color: #b91c1c; }
+    .result-pass { background-color: #fef3c7; color: #92400e; }
+    .result-good { background-color: #d1fae5; color: #065f46; }
+    .result-excellent { background-color: #dbeafe; color: #1e40af; }
+    
+    .btn {
+      transition: all 0.2s;
+    }
+    
+    .btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    
+    .btn:active {
+      transform: translateY(0);
+    }
+    
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    @media (max-width: 768px) {
+      .responsive-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .action-buttons {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .action-buttons button {
+        margin: 0.25rem 0;
+      }
+      
+      .characteristic-full {
+        display: none;
+      }
+      
+      .characteristic-short {
+        display: inline;
+      }
+    }
+    
+    @media (min-width: 769px) {
+      .characteristic-full {
+        display: inline;
+      }
+      
+      .characteristic-short {
+        display: none;
+      }
+    }
+    
+    .animate-success {
+      animation: pulse 1.5s ease-in-out;
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+
+    /* ✅ เพิ่ม CSS สำหรับ Export Modal */
+    .export-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .export-modal-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .export-modal {
+      background: white;
+      border-radius: 1rem;
+      padding: 2rem;
+      max-width: 400px;
+      width: 90%;
+      text-align: center;
+      transform: scale(0.8);
+      transition: transform 0.3s ease;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+
+    .export-modal-overlay.active .export-modal {
+      transform: scale(1);
+    }
+
+    .export-spinner {
+      width: 60px;
+      height: 60px;
+      border: 4px solid #e5e7eb;
+      border-top-color: #dc2626;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1.5rem;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .export-progress-bar {
+      width: 100%;
+      height: 8px;
+      background-color: #e5e7eb;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 1rem;
+    }
+
+    .export-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #dc2626, #f87171, #dc2626);
+      background-size: 200% 100%;
+      animation: progressAnim 1.5s ease-in-out infinite;
+      width: 70%;
+    }
+
+    @keyframes progressAnim {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .export-steps {
+      margin-top: 1.5rem;
+      text-align: left;
+    }
+
+    .export-step {
+      display: flex;
+      align-items: center;
+      padding: 0.5rem 0;
+      color: #6b7280;
+      font-size: 0.875rem;
+    }
+
+    .export-step.active {
+      color: #dc2626;
+      font-weight: 600;
+    }
+
+    .export-step.completed {
+      color: #059669;
+    }
+
+    .export-step-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 0.75rem;
+      font-size: 0.75rem;
+      background-color: #e5e7eb;
+    }
+
+    .export-step.active .export-step-icon {
+      background-color: #fecaca;
+      color: #dc2626;
+    }
+
+    .export-step.completed .export-step-icon {
+      background-color: #d1fae5;
+      color: #059669;
+    }
+
+    /* Success State */
+    .export-success-icon {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background-color: #d1fae5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.5rem;
+      animation: bounceIn 0.5s ease;
+    }
+
+    .export-success-icon i {
+      font-size: 2.5rem;
+      color: #059669;
+    }
+
+    @keyframes bounceIn {
+      0% { transform: scale(0); }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); }
+    }
+
+    /* Error State */
+    .export-error-icon {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background-color: #fee2e2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.5rem;
+    }
+
+    .export-error-icon i {
+      font-size: 2.5rem;
+      color: #dc2626;
+    }
+  </style>
+</head>
+<body class="min-h-screen">
+  <div class="container mx-auto px-4 py-8">
+    <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+      <!-- Header -->
+      <div class="header-gradient p-4 flex items-center justify-between">
+        <h1 class="text-xl md:text-2xl font-bold text-white flex items-center">
+          <i class="fas fa-heart mr-2"></i> ระบบประเมินคุณลักษณะอันพึงประสงค์
+        </h1>
+        
+      </div>
+      
+      <!-- Filter Controls -->
+      <div class="p-4 bg-gray-50 border-b">
+        <!-- Row 1: Grade/Class Selection -->
+        <div class="flex flex-wrap items-end gap-3 mb-3">
+          <div class="w-36">
+            <label for="gradeSelect" class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">ระดับชั้น</label>
+            <select id="gradeSelect" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 py-2 px-3 border text-sm" onchange="loadStudents()">
+              <option value="">เลือกชั้น</option>
+              <option value="ป.1">ป.1</option>
+              <option value="ป.2">ป.2</option>
+              <option value="ป.3">ป.3</option>
+              <option value="ป.4">ป.4</option>
+              <option value="ป.5">ป.5</option>
+              <option value="ป.6">ป.6</option>
+            </select>
+          </div>
+          <div class="w-24">
+            <label for="classSelect" class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">ห้อง</label>
+            <select id="classSelect" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 py-2 px-3 border text-sm" onchange="loadStudents()">
+              <option value="">ห้อง</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+            </select>
+          </div>
+          <button id="showAllBtn" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm font-medium flex items-center btn shadow-sm" onclick="toggleAllScores()">
+            <i class="fas fa-eye mr-1.5"></i> แสดงคะแนนทั้งหมด
+          </button>
+        </div>
+
+        <!-- Row 2: Topic Score + Action Buttons (toolbar style) -->
+        <div class="flex flex-wrap items-end gap-2 p-3 bg-white rounded-xl border border-gray-200 shadow-sm">
+          <!-- Topic Section -->
+          <div class="flex items-end gap-2 flex-wrap">
+            <div class="w-44">
+              <label for="topicSelect" class="block text-xs font-semibold text-gray-500 mb-1">หัวข้อ</label>
+              <select id="topicSelect" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 py-2 px-3 border text-sm">
+                <option value="">เลือกหัวข้อ</option>
+                <option value="0">รักชาติ ศาสน์ กษัตริย์</option>
+                <option value="1">ซื่อสัตย์สุจริต</option>
+                <option value="2">มีวินัย</option>
+                <option value="3">ใฝ่เรียนรู้</option>
+                <option value="4">อยู่อย่างพอเพียง</option>
+                <option value="5">มุ่งมั่นในการทำงาน</option>
+                <option value="6">รักความเป็นไทย</option>
+                <option value="7">มีจิตสาธารณะ</option>
+              </select>
+            </div>
+            <div class="w-20">
+              <label for="topicScore" class="block text-xs font-semibold text-gray-500 mb-1">คะแนน</label>
+              <select id="topicScore" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 py-2 px-3 border text-sm">
+                <option value="">-</option>
+                <option value="0">0</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+              </select>
+            </div>
+            <button id="topicBtn" class="bg-gray-700 hover:bg-gray-800 text-white py-2 px-3 rounded-lg text-sm font-medium flex items-center btn shadow-sm" onclick="setTopicScore()">
+              <i class="fas fa-edit mr-1.5"></i> ให้คะแนนหัวข้อ
+            </button>
+          </div>
+
+          <!-- Divider -->
+          <div class="hidden md:block w-px h-8 bg-gray-300 mx-1"></div>
+
+          <!-- Action Buttons -->
+          <div class="action-buttons flex flex-wrap gap-2">
+            <button id="setAllBtn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-3 rounded-lg text-sm font-medium flex items-center btn shadow-sm" onclick="setAllScores(3)">
+              <i class="fas fa-check-double mr-1.5"></i> ให้คะแนน 3 ทั้งหมด
+            </button>
+            <button id="saveBtn" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded-lg text-sm font-medium flex items-center btn shadow-sm" onclick="saveAssessment()">
+              <i class="fas fa-save mr-1.5"></i> บันทึก
+            </button>
+            <button id="exportBtn" class="bg-red-600 hover:bg-red-700 text-white py-2 px-3 rounded-lg text-sm font-medium flex items-center btn shadow-sm" onclick="exportToPDF()" disabled>
+              <i class="fas fa-file-pdf mr-1.5"></i> ส่งออก PDF
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Legend -->
+      <div class="px-4 py-2.5 bg-white border-b">
+        <div class="flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-xs text-gray-600">
+          <span class="flex items-center"><span class="inline-block w-3 h-3 rounded-full bg-red-300 mr-1.5"></span>0 ปรับปรุง <span class="text-gray-400 ml-1">(0.00-0.99)</span></span>
+          <span class="flex items-center"><span class="inline-block w-3 h-3 rounded-full bg-yellow-300 mr-1.5"></span>1 ผ่าน <span class="text-gray-400 ml-1">(1.00-1.99)</span></span>
+          <span class="flex items-center"><span class="inline-block w-3 h-3 rounded-full bg-green-300 mr-1.5"></span>2 ดี <span class="text-gray-400 ml-1">(2.00-2.49)</span></span>
+          <span class="flex items-center"><span class="inline-block w-3 h-3 rounded-full bg-blue-300 mr-1.5"></span>3 ดีเยี่ยม <span class="text-gray-400 ml-1">(2.50-3.00)</span></span>
+        </div>
+      </div>
+      
+      <!-- Loading State -->
+      <div id="loadingState" class="p-12 flex flex-col items-center justify-center text-center" style="display: none;">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <h3 class="text-xl font-medium text-gray-800 mb-2 mt-4">กำลังโหลดข้อมูล...</h3>
+        <p class="text-gray-600">กรุณารอสักครู่</p>
+      </div>
+      
+      <!-- Students Table -->
+      <div id="studentsTable" class="p-4" style="display: none;">
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th rowspan="2" class="w-12">ที่</th>
+                <th rowspan="2" class="w-64 text-left">ชื่อ-นามสกุล</th>
+                <th colspan="8" class="characteristic-header">คุณลักษณะอันพึงประสงค์</th>
+                <th colspan="3" class="result-header">ผลการประเมิน</th>
+              </tr>
+              <tr>
+                <th class="w-16">
+                  <span class="characteristic-full">รักชาติ ศาสน์ กษัตริย์</span>
+                  <span class="characteristic-short">รักชาติฯ</span>
+                </th>
+                <th class="w-16">
+                  <span class="characteristic-full">ซื่อสัตย์สุจริต</span>
+                  <span class="characteristic-short">ซื่อสัตย์</span>
+                </th>
+                <th class="w-16">
+                  <span class="characteristic-full">มีวินัย</span>
+                  <span class="characteristic-short">มีวินัย</span>
+                </th>
+                <th class="w-16">
+                  <span class="characteristic-full">ใฝ่เรียนรู้</span>
+                  <span class="characteristic-short">ใฝ่เรียนรู้</span>
+                </th>
+                <th class="w-16">
+                  <span class="characteristic-full">อยู่อย่างพอเพียง</span>
+                  <span class="characteristic-short">พอเพียง</span>
+                </th>
+                <th class="w-16">
+                  <span class="characteristic-full">มุ่งมั่นในการทำงาน</span>
+                  <span class="characteristic-short">มุ่งมั่น</span>
+                </th>
+                <th class="w-16">
+                  <span class="characteristic-full">รักความเป็นไทย</span>
+                  <span class="characteristic-short">รักไทย</span>
+                </th>
+                <th class="w-16">
+                  <span class="characteristic-full">มีจิตสาธารณะ</span>
+                  <span class="characteristic-short">จิตสาธารณะ</span>
+                </th>
+                <th class="w-16">รวม</th>
+                <th class="w-16">เฉลี่ย</th>
+                <th class="w-24">ผลการประเมิน</th>
+              </tr>
+            </thead>
+            <tbody id="studentsTableBody">
+              <!-- Student rows will be inserted here -->
+            </tbody>
+          </table>
+        </div>
+        <div class="p-2 border-top d-flex justify-content-end">
+          <button class="btn btn-outline-primary btn-sm" onclick="CharacteristicAssessment.toggleSort()" id="btnCharSortToggle"><i class="fas fa-sort-amount-down"></i> <span id="btnCharSortLabel">ชาย→หญิง</span></button>
+        </div>
+      </div>
+      
+      <!-- Empty State -->
+      <div id="emptyState" class="p-12 flex flex-col items-center justify-center text-center">
+        <div class="text-blue-500 mb-4">
+          <i class="fas fa-clipboard-list text-6xl"></i>
+        </div>
+        <h3 class="text-xl font-medium text-gray-800 mb-2">กรุณาเลือกระดับชั้นและห้องเรียน</h3>
+        <p class="text-gray-600 max-w-md">เลือกระดับชั้นและห้องเรียนที่ต้องการประเมินคุณลักษณะอันพึงประสงค์</p>
+      </div>
+      
+      <!-- Error State -->
+      <div id="errorState" class="p-12 flex flex-col items-center justify-center text-center" style="display: none;">
+        <div class="text-red-500 mb-4">
+          <i class="fas fa-exclamation-triangle text-6xl"></i>
+        </div>
+        <h3 class="text-xl font-medium text-gray-800 mb-2">เกิดข้อผิดพลาด</h3>
+        <p id="errorMessage" class="text-gray-600 max-w-md">ไม่สามารถโหลดข้อมูลได้</p>
+        <button onclick="loadStudents()" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-md btn">
+          <i class="fas fa-refresh mr-2"></i> ลองใหม่
+        </button>
+      </div>
+      
+      <!-- Notification -->
+      <div id="notification" class="fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-md shadow-lg transform transition-transform duration-300 translate-y-20 flex items-center">
+        <i class="fas fa-check-circle mr-2"></i>
+        <span id="notificationText">บันทึกข้อมูลเรียบร้อย</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✅ เพิ่ม Export Modal Overlay -->
+  <div id="exportModalOverlay" class="export-modal-overlay">
+    <div class="export-modal">
+      <!-- Loading State -->
+      <div id="exportLoadingState">
+        <div class="export-spinner"></div>
+        <h3 class="text-xl font-bold text-gray-800 mb-2">กำลังสร้างไฟล์ PDF</h3>
+        <p class="text-gray-600 mb-4" id="exportStatusText">กรุณารอสักครู่...</p>
+        
+        <div class="export-progress-bar">
+          <div class="export-progress-fill"></div>
+        </div>
+        
+        <div class="export-steps">
+          <div class="export-step" id="step1">
+            <div class="export-step-icon">
+              <i class="fas fa-database"></i>
+            </div>
+            <span>กำลังรวบรวมข้อมูลนักเรียน</span>
+          </div>
+          <div class="export-step" id="step2">
+            <div class="export-step-icon">
+              <i class="fas fa-table"></i>
+            </div>
+            <span>กำลังสร้างตารางข้อมูล</span>
+          </div>
+          <div class="export-step" id="step3">
+            <div class="export-step-icon">
+              <i class="fas fa-file-pdf"></i>
+            </div>
+            <span>กำลังสร้างไฟล์ PDF</span>
+          </div>
+          <div class="export-step" id="step4">
+            <div class="export-step-icon">
+              <i class="fas fa-check"></i>
+            </div>
+            <span>เสร็จสิ้น</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Success State -->
+      <div id="exportSuccessState" style="display: none;">
+        <div class="export-success-icon">
+          <i class="fas fa-check"></i>
+        </div>
+        <h3 class="text-xl font-bold text-green-700 mb-2">สร้าง PDF สำเร็จ!</h3>
+        <p class="text-gray-600 mb-4">ไฟล์ PDF ถูกสร้างเรียบร้อยแล้ว</p>
+        <button onclick="closeExportModal()" class="bg-green-600 hover:bg-green-700 text-white py-2 px-6 rounded-md btn">
+          <i class="fas fa-times mr-2"></i> ปิด
+        </button>
+      </div>
+      
+      <!-- Error State -->
+      <div id="exportErrorState" style="display: none;">
+        <div class="export-error-icon">
+          <i class="fas fa-times"></i>
+        </div>
+        <h3 class="text-xl font-bold text-red-700 mb-2">เกิดข้อผิดพลาด</h3>
+        <p class="text-gray-600 mb-4" id="exportErrorText">ไม่สามารถสร้างไฟล์ PDF ได้</p>
+        <div class="flex gap-2 justify-center">
+          <button onclick="closeExportModal()" class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-md btn">
+            <i class="fas fa-times mr-2"></i> ปิด
+          </button>
+          <button onclick="retryExport()" class="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-md btn">
+            <i class="fas fa-redo mr-2"></i> ลองใหม่
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ✅ ใช้ namespace เพื่อป้องกันการชนกัน
+    window.CharacteristicAssessment = (function() {
+      // ตัวแปรเก็บข้อมูลแบบ private
+      let studentsData = [];
+      let currentGrade = '';
+      let currentClass = '';
+      let showAllScores = false;
+      let isPageActive = true;
+      let exportStepInterval = null;
+
+      // ✅ ฟังก์ชันตรวจสอบว่า elements ยังอยู่หรือไม่
+      function checkPageActive() {
+        const gradeSelect = document.getElementById('gradeSelect');
+        isPageActive = gradeSelect !== null;
+        return isPageActive;
+      }
+
+      // ✅ ฟังก์ชันโหลดนักเรียน
+      function loadStudents() {
+        if (!checkPageActive()) return;
+
+        const gradeSelect = document.getElementById('gradeSelect');
+        const classSelect = document.getElementById('classSelect');
+        
+        if (!gradeSelect || !classSelect) return;
+
+        const grade = gradeSelect.value;
+        const classNo = classSelect.value;
+
+        currentGrade = grade;
+        currentClass = classNo;
+
+        const tableEl = document.getElementById('studentsTable');
+        const loadingEl = document.getElementById('loadingState');
+        const emptyEl = document.getElementById('emptyState');
+        const errorEl = document.getElementById('errorState');
+        const exportBtn = document.getElementById('exportBtn');
+
+        if (!tableEl || !loadingEl || !emptyEl || !errorEl || !exportBtn) return;
+
+        if (!grade || !classNo) {
+          tableEl.style.display = 'none';
+          loadingEl.style.display = 'none';
+          errorEl.style.display = 'none';
+          emptyEl.style.display = 'block';
+          exportBtn.disabled = true;
+          return;
+        }
+
+        tableEl.style.display = 'none';
+        emptyEl.style.display = 'none';
+        errorEl.style.display = 'none';
+        loadingEl.style.display = 'flex';
+        exportBtn.disabled = true;
+
+        google.script.run
+          .withSuccessHandler(function(students) {
+            if (!checkPageActive()) return;
+            
+            // --- 👇 เพิ่มโค้ดเรียงลำดับนักเรียนตาม ID ---
+            if (students && Array.isArray(students)) {
+                students.sort((a, b) => {
+                    // ตรวจสอบว่ามี studentId หรือไม่ ถ้าไม่มีให้ใช้ค่าว่าง
+                    const idA = a.studentId || '';
+                    const idB = b.studentId || '';
+                    return String(idA).localeCompare(String(idB));
+                });
+                // console.log('✅ เรียงลำดับข้อมูลนักเรียนตาม studentId สำเร็จ');
+            }
+            // --- 👆 สิ้นสุดโค้ดที่เพิ่ม ---
+            
+            studentsData = students;
+            renderStudentsTable();
+            
+            const elements = {
+              loadingEl: document.getElementById('loadingState'),
+              tableEl: document.getElementById('studentsTable'),
+              exportBtn: document.getElementById('exportBtn')
+            };
+            
+            if (elements.loadingEl) elements.loadingEl.style.display = 'none';
+            if (elements.tableEl) elements.tableEl.style.display = 'block';
+            if (elements.exportBtn) elements.exportBtn.disabled = false;
+          })
+          .withFailureHandler(function(error) {
+            if (!checkPageActive()) return;
+            
+            const loadingEl = document.getElementById('loadingState');
+            const errorEl = document.getElementById('errorState');
+            const errorMessage = document.getElementById('errorMessage');
+            
+            if (loadingEl) loadingEl.style.display = 'none';
+            if (errorEl) errorEl.style.display = 'block';
+            if (errorMessage) errorMessage.textContent = error.message;
+          })
+          .getStudentsForCharacteristic(grade, classNo);
+      }
+
+      
+
+      // ✅ ฟังก์ชันแสดงตารางนักเรียน
+      function renderStudentsTable() {
+        if (!checkPageActive()) return;
+        
+        const tbody = document.getElementById('studentsTableBody');
+        if (!tbody) return;
+        
+        tbody.innerHTML = '';
+
+        studentsData.forEach((student, index) => {
+          const scores = student.scores || Array(8).fill('');
+          
+          // คำนวณคะแนนรวมและเฉลี่ย
+          const validScores = scores.filter(s => s !== '' && !isNaN(s)).map(Number);
+          const total = validScores.reduce((sum, score) => sum + score, 0);
+          const average = validScores.length === 8 ? (total / 8).toFixed(2) : '-';
+          
+          // ประเมินผล
+          let result = '-';
+          let resultClass = '';
+          if (average !== '-') {
+            const avg = parseFloat(average);
+            if (avg >= 2.5) {
+              result = 'ดีเยี่ยม';
+              resultClass = 'result-excellent';
+            } else if (avg >= 2.0) {
+              result = 'ดี';
+              resultClass = 'result-good';
+            } else if (avg >= 1.0) {
+              result = 'ผ่าน';
+              resultClass = 'result-pass';
+            } else {
+              result = 'ปรับปรุง';
+              resultClass = 'result-fail';
+            }
+          }
+
+          const row = document.createElement('tr');
+          row.setAttribute('data-student-id', student.studentId);
+          row.setAttribute('data-name', student.name || '');
+          row.innerHTML = `
+            <td class="text-center font-semibold">${index + 1}</td>
+            <td class="text-left font-medium">${student.name}</td>
+            ${scores.map((score, scoreIndex) => `
+              <td class="score-cell ${score !== '' ? `score-${score}` : ''}" 
+                  onclick="CharacteristicAssessment.openScoreDropdown(this, '${student.studentId}', ${scoreIndex})">
+                ${score !== '' ? score : '-'}
+                <div class="score-dropdown">
+                  <div class="score-option" onclick="CharacteristicAssessment.setScore('${student.studentId}', ${scoreIndex}, 0); event.stopPropagation();">0</div>
+                  <div class="score-option" onclick="CharacteristicAssessment.setScore('${student.studentId}', ${scoreIndex}, 1); event.stopPropagation();">1</div>
+                  <div class="score-option" onclick="CharacteristicAssessment.setScore('${student.studentId}', ${scoreIndex}, 2); event.stopPropagation();">2</div>
+                  <div class="score-option" onclick="CharacteristicAssessment.setScore('${student.studentId}', ${scoreIndex}, 3); event.stopPropagation();">3</div>
+                </div>
+              </td>
+            `).join('')}
+            <td class="font-semibold">${validScores.length === 8 ? total : '-'}</td>
+            <td class="font-semibold">${average}</td>
+            <td class="font-semibold ${resultClass}">${result}</td>
+          `;
+          tbody.appendChild(row);
+        });
+      }
+
+      // ✅ ฟังก์ชันเปิด dropdown คะแนน
+      function openScoreDropdown(cell, studentId, scoreIndex) {
+        if (!checkPageActive()) return;
+        
+        // ปิด dropdown อื่นๆ ที่เปิดอยู่
+        document.querySelectorAll('.score-dropdown.active').forEach(dropdown => {
+          dropdown.classList.remove('active');
+        });
+
+        // เปิด dropdown ของ cell นี้
+        const dropdown = cell.querySelector('.score-dropdown');
+        if (dropdown) {
+          dropdown.classList.add('active');
+        }
+
+        // ปิด dropdown เมื่อคลิกข้างนอก
+        setTimeout(() => {
+          document.addEventListener('click', function closeDropdown(e) {
+            if (!cell.contains(e.target)) {
+              if (dropdown) dropdown.classList.remove('active');
+              document.removeEventListener('click', closeDropdown);
+            }
+          });
+        }, 100);
+      }
+
+      // ✅ ฟังก์ชันให้คะแนน
+      function setScore(studentId, scoreIndex, score) {
+        if (!checkPageActive()) return;
+        
+        const student = studentsData.find(s => s.studentId === studentId);
+        if (!student) return;
+
+        if (!student.scores) student.scores = Array(8).fill('');
+        student.scores[scoreIndex] = score;
+
+        renderStudentsTable();
+        showNotification(`ให้คะแนน ${score} เรียบร้อยแล้ว`);
+      }
+
+      // ✅ ฟังก์ชันแสดง/ซ่อนคะแนนทั้งหมด
+      function toggleAllScores() {
+        if (!checkPageActive()) return;
+        
+        showAllScores = !showAllScores;
+        const btn = document.getElementById('showAllBtn');
+        
+        if (btn) {
+          if (showAllScores) {
+            btn.innerHTML = '<i class="fas fa-eye-slash mr-2"></i> ซ่อนคะแนน';
+            btn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+            btn.classList.add('bg-gray-600', 'hover:bg-gray-700');
+          } else {
+            btn.innerHTML = '<i class="fas fa-eye mr-2"></i> แสดงคะแนนทั้งหมด';
+            btn.classList.remove('bg-gray-600', 'hover:bg-gray-700');
+            btn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+          }
+        }
+        
+        renderStudentsTable();
+      }
+
+      // ✅ ฟังก์ชันให้คะแนนตามหัวข้อ
+      function setTopicScore() {
+        if (!checkPageActive()) return;
+        
+        const topicSelect = document.getElementById('topicSelect');
+        const scoreSelect = document.getElementById('topicScore');
+        
+        if (!topicSelect || !scoreSelect) return;
+        
+        const topicIndex = parseInt(topicSelect.value);
+        const score = parseInt(scoreSelect.value);
+        
+        if (isNaN(topicIndex) || isNaN(score)) {
+          showNotification('กรุณาเลือกหัวข้อและคะแนน', 'error');
+          return;
+        }
+
+        studentsData.forEach(student => {
+          if (!student.scores) student.scores = Array(8).fill('');
+          student.scores[topicIndex] = score;
+        });
+
+        renderStudentsTable();
+        showNotification(`ให้คะแนนหัวข้อ ${score} ทั้งหมดเรียบร้อยแล้ว`);
+      }
+
+      // ✅ ฟังก์ชันให้คะแนนทั้งหมด
+      function setAllScores(score) {
+        if (!checkPageActive()) return;
+        
+        studentsData.forEach(student => {
+          student.scores = Array(8).fill(score);
+        });
+
+        renderStudentsTable();
+        showNotification(`ให้คะแนน ${score} ทั้งหมดเรียบร้อยแล้ว`);
+      }
+
+      // ✅ ฟังก์ชันบันทึกผลการประเมิน
+      function saveAssessment() {
+        if (!checkPageActive()) return;
+        
+        if (!currentGrade || !currentClass) {
+          showNotification('กรุณาเลือกระดับชั้นและห้องก่อน', 'error');
+          return;
+        }
+
+        if (studentsData.length === 0) {
+          showNotification('ไม่มีข้อมูลนักเรียนให้บันทึก', 'error');
+          return;
+        }
+
+        const saveBtn = document.getElementById('saveBtn');
+        const originalContent = saveBtn ? saveBtn.innerHTML : '';
+        
+        if (saveBtn) {
+          saveBtn.disabled = true;
+          saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> กำลังบันทึก...';
+        }
+
+        const payload = studentsData.map(student => ({
+          studentId: student.studentId,
+          name: student.name,
+          grade: student.grade,
+          classNo: student.classNo,
+          scores: student.scores || Array(8).fill('')
+        }));
+
+        google.script.run
+          .withSuccessHandler(function(result) {
+            if (!checkPageActive()) return;
+            
+            if (saveBtn) {
+              saveBtn.disabled = false;
+              saveBtn.innerHTML = originalContent;
+            }
+            
+            showNotification('บันทึกข้อมูลเรียบร้อยแล้ว: ' + result);
+          })
+          .withFailureHandler(function(error) {
+            if (!checkPageActive()) return;
+            
+            if (saveBtn) {
+              saveBtn.disabled = false;
+              saveBtn.innerHTML = originalContent;
+            }
+            
+            showNotification('เกิดข้อผิดพลาดในการบันทึก: ' + error.message, 'error');
+          })
+          .saveCharacteristicAssessmentBatch(payload);
+      }
+
+      // ✅ ฟังก์ชันเปิด Export Modal
+      function showExportModal() {
+        const modal = document.getElementById('exportModalOverlay');
+        const loadingState = document.getElementById('exportLoadingState');
+        const successState = document.getElementById('exportSuccessState');
+        const errorState = document.getElementById('exportErrorState');
+        
+        if (modal) {
+          // Reset states
+          if (loadingState) loadingState.style.display = 'block';
+          if (successState) successState.style.display = 'none';
+          if (errorState) errorState.style.display = 'none';
+          
+          // Reset steps
+          resetExportSteps();
+          
+          // Show modal
+          modal.classList.add('active');
+          
+          // Start step animation
+          startExportStepAnimation();
+        }
+      }
+
+      // ✅ ฟังก์ชันปิด Export Modal
+      function closeExportModal() {
+        const modal = document.getElementById('exportModalOverlay');
+        if (modal) {
+          modal.classList.remove('active');
+        }
+        
+        // Clear interval
+        if (exportStepInterval) {
+          clearInterval(exportStepInterval);
+          exportStepInterval = null;
+        }
+      }
+
+      // ✅ ฟังก์ชัน Reset Export Steps
+      function resetExportSteps() {
+        for (let i = 1; i <= 4; i++) {
+          const step = document.getElementById('step' + i);
+          if (step) {
+            step.classList.remove('active', 'completed');
+          }
+        }
+        
+        const statusText = document.getElementById('exportStatusText');
+        if (statusText) {
+          statusText.textContent = 'กรุณารอสักครู่...';
+        }
+      }
+
+      // ✅ ฟังก์ชัน Animation สำหรับ Steps
+      function startExportStepAnimation() {
+        let currentStep = 1;
+        const stepTexts = [
+          'กำลังรวบรวมข้อมูลนักเรียน...',
+          'กำลังสร้างตารางข้อมูล...',
+          'กำลังสร้างไฟล์ PDF...',
+          'กำลังเตรียมไฟล์สำหรับดาวน์โหลด...'
+        ];
+        
+        // Set first step as active
+        const step1 = document.getElementById('step1');
+        if (step1) step1.classList.add('active');
+        
+        const statusText = document.getElementById('exportStatusText');
+        if (statusText) statusText.textContent = stepTexts[0];
+        
+        exportStepInterval = setInterval(() => {
+          if (currentStep <= 3) {
+            // Mark current step as completed
+            const currentStepEl = document.getElementById('step' + currentStep);
+            if (currentStepEl) {
+              currentStepEl.classList.remove('active');
+              currentStepEl.classList.add('completed');
+            }
+            
+            // Move to next step
+            currentStep++;
+            const nextStepEl = document.getElementById('step' + currentStep);
+            if (nextStepEl) {
+              nextStepEl.classList.add('active');
+            }
+            
+            // Update status text
+            if (statusText && stepTexts[currentStep - 1]) {
+              statusText.textContent = stepTexts[currentStep - 1];
+            }
+          }
+        }, 1500);
+      }
+
+      // ✅ ฟังก์ชันแสดงสถานะสำเร็จ
+      function showExportSuccess() {
+        const loadingState = document.getElementById('exportLoadingState');
+        const successState = document.getElementById('exportSuccessState');
+        
+        // Clear interval
+        if (exportStepInterval) {
+          clearInterval(exportStepInterval);
+          exportStepInterval = null;
+        }
+        
+        // Complete all steps
+        for (let i = 1; i <= 4; i++) {
+          const step = document.getElementById('step' + i);
+          if (step) {
+            step.classList.remove('active');
+            step.classList.add('completed');
+          }
+        }
+        
+        // Small delay before showing success
+        setTimeout(() => {
+          if (loadingState) loadingState.style.display = 'none';
+          if (successState) successState.style.display = 'block';
+        }, 500);
+      }
+
+      // ✅ ฟังก์ชันแสดงสถานะ Error
+      function showExportError(message) {
+        const loadingState = document.getElementById('exportLoadingState');
+        const errorState = document.getElementById('exportErrorState');
+        const errorText = document.getElementById('exportErrorText');
+        
+        // Clear interval
+        if (exportStepInterval) {
+          clearInterval(exportStepInterval);
+          exportStepInterval = null;
+        }
+        
+        if (loadingState) loadingState.style.display = 'none';
+        if (errorState) errorState.style.display = 'block';
+        if (errorText) errorText.textContent = message || 'ไม่สามารถสร้างไฟล์ PDF ได้';
+      }
+
+      // ✅ ฟังก์ชันส่งออก PDF (ปรับปรุงใหม่)
+      function exportToPDF() {
+        if (!checkPageActive()) return;
+        
+        if (!currentGrade || !currentClass) {
+          showNotification('กรุณาเลือกระดับชั้นและห้องก่อน', 'error');
+          return;
+        }
+
+        const exportBtn = document.getElementById('exportBtn');
+        if (!exportBtn) return;
+        
+        const originalContent = exportBtn.innerHTML;
+        
+        // Disable button
+        exportBtn.disabled = true;
+        exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> กำลังสร้าง PDF...';
+
+        // ✅ แสดง Export Modal
+        showExportModal();
+
+        google.script.run
+          .withSuccessHandler(function(url) {
+            if (!checkPageActive()) return;
+            
+            exportBtn.disabled = false;
+            exportBtn.innerHTML = originalContent;
+            
+            // ✅ แสดงสถานะสำเร็จ
+            showExportSuccess();
+            
+            // เปิดไฟล์ PDF หลังจากแสดง success สักครู่
+            setTimeout(() => {
+              window.open(url, '_blank');
+            }, 1000);
+          })
+          .withFailureHandler(function(error) {
+            if (!checkPageActive()) return;
+            
+            exportBtn.disabled = false;
+            exportBtn.innerHTML = originalContent;
+            
+            // ✅ แสดงสถานะ Error
+            showExportError(error.message);
+          })
+          .generateCharacteristicAssessmentPDF(currentGrade, currentClass, _charSortMode || 'id');
+      }
+
+      // ✅ ฟังก์ชันลองส่งออกใหม่
+      function retryExport() {
+        closeExportModal();
+        setTimeout(() => {
+          exportToPDF();
+        }, 300);
+      }
+
+      // ✅ ฟังก์ชันแสดงการแจ้งเตือน
+      function showNotification(message, type = 'success') {
+        if (!checkPageActive()) return;
+        
+        const notification = document.getElementById('notification');
+        const notificationText = document.getElementById('notificationText');
+        
+        if (!notification || !notificationText) return;
+        
+        notificationText.textContent = message;
+        
+        if (type === 'error') {
+          notification.classList.remove('bg-green-500');
+          notification.classList.add('bg-red-500');
+        } else {
+          notification.classList.remove('bg-red-500');
+          notification.classList.add('bg-green-500');
+        }
+        
+        notification.classList.remove('translate-y-20');
+        
+        setTimeout(() => {
+          if (notification) notification.classList.add('translate-y-20');
+        }, 3000);
+      }
+
+      // ✅ Cleanup เมื่อออกจากหน้า
+      function cleanup() {
+        isPageActive = false;
+        studentsData = [];
+        currentGrade = '';
+        currentClass = '';
+        showAllScores = false;
+        
+        if (exportStepInterval) {
+          clearInterval(exportStepInterval);
+          exportStepInterval = null;
+        }
+      }
+
+      // ============ SORT TOGGLE ============
+      var _charSortMode = 'gender';
+      function toggleSort() {
+        _charSortMode = _charSortMode === 'gender' ? 'id' : 'gender';
+        var label = document.getElementById('btnCharSortLabel');
+        if (label) label.textContent = _charSortMode === 'gender' ? 'ชาย→หญิง' : 'เลขประจำตัว';
+        var tbody = document.getElementById('studentsTableBody');
+        if (!tbody) return;
+        var rows = Array.from(tbody.querySelectorAll('tr'));
+        rows.sort(function(a, b) {
+          var idA = a.getAttribute('data-student-id') || '';
+          var idB = b.getAttribute('data-student-id') || '';
+          if (_charSortMode === 'gender') {
+            var nA = a.getAttribute('data-name') || '';
+            var nB = b.getAttribute('data-name') || '';
+            var mA = nA.indexOf('ชาย') !== -1 || nA.indexOf('นาย') === 0;
+            var mB = nB.indexOf('ชาย') !== -1 || nB.indexOf('นาย') === 0;
+            if (mA && !mB) return -1;
+            if (!mA && mB) return 1;
+          }
+          return String(idA).localeCompare(String(idB), undefined, {numeric: true});
+        });
+        rows.forEach(function(row, idx) {
+          tbody.appendChild(row);
+          var fc = row.querySelector('td:first-child');
+          if (fc) fc.textContent = idx + 1;
+        });
+      }
+
+      // ✅ Export public methods
+      return {
+        loadStudents,
+        toggleSort,
+        openScoreDropdown,
+        setScore,
+        toggleAllScores,
+        setTopicScore,
+        setAllScores,
+        saveAssessment,
+        exportToPDF,
+        closeExportModal,
+        retryExport,
+        cleanup
+      };
+    })();
+
+    // ✅ Compatibility layer สำหรับ inline event handlers
+    function loadStudents() {
+      if (window.CharacteristicAssessment) {
+        window.CharacteristicAssessment.loadStudents();
+      }
+    }
+
+    function toggleAllScores() {
+      if (window.CharacteristicAssessment) {
+        window.CharacteristicAssessment.toggleAllScores();
+      }
+    }
+
+    function setTopicScore() {
+      if (window.CharacteristicAssessment) {
+        window.CharacteristicAssessment.setTopicScore();
+      }
+    }
+
+    function setAllScores(score) {
+      if (window.CharacteristicAssessment) {
+        window.CharacteristicAssessment.setAllScores(score);
+      }
+    }
+
+    function saveAssessment() {
+      if (window.CharacteristicAssessment) {
+        window.CharacteristicAssessment.saveAssessment();
+      }
+    }
+
+    function exportToPDF() {
+      if (window.CharacteristicAssessment) {
+        window.CharacteristicAssessment.exportToPDF();
+      }
+    }
+
+    function closeExportModal() {
+      if (window.CharacteristicAssessment) {
+        window.CharacteristicAssessment.closeExportModal();
+      }
+    }
+
+    function retryExport() {
+      if (window.CharacteristicAssessment) {
+        window.CharacteristicAssessment.retryExport();
+      }
+    }
+
+    // ✅ Cleanup เมื่อออกจากหน้า
+    window.addEventListener('beforeunload', function() {
+      if (window.CharacteristicAssessment) {
+        window.CharacteristicAssessment.cleanup();
+      }
+    });
+
+    // ✅ ป้องกัน click ข้างนอกให้ปิด dropdown
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.score-cell')) {
+        document.querySelectorAll('.score-dropdown.active').forEach(dropdown => {
+          dropdown.classList.remove('active');
+        });
+      }
+    });
+  </script>
+</body>
+</html>

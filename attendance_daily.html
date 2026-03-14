@@ -1,0 +1,918 @@
+<!-- attendance.html - Final Version: Professional UI + Race Condition Fix + Special Holidays -->
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>เช็คชื่อรายวัน</title>
+  <style>
+    /* =========================================
+       ✅ CSS: Professional UI Updates
+       ========================================= */
+    
+    #contentFrame .menu-toggle,
+    #contentFrame #mobileSidebarToggle,
+    #contentFrame #mobile-menu-toggle {
+      display: none !important;
+    }
+    
+    /* --- 1. Background & Main Layout --- */
+    .attendance-page {
+      font-family: 'Sarabun', sans-serif;
+      /* Gradient พื้นหลังโทนสีฟ้า-เทา ดูสบายตาและทันสมัย */
+      background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%); 
+      min-height: 100vh;
+      padding: 20px;
+      background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+    
+    .main-container {
+      max-width: 1000px;
+      margin: 0 auto;
+      /* Effect กระจกฝ้า (Glassmorphism) */
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(20px);
+      border-radius: 30px;
+      padding: 30px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08), 
+                  0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    /* --- 2. Inner Cards --- */
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 12px rgba(148, 163, 184, 0.12);
+      border: 1px solid #f1f5f9;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .card:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(148, 163, 184, 0.18);
+      border-color: #e2e8f0;
+    }
+    
+    /* --- 3. Header Card --- */
+    .header-card {
+      background: linear-gradient(135deg, #4338ca 0%, #6366f1 100%); /* สี Indigo ไล่เฉด */
+      color: white;
+      position: relative;
+      overflow: hidden;
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.1);
+      box-shadow: 0 10px 25px rgba(79, 70, 229, 0.25);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 25px 35px;
+    }
+    
+    /* ลายกราฟิกวงกลมตกแต่ง */
+    .header-card::before {
+      content: ''; position: absolute; top: -60px; right: -60px;
+      width: 200px; height: 200px; background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+      border-radius: 50%; pointer-events: none;
+    }
+    
+    .header-card::after {
+      content: ''; position: absolute; bottom: -40px; left: 20%;
+      width: 150px; height: 150px; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+      border-radius: 50%; pointer-events: none;
+    }
+
+    .header-text h1 {
+      font-size: 1.75rem; font-weight: 800; margin: 0; line-height: 1.2;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .header-text p {
+      margin: 6px 0 0 0; opacity: 0.9; font-size: 0.95rem; font-weight: 500; letter-spacing: 0.5px;
+    }
+
+    .header-icon {
+      font-size: 3rem; background: rgba(255,255,255,0.2);
+      width: 70px; height: 70px; border-radius: 20px;
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(5px); box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      transform: rotate(-5deg); transition: transform 0.3s ease;
+    }
+    
+    .header-card:hover .header-icon { transform: rotate(0deg) scale(1.1); }
+
+    /* --- 4. Form Elements --- */
+    .form-label { display: block; font-weight: 600; margin-bottom: 4px; color: #475569; font-size: 0.85rem; }
+    .form-control {
+      width: 100%; padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 10px;
+      font-size: 0.9rem; color: #334155; background-color: #f8fafc; transition: all 0.2s;
+    }
+    .form-control:focus { outline: none; border-color: #6366f1; background-color: #fff; box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1); }
+    
+    /* --- 5. Buttons --- */
+    .btn {
+      padding: 8px 16px; border: none; border-radius: 10px; font-weight: 600; font-size: 0.85rem;
+      cursor: pointer; transition: all 0.2s; letter-spacing: 0.3px;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      white-space: nowrap;
+    }
+    .btn:active { transform: scale(0.96); }
+    .btn-primary { background: #4f46e5; color: white; box-shadow: 0 2px 8px rgba(79, 70, 229, 0.2); }
+    .btn-primary:hover { background: #4338ca; transform: translateY(-1px); }
+    .btn-success { background: #10b981; color: white; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2); }
+    .btn-success:hover { background: #059669; transform: translateY(-1px); }
+    .btn-warning { background: #f59e0b; color: white; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2); }
+    .btn-warning:hover { background: #d97706; transform: translateY(-1px); }
+    .btn-danger { background: #ef4444; color: white; box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2); }
+    .btn-danger:hover { background: #dc2626; transform: translateY(-1px); }
+
+    .button-container { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; margin-top: 8px; }
+
+    /* --- 6. Table & Lists --- */
+    .table-container { border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; }
+    .table { width: 100%; border-collapse: collapse; }
+    .table th { background: #f8fafc; color: #475569; font-weight: 700; padding: 16px; text-align: left; border-bottom: 2px solid #e2e8f0; }
+    .table td { padding: 16px; border-bottom: 1px solid #f1f5f9; color: #1e293b; vertical-align: middle; }
+    .table tr:last-child td { border-bottom: none; }
+    .table tr:hover { background-color: #f8fafc; }
+
+    /* --- 7. Status Badges & Buttons --- */
+    .status-btn {
+      padding: 8px 16px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; font-weight: 500;
+      cursor: pointer; background: white; color: #64748b; transition: all 0.2s; margin-right: 4px;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .status-btn:hover { background: #f1f5f9; border-color: #cbd5e1; }
+    .status-present { background: #dcfce7; border-color: #bbf7d0; color: #166534; }
+    .status-present:hover { background: #bbf7d0; }
+    .status-leave { background: #dbeafe; border-color: #bfdbfe; color: #1e40af; }
+    .status-leave:hover { background: #bfdbfe; }
+    .status-absent { background: #fee2e2; border-color: #fecaca; color: #991b1b; }
+    .status-absent:hover { background: #fecaca; }
+
+    .badge { padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; letter-spacing: 0.3px; }
+    .badge-present { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+    .badge-leave { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+    .badge-absent { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+
+    /* --- 8. Summary Cards --- */
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 20px; }
+    .summary-card {
+      background: white; border-radius: 20px; padding: 24px 20px; text-align: center;
+      border: 1px solid #f1f5f9; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      position: relative; overflow: hidden;
+    }
+    .summary-card::after { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; }
+    .summary-present::after { background: #10b981; }
+    .summary-leave::after { background: #3b82f6; }
+    .summary-absent::after { background: #ef4444; }
+    .summary-number { font-size: 32px; font-weight: 800; line-height: 1; margin-bottom: 8px; }
+
+    /* --- 9. Mobile Student Card --- */
+    .student-card {
+      background: white; border: 1px solid #e2e8f0; border-radius: 18px; padding: 18px;
+      margin-bottom: 16px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03); 
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .student-name {
+      font-size: 1.1rem; font-weight: 700; color: #1e293b;
+      display: flex; justify-content: space-between; align-items: center;
+      padding-bottom: 12px; border-bottom: 1px dashed #e2e8f0;
+    }
+
+    /* --- 10. Responsive Fixes --- */
+    @media (min-width: 768px) {
+      .form-row { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; }
+      .form-row .form-group { flex: 1; min-width: 120px; }
+      .mobile-only { display: none; }
+      .desktop-only { display: block; }
+    }
+    
+    @media (max-width: 767px) {
+      .attendance-page { padding: 6px !important; }
+      .main-container { padding: 12px 10px !important; border-radius: 18px !important; margin: 0 auto !important; box-shadow: 0 4px 16px rgba(0,0,0,0.05) !important; }
+      .card { padding: 12px !important; margin-bottom: 10px !important; border-radius: 12px !important; }
+      .header-card { padding: 14px 16px !important; margin-bottom: 10px !important; border-radius: 16px !important; }
+      .header-text h1 { font-size: 1.1rem; }
+      .header-text p { font-size: 0.75rem; margin-top: 2px; }
+      .header-icon { width: 40px; height: 40px; font-size: 1.4rem; border-radius: 12px; }
+      .form-row { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+      .form-row .form-group:first-child { grid-column: 1 / -1; }
+      .form-label { font-size: 0.8rem; margin-bottom: 3px; }
+      .form-control { padding: 8px 10px; font-size: 0.85rem; border-radius: 8px; border-width: 1.5px; }
+      .button-container { display: flex !important; gap: 6px; justify-content: flex-end; }
+      .button-container .btn { padding: 7px 12px; font-size: 0.78rem; border-radius: 8px; }
+      .button-container .btn .btn-label { display: none; }
+      .mobile-only { display: block; }
+      .desktop-only { display: none; }
+      .status-btn { flex: 1; justify-content: center; padding: 8px; font-size: 12px; border-radius: 10px; }
+      .student-card > div:last-child { display: flex; gap: 6px; }
+      .student-card { padding: 12px; margin-bottom: 10px; border-radius: 12px; }
+      .student-name { font-size: 0.95rem; padding-bottom: 8px; }
+      .summary-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+      .summary-card { padding: 12px 6px; border-radius: 12px; }
+      .summary-number { font-size: 22px; }
+      .summary-text { font-size: 0.75rem; }
+    }
+
+    .hidden { display: none !important; }
+    .text-green-600 { color: #16a34a; }
+    .text-blue-600 { color: #2563eb; }
+    .text-red-600 { color: #dc2626; }
+    
+    /* Modal */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);
+      z-index: 9999; display: flex; justify-content: center; align-items: center;
+    }
+    .modal {
+      background: white; border-radius: 24px; padding: 32px; width: 90%; max-width: 400px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      animation: modalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes modalPop { from { transform: scale(0.95) translateY(10px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+    .modal-title { font-size: 1.25rem; font-weight: 700; color: #0f172a; margin-bottom: 12px; text-align: center; }
+    .modal-message { color: #64748b; text-align: center; line-height: 1.6; }
+    .modal-actions { display: flex; gap: 12px; margin-top: 24px; }
+    .btn-modal { flex: 1; border-radius: 12px; padding: 12px; font-weight: 600; cursor: pointer; border: none; }
+    
+    /* ✅ Updated Warning Box (Flexible for Holidays) */
+    .holiday-warning {
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      color: #92400e;
+      padding: 16px;
+      border-radius: 16px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      animation: fadeIn 0.3s ease;
+    }
+    
+    /* สีพิเศษสำหรับวันหยุดพิเศษ (Special Holiday Color) - สีชมพู/แดง */
+    .holiday-special {
+      background: #fdf2f8;
+      border: 1px solid #fbcfe8;
+      color: #be185d; 
+    }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+    
+    /* Status Messages */
+    .status-message {
+      position: fixed; top: 24px; left: 50%; transform: translateX(-50%);
+      padding: 12px 24px; border-radius: 50px; font-weight: 600; font-size: 0.95rem;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      z-index: 9999;
+      animation: slideDown 0.3s ease-out;
+    }
+    .status-success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+    .status-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    .status-loading { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
+    @keyframes slideDown { from { transform: translate(-50%, -100%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+
+  </style>
+</head>
+<body>
+
+<div class="attendance-page">
+  <div class="main-container">
+    
+    <!-- Header -->
+    <div class="header-card mb-4">
+      <div class="header-text" style="position: relative; z-index: 10;">
+        <h1>เช็คชื่อรายวัน</h1>
+        <p>ระบบบันทึกการเข้าเรียนออนไลน์</p>
+      </div>
+      <div class="header-icon">
+        <span>📅</span>
+      </div>
+    </div>
+
+    <!-- ✅ Holiday/Weekend Warning (Dynamic) -->
+    <div id="holidayWarningContainer" class="holiday-warning hidden">
+      <div style="font-size: 1.5rem; margin-bottom: 8px;">⚠️</div>
+      <div id="holidayTitle" style="font-weight: 700;"></div>
+      <div style="font-size: 0.9rem; opacity: 0.8;">กรุณาตรวจสอบวันที่ก่อนบันทึกข้อมูล</div>
+    </div>
+
+    <!-- Filters & Actions -->
+    <div class="card">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">📅 วันที่</label>
+          <input type="date" id="attendanceDate" class="form-control" />
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">🏫 ระดับชั้น</label>
+          <select id="gradeSelect" class="form-control">
+            <option value="">เลือกชั้น</option>
+            <option value="ป.1">ป.1</option>
+            <option value="ป.2">ป.2</option>
+            <option value="ป.3">ป.3</option>
+            <option value="ป.4">ป.4</option>
+            <option value="ป.5">ป.5</option>
+            <option value="ป.6">ป.6</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">🚪 ห้อง</label>
+          <select id="classSelect" class="form-control">
+            <option value="">เลือกห้อง</option>
+            <option value="1">ห้อง 1</option>
+            <option value="2">ห้อง 2</option>
+          </select>
+        </div>
+      </div>
+      
+      <!-- Action Buttons -->
+      <div class="button-container">
+        <button onclick="toggleAttendanceSort()" class="btn" style="background:#e0e7ff;color:#4f46e5;border:1px solid #c7d2fe;" id="btnAttSortToggle">
+          <span>↕️</span> <span class="btn-label" id="btnAttSortLabel">ชาย→หญิง</span>
+        </button>
+        <button onclick="forceReloadStudents()" class="btn btn-primary">
+          <span>🔄</span> <span class="btn-label">รีเฟรช</span>
+        </button>
+        <button onclick="resetAllStatus()" class="btn btn-warning">
+          <span>↺</span> <span class="btn-label">รีเซ็ต</span>
+        </button>
+        <button onclick="confirmDeleteAttendance()" class="btn btn-danger">
+          <span>🗑️</span> <span class="btn-label">ลบข้อมูล</span>
+        </button>
+        <button onclick="saveDailyAttendance()" class="btn btn-success">
+          <span>💾</span> <span class="btn-label">บันทึก</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Status Message Display -->
+    <div id="statusMessage" class="hidden"></div>
+
+    <!-- Student List Section -->
+    <div class="card">
+      <h3 style="font-size: 1.1rem; font-weight: 700; color: #334155; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+        <span style="background: #e0e7ff; color: #4f46e5; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">📝</span>
+        รายชื่อนักเรียน
+      </h3>
+      
+      <!-- Desktop Table -->
+      <div class="desktop-only">
+        <div class="table-container">
+          <table class="table">
+            <thead>
+              <tr>
+                <th style="width: 10%;">ลำดับ</th>
+                <th style="width: 30%;">ชื่อ - นามสกุล</th>
+                <th style="width: 20%;">สถานะ</th>
+                <th style="width: 40%;">การเช็คชื่อ</th>
+              </tr>
+            </thead>
+            <tbody id="attendanceBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Mobile Cards -->
+      <div class="mobile-only" id="attendanceCards"></div>
+      
+      <!-- Empty State -->
+      <div id="emptyState" class="hidden" style="text-align: center; padding: 40px; color: #94a3b8;">
+        <div style="font-size: 3rem; margin-bottom: 10px; opacity: 0.5;">📋</div>
+        <p>ยังไม่มีรายชื่อนักเรียน<br>กรุณาเลือก ชั้น/ห้อง ด้านบน</p>
+      </div>
+    </div>
+    
+    <!-- Summary -->
+    <div class="card" style="background: #f8fafc; border: none;">
+      <h3 style="font-size: 1.1rem; font-weight: 700; color: #334155; margin-bottom: 16px; text-align: center;">
+        📊 สรุปยอดวันนี้
+      </h3>
+      <div class="summary-grid">
+        <div class="summary-card summary-present">
+          <div class="summary-number text-green-600" id="presentCount">0</div>
+          <div class="summary-text">มาเรียน</div>
+        </div>
+        <div class="summary-card summary-leave">
+          <div class="summary-number text-blue-600" id="leaveCount">0</div>
+          <div class="summary-text">ลา</div>
+        </div>
+        <div class="summary-card summary-absent">
+          <div class="summary-number text-red-600" id="absentCount">0</div>
+          <div class="summary-text">ขาด</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div id="confirmModal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">ยืนยันการลบข้อมูล</div>
+    <div class="modal-message" id="modalMessage">
+      คุณต้องการลบข้อมูลการเช็คชื่อของวันนี้ใช่หรือไม่?<br>
+      <strong>การกระทำนี้ไม่สามารถย้อนกลับได้</strong>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal btn-modal-cancel" onclick="closeConfirmModal()">
+        ยกเลิก
+      </button>
+      <button class="btn-modal btn-modal-confirm" style="background: #ef4444; color: white;" onclick="executeDelete()">
+        ยืนยันลบ
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ====================================================
+  // 🛡️ Core Logic with Special Holiday Feature
+  // ====================================================
+
+  let dailyLoadRequestToken = 0;
+
+  if (window.__ATTENDANCE_BOOTSTRAPPED__) {
+    // console.debug('[attendance] already bootstrapped — skip duplicate init');
+  } else {
+    window.__ATTENDANCE_BOOTSTRAPPED__ = true;
+
+    // --- Utilities ---
+    const DateUtils = {
+      getLocalDateString() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      },
+      parseLocalDate(dateStr) {
+        if (!dateStr) return null;
+        const [year, month, day] = dateStr.split('-').map(Number);
+        return new Date(year, month - 1, day);
+      },
+      isWeekend(dateStr) {
+        const date = this.parseLocalDate(dateStr);
+        if (!date) return false;
+        const day = date.getDay();
+        return day === 0 || day === 6;
+      }
+    };
+    window.DateUtils = DateUtils;
+
+    const Validator = {
+      isValidStatus(status) { return ['present', 'absent', 'leave'].includes(status); },
+      isValidGrade(grade) { return ['ป.1', 'ป.2', 'ป.3', 'ป.4', 'ป.5', 'ป.6'].includes(grade); },
+      isValidClassNo(classNo) { return parseInt(classNo, 10) >= 1; },
+      isValidDateFormat(dateStr) { return /^\d{4}-\d{2}-\d{2}$/.test(dateStr); },
+      isValidStudentId(id) { return id && String(id).trim().length > 0; },
+      sanitizeString(str) { return str ? String(str).trim().slice(0, 500) : ''; }
+    };
+    window.Validator = Validator;
+
+    const ErrorHandler = {
+      log(context, error, info = {}) { console.error(`❌ [${context}]`, error, info); },
+      getUserMessage(error) {
+        const msg = error?.message || String(error);
+        if (msg.includes('network')) return 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้';
+        if (msg.includes('timeout')) return 'หมดเวลาเชื่อมต่อ กรุณาลองใหม่';
+        return msg;
+      }
+    };
+    window.ErrorHandler = ErrorHandler;
+
+    // --- State ---
+    window.dailyStudents = window.dailyStudents || [];
+    window.AttendanceState = window.AttendanceState || {
+      isLoadingStudents: false, 
+      isSaving: false, 
+      isDeleting: false, 
+      loadingTimeout: null, 
+      LOADING_TIMEOUT: 15000, 
+      lastLoadedKey: null,
+      // ✅ Cache สำหรับวันหยุดพิเศษ
+      specialHolidays: {} 
+    };
+
+    // --- Init ---
+    function __attendanceInit() {
+      const dateEl = document.getElementById('attendanceDate');
+      const gradeEl = document.getElementById('gradeSelect');
+      const classEl = document.getElementById('classSelect');
+
+      if (!dateEl) return;
+      dateEl.value = DateUtils.getLocalDateString();
+
+      // ✅ Load holidays from backend on startup
+      loadSpecialHolidays();
+
+      dateEl.addEventListener('change', () => { 
+          // เปลี่ยนจาก checkWeekend เป็น updateHolidayWarning เพื่อรองรับวันหยุดพิเศษ
+          updateHolidayWarning(); 
+          tryAutoLoadDaily(); 
+      });
+      gradeEl.addEventListener('change', tryAutoLoadDaily);
+      classEl.addEventListener('change', tryAutoLoadDaily);
+
+      // Check on load
+      setTimeout(() => {
+          updateHolidayWarning(); 
+          updateEmptyState();
+      }, 500);
+    }
+
+    document.addEventListener('DOMContentLoaded', __attendanceInit);
+    if (document.readyState !== 'loading') setTimeout(__attendanceInit, 0);
+
+    // ===========================================
+    // ✅ Logic วันหยุด (ใหม่)
+    // ===========================================
+    
+    // 1. โหลดข้อมูลวันหยุดจาก Backend
+    async function loadSpecialHolidays() {
+        if(typeof google === 'undefined') return;
+        
+        try {
+            const currentYear = new Date().getFullYear();
+            // เรียกฟังก์ชัน Backend ชื่อ 'getSpecialHolidays' (ต้องสร้างใน GAS)
+            await new Promise((resolve) => {
+                google.script.run
+                    .withSuccessHandler((holidays) => {
+                        window.AttendanceState.specialHolidays = holidays || {};
+                        // console.log('✅ Loaded Special Holidays:', window.AttendanceState.specialHolidays);
+                        updateHolidayWarning(); // อัปเดตหน้าจอทันทีเมื่อข้อมูลมา
+                        resolve();
+                    })
+                    .withFailureHandler((err) => {
+                        // console.warn('Could not load holidays:', err);
+                        resolve(); // Fail silently
+                    })
+                    .getSpecialHolidays(currentYear);
+            });
+        } catch(e) { console.error(e); }
+    }
+
+    // 2. ฟังก์ชันตรวจสอบและแจ้งเตือน
+    function updateHolidayWarning() {
+      const dateInput = document.getElementById('attendanceDate').value;
+      const warningContainer = document.getElementById('holidayWarningContainer');
+      const holidayTitle = document.getElementById('holidayTitle');
+      
+      if (!dateInput || !warningContainer || !holidayTitle) return;
+      
+      const isWeekend = DateUtils.isWeekend(dateInput);
+      const specialHolidayName = window.AttendanceState.specialHolidays[dateInput];
+      
+      // ล้างคลาสเก่าออกก่อนเสมอ
+      warningContainer.className = 'holiday-warning';
+      
+      if (specialHolidayName) {
+        // กรณีวันหยุดพิเศษ -> ใช้สีชมพู (เพิ่ม class holiday-special)
+        warningContainer.classList.add('holiday-special');
+        holidayTitle.innerHTML = `⚠️ วันหยุด: ${specialHolidayName}`;
+        warningContainer.classList.remove('hidden');
+      } else if (isWeekend) {
+        // กรณีเสาร์-อาทิตย์ -> ใช้สีเหลืองเดิม
+        holidayTitle.innerHTML = 'วันนี้เป็นวันหยุดเสาร์-อาทิตย์';
+        warningContainer.classList.remove('hidden');
+      } else {
+        // วันปกติ
+        warningContainer.classList.add('hidden');
+      }
+    }
+    
+    function updateEmptyState() {
+        const hasStudents = window.dailyStudents && window.dailyStudents.length > 0;
+        const emptyEl = document.getElementById('emptyState');
+        
+        if (hasStudents) {
+            emptyEl.classList.add('hidden');
+        } else {
+            emptyEl.classList.remove('hidden');
+        }
+    }
+
+    // Debounce เพื่อป้องกัน grade+class change event ยิง loadDailyStudents 2 ครั้งติดกัน
+    let _autoLoadTimer = null;
+    function tryAutoLoadDaily() {
+      if (_autoLoadTimer) clearTimeout(_autoLoadTimer);
+      _autoLoadTimer = setTimeout(function() {
+        _autoLoadTimer = null;
+        const date = document.getElementById('attendanceDate').value;
+        const grade = document.getElementById('gradeSelect').value;
+        const classNo = document.getElementById('classSelect').value;
+        if (date && grade && classNo) loadDailyStudents();
+      }, 300); // รอ 300ms ให้ event ทั้งหมด fire เสร็จก่อน
+    }
+
+    // --- Core Functions ---
+    async function loadDailyStudents() {
+      const State = window.AttendanceState;
+      dailyLoadRequestToken++;
+      const token = dailyLoadRequestToken;
+
+      const date = document.getElementById('attendanceDate').value;
+      const grade = document.getElementById('gradeSelect').value;
+      const classNo = document.getElementById('classSelect').value;
+
+      if (!Validator.isValidDateFormat(date) || !Validator.isValidGrade(grade) || !Validator.isValidClassNo(classNo)) return;
+
+      const key = `${grade}-${classNo}-${date}`;
+
+      try {
+        // Force clear previous loading state (ยกเลิก request เก่าทันที)
+        if (State.loadingTimeout) {
+          clearTimeout(State.loadingTimeout);
+          State.loadingTimeout = null;
+        }
+        
+        // Reset state ทันทีเมื่อเริ่ม load ใหม่
+        State.isLoadingStudents = true;
+        State.lastLoadedKey = key;
+        
+        // console.log('🔄 Loading students:', key);
+        showStatusMessage('⏳ กำลังโหลดข้อมูล...', 'loading');
+
+        // Set timeout to prevent infinite loading
+        State.loadingTimeout = setTimeout(() => {
+          if (token === dailyLoadRequestToken) {
+            State.isLoadingStudents = false;
+            State.lastLoadedKey = null;
+            showStatusMessage('⚠️ หมดเวลาโหลดข้อมูล กรุณาลองใหม่', 'error');
+            setTimeout(hideStatusMessage, 3000);
+          }
+        }, State.LOADING_TIMEOUT);
+
+        const d = DateUtils.parseLocalDate(date);
+        
+        const list = await new Promise((resolve, reject) => {
+            if(typeof google === 'undefined') { reject(new Error('No Google Script')); return; }
+            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)
+                .getStudentsForAttendance(grade, classNo);
+        });
+        
+        // ถ้า token ไม่ตรง แสดงว่ามี request ใหม่แล้ว → ยกเลิก request นี้
+        if (token !== dailyLoadRequestToken) {
+          // console.log('❌ Request cancelled (new request started):', key);
+          return;
+        }
+
+        const saved = await new Promise((resolve) => {
+            google.script.run.withSuccessHandler(resolve).withFailureHandler(() => resolve({records:{}}))
+                .getSavedAttendance(grade, classNo, d.getFullYear(), d.getMonth());
+        });
+        
+        if (token !== dailyLoadRequestToken) {
+          // console.log('❌ Request cancelled (new request started):', key);
+          return;
+        }
+
+        const records = saved?.records || {};
+        window.dailyStudents = (list || []).map(s => {
+            const status = records[`${s.id}_${d.getDate()}`] || 'present';
+            return {
+                id: Validator.sanitizeString(s.id),
+                title: s.title || '',
+                name: `${s.title||''}${s.firstname||''} ${s.lastname||''}`.trim(),
+                status: Validator.isValidStatus(status) ? status : 'present'
+            };
+        });
+
+        if (window.dailyStudents.length === 0) showStatusMessage('⚠️ ไม่พบรายชื่อนักเรียน', 'error');
+        else showStatusMessage(`✅ โหลดข้อมูล ${window.dailyStudents.length} คน`, 'success');
+
+        renderDailyStudents();
+        updateSummary();
+
+      } catch (err) {
+        if (token !== dailyLoadRequestToken) return;
+        ErrorHandler.log('load', err);
+        showStatusMessage('❌ ' + ErrorHandler.getUserMessage(err), 'error');
+        window.dailyStudents = [];
+        renderDailyStudents();
+        updateSummary();
+      } finally {
+        // Clear loading timeout
+        if (State.loadingTimeout) {
+          clearTimeout(State.loadingTimeout);
+          State.loadingTimeout = null;
+        }
+
+        // Always clear loading state — request ใหม่จะ set state ใหม่เองอยู่แล้ว
+        State.isLoadingStudents = false;
+        State.lastLoadedKey = null;
+
+        if (token === dailyLoadRequestToken) {
+            // console.log('✅ Loading complete, state cleared:', key);
+            setTimeout(hideStatusMessage, 2000);
+            updateEmptyState();
+        } else {
+            // console.log('⚠️ Outdated request finished:', key);
+        }
+      }
+    }
+
+    // Sort mode: 'gender' = ชาย→หญิง, 'id' = เลขประจำตัว
+    var _attSortMode = 'gender';
+    
+    window.toggleAttendanceSort = function() {
+      _attSortMode = _attSortMode === 'gender' ? 'id' : 'gender';
+      var label = document.getElementById('btnAttSortLabel');
+      if (label) label.textContent = _attSortMode === 'gender' ? 'ชาย→หญิง' : 'เลขประจำตัว';
+      renderDailyStudents();
+    };
+
+    function renderDailyStudents() {
+      const tbody = document.getElementById('attendanceBody');
+      const cards = document.getElementById('attendanceCards');
+      tbody.innerHTML = ''; cards.innerHTML = '';
+
+      // เรียงข้อมูลตาม mode
+      var sorted = [...window.dailyStudents].sort((a, b) => {
+        if (_attSortMode === 'gender') {
+          const isMaleA = (a.title || '').includes('ชาย');
+          const isMaleB = (b.title || '').includes('ชาย');
+          if (isMaleA && !isMaleB) return -1;
+          if (!isMaleA && isMaleB) return 1;
+        }
+        return String(a.id).localeCompare(String(b.id), undefined, {numeric: true});
+      });
+      // อัปเดต dailyStudents ให้ตรงกับลำดับที่แสดง (เพื่อ save ถูกต้อง)
+      window.dailyStudents = sorted;
+
+      sorted.forEach((s, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${i + 1}</td>
+          <td><div style="font-weight:600;">${s.name}</div><div style="font-size:0.85em;color:#64748b;">${s.id}</div></td>
+          <td>${getBadge(s.status)}</td>
+          <td>${renderButtons(s.id, s.status)}</td>
+        `;
+        tbody.appendChild(tr);
+
+        const card = document.createElement('div');
+        card.className = 'student-card';
+        card.innerHTML = `
+          <div class="student-name">
+            <span>${i + 1}. ${s.name}</span>
+            ${getBadge(s.status)}
+          </div>
+          <div style="font-size:0.9em;color:#64748b;margin-bottom:8px;">รหัส: ${s.id}</div>
+          <div>${renderButtons(s.id, s.status)}</div>
+        `;
+        cards.appendChild(card);
+      });
+    }
+
+    function renderButtons(id, status) {
+        const isActive = (val) => status === val;
+        return `
+          <button class="status-btn ${isActive('present')?'status-present':''}" onclick="setStatus('${id}', 'present')">
+            <span>✅</span> มา
+          </button>
+          <button class="status-btn ${isActive('leave')?'status-leave':''}" onclick="setStatus('${id}', 'leave')">
+            <span>📝</span> ลา
+          </button>
+          <button class="status-btn ${isActive('absent')?'status-absent':''}" onclick="setStatus('${id}', 'absent')">
+            <span>❌</span> ขาด
+          </button>
+        `;
+    }
+
+    function getBadge(status) {
+      const map = {
+        present: '<span class="badge badge-present">มาเรียน</span>',
+        leave: '<span class="badge badge-leave">ลา</span>',
+        absent: '<span class="badge badge-absent">ขาด</span>'
+      };
+      return map[status] || '';
+    }
+
+    window.setStatus = function(id, newStatus) {
+      const s = window.dailyStudents.find(x => x.id == id);
+      if (s) {
+          s.status = newStatus;
+          renderDailyStudents(); 
+          updateSummary();
+      }
+    };
+
+    window.resetAllStatus = function() {
+        if (!window.dailyStudents.length) return;
+        if (!confirm('รีเซ็ตทุกคนเป็น "มาเรียน"?')) return;
+        window.dailyStudents.forEach(s => s.status = 'present');
+        renderDailyStudents();
+        updateSummary();
+        showStatusMessage('✅ รีเซ็ตเรียบร้อย', 'success');
+        setTimeout(hideStatusMessage, 1500);
+    };
+
+    function updateSummary() {
+      const count = (st) => window.dailyStudents.filter(s => s.status === st).length;
+      document.getElementById('presentCount').textContent = count('present');
+      document.getElementById('leaveCount').textContent = count('leave');
+      document.getElementById('absentCount').textContent = count('absent');
+    }
+    
+    // --- Save & Delete ---
+    window.saveDailyAttendance = async function() {
+        const State = window.AttendanceState;
+        if(State.isSaving) return;
+        
+        const date = document.getElementById('attendanceDate').value;
+        const grade = document.getElementById('gradeSelect').value;
+        const classNo = document.getElementById('classSelect').value;
+        
+        if (!Validator.isValidDateFormat(date) || !window.dailyStudents.length) {
+            showStatusMessage('⚠️ ข้อมูลไม่พร้อมบันทึก', 'error');
+            return;
+        }
+
+        try {
+            State.isSaving = true;
+            showStatusMessage('⏳ กำลังบันทึก...', 'loading');
+            
+            const records = {};
+            window.dailyStudents.forEach(s => records[s.id] = s.status);
+            
+            await new Promise((resolve, reject) => {
+                google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)
+                    .saveAttendance({ mode:'daily', date, grade, classNo, records });
+            });
+            
+            showStatusMessage('✅ บันทึกสำเร็จ', 'success');
+        } catch(e) {
+            showStatusMessage('❌ บันทึกไม่สำเร็จ', 'error');
+        } finally {
+            State.isSaving = false;
+            setTimeout(hideStatusMessage, 2000);
+        }
+    };
+
+    const modal = document.getElementById('confirmModal');
+    window.confirmDeleteAttendance = function() {
+        const date = document.getElementById('attendanceDate').value;
+        if(!date) return showStatusMessage('กรุณาเลือกวันที่', 'error');
+        modal.classList.remove('hidden');
+    };
+    window.closeConfirmModal = function() { modal.classList.add('hidden'); };
+    
+    window.executeDelete = async function() {
+        const State = window.AttendanceState;
+        if(State.isDeleting) return;
+        closeConfirmModal();
+        
+        const date = document.getElementById('attendanceDate').value;
+        const grade = document.getElementById('gradeSelect').value;
+        const classNo = document.getElementById('classSelect').value;
+        const d = DateUtils.parseLocalDate(date);
+
+        try {
+            State.isDeleting = true;
+            showStatusMessage('⏳ กำลังลบข้อมูล...', 'loading');
+            
+            await new Promise((resolve, reject) => {
+                google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)
+                    .deleteAttendanceData({ grade, classNo, year:d.getFullYear(), month:d.getMonth(), day:d.getDate() });
+            });
+            
+            window.dailyStudents = [];
+            renderDailyStudents();
+            updateSummary();
+            updateEmptyState();
+            showStatusMessage('✅ ลบข้อมูลสำเร็จ', 'success');
+        } catch(e) {
+            showStatusMessage('❌ ลบไม่สำเร็จ', 'error');
+        } finally {
+            State.isDeleting = false;
+            setTimeout(hideStatusMessage, 2000);
+        }
+    };
+    
+    window.forceReloadStudents = function() {
+        window.dailyStudents = [];
+        loadDailyStudents();
+    };
+
+    function showStatusMessage(msg, type) {
+        const el = document.getElementById('statusMessage');
+        el.className = `status-message status-${type}`;
+        el.innerHTML = msg;
+        el.classList.remove('hidden');
+    }
+    function hideStatusMessage() {
+        document.getElementById('statusMessage').classList.add('hidden');
+    }
+  }
+</script>
+</body>
+</html>

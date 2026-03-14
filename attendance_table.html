@@ -1,0 +1,1825 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบตารางการเข้าเรียน</title>
+  <!-- Google Fonts Sarabun -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    /* ตั้ง Sarabun เป็นฟอนต์หลัก */
+    body {
+      font-family: 'Sarabun', sans-serif;
+      font-size: 16px;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+      font-weight: 600;
+    }
+
+    .btn {
+      font-family: 'Sarabun', sans-serif;
+      font-weight: 500;
+    }
+
+    .form-label {
+      font-weight: 500;
+    }
+
+    .form-control, .form-select {
+      font-family: 'Sarabun', sans-serif;
+    }
+
+    .attendance-table th, .attendance-table td {
+      text-align: center;
+      vertical-align: middle;
+      font-size: 0.97rem;
+      padding: 2px 5px;
+      white-space: nowrap;
+    }
+    .attendance-table .student-name {
+      text-align: left;
+      min-width: 130px;
+      font-size: 1rem;
+      font-weight: 500;
+      line-height: 1.2;
+      padding: 6px 8px;
+    }
+    .attendance-table .student-name span {
+      display: block;
+    }
+    .attendance-table th.vertical-date {
+      font-size: 0.75rem !important;
+      padding: 0 !important;
+      min-width: 26px;
+      width: 26px;
+    }
+    .attendance-table .summary-col {
+      background: #f0f7ff;
+      font-weight: bold;
+    }
+    .attendance-table .day-of-week {
+      font-size: 0.7em;
+      color: #888;
+    }
+    .attendance-table .holiday-day {
+      background-color: #ffebee !important;
+      color: #d32f2f !important;
+      font-weight: bold !important;
+    }
+    .attendance-table .holiday-day .day-of-week {
+      color: #d32f2f !important;
+    }
+
+    /* Progress Bar Styles */
+    .export-progress {
+      margin: 20px 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      border-radius: 12px;
+      border-left: 5px solid #007bff;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .progress-container {
+      margin: 15px 0;
+    }
+
+    .progress {
+      height: 28px;
+      background: #e9ecef;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #007bff, #0056b3, #007bff);
+      background-size: 200% 100%;
+      border-radius: 14px;
+      transition: width 0.4s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      font-size: 14px;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+      animation: gradientMove 2s linear infinite;
+    }
+
+    @keyframes gradientMove {
+      0% { background-position: 0% 0%; }
+      100% { background-position: 200% 0%; }
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.6; }
+      100% { opacity: 1; }
+    }
+
+    @keyframes shimmer {
+      0% { background-position: -200px 0; }
+      100% { background-position: calc(200px + 100%) 0; }
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .export-status {
+      font-size: 15px;
+      margin: 8px 0;
+      color: #333;
+    }
+
+    .export-status strong {
+      color: #007bff;
+    }
+
+    .month-status {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 15px 0;
+    }
+
+    .month-badge {
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+
+    .month-pending { background: #e9ecef; color: #6c757d; }
+    .month-processing { 
+      background: linear-gradient(90deg, #fff3cd, #ffeeba, #fff3cd);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      color: #856404; 
+    }
+    .month-success { background: #d1e7dd; color: #0f5132; }
+    .month-error { background: #f8d7da; color: #721c24; }
+
+    .quick-actions {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 15px 0;
+    }
+
+    .control-section {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 15px 0;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      border-left: 4px solid #007bff;
+    }
+
+    .auto-load-toggle {
+      background: #e8f4fd;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #b3d9ff;
+      margin: 10px 0;
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+
+    .status-ready { background: #28a745; }
+    .status-loading { background: #ffc107; animation: pulse 1s infinite; }
+    .status-error { background: #dc3545; }
+
+    .form-control:focus, .form-select:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+
+    .btn-group-custom {
+      gap: 8px;
+    }
+
+    .loading-shimmer {
+      background: linear-gradient(90deg, #f0f0f0 25%, transparent 37%, #f0f0f0 63%);
+      background-size: 400% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+
+    .table-actions {
+      background: #f8f9fa;
+      padding: 10px;
+      border-radius: 6px;
+      margin: 10px 0;
+      border: 1px solid #dee2e6;
+    }
+
+    /* Export Modal/Overlay Styles */
+    .export-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      backdrop-filter: blur(3px);
+    }
+
+    .export-modal {
+      background: white;
+      border-radius: 16px;
+      padding: 30px;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      animation: modalSlideIn 0.3s ease;
+    }
+
+    @keyframes modalSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-30px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .export-modal-header {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    .export-modal-header h4 {
+      color: #333;
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .export-modal-header .subtitle {
+      color: #666;
+      font-size: 14px;
+      margin-top: 5px;
+    }
+
+    .export-icon {
+      font-size: 48px;
+      margin-bottom: 15px;
+    }
+
+    .export-icon.spinning {
+      animation: spin 2s linear infinite;
+    }
+
+    .export-percentage {
+      font-size: 48px;
+      font-weight: 700;
+      color: #007bff;
+      text-align: center;
+      margin: 20px 0;
+      text-shadow: 0 2px 4px rgba(0,123,255,0.2);
+    }
+
+    .export-step {
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 8px;
+      background: #f8f9fa;
+      transition: all 0.3s ease;
+    }
+
+    .export-step.active {
+      background: #e3f2fd;
+      border-left: 4px solid #007bff;
+    }
+
+    .export-step.completed {
+      background: #e8f5e9;
+      border-left: 4px solid #28a745;
+    }
+
+    .export-step-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 12px;
+      font-size: 14px;
+    }
+
+    .export-step.pending .export-step-icon {
+      background: #e9ecef;
+      color: #6c757d;
+    }
+
+    .export-step.active .export-step-icon {
+      background: #007bff;
+      color: white;
+      animation: pulse 1s infinite;
+    }
+
+    .export-step.completed .export-step-icon {
+      background: #28a745;
+      color: white;
+    }
+
+    .export-step-text {
+      flex: 1;
+    }
+
+    .export-step-text .title {
+      font-weight: 500;
+      color: #333;
+    }
+
+    .export-step-text .detail {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .cancel-btn {
+      width: 100%;
+      margin-top: 20px;
+      padding: 12px;
+      border-radius: 8px;
+    }
+
+    /* ZIP Progress specific styles */
+    .zip-progress-months {
+      max-height: 200px;
+      overflow-y: auto;
+      margin: 15px 0;
+      padding: 10px;
+      background: #f8f9fa;
+      border-radius: 8px;
+    }
+
+    .zip-month-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      margin: 4px 0;
+      border-radius: 6px;
+      background: white;
+      border: 1px solid #e9ecef;
+      transition: all 0.3s ease;
+    }
+
+    .zip-month-item.processing {
+      background: #fff3cd;
+      border-color: #ffc107;
+    }
+
+    .zip-month-item.completed {
+      background: #d4edda;
+      border-color: #28a745;
+    }
+
+    .zip-month-item.error {
+      background: #f8d7da;
+      border-color: #dc3545;
+    }
+
+    .zip-month-icon {
+      width: 24px;
+      height: 24px;
+      margin-right: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .zip-month-icon .spinner-border {
+      width: 16px;
+      height: 16px;
+    }
+
+    @media (max-width: 600px) {
+      .attendance-table th, .attendance-table td { font-size: 0.78rem; }
+      .attendance-table .student-name { font-size: 0.92rem; }
+      .control-section { padding: 10px; }
+      .btn-group-custom { flex-direction: column; }
+      .export-modal { padding: 20px; }
+      .export-percentage { font-size: 36px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container my-4">
+    <h4>📘 บันทึกเวลาเรียน (เช็คชื่อรายเดือน)</h4>
+    
+    <!-- ✨ ส่วนควบคุมหลัก -->
+    <div class="control-section">
+      <h6><i class="bi bi-gear"></i> การตั้งค่าและควบคุม</h6>
+      
+      <!-- Auto-load Toggle -->
+      <div class="auto-load-toggle">
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="auto-load-enabled" checked>
+          <label class="form-check-label" for="auto-load-enabled">
+            <strong>🚀 โหลดอัตโนมัติ</strong> - โหลดตารางทันทีเมื่อเลือกข้อมูลครบ
+          </label>
+        </div>
+      </div>
+
+      <!-- Status Indicator -->
+      <div id="system-status" class="mb-3">
+        <span class="status-indicator status-ready"></span>
+        <small class="text-muted">พร้อมใช้งาน</small>
+      </div>
+      
+      <div class="row g-2 mb-3">
+        <div class="col-md-2 col-6">
+          <label class="form-label">ชั้น</label>
+          <select id="table-grade" class="form-select">
+            <option value="">เลือกชั้น</option>
+            <option>ป.1</option><option>ป.2</option><option>ป.3</option>
+            <option>ป.4</option><option>ป.5</option><option>ป.6</option>
+          </select>
+        </div>
+        <div class="col-md-2 col-6">
+          <label class="form-label">ห้อง</label>
+          <select id="table-class" class="form-select">
+            <option value="">เลือกห้อง</option>
+            <option>1</option><option>2</option><option>3</option>
+          </select>
+        </div>
+        <div class="col-md-3 col-6">
+          <label class="form-label">เดือน</label>
+          <select id="table-month" class="form-select">
+            <option value="">เลือกเดือน</option>
+            <option value="0">มกราคม</option><option value="1">กุมภาพันธ์</option>
+            <option value="2">มีนาคม</option><option value="3">เมษายน</option>
+            <option value="4">พฤษภาคม</option><option value="5">มิถุนายน</option>
+            <option value="6">กรกฎาคม</option><option value="7">สิงหาคม</option>
+            <option value="8">กันยายน</option><option value="9">ตุลาคม</option>
+            <option value="10">พฤศจิกายน</option><option value="11">ธันวาคม</option>
+          </select>
+        </div>
+        <div class="col-md-2 col-6">
+          <label class="form-label">ปี</label>
+          <select id="table-year" class="form-select">
+            <option value="">เลือกปี</option>
+            <!-- จะถูกสร้าง dynamic ใน JS -->
+          </select>
+        </div>
+        <div class="col-md-3 col-12">
+          <label class="form-label">การดำเนินการ</label>
+          <div class="btn-group-custom d-flex">
+            <button id="load-btn" class="btn btn-primary flex-fill">
+              <i class="bi bi-search"></i> แสดงผล
+            </button>
+            <button id="export-checklist-btn" class="btn btn-success flex-fill">
+              <i class="bi bi-list-check"></i> เช็คชื่อ
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading Progress for Table -->
+      <div id="table-progress" class="export-progress" style="display: none;">
+        <div class="export-status">
+          <strong id="table-progress-title">กำลังโหลดตาราง...</strong>
+        </div>
+        <div class="progress-container">
+          <div class="progress">
+            <div id="table-progress-bar" class="progress-bar" style="width: 0%;">0%</div>
+          </div>
+        </div>
+        <div id="table-current-action" class="export-status text-muted"></div>
+      </div>
+    </div>
+
+    <!-- ✨ Quick Actions Section -->
+    <div class="quick-actions">
+      <h6><i class="bi bi-lightning"></i> การดำเนินการด่วน</h6>
+      <div class="row g-2 mb-3">
+        <div class="col-md-4 col-12">
+          <button id="quick-current-month" class="btn btn-light w-100">
+            <i class="bi bi-calendar-today"></i> เดือนปัจจุบัน
+          </button>
+        </div>
+        <div class="col-md-4 col-12">
+          <button id="quick-prev-month" class="btn btn-light w-100">
+            <i class="bi bi-chevron-left"></i> เดือนก่อนหน้า
+          </button>
+        </div>
+        <div class="col-md-4 col-12">
+          <button id="quick-clear" class="btn btn-outline-light w-100">
+            <i class="bi bi-arrow-clockwise"></i> ล้างทั้งหมด
+          </button>
+        </div>
+      </div>
+      
+      <hr style="border-color: rgba(255,255,255,0.3); margin: 15px 0;">
+      
+      <h6><i class="bi bi-list-check"></i> ตารางเช็คชื่อ</h6>
+      <div class="row g-2">
+        <div class="col-md-6 col-12">
+          <button id="quick-checklist-current" class="btn btn-light w-100">
+            <i class="bi bi-calendar-check"></i> ส่งออกPDFเช็คชื่อเดือนนี้
+          </button>
+        </div>
+        <div class="col-md-6 col-12">
+          <button id="quick-checklist-zip" class="btn btn-outline-light w-100">
+            <i class="bi bi-file-zip"></i> รวมpdfเช็คชื่อทั้งปี ZIP
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table Actions (แสดงเมื่อมีตาราง) -->
+    <div id="table-actions" class="table-actions" style="display: none;">
+      <div class="row align-items-center">
+        <div class="col-md-6 col-12">
+          <h6 class="mb-0">
+            <i class="bi bi-table"></i> ตารางการเข้าเรียน
+            <span id="table-info" class="text-muted"></span>
+          </h6>
+        </div>
+        <div class="col-md-6 col-12 text-md-end">
+          <div class="btn-group-custom d-flex d-md-inline-flex">
+            <button id="refresh-table" class="btn btn-outline-primary btn-sm">
+              <i class="bi bi-arrow-clockwise"></i> รีเฟรช
+            </button>
+            <button id="quick-export" class="btn btn-success btn-sm">
+              <i class="bi bi-download"></i> รายงาน
+            </button>
+            <button id="quick-export-checklist" class="btn btn-warning btn-sm">
+              <i class="bi bi-list-check"></i> เช็คชื่อ
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Progress Section for ZIP Export (fallback) -->
+    <div id="bulk-progress" class="export-progress" style="display: none;">
+      <div class="export-status">
+        <strong id="progress-title">กำลังเตรียมการส่งออก...</strong>
+      </div>
+      
+      <div class="progress-container">
+        <div class="progress">
+          <div id="progress-bar" class="progress-bar" style="width: 0%;">0%</div>
+        </div>
+      </div>
+      
+      <div id="current-month" class="export-status text-muted"></div>
+      
+      <div class="month-status" id="month-status" style="display: none;"></div>
+      
+      <div id="export-results" class="mt-3" style="display: none;">
+        <h6>📁 ผลการส่งออก:</h6>
+        <div id="download-links"></div>
+        <div id="zip-download" class="mt-3" style="display: none;">
+          <div class="alert alert-success">
+            <h6>🎉 ส่งออกเสร็จสิ้น!</h6>
+            <a id="zip-download-link" href="#" target="_blank" class="btn btn-success btn-lg">
+              <i class="bi bi-download"></i> ดาวน์โหลด ZIP
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="loading-status" class="alert alert-info d-none">⏳ กำลังโหลด...</div>
+    <div id="attendance-table-wrapper"></div>
+  </div>
+
+  <!-- ✅ Export Progress Modal/Overlay - เพิ่มส่วนนี้ที่หายไป -->
+  <div id="export-overlay" class="export-overlay" style="display: none;">
+    <div class="export-modal">
+      <div class="export-modal-header">
+        <div id="export-modal-icon" class="export-icon">📄</div>
+        <h4 id="export-modal-title">กำลังส่งออก PDF</h4>
+        <div id="export-modal-subtitle" class="subtitle">กรุณารอสักครู่...</div>
+      </div>
+      
+      <div class="export-percentage" id="export-percentage">0%</div>
+      
+      <div class="progress-container">
+        <div class="progress">
+          <div id="export-progress-bar" class="progress-bar" style="width: 0%;">0%</div>
+        </div>
+      </div>
+      
+      <div id="export-steps">
+        <!-- Steps will be dynamically added -->
+      </div>
+      
+      <div id="export-months-container" class="zip-progress-months" style="display: none;">
+        <!-- Month progress for ZIP export -->
+      </div>
+      
+      <button id="cancel-export-btn" class="btn btn-outline-secondary cancel-btn" style="display: none;">
+        <i class="bi bi-x-circle"></i> ยกเลิก
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // ✅ Force cleanup system
+    (function forceCleanup() {
+      // console.log('🧹 Force cleanup system...');
+      
+      const buttonIds = [
+        'load-btn', 'export-checklist-btn',
+        'quick-export-checklist', 'quick-checklist-current', 'quick-checklist-zip',
+        'quick-current-month', 'quick-prev-month', 'quick-clear',
+        'refresh-table', 'quick-export',
+        'table-grade', 'table-class', 'table-month', 'table-year'
+      ];
+      
+      buttonIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          const newEl = el.cloneNode(true);
+          el.parentNode.replaceChild(newEl, el);
+        }
+      });
+      
+      delete window.attendanceSystemLoaded;
+      delete window.loadAttendanceTable;
+      delete window.exportAttendancePDF;
+      delete window.exportAttendanceChecklistPDF;
+      delete window.bulkExportChecklistPDF;
+      
+      // console.log('✅ Cleanup completed');
+    })();
+
+    // ✅ Main System
+    (function() {
+      'use strict';
+
+      if (window.attendanceSystemLoaded) {
+        // console.log('⚠️ ระบบถูกโหลดแล้ว - กำลังรีเซ็ต');
+        clearTimeout(window.loadingTableTimeout);
+        document.getElementById("attendance-table-wrapper").innerHTML = "";
+      }
+
+      window.attendanceSystemLoaded = true;
+      // console.log('✅ กำลังเริ่มต้นระบบการเข้าเรียนที่ปรับปรุงแล้ว');
+
+      const monthNames = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+      
+      let autoLoadEnabled = true;
+      let currentTableData = null;
+      let loadingTableTimeout = null;
+      let exportCancelled = false;
+
+      // ============================================================
+      // ✅ Export Progress Modal Functions - แก้ไขให้ตรวจสอบ null
+      // ============================================================
+      
+      // ✅ Reset modal กลับเป็นสถานะเริ่มต้น - แก้ปัญหา modal ค้าง
+      // ต้องประกาศก่อน showExportModal เพราะถูกเรียกใช้
+      function resetExportModal() {
+        const overlay = document.getElementById('export-overlay');
+        if (!overlay) return;
+        
+        // ตรวจสอบว่า modal ถูกเปลี่ยน innerHTML หรือไม่ (จากหน้าสำเร็จ/error)
+        const existingModal = overlay.querySelector('.export-modal');
+        const hasOriginalStructure = document.getElementById('export-modal-title');
+        
+        // ถ้าไม่มีโครงสร้างเดิม ให้ reset HTML ทั้งหมด
+        if (!hasOriginalStructure && existingModal) {
+          existingModal.innerHTML = `
+            <div class="export-modal-header">
+              <div id="export-modal-icon" class="export-icon">📄</div>
+              <h4 id="export-modal-title">กำลังส่งออก PDF</h4>
+              <div id="export-modal-subtitle" class="subtitle">กรุณารอสักครู่...</div>
+            </div>
+            
+            <div class="export-percentage" id="export-percentage">0%</div>
+            
+            <div class="progress-container">
+              <div class="progress">
+                <div id="export-progress-bar" class="progress-bar" style="width: 0%;">0%</div>
+              </div>
+            </div>
+            
+            <div id="export-steps">
+              <!-- Steps will be dynamically added -->
+            </div>
+            
+            <div id="export-months-container" class="zip-progress-months" style="display: none;">
+              <!-- Month progress for ZIP export -->
+            </div>
+            
+            <button id="cancel-export-btn" class="btn btn-outline-secondary cancel-btn" style="display: none;">
+              <i class="bi bi-x-circle"></i> ยกเลิก
+            </button>
+          `;
+          // console.log('🔄 Reset export modal to initial state');
+        }
+        
+        // Reset ค่าต่างๆ ไม่ว่าจะ reset HTML หรือไม่
+        const percentage = document.getElementById('export-percentage');
+        const progressBar = document.getElementById('export-progress-bar');
+        const subtitle = document.getElementById('export-modal-subtitle');
+        const stepsContainer = document.getElementById('export-steps');
+        const monthsContainer = document.getElementById('export-months-container');
+        const cancelBtn = document.getElementById('cancel-export-btn');
+        
+        if (percentage) percentage.textContent = '0%';
+        if (progressBar) {
+          progressBar.style.width = '0%';
+          progressBar.textContent = '0%';
+        }
+        if (subtitle) subtitle.textContent = 'กรุณารอสักครู่...';
+        if (stepsContainer) stepsContainer.innerHTML = '';
+        if (monthsContainer) {
+          monthsContainer.innerHTML = '';
+          monthsContainer.style.display = 'none';
+        }
+        if (cancelBtn) cancelBtn.style.display = 'none';
+      }
+      
+      function showExportModal(title, subtitle, icon = '📄') {
+        exportCancelled = false;
+        
+        // ✅ Reset modal ก่อนทุกครั้ง เพื่อแก้ปัญหา modal ค้างจากการ export ก่อนหน้า
+        resetExportModal();
+        
+        const overlay = document.getElementById('export-overlay');
+        const modalTitle = document.getElementById('export-modal-title');
+        const modalSubtitle = document.getElementById('export-modal-subtitle');
+        const modalIcon = document.getElementById('export-modal-icon');
+        const percentage = document.getElementById('export-percentage');
+        const progressBar = document.getElementById('export-progress-bar');
+        const stepsContainer = document.getElementById('export-steps');
+        const monthsContainer = document.getElementById('export-months-container');
+        const cancelBtn = document.getElementById('cancel-export-btn');
+        
+        // ✅ ตรวจสอบว่า elements มีอยู่จริงก่อนใช้งาน
+        if (!overlay) {
+          console.error('❌ ไม่พบ export-overlay element');
+          return false;
+        }
+        
+        if (modalTitle) modalTitle.textContent = title;
+        if (modalSubtitle) modalSubtitle.textContent = subtitle;
+        if (modalIcon) modalIcon.textContent = icon;
+        if (percentage) percentage.textContent = '0%';
+        if (progressBar) {
+          progressBar.style.width = '0%';
+          progressBar.textContent = '0%';
+        }
+        if (stepsContainer) stepsContainer.innerHTML = '';
+        if (monthsContainer) {
+          monthsContainer.innerHTML = '';
+          monthsContainer.style.display = 'none';
+        }
+        if (cancelBtn) cancelBtn.style.display = 'none';
+        
+        overlay.style.display = 'flex';
+        return true;
+      }
+      
+      function hideExportModal() {
+        const overlay = document.getElementById('export-overlay');
+        if (overlay) {
+          overlay.style.display = 'none';
+        }
+      }
+      
+      function updateExportProgress(percent, stepText = '') {
+        const percentage = document.getElementById('export-percentage');
+        const progressBar = document.getElementById('export-progress-bar');
+        const subtitle = document.getElementById('export-modal-subtitle');
+        
+        const roundedPercent = Math.round(percent);
+        
+        if (percentage) percentage.textContent = roundedPercent + '%';
+        if (progressBar) {
+          progressBar.style.width = roundedPercent + '%';
+          progressBar.textContent = roundedPercent + '%';
+        }
+        
+        if (stepText && subtitle) {
+          subtitle.textContent = stepText;
+        }
+      }
+      
+      function setExportSteps(steps) {
+        const container = document.getElementById('export-steps');
+        if (!container) return;
+        
+        container.innerHTML = '';
+        
+        steps.forEach((step, index) => {
+          const stepEl = document.createElement('div');
+          stepEl.className = 'export-step pending';
+          stepEl.id = `export-step-${index}`;
+          stepEl.innerHTML = `
+            <div class="export-step-icon">
+              <i class="bi bi-circle"></i>
+            </div>
+            <div class="export-step-text">
+              <div class="title">${step.title}</div>
+              <div class="detail">${step.detail || ''}</div>
+            </div>
+          `;
+          container.appendChild(stepEl);
+        });
+      }
+      
+      function updateExportStep(index, status, detail = '') {
+        const stepEl = document.getElementById(`export-step-${index}`);
+        if (!stepEl) return;
+        
+        stepEl.className = `export-step ${status}`;
+        const iconEl = stepEl.querySelector('.export-step-icon i');
+        const detailEl = stepEl.querySelector('.detail');
+        
+        if (iconEl) {
+          if (status === 'active') {
+            iconEl.className = 'bi bi-arrow-repeat';
+            iconEl.style.animation = 'spin 1s linear infinite';
+          } else if (status === 'completed') {
+            iconEl.className = 'bi bi-check-lg';
+            iconEl.style.animation = '';
+          } else if (status === 'error') {
+            iconEl.className = 'bi bi-x-lg';
+            iconEl.style.animation = '';
+          }
+        }
+        
+        if (detail && detailEl) {
+          detailEl.textContent = detail;
+        }
+      }
+      
+      // ✅ ZIP Export Progress with Month List
+      function showZipExportModal(grade, classNo, academicYear) {
+        const success = showExportModal(
+          'กำลังสร้างไฟล์ ZIP ตารางเช็คชื่อ',
+          `ชั้น ${grade} ห้อง ${classNo} ปีการศึกษา ${academicYear}`,
+          '📦'
+        );
+        
+        if (!success) {
+          // Fallback: แสดง alert แทน
+          alert(`กำลังสร้างไฟล์ ZIP ตารางเช็คชื่อ\nชั้น ${grade} ห้อง ${classNo} ปีการศึกษา ${academicYear}\n\nกรุณารอสักครู่...`);
+          return [];
+        }
+        
+        const cancelBtn = document.getElementById('cancel-export-btn');
+        if (cancelBtn) cancelBtn.style.display = 'block';
+        
+        // สร้างรายการเดือนในปีการศึกษา
+        const baseYearAD = academicYear - 543;
+        const academicMonths = [
+          { month: 5, year: baseYearAD, semester: 1, name: 'พฤษภาคม' },
+          { month: 6, year: baseYearAD, semester: 1, name: 'มิถุนายน' },
+          { month: 7, year: baseYearAD, semester: 1, name: 'กรกฎาคม' },
+          { month: 8, year: baseYearAD, semester: 1, name: 'สิงหาคม' },
+          { month: 9, year: baseYearAD, semester: 1, name: 'กันยายน' },
+          { month: 10, year: baseYearAD, semester: 1, name: 'ตุลาคม' },
+          { month: 11, year: baseYearAD, semester: 2, name: 'พฤศจิกายน' },
+          { month: 12, year: baseYearAD, semester: 2, name: 'ธันวาคม' },
+          { month: 1, year: baseYearAD + 1, semester: 2, name: 'มกราคม' },
+          { month: 2, year: baseYearAD + 1, semester: 2, name: 'กุมภาพันธ์' },
+          { month: 3, year: baseYearAD + 1, semester: 2, name: 'มีนาคม' }
+        ];
+        
+        const container = document.getElementById('export-months-container');
+        if (container) {
+          container.innerHTML = '';
+          container.style.display = 'block';
+          
+          academicMonths.forEach((m, index) => {
+            const itemEl = document.createElement('div');
+            itemEl.className = 'zip-month-item';
+            itemEl.id = `zip-month-${index}`;
+            itemEl.innerHTML = `
+              <div class="zip-month-icon">
+                <i class="bi bi-file-earmark-pdf text-secondary"></i>
+              </div>
+              <div class="flex-grow-1">
+                <strong>${m.name} ${m.year + 543}</strong>
+                <small class="text-muted d-block">ภาคเรียนที่ ${m.semester}</small>
+              </div>
+              <span class="badge bg-secondary">รอดำเนินการ</span>
+            `;
+            container.appendChild(itemEl);
+          });
+        }
+        
+        return academicMonths;
+      }
+      
+      function updateZipMonthStatus(index, status, message = '') {
+        const itemEl = document.getElementById(`zip-month-${index}`);
+        if (!itemEl) return;
+        
+        itemEl.className = `zip-month-item ${status}`;
+        const iconEl = itemEl.querySelector('.zip-month-icon');
+        const badgeEl = itemEl.querySelector('.badge');
+        
+        if (iconEl) {
+          if (status === 'processing') {
+            iconEl.innerHTML = '<div class="spinner-border spinner-border-sm text-warning" role="status"></div>';
+          } else if (status === 'completed') {
+            iconEl.innerHTML = '<i class="bi bi-check-circle-fill text-success"></i>';
+          } else if (status === 'error') {
+            iconEl.innerHTML = '<i class="bi bi-x-circle-fill text-danger"></i>';
+          }
+        }
+        
+        if (badgeEl) {
+          if (status === 'processing') {
+            badgeEl.className = 'badge bg-warning';
+            badgeEl.textContent = 'กำลังสร้าง...';
+          } else if (status === 'completed') {
+            badgeEl.className = 'badge bg-success';
+            badgeEl.textContent = 'สำเร็จ';
+          } else if (status === 'error') {
+            badgeEl.className = 'badge bg-danger';
+            badgeEl.textContent = message || 'ผิดพลาด';
+          }
+        }
+      }
+      
+      function showExportSuccess(title, downloadUrl, message) {
+        const overlay = document.getElementById('export-overlay');
+        if (!overlay) {
+          alert(`${title}\n${message}\n\nดาวน์โหลด: ${downloadUrl}`);
+          window.open(downloadUrl, '_blank');
+          return;
+        }
+        
+        const modal = overlay.querySelector('.export-modal');
+        if (modal) {
+          modal.innerHTML = `
+            <div class="text-center">
+              <div style="font-size: 64px; margin-bottom: 20px;">🎉</div>
+              <h4 class="text-success mb-3">${title}</h4>
+              <p class="text-muted">${message}</p>
+              <a href="${downloadUrl}" target="_blank" class="btn btn-success btn-lg mb-3">
+                <i class="bi bi-download"></i> ดาวน์โหลด
+              </a>
+              <br>
+              <button onclick="document.getElementById('export-overlay').style.display='none'" class="btn btn-outline-secondary">
+                ปิด
+              </button>
+            </div>
+          `;
+        }
+      }
+      
+      function showExportError(title, errorMessage) {
+        const overlay = document.getElementById('export-overlay');
+        if (!overlay) {
+          alert(`❌ ${title}\n\n${errorMessage}`);
+          return;
+        }
+        
+        const modal = overlay.querySelector('.export-modal');
+        if (modal) {
+          modal.innerHTML = `
+            <div class="text-center">
+              <div style="font-size: 64px; margin-bottom: 20px;">❌</div>
+              <h4 class="text-danger mb-3">${title}</h4>
+              <p class="text-muted">${errorMessage}</p>
+              <button onclick="document.getElementById('export-overlay').style.display='none'" class="btn btn-outline-secondary">
+                ปิด
+              </button>
+            </div>
+          `;
+        }
+      }
+
+      // ✨ ฟังก์ชันตรวจสอบข้อมูลครบถ้วน
+      function checkFormComplete() {
+        const grade = document.getElementById("table-grade").value;
+        const classNo = document.getElementById("table-class").value;
+        const month = document.getElementById("table-month").value;
+        const year = document.getElementById("table-year").value;
+        
+        const complete = grade && classNo && month !== "" && year;
+        updateSystemStatus(complete ? 'ready' : 'incomplete');
+        
+        return complete;
+      }
+
+      // ✨ ฟังก์ชันอัพเดทสถานะระบบ
+      function updateSystemStatus(status, message = '') {
+        const statusEl = document.getElementById('system-status');
+        if (!statusEl) return;
+        
+        const indicator = statusEl.querySelector('.status-indicator');
+        const text = statusEl.querySelector('small');
+        
+        if (indicator) indicator.className = 'status-indicator';
+        
+        switch(status) {
+          case 'ready':
+            if (indicator) indicator.classList.add('status-ready');
+            if (text) text.textContent = 'พร้อมใช้งาน';
+            break;
+          case 'loading':
+            if (indicator) indicator.classList.add('status-loading');
+            if (text) text.textContent = message || 'กำลังโหลด...';
+            break;
+          case 'error':
+            if (indicator) indicator.classList.add('status-error');
+            if (text) text.textContent = message || 'เกิดข้อผิดพลาด';
+            break;
+          case 'incomplete':
+            if (indicator) indicator.classList.add('status-ready');
+            if (text) text.textContent = 'กรุณาเลือกข้อมูลให้ครบ';
+            break;
+        }
+      }
+
+      // ✨ ฟังก์ชันแสดง Progress สำหรับการโหลดตาราง
+      function showTableProgress(title = 'กำลังโหลดตาราง...') {
+        const progressEl = document.getElementById('table-progress');
+        const titleEl = document.getElementById('table-progress-title');
+        const barEl = document.getElementById('table-progress-bar');
+        const actionEl = document.getElementById('table-current-action');
+        
+        if (progressEl) progressEl.style.display = 'block';
+        if (titleEl) titleEl.textContent = title;
+        if (barEl) {
+          barEl.style.width = '0%';
+          barEl.textContent = '0%';
+        }
+        if (actionEl) actionEl.textContent = 'เริ่มต้นการโหลด...';
+        
+        let progress = 0;
+        const interval = setInterval(() => {
+          progress += Math.random() * 30;
+          if (progress > 90) progress = 90;
+          
+          if (barEl) {
+            barEl.style.width = progress + '%';
+            barEl.textContent = Math.round(progress) + '%';
+          }
+          
+          if (actionEl) {
+            if (progress > 30) actionEl.textContent = 'กำลังดึงข้อมูลนักเรียน...';
+            if (progress > 60) actionEl.textContent = 'กำลังประมวลผลข้อมูล...';
+            if (progress > 80) actionEl.textContent = 'กำลังสร้างตาราง...';
+          }
+        }, 200);
+        
+        return interval;
+      }
+
+      function hideTableProgress(interval) {
+        if (interval) clearInterval(interval);
+        
+        const barEl = document.getElementById('table-progress-bar');
+        const actionEl = document.getElementById('table-current-action');
+        const progressEl = document.getElementById('table-progress');
+        
+        if (barEl) {
+          barEl.style.width = '100%';
+          barEl.textContent = '100%';
+        }
+        if (actionEl) actionEl.textContent = 'เสร็จสิ้น!';
+        
+        setTimeout(() => {
+          if (progressEl) progressEl.style.display = 'none';
+        }, 1000);
+      }
+
+      // ✨ ฟังก์ชันโหลดตาราง
+      window.loadAttendanceTable = function(showProgress = true) {
+        if (!checkFormComplete()) {
+          showError("กรุณาเลือกข้อมูลให้ครบถ้วน");
+          return;
+        }
+
+        const grade = document.getElementById("table-grade").value;
+        const classNo = document.getElementById("table-class").value;
+        const month = parseInt(document.getElementById("table-month").value);
+        const year = parseInt(document.getElementById("table-year").value);
+
+        updateSystemStatus('loading', 'กำลังโหลดตาราง...');
+        
+        let progressInterval = null;
+        if (showProgress) {
+          progressInterval = showTableProgress('กำลังโหลดตารางการเข้าเรียน...');
+        } else {
+          showLoading("กำลังโหลดข้อมูล...");
+        }
+
+        if (typeof google !== 'undefined' && google.script) {
+          google.script.run
+            .withSuccessHandler(function(data) {
+              if (showProgress) {
+                hideTableProgress(progressInterval);
+              } else {
+                hideLoading();
+              }
+              updateSystemStatus('ready');
+              renderTable(data);
+              currentTableData = data;
+              showTableActions(grade, classNo, monthNames[month], year);
+            })
+            .withFailureHandler(function(err) {
+              if (showProgress) {
+                hideTableProgress(progressInterval);
+              } else {
+                hideLoading();
+              }
+              updateSystemStatus('error', 'โหลดข้อมูลไม่สำเร็จ');
+              showError("เกิดข้อผิดพลาด: " + (err.message || err));
+            })
+            .getAttendanceVerticalTable(grade, classNo, year - 543, month);
+        } else {
+          setTimeout(() => {
+            const mockData = {
+              students: [
+                {id: '001', name: 'นางสาว ทดสอบ ระบบ', statusMap: {'1': '/', '2': '/', '3': 'ล', '4': '/', '5': '/'}},
+                {id: '002', name: 'นาย ตัวอย่าง ข้อมูล', statusMap: {'1': '/', '2': 'ข', '3': '/', '4': '/', '5': '/'}}
+              ],
+              days: [
+                {date: '2024-01-01', label: '1', dow: 'จ'},
+                {date: '2024-01-02', label: '2', dow: 'อ'},
+                {date: '2024-01-03', label: '3', dow: 'พ'},
+                {date: '2024-01-04', label: '4', dow: 'พฤ'},
+                {date: '2024-01-05', label: '5', dow: 'ศ'}
+              ]
+            };
+            
+            if (showProgress) {
+              hideTableProgress(progressInterval);
+            } else {
+              hideLoading();
+            }
+            updateSystemStatus('ready');
+            renderTable(mockData);
+            currentTableData = mockData;
+            showTableActions(grade, classNo, monthNames[month], year);
+          }, 2000);
+        }
+      };
+
+      function showTableActions(grade, classNo, month, year) {
+        const tableActions = document.getElementById('table-actions');
+        const tableInfo = document.getElementById('table-info');
+        
+        if (tableInfo) tableInfo.textContent = `${grade} ห้อง ${classNo} - ${month} ${year}`;
+        if (tableActions) tableActions.style.display = 'block';
+      }
+
+      function hideTableActions() {
+        const tableActions = document.getElementById('table-actions');
+        if (tableActions) {
+          tableActions.style.display = 'none';
+        }
+      }
+
+      // ✨ ฟังก์ชันส่งออก PDF รายงาน
+      window.exportAttendancePDF = function() {
+        if (!checkFormComplete()) {
+          showError("กรุณาเลือกข้อมูลให้ครบถ้วนก่อนส่งออก");
+          return;
+        }
+
+        const grade = document.getElementById("table-grade").value;
+        const classNo = document.getElementById("table-class").value;
+        const month = parseInt(document.getElementById("table-month").value);
+        const year = parseInt(document.getElementById("table-year").value);
+
+        updateSystemStatus('loading', 'กำลังสร้าง PDF รายงาน...');
+        showLoading("กำลังสร้าง PDF รายงานการเข้าเรียน...");
+
+        if (typeof google !== 'undefined' && google.script) {
+          google.script.run
+            .withSuccessHandler(function(pdfUrl) {
+              hideLoading();
+              updateSystemStatus('ready');
+              if (pdfUrl) {
+                window.open(pdfUrl, "_blank");
+                showSuccess("ส่งออก PDF รายงานการเข้าเรียนสำเร็จ!");
+              } else {
+                showError("ไม่สามารถสร้าง PDF ได้");
+              }
+            })
+            .withFailureHandler(function(err) {
+              hideLoading();
+              updateSystemStatus('error', 'ส่งออกไม่สำเร็จ');
+              showError("ส่งออก PDF ไม่สำเร็จ: " + (err.message || err));
+            })
+            .exportMonthlyAttendancePDF(grade, classNo, year - 543, month + 1);
+        } else {
+          setTimeout(() => {
+            hideLoading();
+            updateSystemStatus('ready');
+            showSuccess("ส่งออก PDF รายงานการเข้าเรียนสำเร็จ! (โหมดทดสอบ)");
+          }, 2000);
+        }
+      };
+
+      // ✨ ฟังก์ชันส่งออกตารางเช็คชื่อ PDF - พร้อม Progress Modal
+      window.exportAttendanceChecklistPDF = function() {
+        if (!checkFormComplete()) {
+          showError("กรุณาเลือกข้อมูลให้ครบถ้วนก่อนส่งออก");
+          return;
+        }
+
+        const grade = document.getElementById("table-grade").value;
+        const classNo = document.getElementById("table-class").value;
+        const month = parseInt(document.getElementById("table-month").value);
+        const year = parseInt(document.getElementById("table-year").value);
+        const monthName = monthNames[month];
+
+        // แสดง Modal พร้อม progress
+        const modalShown = showExportModal(
+          'กำลังสร้าง PDF ตารางเช็คชื่อ',
+          `${monthName} ${year} - ชั้น ${grade} ห้อง ${classNo}`,
+          '📄'
+        );
+        
+        if (!modalShown) {
+          // Fallback: ใช้ loading แบบเดิม
+          showLoading("กำลังสร้าง PDF ตารางเช็คชื่อ...");
+        }
+        
+        // กำหนดขั้นตอน
+        setExportSteps([
+          { title: 'เตรียมข้อมูลนักเรียน', detail: 'กำลังดึงรายชื่อ...' },
+          { title: 'สร้างตารางเช็คชื่อ', detail: 'กำลังจัดรูปแบบ...' },
+          { title: 'แปลงเป็น PDF', detail: 'กำลังสร้างไฟล์...' },
+          { title: 'บันทึกและเตรียมดาวน์โหลด', detail: '' }
+        ]);
+        
+        // จำลอง progress
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+          progress += Math.random() * 15;
+          if (progress > 95) progress = 95;
+          
+          updateExportProgress(progress);
+          
+          if (progress < 25) {
+            updateExportStep(0, 'active', 'กำลังดึงข้อมูล...');
+          } else if (progress < 50) {
+            updateExportStep(0, 'completed', 'เสร็จสิ้น');
+            updateExportStep(1, 'active', 'กำลังสร้างตาราง...');
+          } else if (progress < 75) {
+            updateExportStep(1, 'completed', 'เสร็จสิ้น');
+            updateExportStep(2, 'active', 'กำลังแปลงเป็น PDF...');
+          } else {
+            updateExportStep(2, 'completed', 'เสร็จสิ้น');
+            updateExportStep(3, 'active', 'กำลังบันทึก...');
+          }
+        }, 300);
+
+        updateSystemStatus('loading', 'กำลังสร้าง PDF ตารางเช็คชื่อ...');
+
+        if (typeof google !== 'undefined' && google.script) {
+          google.script.run
+            .withSuccessHandler(function(pdfUrl) {
+              clearInterval(progressInterval);
+              updateSystemStatus('ready');
+              
+              if (pdfUrl) {
+                updateExportProgress(100, 'สำเร็จ!');
+                updateExportStep(3, 'completed', 'เสร็จสิ้น');
+                
+                setTimeout(() => {
+                  showExportSuccess(
+                    'สร้าง PDF ตารางเช็คชื่อสำเร็จ!',
+                    pdfUrl,
+                    `${monthName} ${year} - ชั้น ${grade} ห้อง ${classNo}`
+                  );
+                }, 500);
+              } else {
+                showExportError('ไม่สามารถสร้าง PDF ได้', 'กรุณาลองใหม่อีกครั้ง');
+              }
+            })
+            .withFailureHandler(function(err) {
+              clearInterval(progressInterval);
+              updateSystemStatus('error', 'ส่งออกไม่สำเร็จ');
+              showExportError('ส่งออก PDF ไม่สำเร็จ', err.message || err);
+            })
+            .exportAttendanceChecklistPDF(grade, classNo, year - 543, month);
+        } else {
+          // โหมดทดสอบ
+          setTimeout(() => {
+            clearInterval(progressInterval);
+            updateExportProgress(100, 'สำเร็จ!');
+            updateExportStep(3, 'completed', 'เสร็จสิ้น');
+            
+            setTimeout(() => {
+              showExportSuccess(
+                'สร้าง PDF ตารางเช็คชื่อสำเร็จ!',
+                '#mock-url',
+                `${monthName} ${year} - ชั้น ${grade} ห้อง ${classNo} (โหมดทดสอบ)`
+              );
+            }, 500);
+            
+            updateSystemStatus('ready');
+          }, 3000);
+        }
+      };
+
+      // ✨ ฟังก์ชันส่งออก ZIP ตารางเช็คชื่อทั้งปี - พร้อม Progress Modal
+      window.bulkExportChecklistPDF = function() {
+        const grade = document.getElementById("table-grade").value;
+        const classNo = document.getElementById("table-class").value;
+        const year = parseInt(document.getElementById("table-year").value);
+
+        if (!grade || !classNo || isNaN(year)) {
+          alert("กรุณาเลือกชั้น ห้อง และปีให้ครบถ้วน");
+          return;
+        }
+
+        const month = parseInt(document.getElementById("table-month").value);
+        let academicYear = year;
+        if (month >= 0 && month <= 3) {
+          academicYear = year - 1;
+        }
+
+        const confirmMessage = `ต้องการส่งออก PDF ตารางเช็คชื่อทั้งปีการศึกษา ${academicYear} เป็นไฟล์ ZIP หรือไม่?\n\n` +
+          `📅 ช่วงเวลา: พ.ค.${academicYear} ถึง มี.ค.${academicYear + 1}\n` +
+          `📚 ชั้น: ${grade} ห้อง ${classNo}\n` +
+          `📦 ผลลัพธ์: ไฟล์ ZIP ตารางเช็คชื่อรายเดือน (11 เดือน)\n\n` +
+          `(อาจใช้เวลา 2-3 นาที)`;
+
+        if (!confirm(confirmMessage)) {
+          return;
+        }
+
+        startZipExportWithProgress(grade, classNo, academicYear);
+      };
+
+      // ฟังก์ชันส่งออก ZIP พร้อมแสดง Progress แต่ละเดือน
+      function startZipExportWithProgress(grade, classNo, academicYear) {
+        const academicMonths = showZipExportModal(grade, classNo, academicYear);
+        
+        // ตั้งค่าปุ่มยกเลิก
+        const cancelBtn = document.getElementById('cancel-export-btn');
+        if (cancelBtn) {
+          cancelBtn.onclick = function() {
+            exportCancelled = true;
+            hideExportModal();
+            showError("ยกเลิกการส่งออกแล้ว (หมายเหตุ: การสร้าง ZIP อาจยังดำเนินการอยู่ที่ server)");
+          };
+        }
+        
+        // ✅ แก้ไข: เรียก API ทันทีพร้อมแสดง progress animation
+        // เพราะการสร้าง PDF 11 ไฟล์ + รวม ZIP ใช้เวลานาน
+        updateExportProgress(10, 'กำลังเริ่มสร้างไฟล์ PDF...');
+        
+        // ตั้งค่าเดือนทั้งหมดเป็น pending
+        academicMonths.forEach((_, index) => {
+          updateZipMonthStatus(index, 'pending');
+        });
+        
+        // ✅ เริ่ม progress animation ที่ค่อยๆ เพิ่มขึ้นระหว่างรอ API
+        let progressValue = 10;
+        let currentMonthIndex = 0;
+        
+        const progressInterval = setInterval(() => {
+          if (exportCancelled) {
+            clearInterval(progressInterval);
+            return;
+          }
+          
+          // เพิ่ม progress ช้าๆ (จะไม่เกิน 90%)
+          if (progressValue < 85) {
+            progressValue += 0.5;
+            
+            // อัพเดทเดือนที่กำลังทำ (จำลอง)
+            const expectedMonth = Math.floor((progressValue - 10) / 7); // ประมาณ 7% ต่อเดือน
+            if (expectedMonth > currentMonthIndex && expectedMonth < academicMonths.length) {
+              updateZipMonthStatus(currentMonthIndex, 'completed');
+              currentMonthIndex = expectedMonth;
+              updateZipMonthStatus(currentMonthIndex, 'processing');
+            }
+            
+            const monthName = academicMonths[Math.min(currentMonthIndex, academicMonths.length - 1)]?.name || '';
+            updateExportProgress(
+              progressValue,
+              `กำลังสร้าง PDF ${monthName}... (กรุณารอสักครู่)`
+            );
+          } else {
+            // ค้างที่ 85-90% และแสดงว่ากำลังรวมไฟล์
+            updateExportProgress(
+              Math.min(progressValue + 0.1, 90),
+              'กำลังรวมไฟล์เป็น ZIP... (อาจใช้เวลา 1-3 นาที)'
+            );
+            progressValue = Math.min(progressValue + 0.1, 90);
+          }
+        }, 1000); // อัพเดททุก 1 วินาที
+        
+        // ✅ เรียก API สร้าง ZIP ทันที
+        if (typeof google !== 'undefined' && google.script) {
+          google.script.run
+            .withSuccessHandler(function(zipUrl) {
+              clearInterval(progressInterval);
+              
+              // อัพเดทเดือนทั้งหมดเป็นสำเร็จ
+              academicMonths.forEach((_, index) => {
+                updateZipMonthStatus(index, 'completed');
+              });
+              
+              updateExportProgress(100, 'สำเร็จ!');
+              
+              setTimeout(() => {
+                showExportSuccess(
+                  '🎉 สร้างไฟล์ ZIP สำเร็จ!',
+                  zipUrl,
+                  `ตารางเช็คชื่อทั้งปีการศึกษา ${academicYear} - ชั้น ${grade} ห้อง ${classNo}`
+                );
+              }, 500);
+            })
+            .withFailureHandler(function(error) {
+              clearInterval(progressInterval);
+              showExportError(
+                'ส่งออก ZIP ไม่สำเร็จ',
+                error.message || error
+              );
+            })
+            .exportAcademicYearChecklistZIP(grade, classNo, academicYear);
+        } else {
+          // โหมดทดสอบ - จำลองว่าใช้เวลา 5 วินาที
+          setTimeout(() => {
+            clearInterval(progressInterval);
+            
+            academicMonths.forEach((_, index) => {
+              updateZipMonthStatus(index, 'completed');
+            });
+            
+            updateExportProgress(100, 'สำเร็จ!');
+            
+            setTimeout(() => {
+              showExportSuccess(
+                '🎉 สร้างไฟล์ ZIP สำเร็จ!',
+                '#mock-zip-url',
+                `ตารางเช็คชื่อทั้งปีการศึกษา ${academicYear} - ชั้น ${grade} ห้อง ${classNo} (โหมดทดสอบ)`
+              );
+            }, 500);
+          }, 5000);
+        }
+      }
+
+      // ✨ Quick Actions Functions
+      function setQuickCurrentMonth() {
+        const now = new Date();
+        const monthSelect = document.getElementById("table-month");
+        const yearSelect = document.getElementById("table-year");
+        
+        if (monthSelect) monthSelect.value = now.getMonth();
+        if (yearSelect) yearSelect.value = (now.getFullYear() + 543).toString();
+        
+        if (autoLoadEnabled && checkFormComplete()) {
+          clearTimeout(loadingTableTimeout);
+          loadingTableTimeout = setTimeout(() => {
+            window.loadAttendanceTable();
+          }, 500);
+        }
+      }
+
+      function setQuickPrevMonth() {
+        const now = new Date();
+        const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1);
+        const monthSelect = document.getElementById("table-month");
+        const yearSelect = document.getElementById("table-year");
+        
+        if (monthSelect) monthSelect.value = prevMonth.getMonth();
+        if (yearSelect) yearSelect.value = (prevMonth.getFullYear() + 543).toString();
+        
+        if (autoLoadEnabled && checkFormComplete()) {
+          clearTimeout(loadingTableTimeout);
+          loadingTableTimeout = setTimeout(() => {
+            window.loadAttendanceTable();
+          }, 500);
+        }
+      }
+
+      function clearAllSelections() {
+        const gradeSelect = document.getElementById("table-grade");
+        const classSelect = document.getElementById("table-class");
+        const monthSelect = document.getElementById("table-month");
+        const yearSelect = document.getElementById("table-year");
+        const wrapper = document.getElementById("attendance-table-wrapper");
+        
+        if (gradeSelect) gradeSelect.value = "";
+        if (classSelect) classSelect.value = "";
+        if (monthSelect) monthSelect.value = "";
+        if (yearSelect) yearSelect.value = "";
+        if (wrapper) wrapper.innerHTML = "";
+        
+        hideTableActions();
+        updateSystemStatus('incomplete');
+        currentTableData = null;
+      }
+
+      function handleFormChange() {
+        if (!autoLoadEnabled) return;
+        
+        clearTimeout(loadingTableTimeout);
+        
+        if (checkFormComplete()) {
+          loadingTableTimeout = setTimeout(() => {
+            window.loadAttendanceTable();
+          }, 800);
+        } else {
+          hideTableActions();
+          currentTableData = null;
+        }
+      }
+
+      // ✅ ฟังก์ชันแสดงผลตาราง
+      function renderTable(data) {
+        const wrapper = document.getElementById("attendance-table-wrapper");
+        if (!wrapper) return;
+        
+        if (!data || !data.students || data.students.length === 0) {
+          wrapper.innerHTML = `<div class="alert alert-warning">❌ ไม่พบข้อมูลในเดือนนี้</div>`;
+          return;
+        }
+
+        data.students.sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true }));
+        
+        const days = data.days || [];
+        let html = `<div class="table-responsive"><table class="table table-bordered table-sm align-middle attendance-table">
+          <thead>
+            <tr>
+              <th rowspan="2">ลำดับ</th>
+              <th rowspan="2">รหัส</th>
+              <th rowspan="2" style="min-width:130px;">ชื่อ-นามสกุล</th>
+              <th colspan="${days.length}">วัน (${days.length} วัน)</th>
+              <th colspan="3" class="summary-col">รวม</th>
+            </tr>
+            <tr>`;
+        
+        days.forEach(d => {
+          const holidayClass = d.isHoliday ? ' holiday-day' : '';
+          const holidayTitle = d.isHoliday ? ` (${d.holidayType})` : '';
+          html += `<th class="vertical-date${holidayClass}" title="${d.date}${holidayTitle}">${d.label}<br><span class="day-of-week">${d.dow}</span></th>`;
+        });
+        
+        html += `
+              <th class="summary-col">มา</th>
+              <th class="summary-col">ลา</th>
+              <th class="summary-col">ขาด</th>
+            </tr>
+          </thead>
+          <tbody>
+        `;
+        
+        data.students.forEach((stu, idx) => {
+          let present = 0, leave = 0, absent = 0;
+          let displayName = "";
+          if (stu.name) {
+            const parts = stu.name.trim().split(" ");
+            if (parts.length > 1) {
+              const lastName = parts.pop();
+              displayName = `<span>${parts.join(" ")}</span><span>${lastName}</span>`;
+            } else {
+              displayName = `<span>${stu.name}</span>`;
+            }
+          } else {
+            displayName = "-";
+          }
+          
+          html += `<tr>
+            <td>${idx + 1}</td>
+            <td>${stu.id}</td>
+            <td class="student-name">${displayName}</td>`;
+          
+          days.forEach(d => {
+            const mark = stu.statusMap[d.label] || "";
+            const holidayClass = d.isHoliday ? ' holiday-day' : '';
+            const holidayTitle = d.isHoliday ? ` title="${d.holidayType}"` : '';
+            html += `<td class="${holidayClass}"${holidayTitle}>${mark}</td>`;
+            if (mark === "/" || mark === "ส") present++;
+            else if (mark === "ล") leave++;
+            else if (mark === "ข") absent++;
+          });
+          
+          html += `
+            <td class="summary-col">${present}</td>
+            <td class="summary-col">${leave}</td>
+            <td class="summary-col">${absent}</td>
+          </tr>`;
+        });
+        
+        html += `</tbody></table></div>`;
+        wrapper.innerHTML = html;
+      }
+
+      // ✨ Helper Functions
+      function showLoading(msg) {
+        const loadingEl = document.getElementById("loading-status");
+        if (loadingEl) {
+          loadingEl.textContent = msg || "⏳ กำลังโหลด...";
+          loadingEl.classList.remove("d-none");
+        }
+      }
+
+      function hideLoading() {
+        const loadingEl = document.getElementById("loading-status");
+        if (loadingEl) {
+          loadingEl.classList.add("d-none");
+        }
+      }
+
+      function showError(msg) {
+        hideLoading();
+        const wrapper = document.getElementById("attendance-table-wrapper");
+        if (wrapper) {
+          wrapper.innerHTML = `<div class="alert alert-danger">${msg}</div>`;
+        }
+        hideTableActions();
+      }
+
+      function showSuccess(msg) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
+        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 300px;';
+        alertDiv.innerHTML = `
+          ${msg}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(alertDiv);
+        
+        setTimeout(() => {
+          if (alertDiv.parentNode) {
+            alertDiv.parentNode.removeChild(alertDiv);
+          }
+        }, 3000);
+      }
+
+      // ✨ Event Listeners
+      function initializeEventListeners() {
+        const handlers = {
+          loadTable: () => window.loadAttendanceTable(true),
+          exportChecklist: () => window.exportAttendanceChecklistPDF(),
+          quickExportChecklistFn: () => window.exportAttendanceChecklistPDF(),
+          quickChecklistCurrentFn: () => {
+            if (checkFormComplete()) {
+              window.exportAttendanceChecklistPDF();
+            } else {
+              setQuickCurrentMonth();
+              setTimeout(() => {
+                if (checkFormComplete()) {
+                  window.exportAttendanceChecklistPDF();
+                } else {
+                  showError("กรุณาเลือกชั้นและห้องก่อน");
+                }
+              }, 100);
+            }
+          },
+          quickChecklistZipFn: () => {
+            const grade = document.getElementById("table-grade").value;
+            const classNo = document.getElementById("table-class").value;
+            
+            if (!grade || !classNo) {
+              showError("กรุณาเลือกชั้นและห้องก่อน");
+              return;
+            }
+            
+            window.bulkExportChecklistPDF();
+          },
+          quickCurrentMonthFn: setQuickCurrentMonth,
+          quickPrevMonthFn: setQuickPrevMonth,
+          quickClearFn: clearAllSelections,
+          refreshTableFn: () => {
+            if (currentTableData) {
+              window.loadAttendanceTable(true);
+            }
+          },
+          quickExportFn: () => window.exportAttendancePDF(),
+          autoLoadToggleFn: function() {
+            autoLoadEnabled = this.checked;
+            if (autoLoadEnabled && checkFormComplete()) {
+              handleFormChange();
+            }
+          },
+          formChangeFn: handleFormChange
+        };
+
+        // ผูก event listeners
+        const buttonMappings = [
+          { id: 'load-btn', handler: handlers.loadTable },
+          { id: 'export-checklist-btn', handler: handlers.exportChecklist },
+          { id: 'quick-export-checklist', handler: handlers.quickExportChecklistFn },
+          { id: 'quick-checklist-current', handler: handlers.quickChecklistCurrentFn },
+          { id: 'quick-checklist-zip', handler: handlers.quickChecklistZipFn },
+          { id: 'quick-current-month', handler: handlers.quickCurrentMonthFn },
+          { id: 'quick-prev-month', handler: handlers.quickPrevMonthFn },
+          { id: 'quick-clear', handler: handlers.quickClearFn },
+          { id: 'refresh-table', handler: handlers.refreshTableFn },
+          { id: 'quick-export', handler: handlers.quickExportFn }
+        ];
+
+        buttonMappings.forEach(({ id, handler }) => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.addEventListener('click', handler);
+          }
+        });
+
+        // Auto load toggle
+        const autoLoadToggle = document.getElementById('auto-load-enabled');
+        if (autoLoadToggle) {
+          autoLoadToggle.addEventListener('change', handlers.autoLoadToggleFn);
+        }
+
+        // Form change handlers
+        const formElements = ['table-grade', 'table-class', 'table-month', 'table-year'];
+        formElements.forEach(id => {
+          const element = document.getElementById(id);
+          if (element) {
+            element.addEventListener('change', handlers.formChangeFn);
+          }
+        });
+      }
+
+      function setDefaultDate() {
+        const now = new Date();
+        const monthSelect = document.getElementById("table-month");
+        const yearSelect = document.getElementById("table-year");
+        
+        if (monthSelect && !monthSelect.value) {
+          monthSelect.value = now.getMonth();
+        }
+        
+        if (yearSelect && !yearSelect.value) {
+          let yearBE = now.getFullYear() + 543;
+          if (yearBE < 2568) yearBE = 2568;
+          if (yearBE > 2570) yearBE = 2570;
+          yearSelect.value = yearBE.toString();
+        }
+      }
+
+      // สร้าง dropdown ปีแบบ dynamic (เริ่มที่ 2568 ไปข้างหน้า 10 ปี)
+      function fillYearDropdown() {
+        const yearSelect = document.getElementById('table-year');
+        const currentYear = new Date().getFullYear() + 543; // ปี พ.ศ. ปัจจุบัน
+        const startYear = 2568; // ปีเริ่มต้นของระบบ
+        const endYear = startYear + 10; // ไปข้างหน้า 10 ปี
+        
+        // สร้างตัวเลือกจาก 2568 ถึง 2578
+        for (let year = startYear; year <= endYear; year++) {
+          const option = document.createElement('option');
+          option.value = year;
+          option.textContent = year;
+          // เลือกปีปัจจุบันเป็นค่าเริ่มต้น (ถ้าอยู่ในช่วง)
+          if (year === currentYear && currentYear >= startYear && currentYear <= endYear) {
+            option.selected = true;
+          } else if (currentYear < startYear && year === startYear) {
+            option.selected = true; // ถ้าปีปัจจุบันน้อยกว่า 2568 ให้เลือก 2568
+          } else if (currentYear > endYear && year === endYear) {
+            option.selected = true; // ถ้าปีปัจจุบันมากกว่า 2578 ให้เลือก 2578
+          }
+          yearSelect.appendChild(option);
+        }
+      }
+
+      // Initialize
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+          fillYearDropdown();
+          initializeEventListeners();
+          setDefaultDate();
+          checkFormComplete();
+        });
+      } else {
+        fillYearDropdown();
+        initializeEventListeners();
+        setDefaultDate();
+        checkFormComplete();
+      }
+
+      // console.log('✅ ระบบการเข้าเรียนที่ปรับปรุงแล้วเริ่มต้นเสร็จสิ้น');
+
+    })();
+  </script>
+</body>
+</html>

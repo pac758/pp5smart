@@ -1,0 +1,354 @@
+<style>
+  .pp5fb-page { max-width: 600px; margin: 0 auto; padding: 20px; }
+  .pp5fb-header {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    border-radius: 20px; padding: 2rem; color: #fff;
+    margin-bottom: 1.5rem; text-align: center;
+  }
+  .pp5fb-header h2 { font-weight: 700; font-size: 1.5rem; margin: 0; }
+  .pp5fb-header p { opacity: 0.85; margin: 0.3rem 0 0; font-size: 0.9rem; }
+  .pp5fb-card {
+    background: #fff; border-radius: 16px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    padding: 1.5rem; border: none;
+  }
+  .pp5fb-label { font-weight: 600; margin-bottom: 6px; display: block; color: #334155; }
+  .pp5fb-select {
+    width: 100%; padding: 10px 14px; border-radius: 10px;
+    border: 2px solid #e2e8f0; font-size: 1rem;
+    transition: border-color 0.2s;
+  }
+  .pp5fb-select:focus { border-color: #6366f1; outline: none; }
+  .pp5fb-btn {
+    width: 100%; padding: 14px; border: none; border-radius: 12px;
+    font-size: 1.1rem; font-weight: 700; cursor: pointer;
+    margin-top: 1.2rem; transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .pp5fb-btn-primary {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff;
+  }
+  .pp5fb-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(99,102,241,0.35); }
+  .pp5fb-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; }
+  .pp5fb-status {
+    margin-top: 1rem; padding: 12px 16px; border-radius: 10px;
+    display: none; font-size: 0.9rem;
+  }
+  .pp5fb-status.info { display: block; background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+  .pp5fb-status.success { display: block; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+  .pp5fb-status.error { display: block; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+  .pp5fb-spinner {
+    display: inline-block; width: 20px; height: 20px;
+    border: 3px solid rgba(255,255,255,0.3); border-top-color: #fff;
+    border-radius: 50%; animation: pp5fb-spin 0.7s linear infinite;
+  }
+  @keyframes pp5fb-spin { to { transform: rotate(360deg); } }
+  .pp5fb-checklist {
+    margin-top: 1rem; padding: 0; list-style: none;
+  }
+  .pp5fb-checklist li {
+    padding: 6px 0; font-size: 0.88rem; color: #475569;
+    display: flex; align-items: center; gap: 6px;
+    transition: all 0.3s;
+  }
+  .pp5fb-checklist li i { font-size: 1rem; }
+  .pp5fb-checklist li.done { color: #16a34a; }
+  .pp5fb-checklist li.done i { color: #16a34a; }
+  .pp5fb-checklist li.pending i { color: #d1d5db; }
+  .pp5fb-checklist li.active { color: #4f46e5; font-weight: 600; }
+  .pp5fb-checklist li.active i { color: #6366f1; }
+  /* progress bar */
+  .pp5fb-progress-wrap {
+    margin-top: 1rem; display: none;
+  }
+  .pp5fb-progress-bar-bg {
+    width: 100%; height: 22px; background: #e2e8f0; border-radius: 12px;
+    overflow: hidden; position: relative;
+  }
+  .pp5fb-progress-bar-fill {
+    height: 100%; background: linear-gradient(90deg, #6366f1, #8b5cf6);
+    border-radius: 12px; transition: width 0.5s ease;
+    min-width: 0;
+  }
+  .pp5fb-progress-pct {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 700; color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .pp5fb-progress-detail {
+    margin-top: 6px; font-size: 0.82rem; color: #6366f1;
+    font-weight: 600; text-align: center;
+    min-height: 1.2em;
+  }
+</style>
+
+<div class="pp5fb-page">
+  <div class="pp5fb-header">
+    <h2><i class="bi bi-journal-bookmark-fill me-2"></i>ปพ.5 รวมเล่ม</h2>
+    <p>พิมพ์ ปพ.5 ครบทุกส่วน รวมเป็น PDF เล่มเดียว</p>
+  </div>
+
+  <div class="pp5fb-card">
+    <div style="margin-bottom: 1rem;">
+      <label class="pp5fb-label" for="pp5fbGrade">ชั้น</label>
+      <select id="pp5fbGrade" class="pp5fb-select" onchange="pp5fb_loadClasses()">
+        <option value="">-- เลือกชั้น --</option>
+      </select>
+    </div>
+    <div style="margin-bottom: 0.5rem;">
+      <label class="pp5fb-label" for="pp5fbClass">ห้อง</label>
+      <select id="pp5fbClass" class="pp5fb-select">
+        <option value="">-- เลือกห้อง --</option>
+      </select>
+    </div>
+
+    <div style="margin-top: 1rem; margin-bottom: 0.5rem;">
+      <label class="pp5fb-label">เลือกส่วนที่ต้องการสร้าง</label>
+      <div style="display:flex; flex-direction:column; gap:8px; margin-top:6px;">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px 12px; border:2px solid #e2e8f0; border-radius:10px; transition:all 0.2s;">
+          <input type="checkbox" id="pp5fb_part1" checked style="width:18px;height:18px;accent-color:#6366f1;">
+          <div>
+            <div style="font-weight:600;color:#334155;">📋 ส่วนที่ 1: ปก + ข้อมูลนักเรียน + เวลาเรียน</div>
+            <div style="font-size:0.78rem;color:#94a3b8;">ปกหน้า, รายชื่อ, ผู้ปกครอง, สรุปเวลาเรียน, เช็คชื่อรายเดือน</div>
+          </div>
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px 12px; border:2px solid #e2e8f0; border-radius:10px; transition:all 0.2s;">
+          <input type="checkbox" id="pp5fb_part2" checked style="width:18px;height:18px;accent-color:#6366f1;">
+          <div>
+            <div style="font-weight:600;color:#334155;">📊 ส่วนที่ 2: คะแนน/เกรดรายวิชา</div>
+            <div style="font-size:0.78rem;color:#94a3b8;">ผลการเรียนแต่ละวิชา (คะแนน, เกรด)</div>
+          </div>
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:8px 12px; border:2px solid #e2e8f0; border-radius:10px; transition:all 0.2s;">
+          <input type="checkbox" id="pp5fb_part3" checked style="width:18px;height:18px;accent-color:#6366f1;">
+          <div>
+            <div style="font-weight:600;color:#334155;">📝 ส่วนที่ 3: ผลการประเมิน</div>
+            <div style="font-size:0.78rem;color:#94a3b8;">คุณลักษณะ, กิจกรรม, อ่าน คิดวิเคราะห์ เขียน</div>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <button id="pp5fbBtn" class="pp5fb-btn pp5fb-btn-primary" onclick="pp5fb_generate()">
+      <i class="bi bi-file-earmark-pdf"></i> สร้าง ปพ.5 รวมเล่ม (PDF)
+    </button>
+
+    <div id="pp5fbStatus" class="pp5fb-status"></div>
+
+    <div id="pp5fbProgressWrap" class="pp5fb-progress-wrap">
+      <div class="pp5fb-progress-bar-bg">
+        <div id="pp5fbProgressFill" class="pp5fb-progress-bar-fill" style="width:0%"></div>
+        <div id="pp5fbProgressPct" class="pp5fb-progress-pct">0%</div>
+      </div>
+      <div id="pp5fbProgressDetail" class="pp5fb-progress-detail"></div>
+    </div>
+
+    <ul id="pp5fbChecklist" class="pp5fb-checklist" style="display:none;">
+      <li id="pp5fb_step1" class="pending"><i class="bi bi-circle"></i> ดึงข้อมูลนักเรียน</li>
+      <li id="pp5fb_step2" class="pending"><i class="bi bi-circle"></i> ดึงคะแนนทุกวิชา</li>
+      <li id="pp5fb_step3" class="pending"><i class="bi bi-circle"></i> ดึงเวลาเรียน</li>
+      <li id="pp5fb_step4" class="pending"><i class="bi bi-circle"></i> ดึงข้อมูลการประเมิน</li>
+      <li id="pp5fb_step5" class="pending"><i class="bi bi-circle"></i> สร้าง PDF</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+(function() {
+  // --- โหลดชั้นเรียน ---
+  function loadGrades() {
+    var sel = document.getElementById('pp5fbGrade');
+    if (!sel) return;
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      google.script.run
+        .withSuccessHandler(function(grades) {
+          sel.innerHTML = '<option value="">-- เลือกชั้น --</option>';
+          (grades || []).forEach(function(g) {
+            sel.innerHTML += '<option value="' + g + '">' + g + '</option>';
+          });
+        })
+        .withFailureHandler(function() {
+          // fallback
+          var defaults = ['ป.1','ป.2','ป.3','ป.4','ป.5','ป.6'];
+          sel.innerHTML = '<option value="">-- เลือกชั้น --</option>';
+          defaults.forEach(function(g) { sel.innerHTML += '<option value="' + g + '">' + g + '</option>'; });
+        })
+        .getAvailableGrades();
+    } else {
+      var defaults = ['ป.1','ป.2','ป.3','ป.4','ป.5','ป.6'];
+      sel.innerHTML = '<option value="">-- เลือกชั้น --</option>';
+      defaults.forEach(function(g) { sel.innerHTML += '<option value="' + g + '">' + g + '</option>'; });
+    }
+  }
+
+  window.pp5fb_loadClasses = function() {
+    var grade = document.getElementById('pp5fbGrade').value;
+    var sel = document.getElementById('pp5fbClass');
+    sel.innerHTML = '<option value="">-- เลือกห้อง --</option>';
+    if (!grade) return;
+
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      google.script.run
+        .withSuccessHandler(function(classes) {
+          sel.innerHTML = '<option value="">-- เลือกห้อง --</option>';
+          (classes || []).forEach(function(c) {
+            sel.innerHTML += '<option value="' + c + '">' + c + '</option>';
+          });
+        })
+        .withFailureHandler(function() {
+          for (var i = 1; i <= 4; i++) {
+            sel.innerHTML += '<option value="' + i + '">' + i + '</option>';
+          }
+        })
+        .getAvailableClassNos(grade);
+    } else {
+      for (var i = 1; i <= 4; i++) {
+        sel.innerHTML += '<option value="' + i + '">' + i + '</option>';
+      }
+    }
+  };
+
+  // --- สร้าง PDF ---
+  window.pp5fb_generate = function() {
+    var grade = document.getElementById('pp5fbGrade').value;
+    var classNo = document.getElementById('pp5fbClass').value;
+    if (!grade || !classNo) {
+      pp5fb_showStatus('กรุณาเลือกชั้นและห้อง', 'error');
+      return;
+    }
+
+    var parts = {
+      part1: document.getElementById('pp5fb_part1').checked,
+      part2: document.getElementById('pp5fb_part2').checked,
+      part3: document.getElementById('pp5fb_part3').checked
+    };
+    if (!parts.part1 && !parts.part2 && !parts.part3) {
+      pp5fb_showStatus('กรุณาเลือกอย่างน้อย 1 ส่วน', 'error');
+      return;
+    }
+
+    var partNames = [];
+    if (parts.part1) partNames.push('ปก+เวลาเรียน');
+    if (parts.part2) partNames.push('คะแนนรายวิชา');
+    if (parts.part3) partNames.push('ผลประเมิน');
+
+    var btn = document.getElementById('pp5fbBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="pp5fb-spinner"></span> กำลังสร้าง...';
+
+    pp5fb_showStatus('⏳ กำลังสร้าง: ' + partNames.join(', ') + ' กรุณารอ...', 'info');
+    pp5fb_showChecklist(true);
+    pp5fb_setStep(1, 'active');
+    pp5fb_showProgressBar(true);
+    pp5fb_updateProgressBar(0, '');
+
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      pp5fb_startPolling();
+
+      google.script.run
+        .withSuccessHandler(function(url) {
+          pp5fb_stopPolling();
+          btn.disabled = false;
+          btn.innerHTML = '<i class="bi bi-file-earmark-pdf"></i> สร้าง ปพ.5 รวมเล่ม (PDF)';
+
+          pp5fb_updateProgressBar(100, 'เสร็จสมบูรณ์!');
+          for (var i = 1; i <= 5; i++) pp5fb_setStep(i, 'done');
+          pp5fb_showStatus('✅ สร้างสำเร็จ! <a href="' + url + '" target="_blank" style="font-weight:700; color:#166534;">📥 เปิด PDF</a>', 'success');
+        })
+        .withFailureHandler(function(err) {
+          pp5fb_stopPolling();
+          btn.disabled = false;
+          btn.innerHTML = '<i class="bi bi-file-earmark-pdf"></i> สร้าง ปพ.5 รวมเล่ม (PDF)';
+          pp5fb_showStatus('❌ ' + (err.message || err), 'error');
+        })
+        .exportPp5FullBookSheets(grade, classNo, JSON.stringify(parts));
+    } else {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-file-earmark-pdf"></i> สร้าง ปพ.5 รวมเล่ม (PDF)';
+      pp5fb_showStatus('❌ ไม่สามารถเชื่อมต่อ Google Apps Script ได้', 'error');
+    }
+  };
+
+  function pp5fb_showStatus(msg, type) {
+    var el = document.getElementById('pp5fbStatus');
+    el.className = 'pp5fb-status ' + type;
+    el.innerHTML = msg;
+  }
+
+  function pp5fb_showChecklist(show) {
+    var el = document.getElementById('pp5fbChecklist');
+    el.style.display = show ? 'block' : 'none';
+    if (show) {
+      for (var i = 1; i <= 5; i++) {
+        pp5fb_setStep(i, 'pending');
+      }
+    }
+  }
+
+  function pp5fb_setStep(n, state) {
+    var li = document.getElementById('pp5fb_step' + n);
+    if (!li) return;
+    li.className = state;
+    var icon = li.querySelector('i');
+    if (state === 'done') icon.className = 'bi bi-check-circle-fill';
+    else if (state === 'active') icon.className = 'bi bi-arrow-right-circle-fill';
+    else icon.className = 'bi bi-circle';
+  }
+  window.pp5fb_setStep = pp5fb_setStep;
+
+  // --- Progress bar ---
+  function pp5fb_showProgressBar(show) {
+    var el = document.getElementById('pp5fbProgressWrap');
+    if (el) el.style.display = show ? 'block' : 'none';
+  }
+
+  function pp5fb_updateProgressBar(pct, detail) {
+    var fill = document.getElementById('pp5fbProgressFill');
+    var pctEl = document.getElementById('pp5fbProgressPct');
+    var detailEl = document.getElementById('pp5fbProgressDetail');
+    if (fill) fill.style.width = Math.min(pct, 100) + '%';
+    if (pctEl) pctEl.textContent = Math.round(pct) + '%';
+    if (detailEl) detailEl.textContent = detail || '';
+  }
+  window.pp5fb_showProgressBar = pp5fb_showProgressBar;
+  window.pp5fb_updateProgressBar = pp5fb_updateProgressBar;
+
+  // --- Polling ---
+  var _pollTimer = null;
+  var _lastStep = 0;
+
+  function pp5fb_startPolling() {
+    _lastStep = 0;
+    _pollTimer = setInterval(function() {
+      if (typeof google === 'undefined' || !google.script || !google.script.run) return;
+      google.script.run
+        .withSuccessHandler(function(prog) {
+          if (!prog) return;
+          var pct = prog.pct || 0;
+          var step = prog.step || 0;
+          var detail = prog.detail || '';
+          pp5fb_updateProgressBar(pct, detail);
+          // อัพเดท checklist steps
+          if (step > _lastStep) {
+            for (var s = 1; s < step; s++) pp5fb_setStep(s, 'done');
+            pp5fb_setStep(step, 'active');
+            _lastStep = step;
+          }
+        })
+        .withFailureHandler(function() {})
+        .pp5fb_getProgress();
+    }, 2000);
+  }
+
+  function pp5fb_stopPolling() {
+    if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+  }
+  window.pp5fb_startPolling = pp5fb_startPolling;
+  window.pp5fb_stopPolling = pp5fb_stopPolling;
+
+  // init
+  loadGrades();
+})();
+</script>
