@@ -130,11 +130,17 @@ function getFastStudentStats() {
 // ============================================================
 
 function getAttendanceData(ss, studentGradeMap) {
-  const months = [
-    'พฤษภาคม2568', 'มิถุนายน2568', 'กรกฎาคม2568', 'สิงหาคม2568',
-    'กันยายน2568', 'ตุลาคม2568', 'พฤศจิกายน2568', 'ธันวาคม2568',
-    'มกราคม2569', 'กุมภาพันธ์2569', 'มีนาคม2569', 'เมษายน2569'
-  ];
+  // อ่านปีการศึกษาจาก settings อัตโนมัติ (ไม่ hardcode)
+  const monthNames = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  let academicYear;
+  try {
+    academicYear = getCurrentAcademicYear();
+  } catch (e) {
+    Logger.log('⚠️ ไม่สามารถอ่านปีการศึกษาได้: ' + e.message);
+    return { monthly: {}, yearlyByGrade: {}, availableMonths: [], currentMonth: '' };
+  }
+  const monthsInYear = getMonthsInAcademicYear(academicYear);
+  const months = monthsInYear.map(m => monthNames[m.month - 1] + String(m.yearCE + 543));
 
   const currentMonth = getCurrentThaiMonth();
   const monthlyData = {};
@@ -301,8 +307,6 @@ function compareAttendanceByGrades(monthName = null) {
 
 function getLowestAttendanceGrades(limit = 3) { return compareAttendanceByGrades().slice(-limit).reverse(); }
 function getHighestAttendanceGrades(limit = 3) { return compareAttendanceByGrades().slice(0, limit); }
-
-// ============================================================
 // 📊 ATTENDANCE CHARTS
 // ============================================================
 
@@ -310,12 +314,18 @@ function getAttendanceTrendChartData(grade) {
   const data = getAttendanceByGrade(grade);
   if (!data || !data.monthly) throw new Error(`ไม่พบข้อมูลสำหรับห้อง ${grade}`);
 
-  const monthOrder = ['พฤษภาคม2568','มิถุนายน2568','กรกฎาคม2568','สิงหาคม2568','กันยายน2568','ตุลาคม2568','พฤศจิกายน2568','ธันวาคม2568','มกราคม2569','กุมภาพันธ์2569','มีนาคม2569','เมษายน2569'];
+  // สร้าง monthOrder แบบ dynamic จากปีการศึกษา
+  const mn = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  let ay;
+  try { ay = getCurrentAcademicYear(); } catch (e) { ay = 2568; }
+  const miy = getMonthsInAcademicYear(ay);
+  const monthOrder = miy.map(m => mn[m.month - 1] + String(m.yearCE + 543));
   const labels = [], attendanceRates = [], presentCounts = [], absentCounts = [];
 
   monthOrder.forEach(month => {
     if (data.monthly[month]) {
-      labels.push(month.replace('2568', '').replace('2569', '').trim());
+      const yearStr = String(month.match(/\d+/));
+      labels.push(month.replace(yearStr, '').trim());
       attendanceRates.push(parseFloat(data.monthly[month].attendanceRate));
       presentCounts.push(data.monthly[month].totalPresent);
       absentCounts.push(data.monthly[month].totalAbsent);
@@ -372,7 +382,9 @@ function generateYearlyAttendanceReport(grade) {
   if (!data || !data.monthly) throw new Error(`ไม่พบข้อมูลสำหรับห้อง ${grade}`);
 
   const report = { title: `รายงานการเข้าเรียนรายปี - ${grade}`, generatedAt: new Date().toISOString(), yearlyStats: data.yearly, monthlyBreakdown: [] };
-  const monthOrder = ['พฤษภาคม2568','มิถุนายน2568','กรกฎาคม2568','สิงหาคม2568','กันยายน2568','ตุลาคม2568','พฤศจิกายน2568','ธันวาคม2568','มกราคม2569','กุมภาพันธ์2569','มีนาคม2569','เมษายน2569'];
+  const mn = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  let ay; try { ay = getCurrentAcademicYear(); } catch (e) { ay = 2568; }
+  const monthOrder = getMonthsInAcademicYear(ay).map(m => mn[m.month - 1] + String(m.yearCE + 543));
   monthOrder.forEach(month => { if (data.monthly[month]) report.monthlyBreakdown.push({ month, stats: data.monthly[month] }); });
   return report;
 }
