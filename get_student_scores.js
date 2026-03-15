@@ -377,11 +377,12 @@ function exportScoresPDFviaSheet_(data) {
   };
 
   // ใช้ชื่อวิชาเต็ม (ไม่ย่อ) เพื่อความเป็นทางการ
-  // คำนวณความสูง sub-header จากชื่อยาวสุด (ตัวอักษรไทย ~7px/ตัว ที่ font 10)
+  // คำนวณความสูง sub-header จากชื่อยาวสุด (ปรับให้กระชับขึ้น)
   const calcSubHeaderHeight = (allSubs) => {
     let maxLen = 0;
     allSubs.forEach(s => { if (s.length > maxLen) maxLen = s.length; });
-    return Math.max(100, maxLen * 8 + 10);
+    // ลดจาก maxLen * 8 + 10 เป็น maxLen * 5 + 20 เพื่อให้แถวไม่สูงเกิน
+    return Math.max(80, Math.min(150, maxLen * 5 + 20));
   };
 
   const acadSubs = subjects.filter(s => !isActivitySubject(s));
