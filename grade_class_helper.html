@@ -59,18 +59,40 @@ window.GradeClassHelper = (function() {
       btn.textContent = g + '/1';
       btn.dataset.grade = g;
       btn.dataset.classNo = '1';
-      btn.style.cssText = 'min-width:50px;font-weight:500;border-radius:16px;transition:all 0.2s;padding:4px 10px;font-size:0.8rem;';
+      btn.style.cssText = 'min-width:50px;font-weight:600;border-radius:16px;transition:all 0.2s;padding:6px 12px;font-size:0.9rem;background:white;color:#1a1a1a;border:2px solid rgba(255,255,255,0.5);';
       
       btn.addEventListener('click', function() {
         // highlight
         document.querySelectorAll('.gc-quick-btn').forEach(b => {
           b.classList.remove('btn-primary');
           b.classList.add('btn-outline-primary');
+          b.style.background = 'white';
+          b.style.color = '#1a1a1a';
         });
         btn.classList.remove('btn-outline-primary');
         btn.classList.add('btn-primary');
+        btn.style.background = '#667eea';
+        btn.style.color = 'white';
+        btn.style.borderColor = 'white';
         
         selectGradeClass(gradeSelectEl, classSelectEl, g, '1');
+      });
+      
+      // Hover effect
+      btn.addEventListener('mouseenter', function() {
+        if (!btn.classList.contains('btn-primary')) {
+          btn.style.background = 'rgba(255,255,255,0.9)';
+          btn.style.transform = 'translateY(-2px)';
+          btn.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
+        }
+      });
+      
+      btn.addEventListener('mouseleave', function() {
+        if (!btn.classList.contains('btn-primary')) {
+          btn.style.background = 'white';
+          btn.style.transform = 'translateY(0)';
+          btn.style.boxShadow = 'none';
+        }
       });
       bar.appendChild(btn);
     });
@@ -126,9 +148,14 @@ window.GradeClassHelper = (function() {
       if (b.dataset.grade === grade && b.dataset.classNo === classNo) {
         b.classList.remove('btn-outline-primary');
         b.classList.add('btn-primary');
+        b.style.background = '#667eea';
+        b.style.color = 'white';
+        b.style.borderColor = 'white';
       } else {
         b.classList.remove('btn-primary');
         b.classList.add('btn-outline-primary');
+        b.style.background = 'white';
+        b.style.color = '#1a1a1a';
       }
     });
   }
