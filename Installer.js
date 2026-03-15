@@ -857,21 +857,43 @@ function exportProjectAsZip() {
     // ⚠️ ระบบนี้เป็น Container-bound Script → ต้องใช้ลิงก์ Spreadsheet /copy
     //    เพราะ ?copyScript=true ใช้ไม่ได้กับ Bound Script
     var props = PropertiesService.getScriptProperties();
-    var templateId = props.getProperty('TEMPLATE_SPREADSHEET_ID');
+    var activeId = SpreadsheetApp.getActiveSpreadsheet().getId();
+    var templateIdProp = props.getProperty('TEMPLATE_SPREADSHEET_ID');
+    var templateId = templateIdProp;
 
     if (!templateId) {
       // ถ้ายังไม่มี Template → ใช้ Spreadsheet ปัจจุบันเป็นต้นแบบ
       // (แนะนำให้ admin ตั้งค่า TEMPLATE_SPREADSHEET_ID ผ่าน Script Properties)
-      templateId = SpreadsheetApp.getActiveSpreadsheet().getId();
+      templateId = activeId;
       Logger.log('⚠️ ไม่พบ TEMPLATE_SPREADSHEET_ID — ใช้ Spreadsheet ปัจจุบัน: ' + templateId);
     }
 
     var copyUrl = 'https://docs.google.com/spreadsheets/d/' + templateId + '/copy';
 
+    var templateInfo = null;
+    try {
+      var f = DriveApp.getFileById(templateId);
+      templateInfo = {
+        id: templateId,
+        name: f.getName(),
+        url: f.getUrl(),
+        lastUpdated: (f.getLastUpdated && f.getLastUpdated()) ? f.getLastUpdated().toISOString() : null
+      };
+    } catch(_e) {}
+
+    var warning = '';
+    if (templateIdProp && templateIdProp !== activeId) {
+      warning = 'ขณะนี้กำลังใช้ TEMPLATE_SPREADSHEET_ID (ไฟล์แม่แบบแยกจากไฟล์ระบบปัจจุบัน) — ถ้าไฟล์แม่แบบไม่ได้อัปเดตโค้ดล่าสุด จะส่งออกโค้ดเวอร์ชันเก่า';
+    }
+
     return {
       success: true,
       copyUrl: copyUrl,
       templateId: templateId,
+      templateSource: templateIdProp ? 'script_property' : 'active_spreadsheet',
+      activeSpreadsheetId: activeId,
+      templateInfo: templateInfo,
+      warning: warning,
       schoolName: schoolName,
       steps: [
         'ขั้นที่ 1: กดลิงก์ "ทำสำเนา" → Google จะถามยืนยัน → กด "ทำสำเนา" → ได้ Spreadsheet + โค้ดทั้งหมด',
