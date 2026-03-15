@@ -505,40 +505,50 @@ function exportScoresPDFviaSheet_(data) {
     // === จัดรูปแบบข้อมูล ===
     const lastRow = dataStartRow + rowsData.length - 1;
     const dataRange = sheet.getRange(dataStartRow, 1, rowsData.length, totalCols);
-    dataRange.setFontFamily('TH Sarabun New').setFontSize(12)
-      .setVerticalAlignment('middle').setHorizontalAlignment('center');
+    dataRange.setFontFamily('TH Sarabun New').setFontSize(11)
+      .setVerticalAlignment('middle').setHorizontalAlignment('center')
+      .setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP);
 
-    // ชื่อชิดซ้าย
+    // ชื่อชิดซ้าย + ขนาดฟอนต์เท่ากัน
     sheet.getRange(dataStartRow, colNameIdx, rowsData.length, 1)
-      .setHorizontalAlignment('left');
+      .setHorizontalAlignment('left').setFontSize(11);
 
     // เฉลี่ย: bold + format 2 ตำแหน่ง
     sheet.getRange(dataStartRow, colAvgIdx, rowsData.length, 1)
       .setFontWeight('bold').setNumberFormat('0.00');
 
-    // === เส้นขอบตาราง (เส้นบาง) ===
+    // === เส้นขอบตาราง (เส้นบาง สีเทาเข้ม) ===
+    const borderColor = '#555555';
+    const borderStyle = SpreadsheetApp.BorderStyle.SOLID;
     const tableRange = sheet.getRange(hdrRow, 1, lastRow - hdrRow + 1, totalCols);
-    tableRange.setBorder(true, true, true, true, true, true,
-      '#000000', SpreadsheetApp.BorderStyle.SOLID);
+    tableRange.setBorder(true, true, true, true, true, true, borderColor, borderStyle);
 
-    // header rows: bold + สีพื้น
+    // header rows: bold + สีพื้นอ่อน
     sheet.getRange(hdrRow, 1, 2, totalCols)
-      .setFontWeight('bold').setBackground('#f5f5f5');
+      .setFontWeight('bold').setBackground('#f0f0f0');
 
     // === ตั้งความกว้างคอลัมน์ ===
-    sheet.setColumnWidth(colNoIdx, 28); // ที่
-    sheet.setColumnWidth(colNameIdx, 170); // ชื่อ
+    sheet.setColumnWidth(colNoIdx, 24); // ที่
+    sheet.setColumnWidth(colNameIdx, 120); // ชื่อ (ลดลงจาก 170)
     for (let i = 0; i < academicSubjects.length; i++) {
-      sheet.setColumnWidth(colAcadStart + i, 35);
+      sheet.setColumnWidth(colAcadStart + i, 30);
     }
     for (let i = 0; i < activitySubjects.length; i++) {
-      sheet.setColumnWidth(colActStart + i, 32);
+      sheet.setColumnWidth(colActStart + i, 26);
     }
-    sheet.setColumnWidth(colAvgIdx, 40); // เฉลี่ย
+    sheet.setColumnWidth(colAvgIdx, 36); // เฉลี่ย
 
     // === ความสูงแถวข้อมูล ===
     for (let r = dataStartRow; r <= lastRow; r++) {
-      sheet.setRowHeight(r, 22);
+      sheet.setRowHeight(r, 20);
+    }
+
+    // === ลบคอลัมน์เกิน (ป้องกันพื้นที่ว่างใน PDF) ===
+    if (sheet.getMaxColumns() > totalCols) {
+      sheet.deleteColumns(totalCols + 1, sheet.getMaxColumns() - totalCols);
+    }
+    if (sheet.getMaxRows() > lastRow) {
+      sheet.deleteRows(lastRow + 1, sheet.getMaxRows() - lastRow);
     }
 
     // === Flush เพื่อให้ format เสร็จก่อน export ===
