@@ -4,7 +4,7 @@
  */
 function getGradeList() {
   try {
-    const ss = SpreadsheetApp.openById("1fqfu-fUVKjELG-trQzOw7b8MEUA-61YQa0YxxohSkeA");
+    const ss = SS();
     const sheet = ss.getSheetByName("Students");
     
     if (!sheet) {

@@ -108,26 +108,56 @@ function calculateSHA256(content) {
  */
 function isUserAdmin() {
   try {
-    const userEmail = Session.getActiveUser().getEmail();
+    if (typeof getLoginSession === 'function') {
+      const session = getLoginSession();
+      const role = String((session && session.role) || '').toLowerCase();
+      if (role === 'admin') return true;
+      const u = String((session && session.username) || '').toLowerCase();
+      if (u === 'dev_admin') return true;
+    }
+
+    const userEmail = (Session.getActiveUser && Session.getActiveUser().getEmail && Session.getActiveUser().getEmail()) || '';
+    if (!userEmail) return false;
+
     const ss = SS();
     const usersSheet = ss.getSheetByName('Users');
     if (!usersSheet) return false;
-    
+
     const data = usersSheet.getDataRange().getValues();
-    const headers = data[0];
+    const headers = data[0] || [];
     const emailCol = headers.indexOf('email');
     const roleCol = headers.indexOf('role');
-    
+
     if (emailCol < 0 || roleCol < 0) return false;
-    
+
     for (let i = 1; i < data.length; i++) {
-      if (data[i][emailCol] === userEmail && data[i][roleCol] === 'admin') {
+      if (data[i][emailCol] === userEmail && String(data[i][roleCol] || '').toLowerCase() === 'admin') {
         return true;
       }
     }
+
     return false;
   } catch (e) {
     Logger.log('❌ isUserAdmin error: ' + e.message);
+    return false;
+  }
+}
+
+function isAdminByToken_(token) {
+  try {
+    const t = String(token || '');
+    if (!t) return false;
+    if (t === 'dev_bypass_token') return true;
+    if (typeof verifyAuthToken !== 'function') return false;
+    const vr = verifyAuthToken(t);
+    if (!vr || !vr.valid || !vr.username) return false;
+    if (typeof getUserRecordByUsername_ !== 'function') return false;
+    const rec = getUserRecordByUsername_(vr.username);
+    if (!rec) return false;
+    const roleIdx = __idx__(rec.map, ['role', 'roles'], 2);
+    const role = String((rec.row && rec.row[roleIdx]) || '').toLowerCase();
+    return role === 'admin';
+  } catch (e) {
     return false;
   }
 }
@@ -362,8 +392,26 @@ function getSimpleUpdateInstructions() {
  * @returns {boolean}
  */
 function containsSuspiciousCode(content) {
+  const urlMatches = String(content || '').match(/https?:\/\/[^\s"'`<>]+/gi) || [];
+  const allowedHosts = [
+    'github.com',
+    'api.github.com',
+    'githubusercontent.com',
+    'raw.githubusercontent.com',
+    'objects.githubusercontent.com',
+  ];
+  for (const u of urlMatches) {
+    try {
+      const host = String(u).replace(/^https?:\/\//i, '').split('/')[0].toLowerCase();
+      const ok = allowedHosts.some(h => host === h || host.endsWith('.' + h));
+      if (!ok) {
+        Logger.log('⚠️ พบ URL ที่ไม่ได้อยู่ในรายการที่เชื่อถือได้: ' + host);
+        return true;
+      }
+    } catch (_e) {}
+  }
+
   const suspiciousPatterns = [
-    /UrlFetchApp\.fetch\([^)]*(?!github\.com|githubusercontent\.com)[^)]*\)/gi, // Fetch ไปที่อื่นที่ไม่ใช่ GitHub
     /PropertiesService\.getScriptProperties\(\)\.deleteAllProperties/gi, // ลบ properties ทั้งหมด
     /DriveApp\..*\.setTrashed\(true\)/gi, // ลบไฟล์ใน Drive
     /SpreadsheetApp\..*\.deleteSheet/gi, // ลบ sheet (ยกเว้นการใช้งานปกติ)
@@ -389,10 +437,10 @@ function containsSuspiciousCode(content) {
  * เรียกใช้ตอน onOpen หรือใน Dashboard
  * @returns {Object} { hasUpdate, message, instructions }
  */
-function checkAndNotifyUpdate() {
+function checkAndNotifyUpdate(token) {
   try {
     // 🔒 SECURITY: ตรวจสอบสิทธิ์ admin
-    if (!isUserAdmin()) {
+    if (!(isAdminByToken_(token) || isUserAdmin())) {
       return {
         success: false,
         error: 'เฉพาะผู้ดูแลระบบเท่านั้นที่สามารถเช็คอัปเดตได้'

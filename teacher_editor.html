@@ -4,16 +4,160 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>👩‍🏫 จัดการครูประจำชั้น (Inline Edit)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root{
+            --app-bg: #f6f7fb;
+            --card-border: rgba(15, 23, 42, 0.10);
+            --card-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+            --card-radius: 18px;
+            --text: #0f172a;
+            --muted: #64748b;
+            --primary: #4f46e5;
+            --primary-2: #2563eb;
+            --field-bg: rgba(255, 255, 255, 0.92);
+            --field-border: rgba(15, 23, 42, 0.14);
+            --focus-ring: rgba(79, 70, 229, 0.18);
+        }
+        body{
+            font-family: 'Sarabun', sans-serif;
+            background:
+                radial-gradient(1200px 700px at 10% -10%, rgba(79,70,229,0.16), transparent 55%),
+                radial-gradient(900px 600px at 95% 10%, rgba(16,185,129,0.12), transparent 55%),
+                var(--app-bg);
+            color: var(--text);
+        }
+        .teacher-editor-shell{
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 18px 16px 28px;
+        }
+        .page-header{
+            background: rgba(255,255,255,0.72);
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            border-radius: 22px;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+            padding: 18px 18px;
+            backdrop-filter: blur(10px);
+            margin-bottom: 16px;
+        }
+        .page-title{
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin: 0;
+            line-height: 1.1;
+            color: #0b1b44;
+        }
+        .page-title i{ color: var(--primary); }
+        .page-subtitle{
+            margin: 8px 0 0;
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
+        .card{
+            border: 1px solid var(--card-border) !important;
+            border-radius: var(--card-radius) !important;
+            box-shadow: var(--card-shadow) !important;
+            overflow: hidden;
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(10px);
+        }
+        .btn{
+            border-radius: 14px;
+            font-weight: 800;
+            letter-spacing: -0.01em;
+        }
+        .btn-outline-primary{
+            background: rgba(255,255,255,0.65);
+            border-color: rgba(79, 70, 229, 0.35);
+            color: #1d4ed8;
+        }
+        .btn-outline-primary:hover{
+            background: rgba(79,70,229,0.08);
+            border-color: rgba(79, 70, 229, 0.45);
+            color: #1e40af;
+        }
+        .btn-success{
+            border: 0;
+            background: linear-gradient(135deg, #16a34a, #10b981);
+            box-shadow: 0 10px 18px rgba(16,185,129,0.18);
+        }
+        .btn-outline-secondary{
+            background: rgba(255,255,255,0.65);
+            border-color: rgba(15,23,42,0.14);
+            color: #334155;
+        }
+        .btn-outline-secondary:hover{
+            background: rgba(15,23,42,0.06);
+            border-color: rgba(15,23,42,0.18);
+            color: #0f172a;
+        }
+        .form-control{
+            border-radius: 14px;
+            padding: 10px 12px;
+            border-color: var(--field-border);
+            background: var(--field-bg);
+        }
+        .form-control:focus{
+            border-color: rgba(79, 70, 229, 0.55);
+            box-shadow: 0 0 0 .25rem var(--focus-ring);
+            background: #ffffff;
+        }
+        .table{
+            --bs-table-bg: transparent;
+            margin-bottom: 0;
+        }
+        .table thead th{
+            font-weight: 800;
+            color: #334155;
+            border-bottom: 1px solid rgba(15,23,42,0.12) !important;
+        }
+        .table tbody td{
+            border-top: 1px solid rgba(15,23,42,0.08) !important;
+        }
+        .table-hover tbody tr:hover{
+            background: rgba(79, 70, 229, 0.04);
+        }
+        .app-alert{
+            border-radius: 14px;
+            border: 1px solid rgba(15,23,42,0.10) !important;
+            box-shadow: 0 10px 22px rgba(15,23,42,0.06);
+            backdrop-filter: blur(10px);
+        }
+        .app-alert.alert-success{
+            background: rgba(16,185,129,0.10);
+            color: #064e3b;
+        }
+        .app-alert.alert-danger{
+            background: rgba(239,68,68,0.10);
+            color: #7f1d1d;
+        }
+        .app-alert.alert-warning{
+            background: rgba(245,158,11,0.12);
+            color: #7c2d12;
+        }
+        .app-alert.alert-info{
+            background: rgba(59,130,246,0.10);
+            color: #0b2d66;
+        }
+    </style>
 </head>
 <body>
-    <div class="animate-fade-in" style="max-width: 800px; margin: auto;">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 class="mb-0 text-primary">
-                <i class="bi bi-pencil-square"></i> จัดการข้อมูลครูประจำชั้น
-            </h2>
-            <button class="btn btn-sm btn-outline-primary" id="refreshBtn">
-              <i class="bi bi-arrow-clockwise"></i> โหลดข้อมูลใหม่
-            </button>
+    <div class="teacher-editor-shell animate-fade-in">
+        <div class="page-header">
+            <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+                <div>
+                    <h2 class="page-title">
+                        <i class="bi bi-pencil-square me-1"></i> จัดการข้อมูลครูประจำชั้น
+                    </h2>
+                    <p class="page-subtitle">แก้ไขรายชื่อครูประจำชั้นแบบแถวต่อแถว แล้วบันทึกได้ทันที</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-primary" id="refreshBtn">
+                        <i class="bi bi-arrow-clockwise"></i> โหลดข้อมูลใหม่
+                    </button>
+                </div>
+            </div>
         </div>
 
         <div class="card shadow-sm">
@@ -44,7 +188,7 @@
     function renderTeacherTable(data) {
         const tableContainer = document.getElementById('teacherTableContainer');
         if (!data || data.length === 0) {
-            tableContainer.innerHTML = '<div class="alert alert-warning">ไม่พบข้อมูลชั้นเรียนในระบบ</div>';
+            tableContainer.innerHTML = '<div class="alert app-alert alert-warning">ไม่พบข้อมูลชั้นเรียนในระบบ</div>';
             return;
         }
 
@@ -123,12 +267,12 @@
     
     // --- ฟังก์ชันเสริม ---
     function handleError(error) {
-        document.getElementById('teacherTableContainer').innerHTML = `<div class="alert alert-danger">${error.message}</div>`;
+        document.getElementById('teacherTableContainer').innerHTML = `<div class="alert app-alert alert-danger">${error.message}</div>`;
     }
 
     function showStatus(message, type = 'success') {
         const statusDiv = document.getElementById('status');
-        statusDiv.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+        statusDiv.innerHTML = `<div class="alert app-alert alert-${type}">${message}</div>`;
         setTimeout(() => statusDiv.innerHTML = '', 4000);
     }
     
@@ -148,6 +292,10 @@
             row.querySelector('input').value = (originalName === '-- ว่าง --') ? '' : originalName;
             toggleEditMode(row, false);
         }
+    });
+
+    document.getElementById('refreshBtn').addEventListener('click', function() {
+        initializeTeacherEditor();
     });
 
     // เริ่มต้นทำงานเมื่อหน้าเว็บถูกโหลดเข้ามา

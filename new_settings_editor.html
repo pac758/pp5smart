@@ -9,14 +9,281 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <style>body { font-family: 'Sarabun', sans-serif; }</style>
+  <style>
+    :root{
+      --app-bg: #f6f7fb;
+      --card-border: rgba(15, 23, 42, 0.10);
+      --card-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+      --card-radius: 18px;
+      --text: #0f172a;
+      --muted: #64748b;
+      --primary: #4f46e5;
+      --primary-2: #2563eb;
+      --success: #16a34a;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --field-bg: rgba(255, 255, 255, 0.92);
+      --field-border: rgba(15, 23, 42, 0.14);
+      --focus-ring: rgba(79, 70, 229, 0.18);
+    }
+    body{
+      font-family: 'Sarabun', sans-serif;
+      background:
+        radial-gradient(1200px 700px at 10% -10%, rgba(79,70,229,0.16), transparent 55%),
+        radial-gradient(900px 600px at 95% 10%, rgba(16,185,129,0.12), transparent 55%),
+        var(--app-bg);
+      color: var(--text);
+    }
+    .container{
+      max-width: 980px !important;
+    }
+    .page-header{
+      background: rgba(255,255,255,0.72);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 22px;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+      padding: 18px 18px;
+      backdrop-filter: blur(10px);
+    }
+    .page-title{
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin: 0;
+      line-height: 1.1;
+      color: #0b1b44;
+    }
+    .page-title i{
+      color: var(--primary);
+    }
+    .page-subtitle{
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    .card{
+      border: 1px solid var(--card-border);
+      border-radius: var(--card-radius);
+      box-shadow: var(--card-shadow);
+      overflow: hidden;
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(10px);
+    }
+    .card-header{
+      border-bottom: 1px solid rgba(15, 23, 42, 0.10);
+      padding: 14px 16px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .card-header i{
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(79, 70, 229, 0.12);
+      color: var(--primary);
+      font-size: 1.05rem;
+      flex: 0 0 auto;
+    }
+    .card-header.bg-primary,
+    .card-header.bg-success,
+    .card-header.bg-secondary,
+    .card-header.bg-warning{
+      border-bottom: 0;
+    }
+    .card-header.bg-primary{
+      background: linear-gradient(135deg, rgba(79,70,229,0.95), rgba(37,99,235,0.95)) !important;
+    }
+    .card-header.bg-success{
+      background: linear-gradient(135deg, rgba(22,163,74,0.95), rgba(16,185,129,0.95)) !important;
+    }
+    .card-header.bg-secondary{
+      background: linear-gradient(135deg, rgba(71,85,105,0.95), rgba(30,41,59,0.95)) !important;
+    }
+    .card-header.bg-warning{
+      background: linear-gradient(135deg, rgba(245,158,11,0.95), rgba(251,191,36,0.92)) !important;
+    }
+    .card-header.bg-warning i{
+      background: rgba(255,255,255,0.24);
+      color: #111827;
+    }
+    .card-header.bg-primary i,
+    .card-header.bg-success i,
+    .card-header.bg-secondary i{
+      background: rgba(255,255,255,0.18);
+      color: #ffffff;
+    }
+    .card-body{
+      padding: 18px 18px;
+    }
+    .form-label{
+      font-weight: 700;
+      color: #334155;
+      font-size: 0.92rem;
+      margin-bottom: 6px;
+    }
+    .form-control{
+      border-radius: 14px;
+      padding: 10px 12px;
+      border-color: var(--field-border);
+      background: var(--field-bg);
+    }
+    .form-control:focus{
+      border-color: rgba(79, 70, 229, 0.55);
+      box-shadow: 0 0 0 .25rem var(--focus-ring);
+      background: #ffffff;
+    }
+    .img-thumbnail{
+      border-radius: 18px;
+      border: 1px solid rgba(15,23,42,0.10);
+      background: rgba(255,255,255,0.9);
+      padding: 10px;
+    }
+    .btn{
+      border-radius: 14px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    .btn-primary{
+      border: 0;
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      box-shadow: 0 10px 18px rgba(37,99,235,0.22);
+    }
+    .btn-primary:hover{
+      filter: brightness(1.02);
+      box-shadow: 0 14px 26px rgba(37,99,235,0.28);
+    }
+    .btn-danger{
+      border: 0;
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      box-shadow: 0 10px 18px rgba(239,68,68,0.18);
+    }
+    .btn-outline-warning{
+      border-color: rgba(245,158,11,0.55);
+      color: #92400e;
+      background: rgba(255,255,255,0.70);
+    }
+    .btn-outline-warning:hover{
+      background: rgba(245,158,11,0.12);
+      border-color: rgba(245,158,11,0.70);
+      color: #7c2d12;
+    }
+    .btn-warning-soft{
+      border: 0;
+      color: #7c2d12;
+      background: linear-gradient(135deg, rgba(245,158,11,0.22), rgba(251,191,36,0.20));
+      box-shadow: 0 10px 18px rgba(245,158,11,0.12);
+    }
+    .btn-warning-soft:hover{
+      filter: brightness(1.02);
+      box-shadow: 0 14px 26px rgba(245,158,11,0.18);
+    }
+    .btn-danger:disabled{
+      filter: grayscale(0.2);
+      opacity: 0.65;
+      box-shadow: none;
+    }
+    .step-pill{
+      font-weight: 800;
+      font-size: 0.8rem;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.18);
+      border: 1px solid rgba(255,255,255,0.22);
+      color: rgba(255,255,255,0.95);
+      letter-spacing: -0.01em;
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .step-pill.dark{
+      background: rgba(255,255,255,0.22);
+      border-color: rgba(255,255,255,0.26);
+      color: #111827;
+    }
+    .workflow-note{
+      margin: 10px 0 0;
+      color: rgba(255,255,255,0.88);
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .workflow-card-body{
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+    .field-help{
+      color: var(--muted);
+      font-size: 0.86rem;
+      margin-top: 6px;
+    }
+    .actions-row{
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .actions-row .actions{
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+    }
+    .actions-row .actions .btn{
+      padding: 10px 14px;
+    }
+    .app-alert{
+      border-radius: 14px;
+      border: 1px solid rgba(15,23,42,0.10) !important;
+      box-shadow: 0 10px 22px rgba(15,23,42,0.06);
+      backdrop-filter: blur(10px);
+    }
+    .app-alert.alert-info{
+      background: rgba(59,130,246,0.10);
+      color: #0b2d66;
+    }
+    .app-alert.alert-success{
+      background: rgba(16,185,129,0.10);
+      color: #064e3b;
+    }
+    .app-alert.alert-warning{
+      background: rgba(245,158,11,0.12);
+      color: #7c2d12;
+    }
+    .app-alert.alert-danger{
+      background: rgba(239,68,68,0.10);
+      color: #7f1d1d;
+    }
+    .app-alert.alert-light{
+      background: rgba(255,255,255,0.65);
+      color: var(--muted);
+    }
+    #status .alert,
+    #switchStatus .alert{
+      border-radius: 14px;
+      border: 1px solid rgba(15,23,42,0.08);
+      box-shadow: 0 10px 22px rgba(15,23,42,0.06);
+    }
+  </style>
 </head>
 <body class="bg-light">
   <div class="container py-4 animate-fade-in" style="max-width: 900px;">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h2 class="mb-0 text-primary">
-        <i class="bi bi-sliders"></i> ตั้งค่าระบบกลาง (เวอร์ชันใหม่)
-      </h2>
+    <div class="page-header mb-4">
+      <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+        <div>
+          <h2 class="page-title">
+            <i class="bi bi-sliders me-1"></i> ตั้งค่าระบบกลาง
+          </h2>
+          <p class="page-subtitle">จัดการข้อมูลโรงเรียน บุคลากร โลโก้ และการตั้งค่า PDF โดยยังคงการทำงานเดิมทั้งหมด</p>
+        </div>
+      </div>
     </div>
 
     <div class="row g-4">
@@ -72,24 +339,29 @@
         </div>
       </div>
 
-      <!-- การตั้งค่าขั้นสูง -->
       <div class="col-12">
         <div class="card shadow-sm">
           <div class="card-header bg-secondary text-white">
             <i class="bi bi-gear-wide-connected"></i> การตั้งค่าขั้นสูง
+            <span class="step-pill"><i class="bi bi-1-circle-fill"></i> ขั้นตอนที่ 1</span>
           </div>
-          <div class="card-body row align-items-center">
-            <div class="col-md-4 text-center mb-3 mb-md-0">
-              <img id="logoPreview" class="img-thumbnail" style="max-height: 120px; object-fit: contain;" alt="โลโก้" />
-            </div>
-            <div class="col-md-8">
-              <div class="mb-3">
-                <label for="logoFileId" class="form-label">รหัสโลโก้ Google Drive</label>
-                <input type="text" id="logoFileId" class="form-control" />
+          <div class="card-body">
+            <div class="row align-items-center g-3">
+              <div class="col-md-4 text-center">
+                <img id="logoPreview" class="img-thumbnail" style="max-height: 120px; object-fit: contain;" alt="โลโก้" />
+                <div class="field-help">พรีวิวโลโก้จากรหัสไฟล์ Google Drive</div>
               </div>
-              <div class="mb-3">
-                <label for="pdfSaveFolderId" class="form-label">รหัสโฟลเดอร์สำหรับบันทึก PDF</label>
-                <input type="text" id="pdfSaveFolderId" class="form-control" />
+              <div class="col-md-8">
+                <div class="mb-3">
+                  <label for="logoFileId" class="form-label">รหัสโลโก้ Google Drive</label>
+                  <input type="text" id="logoFileId" class="form-control" placeholder="เช่น 1AbC..."/>
+                  <div class="field-help">ระบบจะพยายามโหลดรูปจากหลาย URL อัตโนมัติ</div>
+                </div>
+                <div class="mb-1">
+                  <label for="pdfSaveFolderId" class="form-label">รหัสโฟลเดอร์สำหรับบันทึก PDF</label>
+                  <input type="text" id="pdfSaveFolderId" class="form-control" placeholder="เช่น 1XyZ..."/>
+                  <div class="field-help">ใช้สำหรับบันทึกไฟล์รายงาน PDF ที่สร้างจากระบบ</div>
+                </div>
               </div>
             </div>
           </div>
@@ -103,6 +375,7 @@
         <div class="card shadow-sm border-warning">
           <div class="card-header bg-warning text-dark">
             <i class="bi bi-calendar-event"></i> เปลี่ยนปีการศึกษา
+            <span class="step-pill dark"><i class="bi bi-2-circle-fill"></i> ขั้นตอนที่ 2</span>
           </div>
           <div class="card-body">
             <p class="text-muted mb-3" style="font-size:0.9rem;">
@@ -110,21 +383,20 @@
               <br>ข้อมูลนักเรียน, รายวิชา, ผู้ใช้ จะ <strong>ยังคงอยู่</strong>
             </p>
             <div id="switchPreview" class="mb-3" style="display:none;">
-              <div class="alert alert-info py-2 mb-2" id="previewInfo"></div>
+              <div class="alert alert-info app-alert py-2 mb-2" id="previewInfo"></div>
             </div>
-            <div class="row align-items-end">
-              <div class="col-auto">
+            <div class="actions-row">
+              <div>
                 <label class="form-label fw-bold">ปีการศึกษาใหม่ (พ.ศ.)</label>
-                <input type="number" id="newAcademicYear" class="form-control" style="width:140px;" />
+                <input type="number" id="newAcademicYear" class="form-control" style="width:160px;" />
+                <div class="field-help">แนะนำให้กด “ดูข้อมูลก่อนเปลี่ยน” เพื่อเช็คจำนวนชีต/จำนวนนักเรียนก่อนทำจริง</div>
               </div>
-              <div class="col-auto">
-                <button id="previewSwitchBtn" class="btn btn-outline-warning">
+              <div class="actions">
+                <button id="previewSwitchBtn" class="btn btn-warning-soft">
                   <i class="bi bi-eye"></i> ดูข้อมูลก่อนเปลี่ยน
                 </button>
-              </div>
-              <div class="col-auto">
                 <button id="switchYearBtn" class="btn btn-danger" disabled>
-                  <i class="bi bi-arrow-repeat"></i> เปลี่ยนปีการศึกษา
+                  <i class="bi bi-exclamation-triangle-fill"></i> เปลี่ยนปีการศึกษา
                 </button>
               </div>
             </div>
@@ -152,7 +424,7 @@ if (typeof window.SettingsEditor === 'undefined') {
         setStatus: function(html, type = 'info') {
             const statusEl = this.$('status');
             if (statusEl) {
-                statusEl.innerHTML = html ? `<div class="alert alert-${type} py-2 mb-0">${html}</div>` : '';
+                statusEl.innerHTML = html ? `<div class="alert alert-${type} app-alert py-2 mb-0">${html}</div>` : '';
             }
         },
 
@@ -317,7 +589,7 @@ if (typeof window.SettingsEditor === 'undefined') {
         // ----- Academic Year Switch -----
         setSwitchStatus: function(html, type) {
             var el = this.$('switchStatus');
-            if (el) el.innerHTML = html ? '<div class="alert alert-' + (type || 'info') + ' py-2 mb-0">' + html + '</div>' : '';
+            if (el) el.innerHTML = html ? '<div class="alert alert-' + (type || 'info') + ' app-alert py-2 mb-0">' + html + '</div>' : '';
         },
 
         previewSwitch: function() {

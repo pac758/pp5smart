@@ -7,31 +7,225 @@
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
   <style>
-    body { background:#f6f7fb; font-family: 'Sarabun', system-ui, -apple-system, 'Segoe UI', Roboto; }
-    .card { border:0; box-shadow: 0 6px 18px rgba(0,0,0,.06); border-radius: 16px; }
-    .logo-preview { background:#fff; border: 1px dashed #ced4da; border-radius: 12px; }
-    .dropzone {
-      border:2px dashed #9aa4b2; border-radius:12px; background:#fff;
-      padding:18px; text-align:center; transition: all .2s ease;
+    :root{
+      --app-bg: #f6f7fb;
+      --card-border: rgba(15, 23, 42, 0.10);
+      --card-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+      --card-radius: 18px;
+      --text: #0f172a;
+      --muted: #64748b;
+      --primary: #4f46e5;
+      --primary-2: #2563eb;
+      --success: #16a34a;
+      --success-2: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --field-bg: rgba(255, 255, 255, 0.92);
+      --field-border: rgba(15, 23, 42, 0.14);
+      --focus-ring: rgba(79, 70, 229, 0.18);
     }
-    .dropzone.dragover { border-color:#0d6efd; background:#f0f6ff; }
-    .muted { color:#6c757d; font-size:.95rem; }
-    .kbd { padding:2px 6px; border-radius:6px; background:#eef2f6; border:1px solid #d9e0e8; font-variant-numeric: tabular-nums; }
+    body{
+      font-family: 'Sarabun', sans-serif;
+      background:
+        radial-gradient(1200px 700px at 10% -10%, rgba(79,70,229,0.16), transparent 55%),
+        radial-gradient(900px 600px at 95% 10%, rgba(16,185,129,0.12), transparent 55%),
+        var(--app-bg);
+      color: var(--text);
+    }
+    .container{
+      max-width: 980px !important;
+    }
+    .page-header{
+      background: rgba(255,255,255,0.72);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 22px;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+      padding: 18px 18px;
+      backdrop-filter: blur(10px);
+    }
+    .page-title{
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin: 0;
+      line-height: 1.1;
+      color: #0b1b44;
+    }
+    .page-title i{ color: var(--primary); }
+    .page-subtitle{
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    .card{
+      border: 1px solid var(--card-border);
+      border-radius: var(--card-radius);
+      box-shadow: var(--card-shadow);
+      overflow: hidden;
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(10px);
+    }
+    .card-header{
+      border-bottom: 0;
+      padding: 14px 16px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .card-header i{
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255,255,255,0.18);
+      color: #ffffff;
+      font-size: 1.05rem;
+      flex: 0 0 auto;
+    }
+    .card-header.bg-primary{
+      background: linear-gradient(135deg, rgba(79,70,229,0.95), rgba(37,99,235,0.95)) !important;
+    }
+    .card-header.bg-success{
+      background: linear-gradient(135deg, rgba(22,163,74,0.95), rgba(16,185,129,0.95)) !important;
+    }
+    .card-body{ padding: 18px 18px; }
+    .logo-preview{
+      background: rgba(255,255,255,0.92);
+      border: 1px dashed rgba(15, 23, 42, 0.20);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+    .dropzone {
+      border:2px dashed rgba(15, 23, 42, 0.18);
+      border-radius:18px;
+      background: rgba(255,255,255,0.92);
+      padding:18px;
+      text-align:center;
+      transition: all .2s ease;
+    }
+    .dropzone.dragover { border-color: rgba(79, 70, 229, 0.7); background: rgba(79,70,229,0.06); }
+    .muted { color: var(--muted); font-size:.95rem; }
+    .kbd { padding:2px 6px; border-radius:8px; background:rgba(15,23,42,0.06); border:1px solid rgba(15,23,42,0.10); font-variant-numeric: tabular-nums; }
     .w-48 { width: 48px; }
+    .form-label{ font-weight: 800; color: #334155; font-size: 0.92rem; margin-bottom: 6px; }
+    .form-control{
+      border-radius: 14px;
+      padding: 10px 12px;
+      border-color: var(--field-border);
+      background: var(--field-bg);
+    }
+    .form-control:focus{
+      border-color: rgba(79, 70, 229, 0.55);
+      box-shadow: 0 0 0 .25rem var(--focus-ring);
+      background: #ffffff;
+    }
+    .btn{ border-radius: 14px; font-weight: 800; letter-spacing: -0.01em; }
+    .btn-primary{
+      border: 0;
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      box-shadow: 0 10px 18px rgba(37,99,235,0.22);
+    }
+    .btn-primary:hover{
+      filter: brightness(1.02);
+      box-shadow: 0 14px 26px rgba(37,99,235,0.28);
+    }
+    .btn-success{
+      border: 0;
+      background: linear-gradient(135deg, var(--success), var(--success-2));
+      box-shadow: 0 10px 18px rgba(16,185,129,0.18);
+    }
+    .btn-success:disabled{ opacity: 0.65; box-shadow: none; }
+    .btn-outline-secondary{
+      background: rgba(255,255,255,0.65);
+      border-color: rgba(15,23,42,0.14);
+      color: #334155;
+    }
+    .btn-outline-secondary:hover{
+      background: rgba(15,23,42,0.06);
+      border-color: rgba(15,23,42,0.18);
+      color: #0f172a;
+    }
+    .btn-outline-info{ border-color: rgba(59,130,246,0.45); color: #1d4ed8; background: rgba(255,255,255,0.65); }
+    .btn-outline-info:hover{ background: rgba(59,130,246,0.10); border-color: rgba(59,130,246,0.55); color: #1e40af; }
+    .btn-outline-success{ border-color: rgba(16,185,129,0.45); color: #047857; background: rgba(255,255,255,0.65); }
+    .btn-outline-success:hover{ background: rgba(16,185,129,0.10); border-color: rgba(16,185,129,0.55); color: #065f46; }
+    .app-alert{
+      border-radius: 14px;
+      border: 1px solid rgba(15,23,42,0.10) !important;
+      box-shadow: 0 10px 22px rgba(15,23,42,0.06);
+      backdrop-filter: blur(10px);
+    }
+    .app-alert.alert-light{
+      background: rgba(255,255,255,0.65);
+      color: var(--muted);
+    }
+    .app-alert.alert-info{
+      background: rgba(59,130,246,0.10);
+      color: #0b2d66;
+    }
+    .app-alert.alert-success{
+      background: rgba(16,185,129,0.10);
+      color: #064e3b;
+    }
+    .app-alert.alert-warning{
+      background: rgba(245,158,11,0.12);
+      color: #7c2d12;
+    }
+    .app-alert.alert-danger{
+      background: rgba(239,68,68,0.10);
+      color: #7f1d1d;
+    }
+    .step-pill{
+      font-weight: 900;
+      font-size: 0.82rem;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.18);
+      border: 1px solid rgba(255,255,255,0.22);
+      color: rgba(255,255,255,0.95);
+      letter-spacing: -0.01em;
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .actions-row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .actions-row .actions{
+      display:flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content:flex-end;
+      align-items:center;
+    }
   </style>
 </head>
 <body>
   <div class="container py-4" style="max-width: 980px;">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-      <h2 class="mb-0">
-        <i class="bi bi-image-alt me-2"></i>จัดการโลโก้โรงเรียน
-      </h2>
-      <div>
-        <button id="btnReload" class="btn btn-outline-secondary btn-sm">
-          <i class="bi bi-arrow-clockwise"></i> โหลดค่าปัจจุบัน
-        </button>
+    <div class="page-header mb-4">
+      <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+        <div>
+          <h2 class="page-title">
+            <i class="bi bi-image-alt me-1"></i> จัดการโลโก้โรงเรียน
+          </h2>
+          <p class="page-subtitle">ตั้งค่าโลโก้สำหรับหน้าเว็บและรายงาน PDF โดยยังคงการทำงานเดิมทั้งหมด</p>
+        </div>
+        <div class="d-flex gap-2">
+          <button id="btnReload" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-clockwise"></i> โหลดค่าปัจจุบัน
+          </button>
+        </div>
       </div>
     </div>
 
@@ -40,7 +234,8 @@
       <div class="col-lg-5">
         <div class="card h-100">
           <div class="card-header bg-primary text-white">
-            <i class="bi bi-eye me-1"></i> โลโก้ปัจจุบัน
+            <i class="bi bi-eye"></i> โลโก้ปัจจุบัน
+            <span class="step-pill"><i class="bi bi-1-circle-fill"></i> ขั้นตอนที่ 1</span>
           </div>
           <div class="card-body">
             <div class="logo-preview p-3 d-flex align-items-center justify-content-center" style="height: 220px;">
@@ -69,7 +264,8 @@
       <div class="col-lg-7">
         <div class="card">
           <div class="card-header bg-success text-white">
-            <i class="bi bi-sliders me-1"></i> เปลี่ยน/อัปเดตโลโก้
+            <i class="bi bi-sliders"></i> เปลี่ยน/อัปเดตโลโก้
+            <span class="step-pill"><i class="bi bi-2-circle-fill"></i> ขั้นตอนที่ 2</span>
           </div>
           <div class="card-body">
             <!-- วางลิงก์หรือไฟล์ไอดี -->
@@ -80,7 +276,7 @@
                 <input id="txtLinkOrId" type="text" class="form-control" placeholder="เช่น https://drive.google.com/file/d/xxx/view หรือ 1AbCDef..." />
                 <button id="btnUseLink" class="btn btn-primary">ใช้ไอดีนี้</button>
               </div>
-              <div class="form-text">
+              <div class="form-text muted">
                 กด <span class="kbd">Ctrl</span>+<span class="kbd">V</span> วางลิงก์ได้ทันที ระบบจะดึง <code>fileId</code> ให้อัตโนมัติ
               </div>
             </div>
@@ -117,7 +313,7 @@
           </div>
         </div>
 
-        <div class="alert alert-light border mt-3 mb-0">
+        <div class="alert alert-light border mt-3 mb-0 app-alert">
           <div class="fw-semibold"><i class="bi bi-info-circle"></i> หมายเหตุ</div>
           <ul class="mb-0">
             <li>ระบบจะใช้ลิงก์รูปแบบ: <code>https://drive.google.com/uc?export=view&id=&lt;fileId&gt;</code> เป็นค่าแสดงผลหลัก</li>
@@ -143,7 +339,7 @@
             setStatus: function(html, type = 'info') {
                 const statusEl = this.$('status');
                 if (statusEl) {
-                    statusEl.innerHTML = html ? `<div class="alert alert-${type} py-2 mb-0">${html}</div>` : '';
+                    statusEl.innerHTML = html ? `<div class="alert alert-${type} app-alert py-2 mb-0">${html}</div>` : '';
                 }
             },
 

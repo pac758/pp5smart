@@ -512,33 +512,96 @@ body.menu-open {
    ========================= */
 .submenu-flyout {
   position: fixed;
-  min-width: 280px;
-  max-width: 360px;
-  max-height: 70vh;
-  overflow: auto;
+  min-width: 260px;
+  max-width: 320px;
   background: var(--bg-card);
   color: var(--sidebar-text);
-  border: 1px solid var(--gray-200);
-  border-radius: 12px;
-  box-shadow: var(--shadow-lg);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
   z-index: var(--z-flyout);
   display: none;
-  padding: 8px 0;  /* ✅ เพิ่ม padding บน-ล่าง */
+  padding: 10px;
+  backdrop-filter: blur(12px);
+  animation: flyoutIn 0.2s ease-out;
+}
+
+@keyframes flyoutIn {
+  from { opacity: 0; transform: translateX(10px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 [data-theme="dark"] .submenu-flyout {
-  border-color: #232a36;
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(31, 41, 55, 0.95);
 }
 
 .submenu-flyout .nav-link {
-  border-left: none;
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  margin-bottom: 4px;
+  border-radius: 10px;
+  color: var(--sidebar-text);
+  text-decoration: none;
+  transition: all 0.2s ease;
+  border-left: none !important;
+}
+
+.submenu-flyout .nav-link:last-child {
+  margin-bottom: 0;
+}
+
+.submenu-flyout .nav-link i {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px; /* เพิ่มระยะห่างระหว่างไอคอนกับข้อความ */
+  font-size: 1.1rem;
   border-radius: 8px;
-  margin: 4px 8px;           /* ✅ เพิ่ม margin */
-  padding: 0.75rem 1rem;     /* ✅ กำหนด padding ชัดเจน */
+  transition: all 0.2s ease;
+  /* สีไอคอนเริ่มต้น */
+  background: rgba(79, 70, 229, 0.08);
+  color: var(--primary);
 }
 
 .submenu-flyout .nav-link:hover {
   background: var(--sidebar-hover);
+  transform: translateX(4px);
+}
+
+.submenu-flyout .nav-link:hover i {
+  background: var(--primary);
+  color: white;
+  transform: scale(1.1);
+}
+
+/* เพิ่มสีสันตามประเภทของเมนู (Icon Variants) */
+.submenu-flyout .nav-link[data-page*="setting"] i,
+.submenu-flyout .nav-link[onclick*="update"] i {
+  background: rgba(14, 165, 233, 0.1);
+  color: #0ea5e9;
+}
+.submenu-flyout .nav-link[data-page*="student"] i,
+.submenu-flyout .nav-link[data-page*="user"] i {
+  background: rgba(79, 70, 229, 0.1);
+  color: #6366f1;
+}
+.submenu-flyout .nav-link[data-page*="report"] i,
+.submenu-flyout .nav-link[data-page*="pp5"] i,
+.submenu-flyout .nav-link[data-page*="pp6"] i {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+.submenu-flyout .nav-link[data-page*="password"] i {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+.submenu-flyout .nav-link.danger i {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
 }
 
 /* =========================
@@ -1674,6 +1737,7 @@ window.AppNavigation.checkSystemUpdate = function() {
     loadingOverlay.innerHTML = '<div style="background:#fff;padding:30px;border-radius:16px;text-align:center;"><div class="spinner-border text-primary" role="status" style="width:3rem;height:3rem;margin-bottom:20px;"></div><p style="color:#666;margin:0;">กำลังเช็คอัปเดต...</p></div>';
     document.body.appendChild(loadingOverlay);
 
+    const token = localStorage.getItem('authToken') || '';
     google.script.run
       .withSuccessHandler(function(result) {
         loadingOverlay.remove();
@@ -1720,7 +1784,7 @@ window.AppNavigation.checkSystemUpdate = function() {
         loadingOverlay.remove();
         alert('❌ เกิดข้อผิดพลาด:\n\n' + err.message);
       })
-      .checkAndNotifyUpdate();
+      .checkAndNotifyUpdate(token);
   } else {
     alert('❌ ไม่สามารถเชื่อมต่อกับ Google Apps Script ได้');
   }
@@ -1797,6 +1861,7 @@ function closeFlyout() {
   const fly = document.getElementById('submenuFlyout');
   if (fly) {
     fly.style.display = 'none';
+    fly.style.visibility = 'hidden';
     fly.setAttribute('aria-hidden', 'true');
     fly.innerHTML = '';
   }
@@ -1852,6 +1917,7 @@ function openFlyout(menuGroup, trigger) {
   const navLinks = menuGroup.querySelectorAll('.nav-item .nav-link');
   if (!navLinks.length) return;
   
+  // 1. สร้างเนื้อหาเมนู
   flyout.innerHTML = Array.from(navLinks).map(link => {
     const icon = link.querySelector('i')?.outerHTML || '';
     const text = link.textContent.trim();
@@ -1865,17 +1931,28 @@ function openFlyout(menuGroup, trigger) {
     return '';
   }).join('');
   
+  // 2. แสดงผลชั่วคราวเพื่อวัดขนาดที่แท้จริง (ลดปัญหาการคำนวณตำแหน่งผิดพลาด)
+  flyout.style.display = 'block';
+  flyout.style.visibility = 'hidden';
+  flyout.style.top = '0px';
+  flyout.style.left = '0px';
+  
   const rect = trigger.getBoundingClientRect();
   let left = rect.right + 8;
   let top = rect.top;
   const flyWidth = 300;
-  const flyHeight = flyout.scrollHeight || 400;
+  
+  // วัดความสูงจริงหลัง Render
+  const flyHeight = flyout.offsetHeight; 
+  
+  // 3. ปรับตำแหน่งไม่ให้หลุดขอบจอ
   if (left + flyWidth > window.innerWidth - 8) left = window.innerWidth - flyWidth - 8;
   if (top + flyHeight > window.innerHeight - 8) top = Math.max(8, window.innerHeight - flyHeight - 8);
   
+  // 4. กำหนดตำแหน่งและทำให้มองเห็น
   flyout.style.left = left + 'px';
   flyout.style.top = top + 'px';
-  flyout.style.display = 'block';
+  flyout.style.visibility = 'visible';
   flyout.setAttribute('aria-hidden', 'false');
   
   trigger.classList.add('flyout-active');

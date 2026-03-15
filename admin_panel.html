@@ -45,6 +45,31 @@
     .btn-danger  { background: #ef4444; color: #fff; }
     .btn:hover { transform: translateY(-1px); }
     .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .tabbar { display:flex; gap:.5rem; flex-wrap:wrap; }
+    .tabbtn {
+      display:inline-flex; align-items:center; gap:.5rem;
+      padding:.5rem .75rem; border-radius:.75rem; border:1px solid #e5e7eb;
+      background: rgba(255,255,255,0.75);
+      font-size:.875rem; font-weight:600; color:#374151;
+      cursor:pointer; transition: all .2s ease;
+    }
+    .tabbtn:hover { transform: translateY(-1px); background:#fff; }
+    .tabbtn.active {
+      border-color: rgba(147,51,234,0.35);
+      background: linear-gradient(to right, rgba(147,51,234,0.14), rgba(37,99,235,0.12));
+      color:#1e40af;
+    }
+    .tabcount {
+      display:inline-flex; align-items:center; justify-content:center;
+      min-width: 30px;
+      padding: .125rem .5rem;
+      border-radius: 999px;
+      background: rgba(15,23,42,0.06);
+      border: 1px solid rgba(15,23,42,0.08);
+      color:#334155;
+      font-weight:700;
+      font-size:.75rem;
+    }
     .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; align-items: center; justify-content: center; }
     .modal.active { display: flex; }
     .modal-content { background: #fff; padding: 2rem; border-radius: 1rem; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; }
@@ -74,6 +99,21 @@
     <div class="flex justify-between items-center mb-4" style="flex-wrap:wrap;gap:1rem;">
       <input type="text" id="searchBox" class="form-input" placeholder="🔍 ค้นหาชื่อผู้ใช้..." style="max-width:300px;">
       <button class="btn btn-primary" id="refreshBtn"><span>🔄 รีเฟรช</span></button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex justify-between items-center mb-4" style="flex-wrap:wrap;gap:1rem;">
+      <div class="tabbar" id="roleTabs">
+        <button type="button" class="tabbtn active" data-tab="staff">
+          🧑‍💼 Admin/Teacher <span class="tabcount" id="countStaff">0</span>
+        </button>
+        <button type="button" class="tabbtn" data-tab="parent">
+          👨‍👩‍👧 Parent <span class="tabcount" id="countParent">0</span>
+        </button>
+      </div>
+      <div class="text-sm" style="color:#64748b;">
+        แสดงเฉพาะกลุ่มที่เลือก (ค้นหาได้ในแท็บนั้น)
+      </div>
     </div>
 
     <!-- Loading -->
@@ -187,6 +227,7 @@
     const HAS_GAS = (typeof google !== 'undefined') && google.script && google.script.run;
 
     let allUsers = [];
+    let currentTab = 'staff'; // staff = admin+teacher, parent = parent
     let currentEditUser = null;
     let currentResetUser = null;
     let currentDeleteUser = null;
@@ -236,10 +277,13 @@
               if (ra!==rb) return ra-rb;
               return String(a.username||'').localeCompare(String(b.username||''), 'th');
             });
-            displayUsers(allUsers);
             document.getElementById('usersTable')?.classList.remove('hidden');
+            applyFilters();
           }else{
             document.getElementById('emptyState')?.classList.remove('hidden');
+            allUsers = [];
+            displayUsers([]);
+            updateTabCounts_();
           }
         })
         .withFailureHandler(err=>{
@@ -247,6 +291,38 @@
           showStatus('เกิดข้อผิดพลาด: ' + (err && err.message ? err.message : err), false);
         })
         .getAllUsers();
+    }
+
+    function isParent_(u){
+      return String(u && u.role || '').toLowerCase() === 'parent';
+    }
+
+    function getUsersByTab_(tab){
+      if (tab === 'parent') return allUsers.filter(isParent_);
+      return allUsers.filter(u => !isParent_(u));
+    }
+
+    function updateTabCounts_(){
+      const staff = getUsersByTab_('staff').length;
+      const parent = getUsersByTab_('parent').length;
+      const c1 = document.getElementById('countStaff');
+      const c2 = document.getElementById('countParent');
+      if (c1) c1.textContent = String(staff);
+      if (c2) c2.textContent = String(parent);
+    }
+
+    function applyFilters(){
+      updateTabCounts_();
+      const q = (document.getElementById('searchBox')?.value || '').toLowerCase();
+      const base = getUsersByTab_(currentTab);
+      const filtered = base.filter(u=>{
+        const u1 = String(u.username||'').toLowerCase();
+        const n1 = String(u.fullName||'').toLowerCase();
+        return u1.includes(q) || n1.includes(q);
+      });
+      displayUsers(filtered);
+      document.getElementById('emptyState')?.classList.toggle('hidden', filtered.length !== 0);
+      document.getElementById('usersTable')?.classList.toggle('hidden', filtered.length === 0);
     }
 
     function displayUsers(users){
@@ -274,15 +350,7 @@
 
     // ---------- Search (debounce) ----------
     function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
-    const doFilter = debounce(()=>{
-      const q = (document.getElementById('searchBox')?.value || '').toLowerCase();
-      const filtered = allUsers.filter(u=>{
-        const u1 = String(u.username||'').toLowerCase();
-        const n1 = String(u.fullName||'').toLowerCase();
-        return u1.includes(q) || n1.includes(q);
-      });
-      displayUsers(filtered);
-    }, 120);
+    const doFilter = debounce(applyFilters, 120);
 
     // ---------- Edit Modal ----------
     function openEditModal(username){
@@ -482,6 +550,17 @@
 
       // search
       addTrackedEvent(document.getElementById('searchBox'), 'input', doFilter);
+
+      // tabs
+      addTrackedEvent(document.getElementById('roleTabs'), 'click', (e)=>{
+        const btn = e.target.closest('button[data-tab]');
+        if (!btn) return;
+        const tab = btn.getAttribute('data-tab');
+        if (!tab || tab === currentTab) return;
+        currentTab = tab;
+        document.querySelectorAll('#roleTabs .tabbtn').forEach(b=>b.classList.toggle('active', b.getAttribute('data-tab') === currentTab));
+        applyFilters();
+      });
 
       // table buttons (event delegation)
       addTrackedEvent(document.getElementById('usersList'), 'click', (e)=>{

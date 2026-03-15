@@ -285,31 +285,18 @@ function generatePp6Pdf(studentId, showRank) {
     
 
     // 2. สร้าง Google Doc ชั่วคราว
-
     const docName = `ปพ.6_${student.id}_${student.name}_${new Date().getTime()}`;
-
     const doc = DocumentApp.create(docName);
-
     const body = doc.getBody();
-
     
-
     body.clear();
-
     
-
-    // ตั้งค่าหน้ากระดาษ (A4) — compact 1 page
-
+    // ตั้งค่าหน้ากระดาษ (A4)
     body.setMarginTop(14);
-
     body.setMarginBottom(10);
-
     body.setMarginLeft(50);
-
     body.setMarginRight(20);
-
     body.setPageWidth(595);
-
     body.setPageHeight(842);
 
     
@@ -347,50 +334,29 @@ function generatePp6Pdf(studentId, showRank) {
     
 
     const styleHeader = (para) => {
-
         para.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-
         para.editAsText().setBold(true).setFontSize(16).setFontFamily('Sarabun');
-
         para.setSpacingAfter(0).setSpacingBefore(0);
-
     };
 
-
-
     styleHeader(body.appendParagraph('แบบรายงานผลพัฒนาคุณภาพผู้เรียนรายบุคคล (ปพ.6)'));
-
     styleHeader(body.appendParagraph(`ปีการศึกษา ${schoolData.year}`));
-
     styleHeader(body.appendParagraph(schoolData.name));
-
     
-
     let line4Text = schoolData.office;
-
     if (schoolData.district) line4Text += ` เขต ${schoolData.district}`;
-
     const line4 = body.appendParagraph(line4Text);
-
     styleHeader(line4);
-
     line4.setSpacingAfter(3);
-
     
-
     // === ข้อมูลนักเรียน ===
-
     const studentInfo = body.appendParagraph(
-
       `รหัสประจำตัวนักเรียน : ${student.id}     ชื่อ-นามสกุล : ${student.name}     ชั้น ${student.grade} ห้อง ${student.classNo}`
-
     );
-
     studentInfo.setAlignment(DocumentApp.HorizontalAlignment.LEFT);
-
     studentInfo.editAsText().setFontSize(14).setFontFamily('Sarabun');
-
-    studentInfo.setSpacingAfter(1);
+    studentInfo.setSpacingAfter(0);
+    studentInfo.setSpacingBefore(0);
 
     
 
@@ -409,6 +375,10 @@ function generatePp6Pdf(studentId, showRank) {
     table.setBorderWidth(1);
 
     table.setBorderColor('#000000');
+    table.setAttributes({
+      [DocumentApp.Attribute.MARGIN_TOP]: 0,
+      [DocumentApp.Attribute.MARGIN_BOTTOM]: 0
+    });
 
     
 
@@ -437,237 +407,126 @@ function generatePp6Pdf(studentId, showRank) {
       para.setSpacingAfter(0).setSpacingBefore(0);
 
       para.editAsText().setBold(true).setFontSize(12).setFontFamily('Sarabun');
-
     });
-
-    
 
     allSubjects.forEach((s, idx) => {
-
       const row = table.appendTableRow();
-
       const values = [
-
         String(idx + 1), s.code || '', s.name || '-', s.type || 'พื้นฐาน',
-
         String(s.hours != null && s.hours !== '' ? s.hours : '-'), 
-
         formatGradeForDisplay_(s), ''
-
       ];
-
       values.forEach((val, i) => {
-
         const cell = row.appendTableCell(val);
-
         cell.setWidth(widths[i]);
-
         cell.setPaddingTop(1).setPaddingBottom(1).setPaddingLeft(2).setPaddingRight(2);
-
         const para = cell.getChild(0).asParagraph();
-
         const align = i === 2 ? DocumentApp.HorizontalAlignment.LEFT : DocumentApp.HorizontalAlignment.CENTER;
-
         para.setAlignment(align);
-
         para.setSpacingAfter(0).setSpacingBefore(0);
-
         const text = para.editAsText();
-
         text.setFontSize(12).setFontFamily('Sarabun').setBold(false);
-
       });
-
     });
 
+    // 3. ส่วนสรุปผลและลายเซ็น (ดึงขึ้นชิดตารางด้านบนให้มากที่สุด)
+    // ลบช่องว่างที่เกิดขึ้นโดยอัตโนมัติระหว่างตาราง
+    const lastIdx = body.getNumChildren() - 1;
+    const spacerPara = body.getChild(lastIdx).asParagraph();
+    spacerPara.setSpacingAfter(0).setSpacingBefore(0).editAsText().setFontSize(1);
     
-
-    // ⭐ ลดช่องว่างหลังตารางเกรด (เปลี่ยนจาก Paragraph ว่าง เป็นการกำหนด SpaceBefore ที่หัวข้อถัดไปแทน)
-
-    // body.appendParagraph('').setSpacingAfter(8); <--- ลบทิ้ง
-
-    
-
-    // ===================================================
-
-    // ⭐ สรุปผลการประเมิน: outer table (ไม่มีเส้น) > [ซ้าย: nested table มีเส้น | ขวา: ลายเซ็น]
-
-    // ===================================================
-
     const outerTable = body.appendTable();
-
     outerTable.setBorderWidth(0);
-
     outerTable.setBorderColor('#FFFFFF');
-
-
+    outerTable.setAttributes({
+      [DocumentApp.Attribute.MARGIN_TOP]: 0,
+      [DocumentApp.Attribute.MARGIN_BOTTOM]: 0
+    });
 
     const outerRow = outerTable.appendTableRow();
-
     const leftCell = outerRow.appendTableCell('');
-
     leftCell.setWidth(310);
-
     leftCell.setPaddingTop(0).setPaddingBottom(0).setPaddingLeft(2).setPaddingRight(4);
-
     const rightCell = outerRow.appendTableCell('');
-
     rightCell.setWidth(200);
-
     rightCell.setPaddingTop(0).setPaddingBottom(0).setPaddingLeft(8).setPaddingRight(0);
 
-
-
     // --- ลบ paragraph ว่างเริ่มต้นของ cell ---
-
     if (leftCell.getNumChildren() > 0) leftCell.getChild(0).removeFromParent();
-
     if (rightCell.getNumChildren() > 0) rightCell.getChild(0).removeFromParent();
 
-
-
-    // ========== ซ้าย: Nested table มีเส้นขอบ ==========
-
     const smFont = 'Sarabun';
-
-    const smSize = 12;
-
+    const smSize = 11.5; // ปรับลดขนาดตัวอักษรลงเล็กน้อย (11.5pt) เพื่อช่วยดึงเนื้อหา
     const innerTable = leftCell.appendTable();
-
     innerTable.setBorderWidth(1);
-
     innerTable.setBorderColor('#000000');
 
-
-
     const smStyle = (cell, bold, width, align, bgColor) => {
-
       const p = cell.getChild(0).asParagraph();
-
       p.setSpacingAfter(0).setSpacingBefore(0);
-
       p.editAsText().setFontSize(smSize).setFontFamily(smFont).setBold(bold || false);
-
       if (align) p.setAlignment(align);
-
-      cell.setPaddingTop(2).setPaddingBottom(2).setPaddingLeft(4).setPaddingRight(4);
-
+      cell.setPaddingTop(1).setPaddingBottom(1).setPaddingLeft(4).setPaddingRight(4); // ลด padding เพื่อประหยัดพื้นที่แนวตั้ง
       if (width) cell.setWidth(width);
-
       if (bgColor) cell.setBackgroundColor(bgColor);
-
     };
-
-
 
     const mergeRows = [];
-
     let innerRowIdx = 0;
-
     const addInnerRow = (label, value, headerBg) => {
-
       if (headerBg) mergeRows.push(innerRowIdx);
-
       innerRowIdx++;
-
       const r = innerTable.appendTableRow();
-
       const c1 = r.appendTableCell(label);
-
-      smStyle(c1, !!headerBg, 210, headerBg ? DocumentApp.HorizontalAlignment.CENTER : null, headerBg || null);
-
+      smStyle(c1, !!headerBg, 210, headerBg ? DocumentApp.HorizontalAlignment.CENTER : null, headerBg || null); 
       const c2 = r.appendTableCell(String(value));
-
-      smStyle(c2, false, 70, DocumentApp.HorizontalAlignment.CENTER, headerBg || null);
-
+      smStyle(c2, false, 70, DocumentApp.HorizontalAlignment.CENTER, headerBg || null); 
     };
-
-
 
     addInnerRow('สรุปผลการประเมิน', '', '#D6EAF8');
-
     addInnerRow('จำนวนหน่วยกิต/น้ำหนักรายวิชาพื้นฐาน', gpaInfo.basicCredits.toFixed(2));
-
     addInnerRow('จำนวนหน่วยกิต/น้ำหนักรายวิชาเพิ่มเติม', gpaInfo.additionalCredits.toFixed(2));
-
     addInnerRow('รวมหน่วยกิต/น้ำหนักที่ได้', gpaInfo.totalCredits.toFixed(2));
-
     addInnerRow('ระดับผลการเรียนเฉลี่ย', gpaInfo.gpa.toFixed(2));
-
     if (showRank) {
-
       addInnerRow('อันดับที่ใน ' + gpaInfo.totalStudents + ' คน', gpaInfo.classRank);
-
     }
-
-    addInnerRow('สรุปเวลาเรียนมาเรียน ' + attendance.totalPresent + '/' + attendance.totalDays + ' วัน', 'ร้อยละ ' + attendance.percentage.toFixed(2));
-
+    addInnerRow('สรุปเวลาเรียน ' + attendance.totalPresent + '/' + attendance.totalDays + ' วัน', 'ร้อยละ ' + attendance.percentage.toFixed(2));
     addInnerRow('การประเมินคุณลักษณะ', '', '#D6EAF8');
-
-    addInnerRow('คุณลักษณะอันพึงประสงค์ของสถานศึกษา', assessments.character?.result || '-');
-
+    addInnerRow('คุณลักษณะอันพึงประสงค์', assessments.character?.result || '-');
     addInnerRow('การอ่าน คิดวิเคราะห์และเขียน', assessments.reading?.result || '-');
-
     addInnerRow('กิจกรรมพัฒนาผู้เรียน', assessments.activities?.result || '-');
 
-    // ความเห็นครูประจำชั้น — merge เป็นแถวเดียว
-
-    const commentText = 'ความเห็นครูประจำชั้น: ' + (teacherComment || '-');
-
+    // ความเห็นครูประจำชั้น — ปรับให้ประหยัดพื้นที่แนวตั้งที่สุด
+    const commentText = 'ความเห็นครู: ' + (teacherComment || '-');
     mergeRows.push(innerRowIdx);
-
     innerRowIdx++;
-
     const cmRow = innerTable.appendTableRow();
-
     const cmC1 = cmRow.appendTableCell(commentText);
-
-    smStyle(cmC1, false, 210, null, null);
-
+    smStyle(cmC1, false, 210, DocumentApp.HorizontalAlignment.LEFT, null);
     const cmC2 = cmRow.appendTableCell('');
-
-    smStyle(cmC2, false, 70, null, null);
-
-
+    smStyle(cmC2, false, 70, DocumentApp.HorizontalAlignment.LEFT, null);
+    cmC1.setPaddingTop(2).setPaddingBottom(2); 
 
     // ========== ขวา: ลายเซ็น (paragraph ไม่มีเส้น) ==========
-
     const addSign = (text, isRole, topSpace) => {
-
       const p = rightCell.appendParagraph(text);
-
       p.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-
-      p.editAsText().setFontSize(12).setFontFamily('Sarabun');
-
-      p.setSpacingBefore(topSpace != null ? topSpace : (isRole ? 0 : 10)).setSpacingAfter(0);
-
+      p.editAsText().setFontSize(11.5).setFontFamily('Sarabun'); 
+      p.setSpacingBefore(topSpace != null ? topSpace : (isRole ? 0 : 4)).setSpacingAfter(0); // ลดระยะห่างลายเซ็น
     };
 
-
-
     // ดึงชื่อครูประจำชั้น
-
     const homeroomName = getHomeroomTeacher(student.grade, String(student.classNo));
 
-
-
-    addSign('ลงชื่อ.........................................', false, 30);
-
+    addSign('ลงชื่อ.........................................', false, 8); // ลดระยะห่างด้านบนลายเซ็น
     addSign('(' + (homeroomName && homeroomName !== '...' ? homeroomName : '                                    ') + ')', false, 0);
-
-    addSign('ครูที่ปรึกษา/ครูประจำชั้น', true);
-
-    addSign('ลงชื่อ.........................................', false);
-
+    addSign('ครูประจำชั้น', true);
+    addSign('ลงชื่อ.........................................', false, 10);
     addSign('(' + (schoolData.director || '                                    ') + ')', false, 0);
-
     addSign(schoolData.directorPosition, true);
-
-    addSign('ลงชื่อ.........................................', false);
-
+    addSign('ลงชื่อ.........................................', false, 10);
     addSign('(                                          )', false, 0);
-
     addSign('ผู้ปกครอง', true);
 
 
@@ -758,33 +617,37 @@ function generatePp6Pdf(studentId, showRank) {
 
 
 
-    const docFile = DriveApp.getFileById(docId);
-
-    const pdfBlob = docFile.getAs('application/pdf');
-
-    
-
-    // ใช้ cached folder
-
-    const folder = getCachedFolder_(settings);
-
-    
-
-    const pdfFile = folder.createFile(pdfBlob);
-
-    pdfFile.setName(`ปพ.6_${student.id}_${student.name}.pdf`);
-
-    pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
-    
-
-    docFile.setTrashed(true);
-
-    
-
-    Logger.log('✅ สร้าง PDF สำเร็จ: ' + pdfFile.getUrl());
-
-    return pdfFile.getUrl();
+    // แปลง PDF (ใช้ pattern เดียวกับ OnePageReport เพื่อความเสถียร)
+    let _pdfStep = 'getFileById';
+    try {
+      const docFile = DriveApp.getFileById(docId);
+      _pdfStep = 'getAs_pdf';
+      const pdfBlob = docFile.getAs('application/pdf');
+      
+      _pdfStep = 'getCachedFolder';
+      const folder = getCachedFolder_(settings);
+      
+      _pdfStep = 'createFile';
+      const pdfFile = folder.createFile(pdfBlob);
+      pdfFile.setName(`ปพ.6_${student.id}_${student.name}.pdf`);
+      
+      _pdfStep = 'setSharing';
+      try {
+        pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      } catch (shareErr) {
+        Logger.log('⚠️ setSharing failed: ' + shareErr.message);
+      }
+      
+      _pdfStep = 'setTrashed';
+      docFile.setTrashed(true);
+      
+      Logger.log('✅ สร้าง PDF สำเร็จ: ' + pdfFile.getUrl());
+      return pdfFile.getUrl();
+      
+    } catch (pdfErr) {
+      Logger.log(`❌ PDF Conversion Error at [${_pdfStep}]: ` + pdfErr.message);
+      throw new Error(`[PDF step: ${_pdfStep}] ` + pdfErr.message);
+    }
 
     
 

@@ -595,21 +595,14 @@ function doGet(e) {
 
 
     // 🏫 MULTI-TENANT: ถ้ายังไม่ได้ติดตั้ง → Setup Wizard
-
     if (!isSetupComplete_()) {
-
       return serveSetupWizard();
-
     }
-
-
 
     // 🛠️ DEV BYPASS: ?dev=1 หรือ test deployment (/dev) → bypass login
     if (params.dev === '1' || isTestDeployment_()) {
       return serveDevBypass();
     }
-
-
 
     if (page === 'dashboard' || page === 'app') return serveMainApp();
 

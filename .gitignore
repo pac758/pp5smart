@@ -4,6 +4,12 @@
 *.pdf
 *.ps1
 *.txt
+*.xlsx
+.clasp.json
+.clasp.json.backup
+.claspignore
 school-management-system/
 node_modules/
 .DS_Store
+.git/
+.vscode/
