@@ -738,6 +738,30 @@
       return grade.toFixed(1);
     }
 
+    function isActivitySubject(subjectName) {
+      var n = String(subjectName || '').trim();
+      if (!n) return false;
+      if (appData.currentData && appData.currentData.subjectTypes) {
+        var t = String(appData.currentData.subjectTypes[n] || '').trim();
+        if (t === 'กิจกรรม') return true;
+      }
+      return /แนะแนว|ลูกเสือ|เนตรนารี|ชุมนุม|กิจกรรมเพื่อสังคม|บำเพ็ญประโยชน์/.test(n);
+    }
+
+    function formatActivityGrade(grade, rawGrade) {
+      var raw = String(rawGrade || '').trim();
+      if (raw) {
+        if (/มผ|ไม่ผ่าน/.test(raw)) return 'มผ';
+        if (/ผ|ผ่าน/.test(raw)) return 'ผ';
+      }
+      if (grade === undefined || grade === null) return '-';
+      if (typeof grade === 'number') return grade > 0 ? 'ผ' : 'มผ';
+      var s = String(grade).trim();
+      if (/มผ|ไม่ผ่าน/.test(s)) return 'มผ';
+      if (/ผ|ผ่าน/.test(s)) return 'ผ';
+      return '-';
+    }
+
     document.getElementById('loadDataBtn').addEventListener('click', loadScores);
 
     function loadScores() {
@@ -820,7 +844,12 @@
           tdGrade.className = 'grade-cell';
           var grade = student.grades[subject];
           
-          if (grade !== undefined && grade !== null) {
+          if (isActivitySubject(subject)) {
+            var rawG = student.rawGrades ? student.rawGrades[subject] : null;
+            tdGrade.textContent = formatActivityGrade(grade, rawG);
+            if (tdGrade.textContent === 'ผ') tdGrade.style.color = '#198754';
+            else if (tdGrade.textContent === 'มผ') tdGrade.style.color = '#dc3545';
+          } else if (grade !== undefined && grade !== null) {
             tdGrade.textContent = formatGrade(grade);
             tdGrade.classList.add(getGradeClass(grade));
           } else {

@@ -376,23 +376,12 @@ function exportScoresPDFviaSheet_(data) {
     return !isNaN(n) ? (n >= 50 ? 'ผ' : 'มผ') : '-';
   };
 
-  const SHORT = {
-    'ภาษาไทย':'ภาษาไทย','คณิตศาสตร์':'คณิตศาสตร์',
-    'วิทยาศาสตร์และเทคโนโลยี':'วิทย์ฯ','วิทยาศาสตร์':'วิทย์ฯ',
-    'สังคมศึกษา ศาสนา และวัฒนธรรม':'สังคมฯ','สังคมศึกษา':'สังคมฯ',
-    'ประวัติศาสตร์':'ประวัติฯ','สุขศึกษาและพลศึกษา':'สุขศึกษาฯ',
-    'สุขศึกษา':'สุขศึกษา','พลศึกษา':'พลศึกษา',
-    'ศิลปะ':'ศิลปะ','การงานอาชีพ':'การงานฯ','การงาน':'การงานฯ',
-    'ภาษาอังกฤษ':'อังกฤษ','หน้าที่พลเมือง':'หน้าที่ฯ'
-  };
-  const SHORT_ACT = {
-    'แนะแนว':'แนะแนว','ลูกเสือ':'ลูกเสือฯ','เนตรนารี':'ลูกเสือฯ',
-    'ชุมนุม':'ชุมนุม','สังคม':'สาธารณฯ','สาธารณ':'สาธารณฯ'
-  };
-  const shortName = (fn) => {
-    for (const k in SHORT) { if (fn.indexOf(k) !== -1) return SHORT[k]; }
-    for (const k in SHORT_ACT) { if (fn.indexOf(k) !== -1) return SHORT_ACT[k]; }
-    return fn.length > 6 ? fn.substring(0, 6) + 'ฯ' : fn;
+  // ใช้ชื่อวิชาเต็ม (ไม่ย่อ) เพื่อความเป็นทางการ
+  // คำนวณความสูง sub-header จากชื่อยาวสุด (ตัวอักษรไทย ~7px/ตัว ที่ font 10)
+  const calcSubHeaderHeight = (allSubs) => {
+    let maxLen = 0;
+    allSubs.forEach(s => { if (s.length > maxLen) maxLen = s.length; });
+    return Math.max(100, maxLen * 8 + 10);
   };
 
   const acadSubs = subjects.filter(s => !isActivitySubject(s));
@@ -491,20 +480,21 @@ function exportScoresPDFviaSheet_(data) {
       .setValue('เฉลี่ย').setFontFamily(FONT).setFontSize(11).setFontWeight('bold')
       .setHorizontalAlignment('center').setVerticalAlignment('middle');
 
-    // ── แถว sub-header: ชื่อวิชาหมุน 90° ──
+    // ── แถว sub-header: ชื่อวิชาเต็มหมุน 90° ──
     acadSubs.forEach((s, i) => {
       sheet.getRange(subRow, COL_ACAD + i)
-        .setValue(shortName(s)).setFontFamily(FONT).setFontSize(10)
+        .setValue(s).setFontFamily(FONT).setFontSize(10)
         .setHorizontalAlignment('center').setVerticalAlignment('bottom')
         .setTextRotation(90);
     });
     actSubs.forEach((s, i) => {
       sheet.getRange(subRow, COL_ACT + i)
-        .setValue(shortName(s)).setFontFamily(FONT).setFontSize(9)
+        .setValue(s).setFontFamily(FONT).setFontSize(9)
         .setHorizontalAlignment('center').setVerticalAlignment('bottom')
         .setTextRotation(90);
     });
-    sheet.setRowHeight(subRow, 100);
+    const subHdrHeight = calcSubHeaderHeight([...acadSubs, ...actSubs]);
+    sheet.setRowHeight(subRow, subHdrHeight);
 
     // ── header สีพื้น + border ──
     sheet.getRange(hdrRow, 1, 2, totalCols)
