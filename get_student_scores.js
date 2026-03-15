@@ -332,21 +332,260 @@ function exportStudentScoresPDF(grade, classNo) {
     if (!data.success) {
       throw new Error(data.message);
     }
-    
-    // เพิ่มโลโก้ Base64 เข้าไปใน data
-    data.logoBase64 = getLogoAsBase64();
-    
-    const html = generateScoresSummaryHTML(data);
-    const fileName = `สรุปผลการเรียน_${grade}_${classNo}_${Utilities.formatDate(new Date(), "Asia/Bangkok", "yyyyMMdd_HHmmss")}`;
-    const blob = Utilities.newBlob(html, 'text/html', `${fileName}.html`).getAs('application/pdf');
-    blob.setName(`${fileName}.pdf`);
-    
-    const file = DriveApp.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    
-    return file.getUrl();
+    return exportScoresPDFviaSheet_(data);
   } catch (error) {
     throw new Error(error.message);
+  }
+}
+
+// ============================================================
+// 📄 EXPORT PDF ผ่าน Google Sheets (แก้ปัญหาเส้น/ฟอนต์จาก HtmlService)
+// ============================================================
+function exportScoresPDFviaSheet_(data) {
+  const { settings = {}, grade = '', classNo = '', gradeFullName = '', students = [], subjects = [], subjectTypes = {} } = data;
+  const schoolName = settings['ชื่อโรงเรียน'] || 'โรงเรียน';
+  const semester = settings['ภาคเรียน'] || '';
+  const academicYear = settings['ปีการศึกษา'] || '';
+
+  const isActivitySubject = (subjectName) => {
+    const n = String(subjectName || '').trim();
+    if (!n) return false;
+    const t = String(subjectTypes[n] || '').trim();
+    if (t === 'กิจกรรม') return true;
+    return n.indexOf('แนะแนว') !== -1 || n.indexOf('ลูกเสือ') !== -1 ||
+      n.indexOf('เนตรนารี') !== -1 || n.indexOf('ชุมนุม') !== -1 ||
+      n.indexOf('กิจกรรมเพื่อสังคม') !== -1 || n.indexOf('บำเพ็ญประโยชน์') !== -1;
+  };
+
+  const formatGradeCell = (v) => {
+    if (v === undefined || v === null) return '-';
+    if (typeof v === 'number' && !isNaN(v)) {
+      if (Math.abs(v - Math.round(v)) < 1e-9) return Math.round(v);
+      return parseFloat(v.toFixed(1));
+    }
+    return String(v);
+  };
+
+  const activityResultText = (raw, numericFallback) => {
+    const s = String(raw || '').trim();
+    if (!s) {
+      if (typeof numericFallback === 'number' && !isNaN(numericFallback)) return numericFallback > 0 ? 'ผ' : '-';
+      return '-';
+    }
+    if (s.indexOf('มผ') !== -1 || s.indexOf('ไม่ผ่าน') !== -1) return 'มผ';
+    if (s.indexOf('ผ') !== -1 || s.indexOf('ผ่าน') !== -1) return 'ผ';
+    const n = parseFloat(s);
+    if (!isNaN(n)) return n >= 50 ? 'ผ' : 'มผ';
+    return '-';
+  };
+
+  const shortNameMap = {
+    'ภาษาไทย': 'ภาษาไทย', 'คณิตศาสตร์': 'คณิตศาสตร์',
+    'วิทยาศาสตร์และเทคโนโลยี': 'วิทย์ฯ', 'วิทยาศาสตร์': 'วิทย์ฯ',
+    'สังคมศึกษา ศาสนา และวัฒนธรรม': 'สังคมฯ', 'สังคมศึกษา': 'สังคมฯ',
+    'ประวัติศาสตร์': 'ประวัติฯ', 'สุขศึกษาและพลศึกษา': 'สุขศึกษาฯ',
+    'สุขศึกษา': 'สุขศึกษา', 'พลศึกษา': 'พลศึกษา',
+    'ศิลปะ': 'ศิลปะ', 'การงานอาชีพ': 'การงานฯ', 'การงาน': 'การงานฯ',
+    'ภาษาอังกฤษ': 'อังกฤษ', 'หน้าที่พลเมือง': 'หน้าที่ฯ',
+    'การป้องกันตนเองและประเทศชาติ': 'การป้องกันฯ'
+  };
+  const actShortMap = {
+    'กิจกรรมแนะแนว': 'แนะแนว', 'ลูกเสือ/เนตรนารี': 'ลูกเสือฯ',
+    'ชุมนุม': 'ชุมนุม', 'กิจกรรมเพื่อสังคมและสาธารณประโยชน์': 'สาธารณฯ'
+  };
+  const getShortName = (fn) => {
+    for (const k in shortNameMap) { if (fn.indexOf(k) !== -1) return shortNameMap[k]; }
+    for (const k in actShortMap) { if (fn.indexOf(k) !== -1) return actShortMap[k]; }
+    if (fn.indexOf('แนะแนว') !== -1) return 'แนะแนว';
+    if (fn.indexOf('ลูกเสือ') !== -1 || fn.indexOf('เนตรนารี') !== -1) return 'ลูกเสือฯ';
+    if (fn.indexOf('ชุมนุม') !== -1) return 'ชุมนุม';
+    if (fn.indexOf('สังคม') !== -1 || fn.indexOf('สาธารณ') !== -1) return 'สาธารณฯ';
+    return fn.length > 6 ? fn.substring(0, 6) + 'ฯ' : fn;
+  };
+
+  const academicSubjects = subjects.filter(s => !isActivitySubject(s));
+  const activitySubjects = subjects.filter(s => isActivitySubject(s));
+  const totalCols = 2 + academicSubjects.length + activitySubjects.length + 1; // ที่ + ชื่อ + วิชา... + เฉลี่ย
+
+  // ── สร้าง Sheet ชั่วคราว ──
+  const ss = SS();
+  const tmpName = '_TMP_PDF_' + new Date().getTime();
+  const sheet = ss.insertSheet(tmpName);
+
+  try {
+    // === แถว 1: หัวเรื่อง ===
+    sheet.getRange(1, 1, 1, totalCols).merge()
+      .setValue(`สรุปผลการเรียน ชั้นประจำการเรียน ภาคเรียนที่ ${semester} ปีการศึกษา ${academicYear}`)
+      .setFontFamily('TH Sarabun New').setFontSize(14).setFontWeight('bold')
+      .setHorizontalAlignment('center').setVerticalAlignment('middle');
+
+    // === แถว 2: ชื่อโรงเรียน ===
+    sheet.getRange(2, 1, 1, totalCols).merge()
+      .setValue(schoolName)
+      .setFontFamily('TH Sarabun New').setFontSize(12).setFontWeight('bold')
+      .setHorizontalAlignment('center');
+
+    // === แถว 3: ระดับชั้น/ห้อง ===
+    sheet.getRange(3, 1, 1, totalCols).merge()
+      .setValue(`${gradeFullName} ห้อง ${classNo}`)
+      .setFontFamily('TH Sarabun New').setFontSize(11)
+      .setHorizontalAlignment('center');
+
+    // === แถว 4: header กลุ่ม (ที่, ชื่อ-นามสกุล, รายวิชา, กิจกรรมฯ, เฉลี่ย) ===
+    const hdrRow = 4;
+    const subHdrRow = 5;
+    const colNoIdx = 1;
+    const colNameIdx = 2;
+    const colAcadStart = 3;
+    const colActStart = colAcadStart + academicSubjects.length;
+    const colAvgIdx = totalCols;
+
+    // merge "ที่" (row 4-5)
+    sheet.getRange(hdrRow, colNoIdx, 2, 1).merge()
+      .setValue('ที่').setFontFamily('TH Sarabun New').setFontSize(10).setFontWeight('bold')
+      .setHorizontalAlignment('center').setVerticalAlignment('middle');
+    // merge "ชื่อ-นามสกุล" (row 4-5)
+    sheet.getRange(hdrRow, colNameIdx, 2, 1).merge()
+      .setValue('ชื่อ-นามสกุล').setFontFamily('TH Sarabun New').setFontSize(10).setFontWeight('bold')
+      .setHorizontalAlignment('center').setVerticalAlignment('middle');
+    // "รายวิชา" header group
+    if (academicSubjects.length > 0) {
+      sheet.getRange(hdrRow, colAcadStart, 1, academicSubjects.length).merge()
+        .setValue('รายวิชา').setFontFamily('TH Sarabun New').setFontSize(10).setFontWeight('bold')
+        .setHorizontalAlignment('center').setVerticalAlignment('middle');
+    }
+    // "กิจกรรมพัฒนาผู้เรียน" header group
+    if (activitySubjects.length > 0) {
+      sheet.getRange(hdrRow, colActStart, 1, activitySubjects.length).merge()
+        .setValue('กิจกรรมพัฒนาผู้เรียน').setFontFamily('TH Sarabun New').setFontSize(9).setFontWeight('bold')
+        .setHorizontalAlignment('center').setVerticalAlignment('middle');
+    }
+    // merge "เฉลี่ย" (row 4-5)
+    sheet.getRange(hdrRow, colAvgIdx, 2, 1).merge()
+      .setValue('เฉลี่ย').setFontFamily('TH Sarabun New').setFontSize(10).setFontWeight('bold')
+      .setHorizontalAlignment('center').setVerticalAlignment('middle');
+
+    // === แถว 5: ชื่อวิชาย่อ ===
+    academicSubjects.forEach((s, i) => {
+      sheet.getRange(subHdrRow, colAcadStart + i)
+        .setValue(getShortName(s)).setFontFamily('TH Sarabun New').setFontSize(9)
+        .setHorizontalAlignment('center').setVerticalAlignment('bottom')
+        .setTextRotation(90);
+    });
+    activitySubjects.forEach((s, i) => {
+      sheet.getRange(subHdrRow, colActStart + i)
+        .setValue(getShortName(s)).setFontFamily('TH Sarabun New').setFontSize(8)
+        .setHorizontalAlignment('center').setVerticalAlignment('bottom')
+        .setTextRotation(90);
+    });
+
+    // ความสูงแถว header วิชา
+    sheet.setRowHeight(subHdrRow, 100);
+
+    // === แถว 6+: ข้อมูลนักเรียน ===
+    const dataStartRow = 6;
+    const rowsData = students.map((student, idx) => {
+      const row = [student.studentNo || (idx + 1), student.fullName || '-'];
+      academicSubjects.forEach(sub => {
+        row.push(formatGradeCell(student.grades[sub]));
+      });
+      activitySubjects.forEach(sub => {
+        const raw = (student.rawGrades || {})[sub];
+        const gv = student.grades[sub];
+        row.push(activityResultText(raw, gv));
+      });
+      row.push(parseFloat(student.average) || 0);
+      return row;
+    });
+
+    if (rowsData.length > 0) {
+      sheet.getRange(dataStartRow, 1, rowsData.length, totalCols).setValues(rowsData);
+    }
+
+    // === จัดรูปแบบข้อมูล ===
+    const lastRow = dataStartRow + rowsData.length - 1;
+    const dataRange = sheet.getRange(dataStartRow, 1, rowsData.length, totalCols);
+    dataRange.setFontFamily('TH Sarabun New').setFontSize(12)
+      .setVerticalAlignment('middle').setHorizontalAlignment('center');
+
+    // ชื่อชิดซ้าย
+    sheet.getRange(dataStartRow, colNameIdx, rowsData.length, 1)
+      .setHorizontalAlignment('left');
+
+    // เฉลี่ย: bold + format 2 ตำแหน่ง
+    sheet.getRange(dataStartRow, colAvgIdx, rowsData.length, 1)
+      .setFontWeight('bold').setNumberFormat('0.00');
+
+    // === เส้นขอบตาราง (เส้นบาง) ===
+    const tableRange = sheet.getRange(hdrRow, 1, lastRow - hdrRow + 1, totalCols);
+    tableRange.setBorder(true, true, true, true, true, true,
+      '#000000', SpreadsheetApp.BorderStyle.SOLID);
+
+    // header rows: bold + สีพื้น
+    sheet.getRange(hdrRow, 1, 2, totalCols)
+      .setFontWeight('bold').setBackground('#f5f5f5');
+
+    // === ตั้งความกว้างคอลัมน์ ===
+    sheet.setColumnWidth(colNoIdx, 28); // ที่
+    sheet.setColumnWidth(colNameIdx, 170); // ชื่อ
+    for (let i = 0; i < academicSubjects.length; i++) {
+      sheet.setColumnWidth(colAcadStart + i, 35);
+    }
+    for (let i = 0; i < activitySubjects.length; i++) {
+      sheet.setColumnWidth(colActStart + i, 32);
+    }
+    sheet.setColumnWidth(colAvgIdx, 40); // เฉลี่ย
+
+    // === ความสูงแถวข้อมูล ===
+    for (let r = dataStartRow; r <= lastRow; r++) {
+      sheet.setRowHeight(r, 22);
+    }
+
+    // === Flush เพื่อให้ format เสร็จก่อน export ===
+    SpreadsheetApp.flush();
+
+    // === Export PDF ===
+    const ssId = ss.getId();
+    const sheetId = sheet.getSheetId();
+    const url = 'https://docs.google.com/spreadsheets/d/' + ssId + '/export?' +
+      'format=pdf' +
+      '&gid=' + sheetId +
+      '&size=A4' +
+      '&portrait=true' +
+      '&fitw=true' +           // fit to width
+      '&gridlines=false' +
+      '&printtitle=false' +
+      '&sheetnames=false' +
+      '&pagenum=UNDEFINED' +
+      '&fzr=false' +
+      '&top_margin=0.3' +
+      '&bottom_margin=0.3' +
+      '&left_margin=0.3' +
+      '&right_margin=0.3';
+
+    const token = ScriptApp.getOAuthToken();
+    const response = UrlFetchApp.fetch(url, {
+      headers: { 'Authorization': 'Bearer ' + token },
+      muteHttpExceptions: true
+    });
+
+    if (response.getResponseCode() !== 200) {
+      throw new Error('ไม่สามารถสร้าง PDF ได้ (HTTP ' + response.getResponseCode() + ')');
+    }
+
+    const pdfBlob = response.getBlob().setName(
+      'สรุปผลการเรียน_' + grade + '_' + classNo + '_' +
+      Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyyMMdd_HHmmss') + '.pdf'
+    );
+
+    const file = DriveApp.createFile(pdfBlob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+    return file.getUrl();
+
+  } finally {
+    // ลบ sheet ชั่วคราวเสมอ
+    try { ss.deleteSheet(sheet); } catch(e) { Logger.log('⚠️ ลบ tmp sheet ไม่ได้: ' + e.message); }
   }
 }
 
