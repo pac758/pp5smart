@@ -413,27 +413,47 @@ function exportScoresPDFviaSheet_(data) {
   const sheet = ss.insertSheet(tmpName);
 
   try {
-    // === แถว 1: หัวเรื่อง ===
-    sheet.getRange(1, 1, 1, totalCols).merge()
+    // === แถว 1: โลโก้ (ถ้ามี) ===
+    let currentRow = 1;
+    const logoUrl = settings['logoUrl_lh3'] || settings['logo'] || settings['schoolLogo'] || '';
+    if (logoUrl) {
+      try {
+        const logoBlob = UrlFetchApp.fetch(logoUrl).getBlob();
+        const logoImage = sheet.insertImage(logoBlob, 1, 1);
+        logoImage.setWidth(60).setHeight(60);
+        const logoAnchor = logoImage.getAnchorCell();
+        logoImage.setAnchorCell(logoAnchor);
+        sheet.setRowHeight(1, 65);
+        currentRow = 2;
+      } catch(logoErr) {
+        Logger.log('⚠️ ไม่สามารถแทรกโลโก้: ' + logoErr.message);
+      }
+    }
+
+    // === หัวเรื่อง ===
+    sheet.getRange(currentRow, 1, 1, totalCols).merge()
       .setValue(`สรุปผลการเรียน ชั้นประจำการเรียน ภาคเรียนที่ ${semester} ปีการศึกษา ${academicYear}`)
       .setFontFamily('TH Sarabun New').setFontSize(14).setFontWeight('bold')
       .setHorizontalAlignment('center').setVerticalAlignment('middle');
+    currentRow++;
 
-    // === แถว 2: ชื่อโรงเรียน ===
-    sheet.getRange(2, 1, 1, totalCols).merge()
+    // === ชื่อโรงเรียน ===
+    sheet.getRange(currentRow, 1, 1, totalCols).merge()
       .setValue(schoolName)
       .setFontFamily('TH Sarabun New').setFontSize(12).setFontWeight('bold')
       .setHorizontalAlignment('center');
+    currentRow++;
 
-    // === แถว 3: ระดับชั้น/ห้อง ===
-    sheet.getRange(3, 1, 1, totalCols).merge()
+    // === ระดับชั้น/ห้อง ===
+    sheet.getRange(currentRow, 1, 1, totalCols).merge()
       .setValue(`${gradeFullName} ห้อง ${classNo}`)
       .setFontFamily('TH Sarabun New').setFontSize(11)
       .setHorizontalAlignment('center');
+    currentRow++;
 
-    // === แถว 4: header กลุ่ม (ที่, ชื่อ-นามสกุล, รายวิชา, กิจกรรมฯ, เฉลี่ย) ===
-    const hdrRow = 4;
-    const subHdrRow = 5;
+    // === header กลุ่ม (ที่, ชื่อ-นามสกุล, รายวิชา, กิจกรรมฯ, เฉลี่ย) ===
+    const hdrRow = currentRow;
+    const subHdrRow = currentRow + 1;
     const colNoIdx = 1;
     const colNameIdx = 2;
     const colAcadStart = 3;
@@ -482,8 +502,8 @@ function exportScoresPDFviaSheet_(data) {
     // ความสูงแถว header วิชา
     sheet.setRowHeight(subHdrRow, 100);
 
-    // === แถว 6+: ข้อมูลนักเรียน ===
-    const dataStartRow = 6;
+    // === ข้อมูลนักเรียน ===
+    const dataStartRow = subHdrRow + 1;
     const rowsData = students.map((student, idx) => {
       const row = [student.studentNo || (idx + 1), student.fullName || '-'];
       academicSubjects.forEach(sub => {
@@ -509,9 +529,10 @@ function exportScoresPDFviaSheet_(data) {
       .setVerticalAlignment('middle').setHorizontalAlignment('center')
       .setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP);
 
-    // ชื่อชิดซ้าย + ขนาดฟอนต์เท่ากัน
+    // ชื่อชิดซ้าย + WRAP เพื่อไม่ตัดชื่อยาว + ฟอนต์เท่ากัน
     sheet.getRange(dataStartRow, colNameIdx, rowsData.length, 1)
-      .setHorizontalAlignment('left').setFontSize(11);
+      .setHorizontalAlignment('left').setFontSize(11)
+      .setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP);
 
     // เฉลี่ย: bold + format 2 ตำแหน่ง
     sheet.getRange(dataStartRow, colAvgIdx, rowsData.length, 1)
@@ -529,18 +550,18 @@ function exportScoresPDFviaSheet_(data) {
 
     // === ตั้งความกว้างคอลัมน์ ===
     sheet.setColumnWidth(colNoIdx, 24); // ที่
-    sheet.setColumnWidth(colNameIdx, 120); // ชื่อ (ลดลงจาก 170)
+    sheet.setColumnWidth(colNameIdx, 155); // ชื่อ (เพิ่มจาก 120 เพื่อไม่ตัด)
     for (let i = 0; i < academicSubjects.length; i++) {
-      sheet.setColumnWidth(colAcadStart + i, 30);
+      sheet.setColumnWidth(colAcadStart + i, 28);
     }
     for (let i = 0; i < activitySubjects.length; i++) {
       sheet.setColumnWidth(colActStart + i, 26);
     }
     sheet.setColumnWidth(colAvgIdx, 36); // เฉลี่ย
 
-    // === ความสูงแถวข้อมูล ===
+    // === ความสูงแถวข้อมูล (เพิ่มเพื่อรองรับชื่อยาว 2 บรรทัด) ===
     for (let r = dataStartRow; r <= lastRow; r++) {
-      sheet.setRowHeight(r, 20);
+      sheet.setRowHeight(r, 26);
     }
 
     // === ลบคอลัมน์เกิน (ป้องกันพื้นที่ว่างใน PDF) ===
@@ -568,10 +589,11 @@ function exportScoresPDFviaSheet_(data) {
       '&sheetnames=false' +
       '&pagenum=UNDEFINED' +
       '&fzr=false' +
-      '&top_margin=0.3' +
-      '&bottom_margin=0.3' +
-      '&left_margin=0.3' +
-      '&right_margin=0.3';
+      '&top_margin=0.4' +
+      '&bottom_margin=0.4' +
+      '&left_margin=0.5' +
+      '&right_margin=0.5' +
+      '&horizontal_alignment=CENTER';
 
     const token = ScriptApp.getOAuthToken();
     const response = UrlFetchApp.fetch(url, {
