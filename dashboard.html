@@ -540,6 +540,48 @@
         });
       }
 
+      // --- 4. Attendance Data Loading ---
+      function loadAttendanceData() {
+        waitForGAS(() => {
+          google.script.run.withSuccessHandler(data => {
+            if (!data || !data.summary || !data.summary.attendance) {
+              // ไม่มีข้อมูล — ซ่อน Section
+              document.getElementById('attendanceSection').style.display = 'none';
+              return;
+            }
+
+            const att = data.summary.attendance;
+            const yearly = att.yearlyByGrade || {};
+            
+            // คำนวณรวมทั้งหมด
+            let totalPresent = 0, totalLeave = 0, totalAbsent = 0, totalDays = 0;
+            Object.values(yearly).forEach(g => {
+              totalPresent += g.totalPresent || 0;
+              totalLeave += g.totalLeave || 0;
+              totalAbsent += g.totalAbsent || 0;
+              totalDays += g.totalDays || 0;
+            });
+
+            const rate = totalDays > 0 ? ((totalPresent / totalDays) * 100).toFixed(1) : 0;
+
+            // แสดงผลใน Mini Stats
+            document.getElementById('attendancePresent').textContent = totalPresent.toLocaleString();
+            document.getElementById('attendanceLeave').textContent = totalLeave.toLocaleString();
+            document.getElementById('attendanceAbsent').textContent = totalAbsent.toLocaleString();
+            document.getElementById('attendanceRate').textContent = rate + '%';
+
+            // ซ่อน Loading
+            document.getElementById('attendanceLoading').style.display = 'none';
+
+            // TODO: เพิ่ม Chart ในอนาคต (ตอนนี้แสดงแค่ตัวเลข)
+          }).withFailureHandler(err => {
+            console.error('Attendance load error:', err);
+            // ซ่อน Section ถ้า Error
+            document.getElementById('attendanceSection').style.display = 'none';
+          }).getCachedDashboardSummary();
+        });
+      }
+
       // --- Chart.js Rendering (Modern Style) ---
       // --- Chart.js Rendering (Modern Style with Square Bars & Multi-Colors) ---
 function renderGradeChart(chartData) {
@@ -666,6 +708,7 @@ function renderGradeChart(chartData) {
             // console.log('⏳ Loading charts...');
             loadAcademicData();
             loadCharts();
+            loadAttendanceData(); // โหลดข้อมูล Attendance
           }, 1500);
 
           DashboardController.initialized = true;
