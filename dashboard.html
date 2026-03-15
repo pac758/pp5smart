@@ -562,6 +562,12 @@
               totalDays += g.totalDays || 0;
             });
 
+            // ถ้าไม่มีข้อมูลเลย ให้ซ่อน Section
+            if (totalDays === 0 && totalPresent === 0 && totalLeave === 0 && totalAbsent === 0) {
+              document.getElementById('attendanceSection').style.display = 'none';
+              return;
+            }
+
             const rate = totalDays > 0 ? ((totalPresent / totalDays) * 100).toFixed(1) : 0;
 
             // แสดงผลใน Mini Stats
