@@ -555,12 +555,12 @@
         waitForGAS(() => {
           google.script.run.withSuccessHandler(data => {
             if (!data || !data.attendance) {
-              showAttendanceNoData('ยังไม่มีข้อมูลการเช็คชื่อ');
+              showAttendanceNoData();
               return;
             }
 
-            const att = data.attendance;
-            const yearly = att.yearlyByGrade || {};
+            const att2 = data.attendance;
+            const yearly = att2.yearlyByGrade || {};
             
             // คำนวณรวมทั้งหมด
             let totalPresent = 0, totalLeave = 0, totalAbsent = 0, totalDays = 0;
@@ -571,9 +571,8 @@
               totalDays += g.totalDays || 0;
             });
 
-            // ถ้าไม่มีข้อมูลเลย แสดงข้อความแทน
             if (totalDays === 0 && totalPresent === 0 && totalLeave === 0 && totalAbsent === 0) {
-              showAttendanceNoData('ยังไม่มีข้อมูลการเช็คชื่อ — กรุณาบันทึกการเช็คชื่อในเมนู "เช็คชื่อวันนี้"');
+              showAttendanceNoData();
               return;
             }
 
@@ -589,7 +588,7 @@
             document.getElementById('attendanceLoading').style.display = 'none';
           }).withFailureHandler(err => {
             console.error('Attendance load error:', err);
-            showAttendanceNoData('ไม่สามารถโหลดข้อมูลการเช็คชื่อได้');
+            showAttendanceNoData('[DEBUG] Error: ' + (err.message || err));
           }).getCachedDashboardSummary();
         });
       }

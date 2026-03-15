@@ -30,9 +30,18 @@ const AcademicCacheManager = {
   clearAll() { this.cache.clear(); }
 };
 
-// === Wrapper: ใช้ฟังก์ชันจาก utils.gs ===
-function getCurrentThaiMonth() { return U_getCurrentThaiMonth(); }
-function getCurrentAcademicYear() { return U_getCurrentAcademicYear(); }
+// === Inline implementations (ไม่พึ่ง utils.js ที่ minified) ===
+function getCurrentThaiMonth() {
+  const thaiMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  const now = new Date();
+  return thaiMonths[now.getMonth()] + String(now.getFullYear() + 543);
+}
+function getCurrentAcademicYear() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  return month >= 5 ? year + 543 : year + 542;
+}
 
 // ============================================================
 // 📊 DASHBOARD SUMMARY
@@ -41,7 +50,7 @@ function getCurrentAcademicYear() { return U_getCurrentAcademicYear(); }
 function getCachedDashboardSummary() {
   try {
     const cache = CacheService.getScriptCache();
-    const cacheKey = 'dashboard_summary_v3';
+    const cacheKey = 'dashboard_summary_v5';
     const cachedData = cache.get(cacheKey);
     if (cachedData != null) return JSON.parse(cachedData);
 
@@ -49,7 +58,7 @@ function getCachedDashboardSummary() {
     const summary = getDashboardSummary();
     summary.processingTime = Date.now() - startTime;
     summary.lastUpdated = new Date().toISOString();
-    cache.put(cacheKey, JSON.stringify(summary), 300);
+    try { cache.put(cacheKey, JSON.stringify(summary), 300); } catch (ce) { Logger.log('Cache put failed: ' + ce.message); }
     return summary;
   } catch (e) {
     Logger.log(`❌ getCachedDashboardSummary: ${e.message}`);
@@ -137,30 +146,41 @@ function getAttendanceData(ss, studentGradeMap) {
     academicYear = getCurrentAcademicYear();
   } catch (e) {
     Logger.log('⚠️ ไม่สามารถอ่านปีการศึกษาได้: ' + e.message);
-    return { monthly: {}, yearlyByGrade: {}, availableMonths: [], currentMonth: '' };
+    return { monthly: {}, yearlyByGrade: {}, availableMonths: [], currentMonth: '', _debug: 'yearError:' + e.message };
   }
   const monthsInYear = getMonthsInAcademicYear(academicYear);
   const months = monthsInYear.map(m => monthNames[m.month - 1] + String(m.yearCE + 543));
+
+  // [DEBUG] เก็บชื่อชีตที่มีจริงใน Spreadsheet
+  const allSheetNames = ss.getSheets().map(s => s.getName());
+  const _debug = {
+    academicYear: academicYear,
+    expectedSheets: months,
+    allSheets: allSheetNames.filter(n => /[ก-๙]/.test(n)),
+    studentGradeMapSize: Object.keys(studentGradeMap).length
+  };
 
   const currentMonth = getCurrentThaiMonth();
   const monthlyData = {};
   const gradeStats = {};
 
+  const _monthDebug = [];
   months.forEach(monthName => {
     try {
       const monthSheet = ss.getSheetByName(monthName);
-      if (!monthSheet) return;
+      if (!monthSheet) { _monthDebug.push(monthName + ':NOT_FOUND'); return; }
 
       const allData = monthSheet.getDataRange().getValues();
-      if (allData.length < 2) return;
+      if (allData.length < 2) { _monthDebug.push(monthName + ':NO_DATA(rows=' + allData.length + ')'); return; }
 
       const headers = allData[0];
+      const trimHeaders = headers.map(h => String(h || '').trim());
       const rows = allData.slice(1);
-      const studentIdCol = headers.indexOf('รหัส');
-      const presentCol = headers.indexOf('มา');
-      const leaveCol = headers.indexOf('ลา');
-      const absentCol = headers.indexOf('ขาด');
-      if (studentIdCol === -1 || presentCol === -1) return;
+      const studentIdCol = trimHeaders.indexOf('รหัส');
+      const presentCol = trimHeaders.indexOf('มา');
+      const leaveCol = trimHeaders.indexOf('ลา');
+      const absentCol = trimHeaders.indexOf('ขาด');
+      if (studentIdCol === -1 || presentCol === -1) { _monthDebug.push(monthName + ':HEADER_MISS(id=' + studentIdCol + ',มา=' + presentCol + ',hdr0-5=' + JSON.stringify(trimHeaders.slice(0,6)) + ',hdr-4=' + JSON.stringify(trimHeaders.slice(-4)) + ')'); return; }
 
       let schoolDaysInMonth = 0;
       const firstDateCol = 3;
@@ -217,7 +237,10 @@ function getAttendanceData(ss, studentGradeMap) {
       });
 
       monthlyData[monthName] = gradeData;
+      const matchCount = Object.values(gradeData).reduce((s, g) => s + g.studentCount, 0);
+      _monthDebug.push(monthName + ':OK(rows=' + rows.length + ',matched=' + matchCount + ',grades=' + Object.keys(gradeData).join('/') + ')');
     } catch (error) {
+      _monthDebug.push(monthName + ':ERROR(' + error.message + ')');
       Logger.log(`❌ Error reading ${monthName}: ${error.message}`);
     }
   });
@@ -227,7 +250,8 @@ function getAttendanceData(ss, studentGradeMap) {
     s.attendanceRate = s.totalDays > 0 ? (s.totalPresent / s.totalDays * 100).toFixed(2) : 0;
   });
 
-  return { monthly: monthlyData, yearlyByGrade: gradeStats, availableMonths: Object.keys(monthlyData), currentMonth };
+  _debug.monthResults = _monthDebug;
+  return { monthly: monthlyData, yearlyByGrade: gradeStats, availableMonths: Object.keys(monthlyData), currentMonth, _debug: _debug };
 }
 
 function getAttendanceByGrade(grade) {
@@ -622,7 +646,7 @@ function clearAcademicCache() { AcademicCacheManager.clearAll(); return "✅ ล
 
 function clearServerCache() {
   try {
-    CacheService.getScriptCache().removeAll(['dashboard_summary_v3', 'academic_summary_all_v2', 'fast_student_stats_v1', 'all_chart_data_all_v1', 'dashboard_progress_v1', 'dashboard_alerts_v1']);
+    CacheService.getScriptCache().removeAll(['dashboard_summary_v5', 'dashboard_summary_v3', 'academic_summary_all_v2', 'fast_student_stats_v1', 'all_chart_data_all_v1', 'dashboard_progress_v1', 'dashboard_alerts_v1']);
     return "✅ ล้าง Server Cache เรียบร้อย";
   } catch (e) { return { error: true, message: e.message }; }
 }
@@ -855,4 +879,88 @@ function getDashboardAlerts() {
     Logger.log('getDashboardAlerts error: ' + e.message);
     return { error: true, alerts: [] };
   }
+}
+
+// ============================================================
+// 🔍 DEBUG: ตรวจสอบปัญหา Attendance Dashboard
+// ============================================================
+function debugAttendanceDashboard() {
+  const result = [];
+  const ss = SS();
+
+  // 1. ปีการศึกษา
+  let academicYear;
+  try {
+    academicYear = getCurrentAcademicYear();
+    result.push('✅ ปีการศึกษา: ' + academicYear);
+  } catch (e) {
+    result.push('❌ อ่านปีการศึกษาไม่ได้: ' + e.message);
+    return result.join('\n');
+  }
+
+  // 2. ชื่อชีตที่คาดหวัง
+  const monthNames = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  const monthsInYear = getMonthsInAcademicYear(academicYear);
+  const expectedSheets = monthsInYear.map(m => monthNames[m.month - 1] + String(m.yearCE + 543));
+  result.push('📋 ชีตที่คาดหวัง: ' + expectedSheets.join(', '));
+
+  // 3. ตรวจว่าชีตมีอยู่จริงไหม
+  const allSheets = ss.getSheets().map(s => s.getName());
+  result.push('📄 ชีตทั้งหมดใน Spreadsheet (' + allSheets.length + '): ' + allSheets.join(', '));
+
+  let foundSheets = [];
+  expectedSheets.forEach(name => {
+    const sheet = ss.getSheetByName(name);
+    if (sheet) {
+      foundSheets.push(name);
+      const data = sheet.getDataRange().getValues();
+      const headers = data[0];
+      const idxId = headers.indexOf('รหัส');
+      const idxPresent = headers.indexOf('มา');
+      const idxLeave = headers.indexOf('ลา');
+      const idxAbsent = headers.indexOf('ขาด');
+      result.push('  ✅ ' + name + ' (แถว: ' + data.length + ', headers: รหัส=' + idxId + ' มา=' + idxPresent + ' ลา=' + idxLeave + ' ขาด=' + idxAbsent + ')');
+
+      // ตรวจสอบข้อมูลนักเรียน 3 คนแรก
+      if (data.length > 1 && idxId >= 0 && idxPresent >= 0) {
+        for (let i = 1; i <= Math.min(3, data.length - 1); i++) {
+          const sid = data[i][idxId];
+          const present = data[i][idxPresent];
+          const leave = idxLeave >= 0 ? data[i][idxLeave] : '-';
+          const absent = idxAbsent >= 0 ? data[i][idxAbsent] : '-';
+          result.push('    นร.' + i + ': รหัส=' + sid + ' (type=' + typeof sid + ') มา=' + present + ' ลา=' + leave + ' ขาด=' + absent);
+        }
+      }
+    } else {
+      result.push('  ❌ ไม่พบ: ' + name);
+    }
+  });
+
+  // 4. ตรวจสอบ Students sheet
+  const studSheet = ss.getSheetByName('Students');
+  if (studSheet) {
+    const studData = studSheet.getDataRange().getValues();
+    const studHeaders = studData[0];
+    const sidCol = studHeaders.indexOf('student_id');
+    const gradeCol = studHeaders.indexOf('grade');
+    result.push('👨‍🎓 Students sheet: แถว=' + studData.length + ' student_id col=' + sidCol + ' grade col=' + gradeCol);
+    if (sidCol >= 0 && gradeCol >= 0 && studData.length > 1) {
+      for (let i = 1; i <= Math.min(3, studData.length - 1); i++) {
+        result.push('    นร.' + i + ': student_id=' + studData[i][sidCol] + ' (type=' + typeof studData[i][sidCol] + ') grade=' + studData[i][gradeCol]);
+      }
+    }
+  } else {
+    result.push('❌ ไม่พบชีต Students');
+  }
+
+  // 5. สรุป
+  result.push('---');
+  result.push('พบชีตเช็คชื่อ: ' + foundSheets.length + '/' + expectedSheets.length);
+
+  const output = result.join('\n');
+  Logger.log(output);
+  try {
+    SpreadsheetApp.getUi().alert('🔍 Debug Attendance Dashboard', output, SpreadsheetApp.getUi().ButtonSet.OK);
+  } catch(e) {}
+  return output;
 }
