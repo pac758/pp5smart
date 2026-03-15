@@ -392,7 +392,12 @@ function getSimpleUpdateInstructions() {
  * @returns {boolean}
  */
 function containsSuspiciousCode(content) {
-  const urlMatches = String(content || '').match(/https?:\/\/[^\s"'`<>]+/gi) || [];
+  const raw = String(content || '');
+  const cleaned = raw
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/.*$/gm, '');
+
+  const urlMatches = cleaned.match(/https?:\/\/[^\s"'`<>]+/gi) || [];
   const allowedHosts = [
     'github.com',
     'api.github.com',
@@ -422,7 +427,7 @@ function containsSuspiciousCode(content) {
   ];
   
   for (const pattern of suspiciousPatterns) {
-    if (pattern.test(content)) {
+    if (pattern.test(cleaned)) {
       Logger.log(`⚠️ พบ pattern ที่น่าสงสัย: ${pattern}`);
       return true;
     }
