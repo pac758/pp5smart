@@ -1378,9 +1378,8 @@ function pp5s_gradesSummary_(ss, meta, students, warehouseData, subjectList) {
   // --- Header: ที่ | รหัส | ชื่อ-สกุล | วิชา... | GPA | อันดับ ---
   var hdr = ['ที่', 'รหัส', 'ชื่อ-นามสกุล'];
   subjectNames.forEach(function(name) {
-    // ชื่อย่อ: ตัดให้สั้นถ้ายาวเกิน
-    var short = name.length > 8 ? name.substring(0, 8) : name;
-    hdr.push(short);
+    // ใช้ชื่อเต็ม (ไม่ย่อ) เพื่อความเป็นทางการ
+    hdr.push(name);
   });
   hdr.push('GPA');
   hdr.push('อันดับ');
@@ -1391,7 +1390,11 @@ function pp5s_gradesSummary_(ss, meta, students, warehouseData, subjectList) {
     sheet.getRange(r, 4, 1, numSubjects).setTextRotation(90).setVerticalAlignment('bottom');
   }
   sheet.getRange(r, 4 + numSubjects, 1, 2).setTextRotation(90).setVerticalAlignment('bottom');
-  sheet.setRowHeight(r, 110);
+  // คำนวณความสูงแถว header จากชื่อวิชายาวสุด
+  var maxLen = 0;
+  subjectNames.forEach(function(name) { if (name.length > maxLen) maxLen = name.length; });
+  var headerHeight = Math.max(80, Math.min(150, maxLen * 5 + 20));
+  sheet.setRowHeight(r, headerHeight);
   r++;
 
   // --- ข้อมูลนักเรียน ---
