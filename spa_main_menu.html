@@ -1285,6 +1285,21 @@ body.menu-open {
         background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
         color: #818CF8;
       }
+      
+      /* แสดง sub-items ของ reports-menu เสมอบน Mobile */
+      @media (max-width: 991.98px) {
+        .reports-menu .nav-item {
+          display: block !important;
+          max-height: none !important;
+          opacity: 1 !important;
+          overflow: visible !important;
+        }
+        .reports-menu.menu-collapsed .nav-item {
+          display: block !important;
+          max-height: none !important;
+          opacity: 1 !important;
+        }
+      }
     </style>
     <ul class="menu-group reports-menu" aria-label="เอกสารรายงานผล">
       <li class="menu-header" aria-haspopup="true" aria-controls="submenuFlyout">
