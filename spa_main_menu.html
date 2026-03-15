@@ -1817,6 +1817,16 @@ window.AppNavigation.exportSystemZip = function() {
                   (t.url ? ('<div><a href="' + t.url + '" target="_blank" style="color:#1a73e8;text-decoration:none;font-weight:600;">เปิดไฟล์แม่แบบ</a></div>') : '') +
                 '</div>' +
               '</div>';
+          }
+          var excludedMeta = '';
+          if (result.sanitized) {
+            var ex = Array.isArray(result.excludedData) ? result.excludedData : [];
+            excludedMeta =
+              '<div style="background:#ecfdf5;border:2px solid #34d399;border-radius:12px;padding:12px;margin-bottom:14px;color:#065f46;font-size:0.92rem;">' +
+                '<div style="font-weight:800;margin:0 0 6px;">✅ ส่งออกแบบไม่มีข้อมูลส่วนบุคคล</div>' +
+                (ex.length ? ('<div style="line-height:1.55;"><strong>ไม่ส่งออก:</strong> ' + ex.join(', ') + '</div>') : '') +
+              '</div>';
+          }
           overlay.innerHTML = '<div style="background:#fff;padding:30px;border-radius:16px;max-width:560px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.2);font-family:sans-serif;">' +
             '<h2 style="margin:0 0 8px;font-size:1.3rem;color:#1a73e8;">📦 ส่งออกระบบให้โรงเรียนอื่น</h2>' +
             '<p style="color:#666;margin:0 0 16px;font-size:0.9rem;">ระบบจาก: <strong>' + result.schoolName + '</strong></p>' +
@@ -1827,6 +1837,7 @@ window.AppNavigation.exportSystemZip = function() {
               '<button onclick="document.getElementById(\'copyUrlInput\').select();document.execCommand(\'copy\');this.textContent=\'✅ คัดลอกแล้ว!\';setTimeout(function(){document.getElementById(\'copyBtn\').textContent=\'📋 คัดลอกลิงก์\'},2000)" id="copyBtn" style="margin-top:8px;padding:8px 20px;background:#1a73e8;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:0.9rem;">📋 คัดลอกลิงก์</button>' +
             '</div>' +
             templateMeta +
+            excludedMeta +
             '<div style="background:#f8f9fa;border-radius:12px;padding:16px;margin-bottom:16px;">' +
               '<p style="margin:0 0 8px;font-weight:bold;color:#333;">📋 โรงเรียนอื่นทำแค่ 3 ขั้นตอน:</p>' +
               '<p style="margin:4px 0;color:#444;font-size:0.9rem;">✅ ' + result.steps[0] + '</p>' +

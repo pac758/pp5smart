@@ -853,47 +853,33 @@ function exportProjectAsZip() {
     var settings = S_getGlobalSettings(false) || {};
     var schoolName = settings['ชื่อโรงเรียน'] || 'โรงเรียนต้นแบบ';
 
-    // ดึง Template Spreadsheet ID (Bound Script) จาก Properties
-    // ⚠️ ระบบนี้เป็น Container-bound Script → ต้องใช้ลิงก์ Spreadsheet /copy
-    //    เพราะ ?copyScript=true ใช้ไม่ได้กับ Bound Script
     var props = PropertiesService.getScriptProperties();
     var activeId = SpreadsheetApp.getActiveSpreadsheet().getId();
-    var templateIdProp = props.getProperty('TEMPLATE_SPREADSHEET_ID');
-    var templateId = templateIdProp;
-
-    if (!templateId) {
-      // ถ้ายังไม่มี Template → ใช้ Spreadsheet ปัจจุบันเป็นต้นแบบ
-      // (แนะนำให้ admin ตั้งค่า TEMPLATE_SPREADSHEET_ID ผ่าน Script Properties)
-      templateId = activeId;
-      Logger.log('⚠️ ไม่พบ TEMPLATE_SPREADSHEET_ID — ใช้ Spreadsheet ปัจจุบัน: ' + templateId);
-    }
-
-    var copyUrl = 'https://docs.google.com/spreadsheets/d/' + templateId + '/copy';
+    var exportTemplateId = createExportTemplateForOtherSchools_(activeId, schoolName);
+    props.setProperty('EXPORT_TEMPLATE_SPREADSHEET_ID', exportTemplateId);
+    var copyUrl = 'https://docs.google.com/spreadsheets/d/' + exportTemplateId + '/copy';
 
     var templateInfo = null;
     try {
-      var f = DriveApp.getFileById(templateId);
+      var f = DriveApp.getFileById(exportTemplateId);
       templateInfo = {
-        id: templateId,
+        id: exportTemplateId,
         name: f.getName(),
         url: f.getUrl(),
         lastUpdated: (f.getLastUpdated && f.getLastUpdated()) ? f.getLastUpdated().toISOString() : null
       };
     } catch(_e) {}
 
-    var warning = '';
-    if (templateIdProp && templateIdProp !== activeId) {
-      warning = 'ขณะนี้กำลังใช้ TEMPLATE_SPREADSHEET_ID (ไฟล์แม่แบบแยกจากไฟล์ระบบปัจจุบัน) — ถ้าไฟล์แม่แบบไม่ได้อัปเดตโค้ดล่าสุด จะส่งออกโค้ดเวอร์ชันเก่า';
-    }
-
     return {
       success: true,
       copyUrl: copyUrl,
-      templateId: templateId,
-      templateSource: templateIdProp ? 'script_property' : 'active_spreadsheet',
+      exportTemplateId: exportTemplateId,
+      templateSource: 'generated_from_active',
       activeSpreadsheetId: activeId,
       templateInfo: templateInfo,
-      warning: warning,
+      warning: '',
+      sanitized: true,
+      excludedData: ['Students', 'Users', 'HomeroomTeachers', 'global_settings', 'SCORES_WAREHOUSE', 'AttendanceLog', 'assessment_sheets', 'comments'],
       schoolName: schoolName,
       steps: [
         'ขั้นที่ 1: กดลิงก์ "ทำสำเนา" → Google จะถามยืนยัน → กด "ทำสำเนา" → ได้ Spreadsheet + โค้ดทั้งหมด',
@@ -907,6 +893,75 @@ function exportProjectAsZip() {
     Logger.log('❌ exportProjectAsZip error: ' + e.message);
     return { success: false, error: e.message };
   }
+}
+
+function createExportTemplateForOtherSchools_(activeSpreadsheetId, schoolName) {
+  var sourceFile = DriveApp.getFileById(activeSpreadsheetId);
+  var ts = Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyyMMdd_HHmmss');
+  var exportName = 'PP5Smart_ExportTemplate_' + (schoolName || 'School') + '_' + ts;
+
+  var targetFolder = null;
+  try {
+    var parents = sourceFile.getParents();
+    if (parents && parents.hasNext()) targetFolder = parents.next();
+  } catch(_e) {}
+
+  var copiedFile = targetFolder ? sourceFile.makeCopy(exportName, targetFolder) : sourceFile.makeCopy(exportName);
+  copiedFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+  var ss = SpreadsheetApp.openById(copiedFile.getId());
+  sanitizeExportTemplateSpreadsheet_(ss);
+  return copiedFile.getId();
+}
+
+function sanitizeExportTemplateSpreadsheet_(ss) {
+  var clearNames = ['Users', 'Students', 'HomeroomTeachers', 'global_settings', 'SCORES_WAREHOUSE', 'AttendanceLog', 'ความเห็นครู'];
+  clearNames.forEach(function(n){
+    var sh = ss.getSheetByName(n);
+    if (sh) clearSheetData_(sh, 1);
+  });
+
+  var yearlyBases = (typeof S_YEARLY_SHEETS !== 'undefined') ? S_YEARLY_SHEETS : [
+    'SCORES_WAREHOUSE', 'การประเมินอ่านคิดเขียน', 'การประเมินคุณลักษณะ',
+    'การประเมินกิจกรรมพัฒนาผู้เรียน', 'การประเมินสมรรถนะ',
+    'AttendanceLog', 'ความเห็นครู'
+  ];
+  var sheets = ss.getSheets();
+  sheets.forEach(function(sh){
+    var name = sh.getName();
+    for (var i = 0; i < yearlyBases.length; i++) {
+      var base = yearlyBases[i];
+      if (name === base || name.indexOf(base + '_') === 0) {
+        clearSheetData_(sh, 1);
+        break;
+      }
+    }
+  });
+
+  var subj = ss.getSheetByName('รายวิชา');
+  if (subj) blankTeacherInSubjects_(subj);
+}
+
+function clearSheetData_(sheet, headerRows) {
+  var h = headerRows || 0;
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getMaxColumns();
+  if (lastRow <= h) return;
+  sheet.getRange(h + 1, 1, lastRow - h, lastCol).clearContent();
+}
+
+function blankTeacherInSubjects_(sheet) {
+  var data = sheet.getDataRange().getValues();
+  if (!data || data.length < 2) return;
+  var headers = data[0] || [];
+  var teacherIdx = -1;
+  for (var i = 0; i < headers.length; i++) {
+    if (String(headers[i]).trim() === 'ครูผู้สอน') { teacherIdx = i; break; }
+  }
+  if (teacherIdx < 0) return;
+  var lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return;
+  sheet.getRange(2, teacherIdx + 1, lastRow - 1, 1).clearContent();
 }
 
 /**
