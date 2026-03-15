@@ -544,13 +544,13 @@
       function loadAttendanceData() {
         waitForGAS(() => {
           google.script.run.withSuccessHandler(data => {
-            if (!data || !data.summary || !data.summary.attendance) {
+            if (!data || !data.attendance) {
               // ไม่มีข้อมูล — ซ่อน Section
               document.getElementById('attendanceSection').style.display = 'none';
               return;
             }
 
-            const att = data.summary.attendance;
+            const att = data.attendance;
             const yearly = att.yearlyByGrade || {};
             
             // คำนวณรวมทั้งหมด
