@@ -541,12 +541,21 @@
       }
 
       // --- 4. Attendance Data Loading ---
+      function showAttendanceNoData(msg) {
+        document.getElementById('attendanceLoading').style.display = 'none';
+        document.getElementById('attendancePresent').textContent = '0';
+        document.getElementById('attendanceLeave').textContent = '0';
+        document.getElementById('attendanceAbsent').textContent = '0';
+        document.getElementById('attendanceRate').textContent = '-';
+        var chart = document.getElementById('attendanceChart');
+        if (chart) chart.parentElement.innerHTML = '<div class="text-center text-muted py-4"><i class="bi bi-info-circle me-2"></i>' + (msg || 'ยังไม่มีข้อมูลการเช็คชื่อ') + '</div>';
+      }
+
       function loadAttendanceData() {
         waitForGAS(() => {
           google.script.run.withSuccessHandler(data => {
             if (!data || !data.attendance) {
-              // ไม่มีข้อมูล — ซ่อน Section
-              document.getElementById('attendanceSection').style.display = 'none';
+              showAttendanceNoData('ยังไม่มีข้อมูลการเช็คชื่อ');
               return;
             }
 
@@ -562,9 +571,9 @@
               totalDays += g.totalDays || 0;
             });
 
-            // ถ้าไม่มีข้อมูลเลย ให้ซ่อน Section
+            // ถ้าไม่มีข้อมูลเลย แสดงข้อความแทน
             if (totalDays === 0 && totalPresent === 0 && totalLeave === 0 && totalAbsent === 0) {
-              document.getElementById('attendanceSection').style.display = 'none';
+              showAttendanceNoData('ยังไม่มีข้อมูลการเช็คชื่อ — กรุณาบันทึกการเช็คชื่อในเมนู "เช็คชื่อวันนี้"');
               return;
             }
 
@@ -578,12 +587,9 @@
 
             // ซ่อน Loading
             document.getElementById('attendanceLoading').style.display = 'none';
-
-            // TODO: เพิ่ม Chart ในอนาคต (ตอนนี้แสดงแค่ตัวเลข)
           }).withFailureHandler(err => {
             console.error('Attendance load error:', err);
-            // ซ่อน Section ถ้า Error
-            document.getElementById('attendanceSection').style.display = 'none';
+            showAttendanceNoData('ไม่สามารถโหลดข้อมูลการเช็คชื่อได้');
           }).getCachedDashboardSummary();
         });
       }
