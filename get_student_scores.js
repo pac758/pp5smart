@@ -413,16 +413,22 @@ function exportScoresPDFviaSheet_(data) {
   const sheet = ss.insertSheet(tmpName);
 
   try {
-    // === แถว 1: โลโก้ (ถ้ามี) ===
+    // === ตั้งฟอนต์เริ่มต้นทั้ง sheet ===
+    const maxRows = 100;
+    const maxCols = totalCols;
+    sheet.getRange(1, 1, maxRows, maxCols).setFontFamily('TH Sarabun New');
+
+    // === แถว 1: โลโก้ (ถ้ามี) - วางตรงกลาง ===
     let currentRow = 1;
     const logoUrl = settings['logoUrl_lh3'] || settings['logo'] || settings['schoolLogo'] || '';
     if (logoUrl) {
       try {
         const logoBlob = UrlFetchApp.fetch(logoUrl).getBlob();
-        const logoImage = sheet.insertImage(logoBlob, 1, 1);
+        // merge แถวแรกเพื่อให้โลโก้อยู่กลาง
+        sheet.getRange(1, 1, 1, totalCols).merge().setHorizontalAlignment('center');
+        const centerCol = Math.floor(totalCols / 2);
+        const logoImage = sheet.insertImage(logoBlob, 1, centerCol);
         logoImage.setWidth(60).setHeight(60);
-        const logoAnchor = logoImage.getAnchorCell();
-        logoImage.setAnchorCell(logoAnchor);
         sheet.setRowHeight(1, 65);
         currentRow = 2;
       } catch(logoErr) {
@@ -433,21 +439,21 @@ function exportScoresPDFviaSheet_(data) {
     // === หัวเรื่อง ===
     sheet.getRange(currentRow, 1, 1, totalCols).merge()
       .setValue(`สรุปผลการเรียน ชั้นประจำการเรียน ภาคเรียนที่ ${semester} ปีการศึกษา ${academicYear}`)
-      .setFontFamily('TH Sarabun New').setFontSize(14).setFontWeight('bold')
+      .setFontSize(14).setFontWeight('bold')
       .setHorizontalAlignment('center').setVerticalAlignment('middle');
     currentRow++;
 
     // === ชื่อโรงเรียน ===
     sheet.getRange(currentRow, 1, 1, totalCols).merge()
       .setValue(schoolName)
-      .setFontFamily('TH Sarabun New').setFontSize(12).setFontWeight('bold')
+      .setFontSize(12).setFontWeight('bold')
       .setHorizontalAlignment('center');
     currentRow++;
 
     // === ระดับชั้น/ห้อง ===
     sheet.getRange(currentRow, 1, 1, totalCols).merge()
       .setValue(`${gradeFullName} ห้อง ${classNo}`)
-      .setFontFamily('TH Sarabun New').setFontSize(11)
+      .setFontSize(11)
       .setHorizontalAlignment('center');
     currentRow++;
 
