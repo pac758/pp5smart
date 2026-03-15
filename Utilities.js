@@ -21,6 +21,23 @@ function convertGradeToFullName(grade) {
   };
   return gradeMap[grade] || grade;
 }
+
+function U_getGradeFullName(grade) {
+  var g = String(grade || '').trim();
+  if (!g) return '';
+  var map = {
+    'อ.1': 'อนุบาลปีที่ 1', 'อ.2': 'อนุบาลปีที่ 2', 'อ.3': 'อนุบาลปีที่ 3',
+    'ป.1': 'ประถมศึกษาปีที่ 1', 'ป.2': 'ประถมศึกษาปีที่ 2', 'ป.3': 'ประถมศึกษาปีที่ 3',
+    'ป.4': 'ประถมศึกษาปีที่ 4', 'ป.5': 'ประถมศึกษาปีที่ 5', 'ป.6': 'ประถมศึกษาปีที่ 6',
+    'ม.1': 'มัธยมศึกษาปีที่ 1', 'ม.2': 'มัธยมศึกษาปีที่ 2', 'ม.3': 'มัธยมศึกษาปีที่ 3',
+    'ม.4': 'มัธยมศึกษาปีที่ 4', 'ม.5': 'มัธยมศึกษาปีที่ 5', 'ม.6': 'มัธยมศึกษาปีที่ 6'
+  };
+  if (map[g]) return map[g];
+  try {
+    if (typeof convertGradeToFullName === 'function') return convertGradeToFullName(g);
+  } catch (e) {}
+  return g;
+}
 /**
  * ล้างข้อมูลที่เก็บไว้ใน CacheService ฝั่ง Server
  * --------------------------------

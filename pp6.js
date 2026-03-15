@@ -819,6 +819,17 @@ function getStudentListForPp6(grade, classNo) {
  */
 function generatePp6PDFComplete(studentId, term = 'both') {
   try {
+    try { DriveApp.getRootFolder().getName(); } catch (e) {
+      throw new Error(
+        'ระบบยังไม่ได้รับอนุญาตให้เข้าถึง Google Drive สำหรับการสร้าง PDF\n' +
+        'วิธีแก้:\n' +
+        '1) เปิดโปรเจกต์ Apps Script ด้วยบัญชีเจ้าของ (Deploying account)\n' +
+        '2) Run ฟังก์ชัน testDrivePermission() 1 ครั้งเพื่อ authorize\n' +
+        '3) Deploy > Manage deployments > Edit > New version > Deploy\n' +
+        'หมายเหตุ: ถ้า Deploy ตั้งค่า Execute as = User accessing ให้เปลี่ยนเป็น Me'
+      );
+    }
+
     const pdfHash = _createPDFHash('pp6_final_v3', studentId, term);
     const cacheKey = `pdf_pp6_${pdfHash}`;
     
@@ -900,6 +911,77 @@ return { previewUrl, downloadUrl, fileId: id, name: fileName };
     
   } catch (error) {
     Logger.log(`❌ Error in generatePp6PDFComplete for student ${studentId}: ${error.message}`);
+    throw new Error(`ไม่สามารถสร้างรายงาน ปพ.6: ${error.message}`);
+  }
+}
+
+function generatePp6PDFCompleteNoDrive(studentId, term = 'both') {
+  try {
+    const settings = getWebAppSettings();
+    if (!settings['ชื่อโรงเรียน']) {
+      throw new Error('ไม่พบการตั้งค่าโรงเรียน');
+    }
+
+    const allStudentsData = _readSheetToObjects('Students');
+    const studentMasterData = allStudentsData.find(row => String(row.student_id).trim() === String(studentId).trim());
+    if (!studentMasterData) {
+      throw new Error(`ไม่พบข้อมูลนักเรียนรหัส ${studentId} ในชีต Students`);
+    }
+
+    const studentFullName = `${studentMasterData.title || ''}${studentMasterData.firstname || ''} ${studentMasterData.lastname || ''}`.trim();
+
+    const warehouse = _readSheetToObjects('SCORES_WAREHOUSE');
+    const studentScoreData = warehouse.find(row => String(row['student_id']).trim() === String(studentId).trim());
+    if (!studentScoreData) {
+      throw new Error(`ไม่พบข้อมูลคะแนนของนักเรียนรหัส ${studentId} ใน SCORES_WAREHOUSE`);
+    }
+
+    const grade = studentScoreData['grade'];
+    const classNo = studentScoreData['class_no'];
+    if (!grade || !classNo) {
+      throw new Error(`ข้อมูล grade (${grade}) หรือ class_no (${classNo}) ไม่ครบถ้วน`);
+    }
+
+    const subjects = getStudentAllSubjectScores(studentId, term);
+    if (!subjects || subjects.length === 0) {
+      throw new Error(`ไม่พบข้อมูลวิชาสำหรับนักเรียน ${studentId}`);
+    }
+
+    const gpaInfo = calculateGPAAndRank(studentId, grade, classNo);
+    const assessments = getStudentAssessments(studentId);
+    const homeroomTeacher = getHomeroomTeacher(grade, classNo);
+
+    let logoDataUrl = '';
+    try {
+      const logoFileId = settings['logoFileId'];
+      if (logoFileId) logoDataUrl = _getLogoDataUrl(logoFileId) || '';
+    } catch (_) {
+      logoDataUrl = '';
+    }
+
+    const html = _createPp6ReportHTML({
+      schoolName: settings['ชื่อโรงเรียน'],
+      schoolAddress: settings['ที่อยู่โรงเรียน'],
+      logoDataUrl: logoDataUrl,
+      studentId: studentId,
+      studentName: studentFullName,
+      grade: grade,
+      classNo: classNo,
+      term: term,
+      subjects: subjects,
+      gpaInfo: gpaInfo,
+      assessments: assessments,
+      principalName: settings['ชื่อผู้อำนวยการ'],
+      homeroomTeacher: homeroomTeacher,
+      academicYear: settings['ปีการศึกษา'] || new Date().getFullYear() + 543
+    });
+
+    const fileName = `ปพ6_${studentFullName || studentId}_${studentId}_${term}.pdf`;
+    const pdfBlob = HtmlService.createHtmlOutput(html).getAs('application/pdf').setName(fileName);
+    const base64 = Utilities.base64Encode(pdfBlob.getBytes());
+    return { fileName: fileName, mimeType: 'application/pdf', base64: base64 };
+  } catch (error) {
+    Logger.log(`❌ Error in generatePp6PDFCompleteNoDrive for student ${studentId}: ${error.message}`);
     throw new Error(`ไม่สามารถสร้างรายงาน ปพ.6: ${error.message}`);
   }
 }

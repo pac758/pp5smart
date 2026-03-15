@@ -236,11 +236,28 @@ function getTeacherComment_(studentId) {
 
 // ============================================================
 
+function _ensureDrivePermissionForPdf_() {
+  try {
+    DriveApp.getRootFolder().getName();
+    return true;
+  } catch (e) {
+    throw new Error(
+      'ระบบยังไม่ได้รับอนุญาตให้เข้าถึง Google Drive สำหรับการสร้าง PDF\n' +
+      'วิธีแก้:\n' +
+      '1) เปิดโปรเจกต์ Apps Script ด้วยบัญชีเจ้าของ (Deploying account)\n' +
+      '2) Run ฟังก์ชัน testDrivePermission() 1 ครั้งเพื่อ authorize\n' +
+      '3) Deploy > Manage deployments > Edit > New version > Deploy\n' +
+      'หมายเหตุ: ถ้า Deploy ตั้งค่า Execute as = User accessing ให้เปลี่ยนเป็น Me'
+    );
+  }
+}
+
 function generatePp6Pdf(studentId, showRank) {
 
   if (showRank === undefined || showRank === null) showRank = true;
 
   try {
+    _ensureDrivePermissionForPdf_();
 
     // 1. เตรียมข้อมูล (ใช้ Cache เพื่อความเร็ว)
 
@@ -657,7 +674,10 @@ function generatePp6Pdf(studentId, showRank) {
 
     Logger.log(e.stack);
 
-    throw new Error('สร้าง PDF ไม่สำเร็จ: ' + e.message);
+    if (String(e && e.message ? e.message : e).indexOf('Drive') !== -1 || String(e && e.message ? e.message : e).indexOf('DriveApp') !== -1) {
+      throw new Error(String(e.message || e));
+    }
+    throw new Error('สร้าง PDF ไม่สำเร็จ: ' + (e && e.message ? e.message : e));
 
   }
 

@@ -99,10 +99,11 @@ function _opr_merge(tableStart, row, col, rs, cs) {
  */
 function generateOnePageReportBatch(studentIds) {
   var cache = _opr_preloadData();
+  var term = (arguments.length >= 2 && arguments[1] !== undefined && arguments[1] !== null) ? String(arguments[1]) : 'both';
   var results = [];
   for (var bi = 0; bi < studentIds.length; bi++) {
     try {
-      var url = _opr_generateSingle(studentIds[bi], cache);
+      var url = _opr_generateSingle(studentIds[bi], cache, term);
       results.push({id: studentIds[bi], url: url, error: ''});
     } catch (e) {
       results.push({id: studentIds[bi], url: '', error: e.message});
@@ -123,7 +124,6 @@ function _opr_preloadData() {
     year: settings['ปีการศึกษา'] || String(new Date().getFullYear() + 543),
     logoId: settings['logoFileId'] || ''
   };
-  var wh = _readSheetToObjects('SCORES_WAREHOUSE');
   var subjSheet = _readSheetToObjects('รายวิชา');
   var sInfo = {};
   subjSheet.forEach(function(s) {
@@ -148,7 +148,9 @@ function _opr_preloadData() {
   var classLists = {};
 
   return {
-    settings: settings, sd: sd, wh: wh, sInfo: sInfo,
+    settings: settings, sd: sd, sInfo: sInfo,
+    whByClass: {},
+    whIndexByClass: {},
     readingData: readingData, characterData: characterData, activityData: activityData,
     classLists: classLists,
     // cache GPA results per grade+classNo (คำนวณครั้งเดียวต่อห้อง)
@@ -156,22 +158,132 @@ function _opr_preloadData() {
   };
 }
 
+function _opr_getWarehouseForClass_(grade, classNo, cache) {
+  var y = (cache && cache.sd && cache.sd.year) ? String(cache.sd.year) : '';
+  var g = String(grade || '').trim();
+  var c = String(classNo || '').trim();
+  var classKey = y + '|' + g + '|' + c;
+
+  if (cache && cache.whByClass && cache.whByClass[classKey]) return cache.whByClass[classKey];
+
+  var cacheKey = (typeof _createCacheKey === 'function')
+    ? _createCacheKey('opr_wh', y, g, c)
+    : ('opr_wh_' + y + '_' + g + '_' + c);
+
+  var cached = (typeof _getFromCache === 'function') ? _getFromCache(cacheKey, null) : null;
+  if (cached && Array.isArray(cached)) {
+    if (cache && cache.whByClass) cache.whByClass[classKey] = cached;
+    if (cache && cache.whIndexByClass) {
+      var idx = {};
+      cached.forEach(function(r) {
+        var sid = String(r.student_id || '').trim();
+        if (!sid) return;
+        if (!idx[sid]) idx[sid] = [];
+        idx[sid].push(r);
+      });
+      cache.whIndexByClass[classKey] = idx;
+    }
+    return cached;
+  }
+
+  var sheet = null;
+  try {
+    sheet = (typeof S_getYearlySheet === 'function') ? S_getYearlySheet('SCORES_WAREHOUSE') : null;
+  } catch (_e) {}
+  try {
+    if (!sheet) sheet = SS().getSheetByName('SCORES_WAREHOUSE');
+  } catch (_e) {}
+  if (!sheet) {
+    if (cache && cache.whByClass) cache.whByClass[classKey] = [];
+    if (cache && cache.whIndexByClass) cache.whIndexByClass[classKey] = {};
+    return [];
+  }
+
+  var values = sheet.getDataRange().getValues();
+  if (!values || values.length < 2) {
+    if (cache && cache.whByClass) cache.whByClass[classKey] = [];
+    if (cache && cache.whIndexByClass) cache.whIndexByClass[classKey] = {};
+    return [];
+  }
+
+  var headers = values[0].map(function(h) { return String(h || '').trim(); });
+  var col = function(name) { return headers.indexOf(name); };
+  var findCol = function() {
+    for (var i = 0; i < arguments.length; i++) {
+      var cidx = col(arguments[i]);
+      if (cidx !== -1) return cidx;
+    }
+    return -1;
+  };
+
+  var idCol = findCol('student_id', 'studentId');
+  var gradeCol = findCol('grade');
+  var classCol = findCol('class_no', 'classNo', 'class');
+  var codeCol = findCol('subject_code', 'subjectCode');
+  var nameCol = findCol('subject_name', 'subjectName');
+  var typeCol = findCol('subject_type', 'subjectType');
+  var hoursCol = findCol('hours', 'ชั่วโมง/ปี');
+  var t1Col = findCol('term1_total', 'term1Total');
+  var t2Col = findCol('term2_total', 'term2Total');
+  var avgCol = findCol('average', 'avg');
+  var fgCol = findCol('final_grade', 'grade_result', 'gradeResult');
+
+  var out = [];
+  for (var r = 1; r < values.length; r++) {
+    var row = values[r];
+    if (gradeCol !== -1 && String(row[gradeCol] || '').trim() !== g) continue;
+    if (classCol !== -1 && String(row[classCol] || '').trim() !== c) continue;
+
+    out.push({
+      student_id: idCol !== -1 ? String(row[idCol] || '').trim() : '',
+      grade: gradeCol !== -1 ? String(row[gradeCol] || '').trim() : '',
+      class_no: classCol !== -1 ? String(row[classCol] || '').trim() : '',
+      subject_code: codeCol !== -1 ? String(row[codeCol] || '').trim() : '',
+      subject_name: nameCol !== -1 ? String(row[nameCol] || '').trim() : '',
+      subject_type: typeCol !== -1 ? String(row[typeCol] || '').trim() : '',
+      hours: hoursCol !== -1 ? row[hoursCol] : '',
+      term1_total: t1Col !== -1 ? row[t1Col] : '',
+      term2_total: t2Col !== -1 ? row[t2Col] : '',
+      average: avgCol !== -1 ? row[avgCol] : '',
+      final_grade: fgCol !== -1 ? row[fgCol] : ''
+    });
+  }
+
+  if (typeof _setToCache === 'function') _setToCache(cacheKey, out, (typeof CACHE_EXPIRATION !== 'undefined' ? CACHE_EXPIRATION.MEDIUM : 1800));
+  if (cache && cache.whByClass) cache.whByClass[classKey] = out;
+  if (cache && cache.whIndexByClass) {
+    var idx2 = {};
+    out.forEach(function(rr) {
+      var sid2 = String(rr.student_id || '').trim();
+      if (!sid2) return;
+      if (!idx2[sid2]) idx2[sid2] = [];
+      idx2[sid2].push(rr);
+    });
+    cache.whIndexByClass[classKey] = idx2;
+  }
+  return out;
+}
+
 /**
  * สร้าง PDF สำหรับนักเรียน 1 คน (ใช้ cache จาก preload)
  */
 function _opr_generateSingle(studentId, cache) {
+  var term = (arguments.length >= 3 && arguments[2] !== undefined && arguments[2] !== null) ? String(arguments[2]).trim() : 'both';
+  if (term !== '1' && term !== '2' && term !== 'both') term = 'both';
   var student = getStudentInfo_(studentId);
   if (!student) throw new Error('ไม่พบข้อมูลนักเรียน');
 
   var sd = cache.sd;
   var settings = cache.settings;
-  var wh = cache.wh;
   var sInfo = cache.sInfo;
   var sid = String(studentId).trim();
+  var y = sd && sd.year ? String(sd.year) : '';
+  var classKey = y + '|' + String(student.grade || '').trim() + '|' + String(student.classNo || '').trim();
+  var whClass = _opr_getWarehouseForClass_(student.grade, student.classNo, cache);
 
   // เลขที่ในห้อง (cache per class)
-  var classKey = student.grade + '_' + student.classNo;
-  if (!cache.classLists[classKey]) {
+  var classListKey = student.grade + '_' + student.classNo;
+  if (!cache.classLists[classListKey]) {
     try {
       var students = getStudentsByClass(student.grade, String(student.classNo));
       students.sort(function(a, b) {
@@ -179,19 +291,22 @@ function _opr_generateSingle(studentId, cache) {
         var nb = (b.title||'') + (b.firstname||'') + ' ' + (b.lastname||'');
         return na.localeCompare(nb, 'th');
       });
-      cache.classLists[classKey] = students;
-    } catch(e) { cache.classLists[classKey] = []; }
+      cache.classLists[classListKey] = students;
+    } catch(e) { cache.classLists[classListKey] = []; }
   }
   var classNumber = '';
-  var cl = cache.classLists[classKey];
+  var cl = cache.classLists[classListKey];
   for (var ci = 0; ci < cl.length; ci++) {
     if (String(cl[ci].id).trim() === sid) { classNumber = String(ci + 1); break; }
   }
 
   // คะแนนนักเรียน
-  var studentScores = wh.filter(function(r) {
-    return String(r['student_id']).trim() === sid;
-  });
+  var studentScores = [];
+  if (cache.whIndexByClass && cache.whIndexByClass[classKey] && cache.whIndexByClass[classKey][sid]) {
+    studentScores = cache.whIndexByClass[classKey][sid];
+  } else {
+    studentScores = whClass.filter(function(r) { return String(r['student_id']).trim() === sid; });
+  }
 
   var subjects = studentScores
     .filter(function(r) {
@@ -222,18 +337,24 @@ function _opr_generateSingle(studentId, cache) {
   // ผลประเมิน (ใช้ข้อมูลที่ pre-load แล้ว)
   var assessments = _opr_getAssessments(sid, cache);
 
-  // GPA + อันดับ (cache per class)
-  var gpa = _opr_getGPA(sid, student.grade, student.classNo, cache);
+  var gpa = _opr_getGPAByTerm_(sid, student.grade, student.classNo, cache, whClass, term);
 
   var teacher = getHomeroomTeacher(student.grade, String(student.classNo));
 
   var validAvg = subjects.filter(function(s){return s.avg>0;}).map(function(s){return s.avg;});
   var avgAll = validAvg.length > 0 ? validAvg.reduce(function(a,b){return a+b;},0)/validAvg.length : 0;
+  if (term === '1' || term === '2') {
+    var validT = subjects
+      .map(function(s) { return term === '1' ? Number(s.t1) : Number(s.t2); })
+      .filter(function(n) { return Number.isFinite(n) && n > 0; });
+    avgAll = validT.length > 0 ? validT.reduce(function(a,b){return a+b;},0)/validT.length : 0;
+  }
 
     // =============================================
     // สร้าง Google Doc (A4)
     // =============================================
-    var doc = DocumentApp.create('รายงานหน้าเดียว_' + student.id + '_' + Date.now());
+    var termTag = term === 'both' ? 'ทั้งปี' : ('ภาค' + term);
+    var doc = DocumentApp.create('รายงานหน้าเดียว_' + termTag + '_' + student.id + '_' + Date.now());
     var body = doc.getBody();
     body.clear();
     body.setMarginTop(22);
@@ -268,62 +389,88 @@ function _opr_generateSingle(studentId, cache) {
       return p;
     };
 
+    var termText = term === 'both' ? 'ภาคเรียนที่ 1 และ 2' : ('ภาคเรียนที่ ' + term);
     addLine(sd.name, 14, true, 0);
     addLine('แบบรายงานผลการพัฒนาคุณภาพผู้เรียน', 13, true, 0);
-    addLine('ชั้น' + _opr_gradeFullName(student.grade) + '/' + student.classNo + '  ปีการศึกษา ' + sd.year, 13, true, 1);
+    addLine('ชั้น' + _opr_gradeFullName(student.grade) + '/' + student.classNo + '  ' + termText + '  ปีการศึกษา ' + sd.year, 13, true, 1);
 
     // บรรทัดข้อมูลนักเรียน: เลขที่ + ชื่อ-นามสกุล จัดกลาง
     var infoText = 'เลขที่  ' + classNumber + '     ชื่อ - นามสกุล  ' + student.name;
     var infoPara = addLine(infoText, 13, false, 2, CENTER);
 
     // =============================================
-    // ตารางผลการเรียน (11 columns ตามข้อมูลที่มี)
-    // =============================================
-    var T = body.appendTable();
-    T.setBorderWidth(0.5);
-    T.setBorderColor('#000000');
-
-    // Column widths (total ~517pt for 595 - 50 - 28 = 517pt usable)
-    var W = [18, 42, 197, 38, 22, 38, 26, 38, 26, 42, 30];
     var HDR_BG = '#E8E8E8';
     var FS_H = 11;
     var FS_D = 12;
 
-    // Header Row 1 (merged headers)
-    var r1 = T.appendTableRow();
-    var h1Vals = ['ที่','รหัสวิชา','ชื่อวิชา','ประเภท','น.น.','ภาคเรียนที่ 1','','ภาคเรียนที่ 2','','สรุปผล',''];
-    h1Vals.forEach(function(h, i) { _opr_cell(r1.appendTableCell(h), W[i], FS_H, true, HDR_BG); });
-    // เพิ่มบรรทัดที่ 2 ใน cell ที่ต้องการ 2 บรรทัด
-    _opr_addLine(r1.getCell(3), 'วิชา', FS_H, true);
-    _opr_addLine(r1.getCell(9), 'ปลายปี', FS_H, true);
+    if (term === 'both') {
+      var T = body.appendTable();
+      T.setBorderWidth(0.5);
+      T.setBorderColor('#000000');
 
-    // Header Row 2 (sub-headers)
-    var r2 = T.appendTableRow();
-    var h2Vals = ['','','','','','คะแนน','เกรด','คะแนน','เกรด','คะแนน','เกรด'];
-    h2Vals.forEach(function(h, i) { _opr_cell(r2.appendTableCell(h), W[i], FS_H, true, HDR_BG); });
-    _opr_addLine(r2.getCell(9), 'เฉลี่ย', FS_H, true);
+      var W = [18, 42, 197, 38, 22, 38, 26, 38, 26, 42, 30];
 
-    // Data rows
-    subjects.forEach(function(s, idx) {
-      var row = T.appendTableRow();
-      var v = [
-        String(idx + 1),
-        s.code,
-        s.name,
-        s.type,
-        String(s.credit || ''),
-        s.t1 > 0 ? String(Math.round(s.t1)) : '',
-        s.t1g > 0 ? s.t1g.toFixed(0) : '',
-        s.t2 > 0 ? String(Math.round(s.t2)) : '',
-        s.t2g > 0 ? s.t2g.toFixed(0) : '',
-        s.avg > 0 ? s.avg.toFixed(2) : '',
-        s.fg >= 0 ? s.fg.toFixed(0) : ''
-      ];
-      v.forEach(function(val, i) {
-        var al = (i === 2) ? LEFT : null;
-        _opr_cell(row.appendTableCell(val), W[i], FS_D, false, null, al);
+      var r1 = T.appendTableRow();
+      var h1Vals = ['ที่','รหัสวิชา','ชื่อวิชา','ประเภท','น.น.','ภาคเรียนที่ 1','','ภาคเรียนที่ 2','','สรุปผล',''];
+      h1Vals.forEach(function(h, i) { _opr_cell(r1.appendTableCell(h), W[i], FS_H, true, HDR_BG); });
+      _opr_addLine(r1.getCell(3), 'วิชา', FS_H, true);
+      _opr_addLine(r1.getCell(9), 'ปลายปี', FS_H, true);
+
+      var r2 = T.appendTableRow();
+      var h2Vals = ['','','','','','คะแนน','เกรด','คะแนน','เกรด','คะแนน','เกรด'];
+      h2Vals.forEach(function(h, i) { _opr_cell(r2.appendTableCell(h), W[i], FS_H, true, HDR_BG); });
+      _opr_addLine(r2.getCell(9), 'เฉลี่ย', FS_H, true);
+
+      subjects.forEach(function(s, idx) {
+        var row = T.appendTableRow();
+        var v = [
+          String(idx + 1),
+          s.code,
+          s.name,
+          s.type,
+          String(s.credit || ''),
+          s.t1 > 0 ? String(Math.round(s.t1)) : '',
+          s.t1g > 0 ? s.t1g.toFixed(0) : '',
+          s.t2 > 0 ? String(Math.round(s.t2)) : '',
+          s.t2g > 0 ? s.t2g.toFixed(0) : '',
+          s.avg > 0 ? s.avg.toFixed(2) : '',
+          s.fg >= 0 ? s.fg.toFixed(0) : ''
+        ];
+        v.forEach(function(val, i) {
+          var al = (i === 2) ? LEFT : null;
+          _opr_cell(row.appendTableCell(val), W[i], FS_D, false, null, al);
+        });
       });
-    });
+    } else {
+      var TT = body.appendTable();
+      TT.setBorderWidth(0.5);
+      TT.setBorderColor('#000000');
+
+      var W7 = [18, 42, 250, 45, 30, 70, 62];
+      var hr = TT.appendTableRow();
+      var termHdr = 'ภาค ' + term;
+      ['ที่','รหัสวิชา','ชื่อวิชา','ประเภท','น.น.','คะแนน ' + termHdr,'เกรด ' + termHdr]
+        .forEach(function(h, i) { _opr_cell(hr.appendTableCell(h), W7[i], (i >= 5 ? 10 : FS_H), true, HDR_BG, (i === 2 ? LEFT : null)); });
+
+      subjects.forEach(function(s, idx) {
+        var row2 = TT.appendTableRow();
+        var score = term === '1' ? Number(s.t1) : Number(s.t2);
+        var gradeVal = term === '1' ? Number(s.t1g) : Number(s.t2g);
+        var vv = [
+          String(idx + 1),
+          s.code,
+          s.name,
+          s.type,
+          String(s.credit || ''),
+          (Number.isFinite(score) && score > 0) ? String(Math.round(score)) : '',
+          (Number.isFinite(gradeVal) && gradeVal > 0) ? gradeVal.toFixed(0) : ''
+        ];
+        vv.forEach(function(val, i) {
+          var al2 = (i === 2) ? LEFT : null;
+          _opr_cell(row2.appendTableCell(val), W7[i], FS_D, false, null, al2);
+        });
+      });
+    }
 
     // =============================================
     // สรุป GPA + คะแนนเฉลี่ย + ลำดับ (ใต้ตาราง มีเส้นกรอบ)
@@ -439,7 +586,7 @@ function _opr_generateSingle(studentId, cache) {
     var bd = BT.appendTableRow();
 
     // Cell 1: เลื่อนชั้น/จบ → ✓
-    var bc1 = bd.appendTableCell('✓');
+    var bc1 = bd.appendTableCell(term === 'both' ? '✓' : '');
     bc1.setWidth(75);
     bc1.setVerticalAlignment(DocumentApp.VerticalAlignment.CENTER);
     bc1.setPaddingTop(2).setPaddingBottom(2).setPaddingLeft(4).setPaddingRight(4);
@@ -539,7 +686,7 @@ function _opr_generateSingle(studentId, cache) {
       _pdfStep = 'createFile';
       var pdfFile = folder.createFile(pdfBlob);
       _pdfStep = 'setName';
-      pdfFile.setName('รายงานหน้าเดียว_' + student.id + '_' + student.name + '.pdf');
+      pdfFile.setName('รายงานหน้าเดียว_' + termTag + '_' + student.id + '_' + student.name + '.pdf');
       _pdfStep = 'setSharing';
       try { pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch(shareErr) { Logger.log('setSharing skipped (domain restriction): ' + shareErr.message); }
       _pdfStep = 'setTrashed';
@@ -558,11 +705,69 @@ function _opr_generateSingle(studentId, cache) {
 function generateOnePageReportPdf(studentId) {
   try {
     var cache = _opr_preloadData();
-    return _opr_generateSingle(studentId, cache);
+    var term = (arguments.length >= 2 && arguments[1] !== undefined && arguments[1] !== null) ? String(arguments[1]).trim() : 'both';
+    if (term !== '1' && term !== '2' && term !== 'both') term = 'both';
+    return _opr_generateSingle(studentId, cache, term);
   } catch (e) {
     Logger.log('OnePageReport Error: ' + e.message + '\n' + e.stack);
     throw new Error('สร้างรายงานไม่สำเร็จ: ' + e.message);
   }
+}
+
+function _opr_getGPAByTerm_(sid, grade, classNo, cache, whClass, term) {
+  var t = String(term || 'both').trim();
+  if (t !== '1' && t !== '2' && t !== 'both') t = 'both';
+  if (t === 'both') return _opr_getGPA(sid, grade, classNo, cache, whClass);
+
+  if (!cache.gpaCacheTerm) cache.gpaCacheTerm = {};
+  var classKey = String(grade || '') + '_' + String(classNo || '') + '_' + t;
+  if (!cache.gpaCacheTerm[classKey]) {
+    var creditMap = {};
+    var typeMap = {};
+    Object.keys(cache.sInfo).forEach(function(code) {
+      creditMap[code] = cache.sInfo[code].hours || 1;
+      typeMap[code] = cache.sInfo[code].type || 'พื้นฐาน';
+    });
+
+    var classStudents = {};
+    (whClass || []).forEach(function(r) {
+      var rsid = String(r['student_id'] || '').trim();
+      if (!rsid) return;
+      if (!classStudents[rsid]) classStudents[rsid] = [];
+      classStudents[rsid].push(r);
+    });
+
+    var gpaList = [];
+    Object.keys(classStudents).forEach(function(stId) {
+      var totCredits = 0, totPoints = 0;
+      classStudents[stId].forEach(function(r) {
+        var code = String(r['subject_code'] || r['subjectCode'] || '').trim();
+        var subType = typeMap[code] || String(r['subject_type'] || '').trim() || 'พื้นฐาน';
+        if (subType === 'กิจกรรม') return;
+
+        var credits = creditMap[code] || 1;
+        var score = 0;
+        if (t === '1') score = parseFloat(r['term1_total'] || r['term1Total'] || 0) || 0;
+        else score = parseFloat(r['term2_total'] || r['term2Total'] || 0) || 0;
+
+        var gpaVal = _scoreToGPA(score).gpa;
+        totCredits += credits;
+        totPoints += gpaVal * credits;
+      });
+      var gpa = totCredits > 0 ? totPoints / totCredits : 0;
+      gpaList.push({ id: stId, gpa: parseFloat(gpa.toFixed(2)) });
+    });
+
+    gpaList.sort(function(a, b) { return b.gpa - a.gpa; });
+    var ranked = {};
+    gpaList.forEach(function(g, i) {
+      ranked[g.id] = { gpa: g.gpa, classRank: i + 1, totalStudents: gpaList.length };
+    });
+    cache.gpaCacheTerm[classKey] = ranked;
+  }
+
+  var r = cache.gpaCacheTerm[classKey][sid];
+  return r || { gpa: 0, classRank: '-', totalStudents: 0 };
 }
 
 /**
@@ -635,12 +840,10 @@ function _opr_getGPA(sid, grade, classNo, cache) {
       typeMap[code] = cache.sInfo[code].type || 'พื้นฐาน';
     });
 
-    // กรองเฉพาะ grade + class_no (เหมือน calculateGPAAndRank)
     var classStudents = {};
-    cache.wh.forEach(function(r) {
-      if (String(r['grade']).trim() !== String(grade).trim()) return;
-      if (String(r['class_no']).trim() !== String(classNo).trim()) return;
-      var rsid = String(r['studentId'] || r['student_id'] || '').trim();
+    (arguments.length >= 5 ? arguments[4] : []).forEach(function(r) {
+      var rsid = String(r['student_id'] || '').trim();
+      if (!rsid) return;
       if (!classStudents[rsid]) classStudents[rsid] = [];
       classStudents[rsid].push(r);
     });

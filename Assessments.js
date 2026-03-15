@@ -60,6 +60,15 @@ const ACTIVITY_HEADERS = [
 
 // ----- Competency (สมรรถนะสำคัญ) -----
 const COMPETENCY_SHEET = 'การประเมินสมรรถนะ';
+const COMPETENCY_HEADERS = [
+  'รหัสนักเรียน', 'ชื่อ-นามสกุล', 'ชั้น', 'ห้อง',
+  'สื่อสาร_รับ-ส่งสาร', 'สื่อสาร_ถ่ายทอด', 'สื่อสาร_วิธีการ', 'สื่อสาร_เจรจา', 'สื่อสาร_เลือกรับ',
+  'คิด_วิเคราะห์', 'คิด_สร้างสรรค์', 'คิด_วิจารณญาณ', 'คิด_สร้างความรู้', 'คิด_ตัดสินใจ',
+  'แก้ปัญหา_แก้ปัญหา', 'แก้ปัญหา_ใช้เหตุผล', 'แก้ปัญหา_เข้าใจสังคม', 'แก้ปัญหา_แสวงหาความรู้', 'แก้ปัญหา_ตัดสินใจ',
+  'ทักษะชีวิต_เรียนรู้ตนเอง', 'ทักษะชีวิต_ทำงานกลุ่ม', 'ทักษะชีวิต_นำไปใช้', 'ทักษะชีวิต_จัดการปัญหา', 'ทักษะชีวิต_หลีกเลี่ยง',
+  'เทคโนโลยี_เลือกใช้', 'เทคโนโลยี_ทักษะกระบวนการ', 'เทคโนโลยี_พัฒนาตนเอง', 'เทคโนโลยี_แก้ปัญหา', 'เทคโนโลยี_คุณธรรม',
+  'วันที่บันทึก', 'ผู้บันทึก'
+];
 
 // ----- Validation constants -----
 // ----- Validation constants (ใช้จาก validation.gs) -----
@@ -372,10 +381,13 @@ function rtwHeaderIndex_(sheet) {
 
 function ensureRTWSheetAndHeaders_() {
   var ss = SS();
-  var sheet = ss.getSheetByName(RTW_SHEET);
+  var sheet = null;
+  try { if (typeof S_getYearlySheet === 'function') sheet = S_getYearlySheet(RTW_SHEET); } catch(_) {}
+  if (!sheet) sheet = ss.getSheetByName(RTW_SHEET);
 
   if (!sheet) {
-    sheet = ss.insertSheet(RTW_SHEET);
+    var sheetName = (typeof S_sheetName === 'function') ? S_sheetName(RTW_SHEET) : RTW_SHEET;
+    sheet = ss.insertSheet(sheetName);
     sheet.getRange(1, 1, 1, RTW_HEADERS.length).setValues([RTW_HEADERS]);
     var headerRange = sheet.getRange(1, 1, 1, RTW_HEADERS.length);
     headerRange.setBackground('#ffc107');
@@ -438,13 +450,103 @@ function charHeaderIndex_(sheet) {
 
 function ensureCharSheetAndHeaders_() {
   var ss = SS();
-  var sheet = ss.getSheetByName(CHARACTER_SHEET);
+  var sheet = null;
+  try { if (typeof S_getYearlySheet === 'function') sheet = S_getYearlySheet(CHARACTER_SHEET); } catch(_) {}
+  if (!sheet) sheet = ss.getSheetByName(CHARACTER_SHEET);
   if (!sheet) {
-    sheet = ss.insertSheet(CHARACTER_SHEET);
+    var sheetName = (typeof S_sheetName === 'function') ? S_sheetName(CHARACTER_SHEET) : CHARACTER_SHEET;
+    sheet = ss.insertSheet(sheetName);
     sheet.getRange(1, 1, 1, CHARACTER_HEADERS.length).setValues([CHARACTER_HEADERS]);
     return { sheet: sheet, idx: charHeaderIndex_(sheet) };
   }
+
+  var lastC = Math.max(sheet.getLastColumn(), CHARACTER_HEADERS.length);
+  if (sheet.getMaxColumns() < lastC) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), lastC - sheet.getMaxColumns());
+  }
+
+  var oldHeaders = sheet.getRange(1, 1, 1, lastC).getValues()[0].map(String);
+  var extras = oldHeaders.filter(function(h) { return h && CHARACTER_HEADERS.indexOf(h) === -1; });
+  var nextHeaders = CHARACTER_HEADERS.concat(extras);
+
+  if (sheet.getMaxColumns() < nextHeaders.length) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), nextHeaders.length - sheet.getMaxColumns());
+  }
+
+  var needReorder = nextHeaders.length !== oldHeaders.length || !nextHeaders.every(function(h, i) { return oldHeaders[i] === h; });
+  if (needReorder) {
+    var lastR = sheet.getLastRow();
+    var dataOld = lastR > 1 ? sheet.getRange(2, 1, lastR - 1, oldHeaders.length).getValues() : [];
+    var oldIdx = {};
+    oldHeaders.forEach(function(h, i) { if (h && oldIdx[h] === undefined) oldIdx[h] = i; });
+
+    var dataNew = dataOld.map(function(row) {
+      var out = new Array(nextHeaders.length).fill('');
+      nextHeaders.forEach(function(h, ni) {
+        var oi = oldIdx[h];
+        if (oi !== undefined && oi < row.length) out[ni] = row[oi];
+      });
+      return out;
+    });
+
+    sheet.getRange(1, 1, 1, nextHeaders.length).setValues([nextHeaders]);
+    if (dataNew.length) {
+      sheet.getRange(2, 1, dataNew.length, nextHeaders.length).setValues(dataNew);
+    }
+  }
+
   return { sheet: sheet, idx: charHeaderIndex_(sheet) };
+}
+
+function ensureCompetencySheetAndHeaders_() {
+  var ss = SS();
+  var sheet = null;
+  try { if (typeof S_getYearlySheet === 'function') sheet = S_getYearlySheet(COMPETENCY_SHEET); } catch(_) {}
+  if (!sheet) sheet = ss.getSheetByName(COMPETENCY_SHEET);
+
+  if (!sheet) {
+    var sheetName = (typeof S_sheetName === 'function') ? S_sheetName(COMPETENCY_SHEET) : COMPETENCY_SHEET;
+    sheet = ss.insertSheet(sheetName);
+    sheet.getRange(1, 1, 1, COMPETENCY_HEADERS.length).setValues([COMPETENCY_HEADERS]);
+    return sheet;
+  }
+
+  var lastC = Math.max(sheet.getLastColumn(), COMPETENCY_HEADERS.length);
+  if (sheet.getMaxColumns() < lastC) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), lastC - sheet.getMaxColumns());
+  }
+
+  var oldHeaders = sheet.getRange(1, 1, 1, lastC).getValues()[0].map(String);
+  var extras = oldHeaders.filter(function(h) { return h && COMPETENCY_HEADERS.indexOf(h) === -1; });
+  var nextHeaders = COMPETENCY_HEADERS.concat(extras);
+
+  if (sheet.getMaxColumns() < nextHeaders.length) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), nextHeaders.length - sheet.getMaxColumns());
+  }
+
+  var needReorder = nextHeaders.length !== oldHeaders.length || !nextHeaders.every(function(h, i) { return oldHeaders[i] === h; });
+  if (needReorder) {
+    var lastR = sheet.getLastRow();
+    var dataOld = lastR > 1 ? sheet.getRange(2, 1, lastR - 1, oldHeaders.length).getValues() : [];
+    var oldIdx = {};
+    oldHeaders.forEach(function(h, i) { if (h && oldIdx[h] === undefined) oldIdx[h] = i; });
+
+    var dataNew = dataOld.map(function(row) {
+      var out = new Array(nextHeaders.length).fill('');
+      nextHeaders.forEach(function(h, ni) {
+        var oi = oldIdx[h];
+        if (oi !== undefined && oi < row.length) out[ni] = row[oi];
+      });
+      return out;
+    });
+
+    sheet.getRange(1, 1, 1, nextHeaders.length).setValues([nextHeaders]);
+    if (dataNew.length) {
+      sheet.getRange(2, 1, dataNew.length, nextHeaders.length).setValues(dataNew);
+    }
+  }
+
+  return sheet;
 }
 
 /**
@@ -508,7 +610,8 @@ function getStudentsForCharacteristic(grade, classNo) {
     });
   students.sort(function(a, b) { return String(a.studentId).localeCompare(String(b.studentId), undefined, { numeric: true }); });
 
-  var sheet = ss.getSheetByName(CHARACTER_SHEET);
+  var result = ensureCharSheetAndHeaders_();
+  var sheet = result.sheet;
   var existingMap = new Map();
   if (sheet && sheet.getLastRow() > 1) {
     var all = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
@@ -585,7 +688,7 @@ function getStudentsForCompetency(grade, classNo) {
     });
   students.sort(function(a, b) { return String(a.id).localeCompare(String(b.id)); });
 
-  var sheet = ss.getSheetByName(COMPETENCY_SHEET);
+  var sheet = ensureCompetencySheetAndHeaders_();
   var map = new Map();
   if (sheet && sheet.getLastRow() > 1) {
     var d = sheet.getRange(2, 1, sheet.getLastRow() - 1, 31).getValues();
@@ -907,8 +1010,7 @@ function saveCompetencyAssessment(payload) {
   var classNo = validatedRecords[0].classNo;
 
   return withLock_('competency_' + grade + '_' + classNo, function() {
-    var sheet = ss.getSheetByName(COMPETENCY_SHEET);
-    if (!sheet) sheet = ss.insertSheet(COMPETENCY_SHEET);
+    var sheet = ensureCompetencySheetAndHeaders_();
     var now = new Date();
     var who = Session.getActiveUser().getEmail() || '';
 

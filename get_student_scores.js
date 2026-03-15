@@ -78,7 +78,8 @@ function getStudentScoresForWeb(grade, classNo) {
           studentId: studentId,
           studentNo: studentNo,
           fullName: fullName,
-          grades: {}
+          grades: {},
+          rawGrades: {}
         });
       }
     }
@@ -113,6 +114,7 @@ function getStudentScoresForWeb(grade, classNo) {
     const scoreClassCol = U_findColumnIndex(scoresHeaders, ['class_no', 'ห้อง']);
     const scoreStudentIdCol = U_findColumnIndex(scoresHeaders, ['student_id', 'รหัสนักเรียน']);
     const subjectCol = U_findColumnIndex(scoresHeaders, ['subject_name', 'วิชา', 'ชื่อวิชา']);
+    const subjectTypeCol = U_findColumnIndex(scoresHeaders, ['subject_type', 'ประเภทวิชา', 'ประเภท']);
     const scoreCol = U_findColumnIndex(scoresHeaders, ['final_grade', 'average', 'คะแนน', 'เกรด']);
     
     if (scoreStudentIdCol === -1) {
@@ -120,6 +122,22 @@ function getStudentScoresForWeb(grade, classNo) {
     }
     
     const subjectsSet = new Set();
+    const subjectTypes = {};
+
+    const isActivitySubject = (subjectName) => {
+      const n = String(subjectName || '').trim();
+      if (!n) return false;
+      const t = String(subjectTypes[n] || '').trim();
+      if (t === 'กิจกรรม') return true;
+      return (
+        n.indexOf('แนะแนว') !== -1 ||
+        n.indexOf('ลูกเสือ') !== -1 ||
+        n.indexOf('เนตรนารี') !== -1 ||
+        n.indexOf('ชุมนุม') !== -1 ||
+        n.indexOf('กิจกรรมเพื่อสังคม') !== -1 ||
+        n.indexOf('บำเพ็ญประโยชน์') !== -1
+      );
+    };
     
     for (let i = 1; i < scoresData.length; i++) {
       const row = scoresData[i];
@@ -130,23 +148,85 @@ function getStudentScoresForWeb(grade, classNo) {
         const studentId = String(row[scoreStudentIdCol] || '').trim();
         const subject = String(row[subjectCol] || '').trim();
         const value = row[scoreCol];
+        const st = subjectTypeCol !== -1 ? String(row[subjectTypeCol] || '').trim() : '';
         const gradeValue = convertToGrade(value);
         
         if (subject) {
           subjectsSet.add(subject);
+          if (st && !subjectTypes[subject]) subjectTypes[subject] = st;
           const student = students.find(s => s.studentId === studentId);
           if (student) {
             student.grades[subject] = gradeValue;
+            student.rawGrades[subject] = value;
           }
         }
       }
     }
     
     var subjects = Array.from(subjectsSet);
-    _sortBySubjectName(subjects, function(item) { return item; });
+    const activityPriority = (name) => {
+      const n = String(name || '').trim();
+      if (!n) return 999;
+      if (n.indexOf('แนะแนว') !== -1) return 0;
+      if (n.indexOf('ลูกเสือ') !== -1 || n.indexOf('เนตรนารี') !== -1) return 1;
+      if (n.indexOf('ชุมนุม') !== -1) return 2;
+      if (n.indexOf('กิจกรรมเพื่อสังคม') !== -1) return 3;
+      if (n.indexOf('บำเพ็ญประโยชน์') !== -1) return 4;
+      return 99;
+    };
+
+    const academicOrder = [
+      'ภาษาไทย',
+      'คณิตศาสตร์',
+      'วิทยาศาสตร์และเทคโนโลยี',
+      'วิทยาศาสตร์',
+      'สังคมศึกษา ศาสนา และวัฒนธรรม',
+      'สังคมศึกษา',
+      'ประวัติศาสตร์',
+      'สุขศึกษาและพลศึกษา',
+      'สุขศึกษา',
+      'พลศึกษา',
+      'ศิลปะ',
+      'การงานอาชีพ',
+      'การงาน',
+      'ภาษาอังกฤษ',
+      'หน้าที่พลเมือง',
+      'การป้องกันตนเองและประเทศชาติ',
+      'การป้องกัน'
+    ];
+
+    const academicPriority = (name) => {
+      const n = String(name || '').trim();
+      if (!n) return 999;
+      for (let i = 0; i < academicOrder.length; i++) {
+        if (n.indexOf(academicOrder[i]) !== -1) return i;
+      }
+      return 999;
+    };
+
+    subjects.sort((a, b) => {
+      const aa = String(a || '').trim();
+      const bb = String(b || '').trim();
+      const aAct = isActivitySubject(aa);
+      const bAct = isActivitySubject(bb);
+      if (aAct !== bAct) return aAct ? 1 : -1;
+      if (aAct && bAct) {
+        const pa = activityPriority(aa);
+        const pb = activityPriority(bb);
+        if (pa !== pb) return pa - pb;
+        return aa.localeCompare(bb, 'th-TH', { numeric: true });
+      }
+      const oa = academicPriority(aa);
+      const ob = academicPriority(bb);
+      if (oa !== ob) return oa - ob;
+      return aa.localeCompare(bb, 'th-TH', { numeric: true });
+    });
     
     students.forEach(student => {
-      const grades = Object.values(student.grades);
+      const grades = subjects
+        .filter(sub => !isActivitySubject(sub))
+        .map(sub => student.grades[sub])
+        .filter(v => typeof v === 'number' && !isNaN(v));
       if (grades.length > 0) {
         const sum = grades.reduce((acc, val) => acc + val, 0);
         student.average = (sum / grades.length).toFixed(2);
@@ -164,6 +244,7 @@ function getStudentScoresForWeb(grade, classNo) {
       gradeFullName: U_getGradeFullName(grade),
       students: students,
       subjects: subjects,
+      subjectTypes: subjectTypes,
       settings: settings
     };
     
@@ -200,7 +281,7 @@ function exportStudentScoresPDF(grade, classNo) {
 }
 
 function generateScoresSummaryHTML(data) {
-  const { settings = {}, grade = '', classNo = '', gradeFullName = '', students = [], subjects = [], logoBase64 = null } = data;
+  const { settings = {}, grade = '', classNo = '', gradeFullName = '', students = [], subjects = [], subjectTypes = {}, logoBase64 = null } = data;
   
   // ใช้โลโก้ Base64 ถ้ามี
   const logoUrl = logoBase64 || settings['logoUrl_lh3'] || settings['logo'] || settings['schoolLogo'] || '';
@@ -208,11 +289,54 @@ function generateScoresSummaryHTML(data) {
   const semester = settings['ภาคเรียน'] || '';
   const academicYear = settings['ปีการศึกษา'] || '';
   
+  const isActivitySubject = (subjectName) => {
+    const n = String(subjectName || '').trim();
+    if (!n) return false;
+    const t = String(subjectTypes[n] || '').trim();
+    if (t === 'กิจกรรม') return true;
+    return (
+      n.indexOf('แนะแนว') !== -1 ||
+      n.indexOf('ลูกเสือ') !== -1 ||
+      n.indexOf('เนตรนารี') !== -1 ||
+      n.indexOf('ชุมนุม') !== -1 ||
+      n.indexOf('กิจกรรมเพื่อสังคม') !== -1 ||
+      n.indexOf('บำเพ็ญประโยชน์') !== -1
+    );
+  };
+
+  const formatGradeCell = (v) => {
+    if (v === undefined || v === null) return '-';
+    if (typeof v === 'number' && !isNaN(v)) {
+      if (Math.abs(v - Math.round(v)) < 1e-9) return String(Math.round(v));
+      return v.toFixed(1).replace(/\.0$/, '');
+    }
+    return String(v);
+  };
+
+  const activityResultText = (raw, numericFallback) => {
+    const s = String(raw || '').trim();
+    if (!s) {
+      if (typeof numericFallback === 'number' && !isNaN(numericFallback)) {
+        return numericFallback > 0 ? 'ผ่าน' : 'ไม่ผ่าน';
+      }
+      return '-';
+    }
+    if (s.indexOf('มผ') !== -1 || s.indexOf('ไม่ผ่าน') !== -1) return 'ไม่ผ่าน';
+    if (s.indexOf('ผ') !== -1 || s.indexOf('ผ่าน') !== -1) return 'ผ่าน';
+    const n = parseFloat(s);
+    if (!isNaN(n)) return n >= 50 ? 'ผ่าน' : 'ไม่ผ่าน';
+    return '-';
+  };
+
   const tableRows = students.map((student, index) => {
     const studentNo = student.studentNo || (index + 1);
     const gradesCells = subjects.map(subject => {
       const gradeValue = student.grades[subject];
-      return gradeValue !== undefined ? gradeValue : '-';
+      if (isActivitySubject(subject)) {
+        const raw = (student.rawGrades || {})[subject];
+        return activityResultText(raw, gradeValue);
+      }
+      return formatGradeCell(gradeValue);
     }).join('</td><td class="grade-cell">');
     
     return `
@@ -225,8 +349,31 @@ function generateScoresSummaryHTML(data) {
     `;
   }).join('');
   
-  // สร้างหัววิชาแบบแนวตั้ง
   const subjectHeaders = subjects.map(s => `<th class="vertical-text">${s}</th>`).join('');
+  const subjectCount = subjects.length;
+  const activityCount = subjects.filter(s => isActivitySubject(s)).length;
+
+  const pageMarginMm = 8;
+  const pageWidthMm = 210;
+  const availableMm = pageWidthMm - (pageMarginMm * 2);
+  const noMm = 8;
+  const avgMm = 12;
+  const nameMm = 85;
+  const subjectsAreaMm = Math.max(30, availableMm - noMm - nameMm - avgMm);
+  const activityMm = 8;
+  const normalCount = Math.max(0, subjectCount - activityCount);
+  const normalMm = normalCount > 0
+    ? Math.max(4.5, Math.min(6.2, (subjectsAreaMm - (activityMm * activityCount)) / normalCount))
+    : activityMm;
+
+  const tableColGroup = `
+    <colgroup>
+      <col style="width:${noMm}mm;">
+      <col style="width:${nameMm}mm;">
+      ${subjects.map(s => `<col style="width:${(isActivitySubject(s) ? activityMm : normalMm).toFixed(2)}mm;">`).join('')}
+      <col style="width:${avgMm}mm;">
+    </colgroup>
+  `;
   
   // สร้างส่วนแสดงโลโก้ (ถ้ามี)
   const logoSection = logoUrl ? `<img src="${logoUrl}" alt="โลโก้โรงเรียน" class="school-logo">` : '';
@@ -240,12 +387,12 @@ function generateScoresSummaryHTML(data) {
   <style>
     @page { 
       size: A4 portrait; 
-      margin: 8mm 10mm 8mm 12mm; /* ลดขอบซ้ายจาก 18mm เป็น 12mm */
+      margin: ${pageMarginMm}mm ${pageMarginMm}mm ${pageMarginMm}mm ${pageMarginMm}mm;
     }
     
     body { 
       font-family: 'Sarabun', 'TH Sarabun New', 'Garuda', sans-serif; 
-      font-size: 12pt; /* เพิ่มจาก 11pt เป็น 12pt */
+      font-size: 10pt;
       margin: 0; 
       padding: 0;
     }
@@ -257,11 +404,11 @@ function generateScoresSummaryHTML(data) {
     }
     
     .school-logo {
-      max-width: 100px; /* เพิ่มจาก 90px เป็น 100px */
-      max-height: 100px;
+      max-width: 70px;
+      max-height: 70px;
       width: auto;
       height: auto;
-      margin-bottom: 10px; /* เพิ่ม margin */
+      margin-bottom: 6px;
       display: block;
       margin-left: auto;
       margin-right: auto;
@@ -270,25 +417,26 @@ function generateScoresSummaryHTML(data) {
     
     .header h2 { 
       margin: 4px 0; 
-      font-size: 17pt; /* เพิ่มจาก 16pt เป็น 17pt */
+      font-size: 14pt;
       font-weight: bold;
     }
     
     .header p { 
       margin: 3px 0; 
-      font-size: 15pt; /* เพิ่มจาก 14pt เป็น 15pt */
+      font-size: 11pt;
     }
     
     table { 
       width: 100%; 
       border-collapse: collapse; 
       margin-top: 8px;
-      font-size: 14pt; /* เพิ่มจาก 13pt เป็น 14pt - ทั้งตารางเท่ากัน */
+      font-size: 9pt;
+      table-layout: fixed;
     }
     
     th, td { 
       border: 1px solid #000; 
-      padding: 6px 4px; /* เพิ่ม padding จาก 5px 3px เป็น 6px 4px */
+      padding: 2px 1px;
       text-align: center;
       vertical-align: middle;
     }
@@ -296,67 +444,60 @@ function generateScoresSummaryHTML(data) {
     th { 
       background-color: #e8e8e8; 
       font-weight: bold;
-      font-size: 11pt; /* เพิ่มจาก 10pt เป็น 11pt */
+      font-size: 8pt;
     }
     
     /* คอลัมน์เลขที่ */
     .student-no {
-      width: 45px; /* ลดจาก 60px เป็น 45px */
-      min-width: 45px;
-      font-size: 14pt;
+      font-size: 9pt;
       text-align: center;
-      padding: 6px 4px; /* ลด padding ซ้าย-ขวา */
+      padding: 2px 1px;
     }
     
     /* คอลัมน์ชื่อ-นามสกุล */
     .student-name { 
       text-align: left; 
-      padding-left: 10px;
-      padding-right: 5px;
-      min-width: 240px; /* เพิ่มจาก 200px เป็น 240px */
-      max-width: 270px; /* เพิ่มจาก 220px เป็น 270px */
-      font-size: 14pt;
+      padding-left: 6px;
+      padding-right: 4px;
+      font-size: 9pt;
       word-wrap: break-word;
       white-space: normal;
-      line-height: 1.3;
+      line-height: 1.25;
     }
     
     /* คอลัมน์เกรด */
     .grade-cell {
-      width: 48px;
-      min-width: 48px;
-      font-size: 14pt; /* เพิ่มจาก 12pt เป็น 14pt */
+      font-size: 9pt;
       font-weight: bold;
-      padding: 6px 5px;
+      padding: 2px 1px;
+      white-space: nowrap;
     }
     
     /* คอลัมน์เฉลี่ย */
     .average { 
       font-weight: bold; 
       background-color: #f0f0f0;
-      width: 60px;
-      min-width: 60px;
-      font-size: 14pt; /* เพิ่มจาก 12pt เป็น 14pt */
-      padding: 6px 5px;
+      font-size: 9pt;
+      padding: 2px 1px;
     }
     
     /* ชื่อวิชาแนวตั้ง */
     .vertical-text {
       writing-mode: vertical-rl;
       text-orientation: mixed;
-      height: 230px; /* เพิ่มจาก 200px เป็น 230px สำหรับ "สังคมศึกษา ศาสนา และวัฒนธรรม" */
-      padding: 10px 6px;
-      font-size: 14pt;
+      height: 190px;
+      padding: 2px 1px;
+      font-size: 8pt;
       font-weight: 500;
       white-space: nowrap;
       vertical-align: bottom;
-      line-height: 1.5;
+      line-height: 1.1;
     }
     
     /* หัวตารางรายวิชา */
     .subject-header {
-      font-size: 14pt; /* เพิ่มจาก 12pt เป็น 14pt */
-      padding: 5px;
+      font-size: 9pt;
+      padding: 2px 1px;
       font-weight: bold;
     }
     
@@ -373,7 +514,7 @@ function generateScoresSummaryHTML(data) {
     
     /* หัวตารางแถวแรก */
     thead th {
-      font-size: 14pt; /* เพิ่มจาก 13pt เป็น 14pt - เท่ากับตาราง */
+      font-size: 8pt;
       font-weight: bold;
     }
   </style>
@@ -387,6 +528,7 @@ function generateScoresSummaryHTML(data) {
   </div>
   
   <table>
+    ${tableColGroup}
     <thead>
       <tr>
         <th rowspan="2">ที่</th>
@@ -795,13 +937,15 @@ function getParentStudentAttendance(studentId) {
  * ✅ สร้างใบรายงานผลการเรียน PDF สำหรับ Parent Portal
  * @param {string} studentId
  */
-function generateParentReportCard(studentId) {
+function generateParentReportCard(studentId, options) {
   try {
     if (!studentId) return { success: false, message: 'ไม่ได้ระบุรหัสนักเรียน' };
+    options = options || {};
+    var term = options.term || 'both';
 
     // ใช้ generateOnePageReportPdf ที่มีอยู่
     if (typeof generateOnePageReportPdf === 'function') {
-      var result = generateOnePageReportPdf(studentId);
+      var result = generateOnePageReportPdf(studentId, term);
       if (result && result.url) {
         return { success: true, viewUrl: result.url };
       } else if (result && typeof result === 'string' && result.startsWith('http')) {
@@ -816,4 +960,31 @@ function generateParentReportCard(studentId) {
     Logger.log('❌ generateParentReportCard Error: ' + e.message);
     return { success: false, message: e.message };
   }
+}
+
+function generateStudentReportPdfUnified(studentId, options) {
+  options = options || {};
+  var term = options.term || 'both';
+  try {
+    var r = generateParentReportCard(studentId, { term: term });
+    if (r && r.success && r.viewUrl) {
+      return { mode: 'url', url: r.viewUrl };
+    }
+  } catch (e) {}
+
+  var raw = null;
+  if (typeof generatePp6PDFCompleteNoDrive === 'function') {
+    raw = generatePp6PDFCompleteNoDrive(studentId, term);
+  } else if (typeof generatePp6PDFComplete === 'function') {
+    try {
+      var res = generatePp6PDFComplete(studentId, term);
+      var pdfUrl = typeof res === 'string' ? res : (res && (res.previewUrl || res.downloadUrl) ? (res.previewUrl || res.downloadUrl) : '');
+      if (pdfUrl) return { mode: 'url', url: pdfUrl };
+    } catch (e2) {}
+  }
+
+  if (raw && raw.base64) {
+    return { mode: 'base64', fileName: raw.fileName, mimeType: raw.mimeType, base64: raw.base64 };
+  }
+  throw new Error('ไม่สามารถสร้างรายงานได้');
 }
