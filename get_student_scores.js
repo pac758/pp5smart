@@ -163,6 +163,76 @@ function getStudentScoresForWeb(grade, classNo) {
       }
     }
     
+    // ── ดึงผลประเมินจากชีต "การประเมินกิจกรรมพัฒนาผู้เรียน" ──
+    try {
+      let actSheet = null;
+      try { actSheet = S_getYearlySheet('การประเมินกิจกรรมพัฒนาผู้เรียน'); } catch(e1) {}
+      if (!actSheet) { try { actSheet = SS().getSheetByName('การประเมินกิจกรรมพัฒนาผู้เรียน'); } catch(e2) {} }
+
+      if (actSheet && actSheet.getLastRow() > 1) {
+        const actData = actSheet.getDataRange().getValues();
+        const actHeaders = actData[0];
+        // หา index ของคอลัมน์
+        let actIdIdx = -1, actGradeIdx = -1, actClassIdx = -1;
+        for (let h = 0; h < actHeaders.length; h++) {
+          const hn = String(actHeaders[h] || '').trim();
+          if (/รหัส/i.test(hn)) actIdIdx = h;
+          if (/^ชั้น$/i.test(hn)) actGradeIdx = h;
+          if (/^ห้อง$/i.test(hn)) actClassIdx = h;
+        }
+
+        if (actIdIdx >= 0) {
+          // สร้าง map: studentId → { headerName: value }
+          const actMap = {};
+          for (let r = 1; r < actData.length; r++) {
+            const row = actData[r];
+            const rGrade = actGradeIdx >= 0 ? String(row[actGradeIdx] || '').trim() : '';
+            const rClass = actClassIdx >= 0 ? String(row[actClassIdx] || '').trim() : '';
+            if (rGrade && rGrade !== grade) continue;
+            if (rClass && rClass !== classNo) continue;
+
+            const sid = String(row[actIdIdx] || '').trim();
+            if (!sid) continue;
+            const m = {};
+            for (let c = 0; c < actHeaders.length; c++) {
+              const hn = String(actHeaders[c] || '').trim();
+              const hv = String(row[c] || '').trim();
+              if (hn && hv) m[hn] = hv;
+            }
+            actMap[sid] = m;
+          }
+
+          // จับคู่กิจกรรมกับวิชาใน subjects
+          const matchRules = [
+            { keys: ['แนะแนว'], col: 'กิจกรรมแนะแนว' },
+            { keys: ['ลูกเสือ', 'เนตรนารี'], col: 'ลูกเสือ_เนตรนารี' },
+            { keys: ['ชุมนุม'], col: 'ชุมนุม' },
+            { keys: ['สังคม', 'สาธารณ'], col: 'เพื่อสังคมและสาธารณประโยชน์' }
+          ];
+
+          students.forEach(student => {
+            const am = actMap[student.studentId];
+            if (!am) return;
+            subjectsSet.forEach(subject => {
+              if (!isActivitySubject(subject)) return;
+              const sn = String(subject).toLowerCase();
+              for (const rule of matchRules) {
+                if (rule.keys.some(k => sn.indexOf(k) >= 0)) {
+                  const val = am[rule.col] || '';
+                  if (val) {
+                    student.rawGrades[subject] = val; // "ผ่าน" หรือ "ไม่ผ่าน"
+                  }
+                  break;
+                }
+              }
+            });
+          });
+        }
+      }
+    } catch (actErr) {
+      Logger.log('⚠️ getStudentScoresForWeb activity sheet: ' + actErr.message);
+    }
+
     var subjects = Array.from(subjectsSet);
     const activityPriority = (name) => {
       const n = String(name || '').trim();
@@ -283,7 +353,6 @@ function exportStudentScoresPDF(grade, classNo) {
 function generateScoresSummaryHTML(data) {
   const { settings = {}, grade = '', classNo = '', gradeFullName = '', students = [], subjects = [], subjectTypes = {}, logoBase64 = null } = data;
   
-  // ใช้โลโก้ Base64 ถ้ามี
   const logoUrl = logoBase64 || settings['logoUrl_lh3'] || settings['logo'] || settings['schoolLogo'] || '';
   const schoolName = settings['ชื่อโรงเรียน'] || 'โรงเรียน';
   const semester = settings['ภาคเรียน'] || '';
@@ -317,234 +386,191 @@ function generateScoresSummaryHTML(data) {
     const s = String(raw || '').trim();
     if (!s) {
       if (typeof numericFallback === 'number' && !isNaN(numericFallback)) {
-        return numericFallback > 0 ? 'ผ่าน' : 'ไม่ผ่าน';
+        return numericFallback > 0 ? 'ผ่าน' : '-';
       }
       return '-';
     }
-    if (s.indexOf('มผ') !== -1 || s.indexOf('ไม่ผ่าน') !== -1) return 'ไม่ผ่าน';
-    if (s.indexOf('ผ') !== -1 || s.indexOf('ผ่าน') !== -1) return 'ผ่าน';
+    if (s.indexOf('มผ') !== -1 || s.indexOf('ไม่ผ่าน') !== -1) return 'มผ';
+    if (s.indexOf('ผ') !== -1 || s.indexOf('ผ่าน') !== -1) return 'ผ';
     const n = parseFloat(s);
-    if (!isNaN(n)) return n >= 50 ? 'ผ่าน' : 'ไม่ผ่าน';
+    if (!isNaN(n)) return n >= 50 ? 'ผ' : 'มผ';
     return '-';
   };
 
+  // แยกวิชาสามัญ กับ กิจกรรม
+  const academicSubjects = subjects.filter(s => !isActivitySubject(s));
+  const activitySubjects = subjects.filter(s => isActivitySubject(s));
+
+  // Short name mapping สำหรับ header แนวตั้ง
+  const shortNameMap = {
+    'ภาษาไทย': 'ภาษาไทย',
+    'คณิตศาสตร์': 'คณิตศาสตร์',
+    'วิทยาศาสตร์และเทคโนโลยี': 'วิทย์ฯ',
+    'วิทยาศาสตร์': 'วิทย์ฯ',
+    'สังคมศึกษา ศาสนา และวัฒนธรรม': 'สังคมฯ',
+    'สังคมศึกษา': 'สังคมฯ',
+    'ประวัติศาสตร์': 'ประวัติศาสตร์',
+    'สุขศึกษาและพลศึกษา': 'สุขศึกษาฯ',
+    'สุขศึกษา': 'สุขศึกษา',
+    'พลศึกษา': 'พลศึกษา',
+    'ศิลปะ': 'ศิลปะ',
+    'การงานอาชีพ': 'การงานฯ',
+    'การงาน': 'การงานฯ',
+    'ภาษาอังกฤษ': 'ภาษาอังกฤษ',
+    'หน้าที่พลเมือง': 'หน้าที่ฯ',
+    'การป้องกันตนเองและประเทศชาติ': 'การป้องกันฯ'
+  };
+  const actShortNameMap = {
+    'กิจกรรมแนะแนว': 'แนะแนว',
+    'ลูกเสือ/เนตรนารี': 'ลูกเสือฯ',
+    'ชุมนุม': 'ชุมนุม',
+    'กิจกรรมเพื่อสังคมและสาธารณประโยชน์': 'สาธารณฯ'
+  };
+  const getShortName = (fullName) => {
+    for (const key in shortNameMap) {
+      if (fullName.indexOf(key) !== -1) return shortNameMap[key];
+    }
+    for (const key in actShortNameMap) {
+      if (fullName.indexOf(key) !== -1) return actShortNameMap[key];
+    }
+    // กิจกรรม fallback
+    if (fullName.indexOf('แนะแนว') !== -1) return 'แนะแนว';
+    if (fullName.indexOf('ลูกเสือ') !== -1 || fullName.indexOf('เนตรนารี') !== -1) return 'ลูกเสือฯ';
+    if (fullName.indexOf('ชุมนุม') !== -1) return 'ชุมนุม';
+    if (fullName.indexOf('สังคม') !== -1 || fullName.indexOf('สาธารณ') !== -1) return 'สาธารณฯ';
+    return fullName.length > 8 ? fullName.substring(0, 8) + 'ฯ' : fullName;
+  };
+
+  // สร้าง table rows
   const tableRows = students.map((student, index) => {
     const studentNo = student.studentNo || (index + 1);
-    const gradesCells = subjects.map(subject => {
-      const gradeValue = student.grades[subject];
-      if (isActivitySubject(subject)) {
-        const raw = (student.rawGrades || {})[subject];
-        return activityResultText(raw, gradeValue);
-      }
-      return formatGradeCell(gradeValue);
-    }).join('</td><td class="grade-cell">');
     
-    return `
-      <tr>
-        <td class="student-no">${studentNo}</td>
-        <td class="student-name">${student.fullName || '-'}</td>
-        <td class="grade-cell">${gradesCells}</td>
-        <td class="average">${student.average || '0.00'}</td>
-      </tr>
-    `;
-  }).join('');
-  
-  const subjectHeaders = subjects.map(s => `<th class="vertical-text">${s}</th>`).join('');
-  const subjectCount = subjects.length;
-  const activityCount = subjects.filter(s => isActivitySubject(s)).length;
+    // คอลัมน์เกรดวิชาสามัญ
+    const academicCells = academicSubjects.map(subject => {
+      const v = student.grades[subject];
+      return `<td class="gc">${formatGradeCell(v)}</td>`;
+    }).join('');
+    
+    // คอลัมน์กิจกรรม
+    const activityCells = activitySubjects.map(subject => {
+      const raw = (student.rawGrades || {})[subject];
+      const gradeValue = student.grades[subject];
+      const result = activityResultText(raw, gradeValue);
+      const cls = result === 'ผ' ? 'act-pass' : (result === 'มผ' ? 'act-fail' : '');
+      return `<td class="ac ${cls}">${result}</td>`;
+    }).join('');
+    
+    return `<tr><td class="no">${studentNo}</td><td class="nm">${student.fullName || '-'}</td>${academicCells}${activityCells}<td class="avg">${student.average || '0.00'}</td></tr>`;
+  }).join('\n      ');
 
-  const pageMarginMm = 8;
+  // คำนวณความกว้างคอลัมน์
+  const pageMarginMm = 7;
   const pageWidthMm = 210;
   const availableMm = pageWidthMm - (pageMarginMm * 2);
-  const noMm = 8;
-  const avgMm = 12;
-  const nameMm = 85;
-  const subjectsAreaMm = Math.max(30, availableMm - noMm - nameMm - avgMm);
-  const activityMm = 8;
-  const normalCount = Math.max(0, subjectCount - activityCount);
-  const normalMm = normalCount > 0
-    ? Math.max(4.5, Math.min(6.2, (subjectsAreaMm - (activityMm * activityCount)) / normalCount))
-    : activityMm;
+  const noMm = 7;
+  const avgMm = 10;
+  const acSubCount = academicSubjects.length;
+  const atSubCount = activitySubjects.length;
+  const totalSubCount = acSubCount + atSubCount;
+  
+  // คำนวณความกว้างชื่อ ขึ้นอยู่กับจำนวนวิชา
+  const actMm = 7;
+  const nameMm = Math.max(35, availableMm - noMm - avgMm - (actMm * atSubCount) - (totalSubCount > 12 ? 5 * acSubCount : 6 * acSubCount));
+  const acadMm = acSubCount > 0 ? Math.max(4.5, (availableMm - noMm - nameMm - avgMm - (actMm * atSubCount)) / acSubCount) : 6;
 
-  const tableColGroup = `
-    <colgroup>
-      <col style="width:${noMm}mm;">
-      <col style="width:${nameMm}mm;">
-      ${subjects.map(s => `<col style="width:${(isActivitySubject(s) ? activityMm : normalMm).toFixed(2)}mm;">`).join('')}
-      <col style="width:${avgMm}mm;">
-    </colgroup>
-  `;
-  
-  // สร้างส่วนแสดงโลโก้ (ถ้ามี)
-  const logoSection = logoUrl ? `<img src="${logoUrl}" alt="โลโก้โรงเรียน" class="school-logo">` : '';
-  
-  return `
-<!DOCTYPE html>
+  const academicColHeaders = academicSubjects.map(s => `<th class="vt">${getShortName(s)}</th>`).join('');
+  const activityColHeaders = activitySubjects.map(s => `<th class="vt vt-act">${getShortName(s)}</th>`).join('');
+
+  const colGroup = `<colgroup>
+      <col style="width:${noMm}mm">
+      <col style="width:${nameMm.toFixed(1)}mm">
+      ${academicSubjects.map(() => `<col style="width:${acadMm.toFixed(1)}mm">`).join('')}
+      ${activitySubjects.map(() => `<col style="width:${actMm}mm">`).join('')}
+      <col style="width:${avgMm}mm">
+    </colgroup>`;
+
+  const logoSection = logoUrl ? `<img src="${logoUrl}" class="logo">` : '';
+
+  // คำนวณ font-size ตาม row count
+  const rowCount = students.length;
+  let bodyFontPt = '14px';
+  let cellPadding = '2px 1px';
+  let headerHeight = '120px';
+  if (rowCount > 35) {
+    bodyFontPt = '11px';
+    cellPadding = '1px 0';
+    headerHeight = '90px';
+  } else if (rowCount > 25) {
+    bodyFontPt = '12px';
+    cellPadding = '1px 1px';
+    headerHeight = '100px';
+  } else if (rowCount > 15) {
+    bodyFontPt = '13px';
+    cellPadding = '2px 1px';
+    headerHeight = '110px';
+  }
+
+  return `<!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <title>สรุปผลการเรียน ${grade} ห้อง ${classNo}</title>
-  <style>
-    @page { 
-      size: A4 portrait; 
-      margin: ${pageMarginMm}mm ${pageMarginMm}mm ${pageMarginMm}mm ${pageMarginMm}mm;
-    }
-    
-    body { 
-      font-family: 'Sarabun', 'TH Sarabun New', 'Garuda', sans-serif; 
-      font-size: 10pt;
-      margin: 0; 
-      padding: 0;
-    }
-    
-    .header { 
-      text-align: center; 
-      margin-bottom: 10px;
-      position: relative;
-    }
-    
-    .school-logo {
-      max-width: 70px;
-      max-height: 70px;
-      width: auto;
-      height: auto;
-      margin-bottom: 6px;
-      display: block;
-      margin-left: auto;
-      margin-right: auto;
-      object-fit: contain;
-    }
-    
-    .header h2 { 
-      margin: 4px 0; 
-      font-size: 14pt;
-      font-weight: bold;
-    }
-    
-    .header p { 
-      margin: 3px 0; 
-      font-size: 11pt;
-    }
-    
-    table { 
-      width: 100%; 
-      border-collapse: collapse; 
-      margin-top: 8px;
-      font-size: 9pt;
-      table-layout: fixed;
-    }
-    
-    th, td { 
-      border: 1px solid #000; 
-      padding: 2px 1px;
-      text-align: center;
-      vertical-align: middle;
-    }
-    
-    th { 
-      background-color: #e8e8e8; 
-      font-weight: bold;
-      font-size: 8pt;
-    }
-    
-    /* คอลัมน์เลขที่ */
-    .student-no {
-      font-size: 9pt;
-      text-align: center;
-      padding: 2px 1px;
-    }
-    
-    /* คอลัมน์ชื่อ-นามสกุล */
-    .student-name { 
-      text-align: left; 
-      padding-left: 6px;
-      padding-right: 4px;
-      font-size: 9pt;
-      word-wrap: break-word;
-      white-space: normal;
-      line-height: 1.25;
-    }
-    
-    /* คอลัมน์เกรด */
-    .grade-cell {
-      font-size: 9pt;
-      font-weight: bold;
-      padding: 2px 1px;
-      white-space: nowrap;
-    }
-    
-    /* คอลัมน์เฉลี่ย */
-    .average { 
-      font-weight: bold; 
-      background-color: #f0f0f0;
-      font-size: 9pt;
-      padding: 2px 1px;
-    }
-    
-    /* ชื่อวิชาแนวตั้ง */
-    .vertical-text {
-      writing-mode: vertical-rl;
-      text-orientation: mixed;
-      height: 190px;
-      padding: 2px 1px;
-      font-size: 8pt;
-      font-weight: 500;
-      white-space: nowrap;
-      vertical-align: bottom;
-      line-height: 1.1;
-    }
-    
-    /* หัวตารางรายวิชา */
-    .subject-header {
-      font-size: 9pt;
-      padding: 2px 1px;
-      font-weight: bold;
-    }
-    
-    /* แถวสลับสี */
-    tbody tr:nth-child(even) { 
-      background-color: #f9f9f9; 
-    }
-    
-    /* ความสูงของแถวปรับตามเนื้อหา */
-    tbody tr {
-      height: auto;
-      min-height: 30px;
-    }
-    
-    /* หัวตารางแถวแรก */
-    thead th {
-      font-size: 8pt;
-      font-weight: bold;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>สรุปผลการเรียน ${grade}/${classNo}</title>
+<style>
+  @page { size: A4 portrait; margin: ${pageMarginMm}mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Sarabun','TH Sarabun New','Garuda',sans-serif; font-size: ${bodyFontPt}; line-height: 1.2; color: #000; }
+  
+  .hdr { text-align: center; margin-bottom: 4px; }
+  .logo { width: 50px; height: 50px; object-fit: contain; display: block; margin: 0 auto 2px; }
+  .hdr h1 { font-size: 16px; font-weight: bold; margin: 2px 0; }
+  .hdr p { font-size: 14px; margin: 1px 0; }
+  .hdr .sub { font-size: 13px; }
+  
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 3px; }
+  th, td { border: 0.5px solid #000; padding: ${cellPadding}; text-align: center; vertical-align: middle; }
+  thead th { background: #fff; font-weight: bold; font-size: 11px; }
+  
+  .vt { writing-mode: vertical-rl; text-orientation: mixed; height: ${headerHeight}; font-size: 11px; font-weight: normal; white-space: nowrap; vertical-align: bottom; padding: 3px 1px; line-height: 1.0; }
+  .vt-act { font-size: 10px; }
+  .subj-hdr { font-size: 12px; font-weight: bold; border-bottom: 0.5px solid #000; }
+  
+  .no { text-align: center; font-size: ${bodyFontPt}; }
+  .nm { text-align: left; padding-left: 4px; font-size: ${bodyFontPt}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gc { font-size: ${bodyFontPt}; font-weight: bold; }
+  .ac { font-size: 10px; white-space: nowrap; }
+  .act-pass { color: #000; }
+  .act-fail { color: #c00; font-weight: bold; }
+  .avg { font-weight: bold; font-size: ${bodyFontPt}; }
+  
+  tbody tr:nth-child(even) { background: #fafafa; }
+  tbody tr { page-break-inside: avoid; }
+</style>
 </head>
 <body>
-  <div class="header">
+  <div class="hdr">
     ${logoSection}
-    <h2>สรุปผลการเรียน ชั้นประจำการเรียน ภาคเรียนที่ ${semester} ปีการศึกษา ${academicYear}</h2>
+    <h1>สรุปผลการเรียน ชั้นประจำการเรียน ภาคเรียนที่ ${semester} ปีการศึกษา ${academicYear}</h1>
     <p>${schoolName}</p>
-    <p>${gradeFullName} ห้อง ${classNo}</p>
+    <p class="sub">${gradeFullName} ห้อง ${classNo}</p>
   </div>
-  
   <table>
-    ${tableColGroup}
+    ${colGroup}
     <thead>
       <tr>
-        <th rowspan="2">ที่</th>
+        <th rowspan="2" style="width:${noMm}mm">ที่</th>
         <th rowspan="2">ชื่อ-นามสกุล</th>
-        <th colspan="${Math.max(1, subjects.length)}" class="subject-header">รายวิชา</th>
-        <th rowspan="2">เฉลี่ย</th>
+        ${acSubCount > 0 ? `<th colspan="${acSubCount}" class="subj-hdr">รายวิชา</th>` : ''}
+        ${atSubCount > 0 ? `<th colspan="${atSubCount}" class="subj-hdr">กิจกรรมพัฒนาผู้เรียน</th>` : ''}
+        <th rowspan="2" style="width:${avgMm}mm">เฉลี่ย</th>
       </tr>
-      <tr>${subjectHeaders}</tr>
+      <tr>${academicColHeaders}${activityColHeaders}</tr>
     </thead>
     <tbody>
       ${tableRows}
     </tbody>
   </table>
 </body>
-</html>
-  `;
+</html>`;
 }
 
 /**
