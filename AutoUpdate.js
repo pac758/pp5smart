@@ -418,7 +418,7 @@ function containsSuspiciousCode(content) {
     /eval\(/gi, // eval() อันตราย
     /new\s+Function\(/gi, // new Function() อันตราย
     /document\.write/gi, // document.write ใน HTML
-    /<script[^>]*src=["'][^"']*(?!cdn\.|googleapis\.com|bootstrapcdn\.com|cloudflare\.com)/gi, // โหลด script จากแหล่งไม่รู้จัก
+    /<script(?:\s|>)[^>]*\bsrc=["'][^"']*(?!cdn\.|googleapis\.com|bootstrapcdn\.com|cloudflare\.com)/gi, // โหลด script จากแหล่งไม่รู้จัก (กัน false-positive จาก regex literal)
   ];
   
   for (const pattern of suspiciousPatterns) {
