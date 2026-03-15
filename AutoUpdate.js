@@ -5,7 +5,7 @@
 
 const SYSTEM_VERSION = '1.2.0'; // เวอร์ชันปัจจุบัน
 const GITHUB_REPO = 'pac758/pp5smart';
-const GITHUB_BRANCH = 'main';
+const GITHUB_BRANCH = 'master';
 
 // 🔒 SECURITY: Whitelist ของ repository ที่เชื่อถือได้
 const TRUSTED_REPOS = [
