@@ -80,7 +80,7 @@ function getDashboardSummary() {
   rows.forEach(row => {
     const gender = String(row[genderCol] || "").trim();
     const grade = String(row[gradeCol] || "").trim();
-    const studentId = row[studentIdCol];
+    const studentId = String(row[studentIdCol] || '').trim();
     if (!grade || !studentId) return;
 
     studentGradeMap[studentId] = grade;
@@ -176,7 +176,7 @@ function getAttendanceData(ss, studentGradeMap) {
 
       const gradeData = {};
       rows.forEach(row => {
-        const studentId = row[studentIdCol];
+        const studentId = String(row[studentIdCol] || '').trim();
         const grade = studentGradeMap[studentId];
         if (!studentId || !grade) return;
 
