@@ -1203,7 +1203,7 @@ body.menu-open {
       <li class="nav-item admin-only" data-page="admin_panel"><a href="#" class="nav-link" data-page="admin_panel"><i class="fas fa-users-cog"></i> จัดการผู้ใช้</a></li>
       <li class="nav-item admin-only"><a href="#" class="nav-link" onclick="AppNavigation.setupNewYear();return false;"><i class="bi bi-calendar2-plus"></i> เตรียมข้อมูลปีการศึกษาใหม่</a></li>
       <li class="nav-item admin-only"><a href="#" class="nav-link" onclick="AppNavigation.checkSystemUpdate();return false;"><i class="bi bi-arrow-repeat"></i> เช็คอัปเดตระบบ</a></li>
-      <li class="nav-item admin-only"><a href="#" class="nav-link" onclick="AppNavigation.exportSystemZip();return false;"><i class="fas fa-file-export"></i> ส่งออกระบบให้โรงเรียนอื่น</a></li>
+      <li class="nav-item admin-only master-only"><a href="#" class="nav-link" onclick="AppNavigation.exportSystemZip();return false;"><i class="fas fa-file-export"></i> ส่งออกระบบให้โรงเรียนอื่น</a></li>
     </ul>
 
     <ul class="menu-group" aria-label="ข้อมูลนักเรียน">
@@ -1795,6 +1795,7 @@ window.AppNavigation.checkSystemUpdate = function() {
 ========================= */
 window.AppNavigation.exportSystemZip = function() {
   if (typeof google !== 'undefined' && google.script && google.script.run) {
+    const token = localStorage.getItem('authToken') || '';
     google.script.run
       .withSuccessHandler(function(result) {
         if (result.success) {
@@ -1857,7 +1858,7 @@ window.AppNavigation.exportSystemZip = function() {
       .withFailureHandler(function(err) {
         alert('❌ เกิดข้อผิดพลาด:\n\n' + err.message);
       })
-      .exportProjectAsZip();
+      .exportProjectAsZip(token);
   } else {
     alert('❌ ไม่สามารถเชื่อมต่อกับ Google Apps Script ได้');
   }
@@ -2295,6 +2296,28 @@ document.addEventListener('DOMContentLoaded', function() {
   // Remove admin-only if not admin
   if (role !== 'admin') {
     document.querySelectorAll('.admin-only').forEach(el => el.remove());
+  }
+
+  function removeMasterOnly_(){
+    document.querySelectorAll('.master-only').forEach(el => el.remove());
+  }
+
+  if (role === 'admin') {
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      const token = localStorage.getItem('authToken') || '';
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (!res || !res.allowExport) removeMasterOnly_();
+        })
+        .withFailureHandler(function() {
+          removeMasterOnly_();
+        })
+        .getExportCapability(token);
+    } else {
+      removeMasterOnly_();
+    }
+  } else {
+    removeMasterOnly_();
   }
   
   // Show/hide parent menu based on role

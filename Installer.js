@@ -848,8 +848,11 @@ function resetSetup() {
  * สร้าง Template Spreadsheet + ลิงก์ Make a Copy
  * @returns {Object} { success, copyUrl, steps }
  */
-function exportProjectAsZip() {
+function exportProjectAsZip(token) {
   try {
+    if (!isAdminForExport_(token)) return { success: false, error: 'เฉพาะผู้ดูแลระบบเท่านั้นที่ใช้งานเมนูนี้ได้' };
+    if (!isMasterExportEnabled_()) return { success: false, error: 'เมนูส่งออกสงวนไว้เฉพาะโรงเรียนต้นแบบ' };
+
     var settings = S_getGlobalSettings(false) || {};
     var schoolName = settings['ชื่อโรงเรียน'] || 'โรงเรียนต้นแบบ';
 
@@ -893,6 +896,51 @@ function exportProjectAsZip() {
     Logger.log('❌ exportProjectAsZip error: ' + e.message);
     return { success: false, error: e.message };
   }
+}
+
+function getExportCapability(token) {
+  try {
+    if (!isAdminForExport_(token)) return { allowExport: false };
+    return { allowExport: isMasterExportEnabled_() };
+  } catch(e) {
+    return { allowExport: false };
+  }
+}
+
+function isAdminForExport_(token) {
+  try {
+    var session = (typeof getLoginSession === 'function') ? getLoginSession() : null;
+    var role = String((session && session.role) || '').toLowerCase();
+    if (role === 'admin') return true;
+
+    var t = String(token || '');
+    if (!t) return false;
+    if (t === 'dev_bypass_token') return true;
+    if (typeof verifyAuthToken !== 'function') return false;
+
+    var vr = verifyAuthToken(t);
+    if (!vr || !vr.valid || !vr.username) return false;
+    if (typeof getUserRecordByUsername_ !== 'function') return false;
+
+    var rec = getUserRecordByUsername_(vr.username);
+    if (!rec) return false;
+
+    var roleIdx = __idx__(rec.map, ['role','roles'], 2);
+    var r = String((rec.row && rec.row[roleIdx]) || '').toLowerCase();
+    return r === 'admin';
+  } catch(_e) {
+    return false;
+  }
+}
+
+function isMasterExportEnabled_() {
+  var props = PropertiesService.getScriptProperties();
+  var flag = String(props.getProperty('ALLOW_EXPORT_TO_OTHER_SCHOOLS') || '').toLowerCase();
+  if (flag === '1' || flag === 'true') return true;
+  var templateId = String(props.getProperty('TEMPLATE_SPREADSHEET_ID') || '').trim();
+  if (!templateId) return false;
+  if (templateId === 'ใส่_ID_ของ_SHEET_แม่แบบที่นี่') return false;
+  return true;
 }
 
 function createExportTemplateForOtherSchools_(activeSpreadsheetId, schoolName) {
