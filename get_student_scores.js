@@ -430,7 +430,7 @@ function exportScoresPDFviaSheet_(data) {
 
     // ── แถว 2: หัวเรื่อง (ไม่มีภาคเรียน) ──
     sheet.getRange(row, 1, 1, totalCols).merge()
-      .setValue('สรุปผลการเรียน ปีการศึกษา ' + academicYear)
+      .setValue('แบบสรุปผลการเรียนรู้ตามกลุ่มสาระการเรียนรู้ ปีการศึกษา ' + academicYear)
       .setFontFamily(FONT).setFontSize(16).setFontWeight('bold')
       .setHorizontalAlignment('center').setVerticalAlignment('middle');
     sheet.setRowHeight(row, 28);
