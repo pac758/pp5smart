@@ -1,3 +1,11 @@
+## API Inventory (Frontend → Server)
+
+ตารางนี้ช่วยให้คน/AI เห็นว่า “หน้าไหนเรียกฟังก์ชันอะไร” และแตะชีตไหนบ้าง
+
+หมายเหตุ:
+- `auth` เป็นภาพรวม (บางฟังก์ชันพึ่ง session, บางฟังก์ชันส่ง token)
+- แนะนำอ่านภาพรวมโครงสร้างก่อน: [ARCHITECTURE.md](ARCHITECTURE.md)
+
 | page | function | serverFile | auth | sheets |
 |---|---|---|---|---|
 | activity_assessment.html | generateActivityAssessmentPDF | Assessments.js | unknown |  |
@@ -134,6 +142,9 @@
 | spa_main_menu.html | getLogoDataUrl | globalSettings.js | unknown |  |
 | spa_main_menu.html | include | Code.js | unknown |  |
 | spa_main_menu.html | setupNewAcademicYear | Attendance.js | unknown |  |
+| spa_main_menu.html | checkAndNotifyUpdate | AutoUpdate.js | admin (token or session) | global_settings, Users |
+| spa_main_menu.html | exportProjectAsZip | Installer.js | admin (token or session), master-only | Users, Students, รายวิชา, (yearly sheets) |
+| spa_main_menu.html | getExportCapability | Installer.js | admin (token or session) | ScriptProperties |
 | studentList.html | getFilteredStudentsInline | Students.js | unknown | Students |
 | studentList.html | updateStudentInline | Students.js | unknown | Students |
 | student_scores_summary.html | exportStudentScoresPDF | get_student_scores.js | unknown |  |
@@ -151,3 +162,6 @@
 | teacher_editor.html | getTeacherListForEditor | Teachers.js | unknown | HomeroomTeachers|Students |
 | teacher_editor.html | saveSingleTeacher | Teachers.js | unknown | HomeroomTeachers |
 | warehouse_tools.html | deleteAllWarehouseBackups | pp6.js | unknown |  |
+| parent_portal.html | getCurrentUser | Users.js | session | Users |
+| parent_portal.html | getParentStudentAttendance | get_student_scores.js | session | Students, (Attendance) |
+| parent_portal.html | generateParentReportCard | get_student_scores.js | session | Students, SCORES_WAREHOUSE, assessments |
