@@ -789,8 +789,17 @@ function saveScoreSheetData(sheetName, term, studentScores, fullScores, fullFina
     allData[3][cols.s10]      = finMax;
     allData[3][cols.total]    = midMax + finMax;
 
+    // ✅ สร้าง map รหัสนักเรียน → แถวในชีต (แก้ปัญหาคะแนนสับตำแหน่งเมื่อ frontend เรียงลำดับต่างจากชีต)
+    const idToRowMap = {};
+    for (let r = startRow - 1; r < allData.length; r++) {
+      const sid = String(allData[r][1] || '').trim();
+      if (sid) idToRowMap[sid] = r;
+    }
+
     studentScores.forEach((student, idx) => {
-      const dataRow = startRow - 1 + idx; // 0-based index ใน allData
+      const studentId = String(student.id || '').trim();
+      // จับคู่ด้วยรหัสนักเรียน ถ้าไม่เจอใช้ลำดับเดิมเป็น fallback
+      const dataRow = idToRowMap[studentId] !== undefined ? idToRowMap[studentId] : (startRow - 1 + idx);
       if (!allData[dataRow]) allData[dataRow] = [];
       var scores = student.scores || [];
 
