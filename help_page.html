@@ -1,0 +1,369 @@
+<style>
+  .help-container { max-width: 900px; margin: 0 auto; padding: 20px; font-family: 'Sarabun', sans-serif; }
+  .help-header { text-align: center; margin-bottom: 30px; padding: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; color: white; }
+  .help-header h1 { font-size: 1.8rem; margin-bottom: 8px; }
+  .help-header p { opacity: 0.9; margin: 0; }
+  .help-search { margin-bottom: 24px; }
+  .help-search input { width: 100%; padding: 12px 16px 12px 42px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1rem; transition: border-color 0.2s; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242.656a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E") no-repeat 14px center; }
+  .help-search input:focus { outline: none; border-color: #667eea; }
+  .help-toc { background: #f8fafc; border-radius: 12px; padding: 20px; margin-bottom: 24px; }
+  .help-toc h3 { font-size: 1.1rem; margin-bottom: 12px; color: #334155; }
+  .help-toc a { display: block; padding: 6px 0; color: #4f46e5; text-decoration: none; font-size: 0.95rem; }
+  .help-toc a:hover { text-decoration: underline; }
+  .help-section { margin-bottom: 28px; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
+  .help-section-header { padding: 16px 20px; background: #f1f5f9; cursor: pointer; display: flex; align-items: center; justify-content: space-between; user-select: none; }
+  .help-section-header:hover { background: #e2e8f0; }
+  .help-section-header h2 { font-size: 1.15rem; margin: 0; color: #1e293b; display: flex; align-items: center; gap: 10px; }
+  .help-section-header .toggle { font-size: 0.8rem; color: #94a3b8; transition: transform 0.2s; }
+  .help-section-header.open .toggle { transform: rotate(180deg); }
+  .help-section-body { padding: 20px; display: none; }
+  .help-section-body.show { display: block; }
+  .help-section-body h3 { font-size: 1.05rem; color: #4f46e5; margin-top: 16px; margin-bottom: 8px; }
+  .help-section-body h3:first-child { margin-top: 0; }
+  .help-section-body p, .help-section-body li { font-size: 0.95rem; color: #475569; line-height: 1.7; }
+  .help-section-body ul, .help-section-body ol { padding-left: 20px; }
+  .help-role-badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
+  .role-admin { background: #dbeafe; color: #1e40af; }
+  .role-teacher { background: #fef3c7; color: #92400e; }
+  .role-parent { background: #d1fae5; color: #065f46; }
+  .help-table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.9rem; }
+  .help-table th, .help-table td { padding: 10px 12px; border: 1px solid #e2e8f0; text-align: left; }
+  .help-table th { background: #f1f5f9; font-weight: 600; }
+  .help-tip { background: #eff6ff; border-left: 4px solid #3b82f6; padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; font-size: 0.9rem; }
+  .help-tip strong { color: #1d4ed8; }
+  .help-steps { counter-reset: step; list-style: none; padding-left: 0; }
+  .help-steps li { counter-increment: step; padding: 8px 0 8px 40px; position: relative; }
+  .help-steps li::before { content: counter(step); position: absolute; left: 0; top: 8px; width: 28px; height: 28px; background: #4f46e5; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 600; }
+  .help-faq { margin-top: 12px; }
+  .help-faq dt { font-weight: 600; color: #1e293b; margin-top: 12px; }
+  .help-faq dd { color: #475569; margin-left: 0; margin-bottom: 8px; padding-left: 16px; border-left: 3px solid #e2e8f0; }
+  [data-theme="dark"] .help-container { color: #e2e8f0; }
+  [data-theme="dark"] .help-toc { background: #1e293b; }
+  [data-theme="dark"] .help-toc h3 { color: #cbd5e1; }
+  [data-theme="dark"] .help-section { border-color: #334155; }
+  [data-theme="dark"] .help-section-header { background: #1e293b; }
+  [data-theme="dark"] .help-section-header:hover { background: #334155; }
+  [data-theme="dark"] .help-section-header h2 { color: #f1f5f9; }
+  [data-theme="dark"] .help-section-body { background: #0f172a; }
+  [data-theme="dark"] .help-section-body p, [data-theme="dark"] .help-section-body li { color: #cbd5e1; }
+  [data-theme="dark"] .help-table th { background: #1e293b; color: #e2e8f0; }
+  [data-theme="dark"] .help-table td { color: #cbd5e1; border-color: #334155; }
+  [data-theme="dark"] .help-tip { background: #1e293b; border-left-color: #3b82f6; }
+  [data-theme="dark"] .help-search input { background-color: #1e293b; border-color: #334155; color: #e2e8f0; }
+  [data-theme="dark"] .help-faq dt { color: #f1f5f9; }
+  [data-theme="dark"] .help-faq dd { color: #94a3b8; border-left-color: #334155; }
+</style>
+
+<div class="help-container">
+  <div class="help-header">
+    <h1><i class="bi bi-book"></i> คู่มือการใช้งานระบบ</h1>
+    <p>ระบบบริหารจัดการโรงเรียน (School MIS)</p>
+  </div>
+
+  <div class="help-search">
+    <input type="text" id="helpSearchInput" placeholder="ค้นหาในคู่มือ... เช่น เช็คชื่อ, คะแนน, ปพ.5">
+  </div>
+
+  <div class="help-toc" id="helpToc">
+    <h3><i class="bi bi-list-ul"></i> สารบัญ</h3>
+    <a href="#" onclick="openSection('sec-overview');return false;">1. ภาพรวมและบทบาทผู้ใช้</a>
+    <a href="#" onclick="openSection('sec-login');return false;">2. การเข้าสู่ระบบ</a>
+    <a href="#" onclick="openSection('sec-student');return false;">3. ข้อมูลนักเรียน</a>
+    <a href="#" onclick="openSection('sec-attendance');return false;">4. เวลาเรียน (เช็คชื่อ)</a>
+    <a href="#" onclick="openSection('sec-score');return false;">5. บันทึกคะแนน</a>
+    <a href="#" onclick="openSection('sec-assess');return false;">6. ประเมินผล</a>
+    <a href="#" onclick="openSection('sec-report');return false;">7. เอกสาร / รายงาน (ปพ.5, ปพ.6)</a>
+    <a href="#" onclick="openSection('sec-parent');return false;">8. ระบบผู้ปกครอง</a>
+    <a href="#" onclick="openSection('sec-admin');return false;">9. ตั้งค่าระบบ (Admin)</a>
+    <a href="#" onclick="openSection('sec-faq');return false;">10. คำถามที่พบบ่อย</a>
+  </div>
+
+  <!-- 1. ภาพรวม -->
+  <div class="help-section" id="sec-overview" data-keywords="ภาพรวม บทบาท role admin teacher parent สิทธิ์">
+    <div class="help-section-header" onclick="toggleSection(this)">
+      <h2><i class="bi bi-info-circle"></i> 1. ภาพรวมและบทบาทผู้ใช้</h2>
+      <span class="toggle"><i class="fas fa-chevron-down"></i></span>
+    </div>
+    <div class="help-section-body">
+      <p>ระบบบริหารจัดการโรงเรียน (School MIS) เป็น Web App ที่ทำงานบน Google Apps Script ร่วมกับ Google Sheets ครอบคลุมงานบริหารจัดการข้อมูลนักเรียน เวลาเรียน คะแนน ประเมินผล และพิมพ์เอกสารรายงาน</p>
+      <h3>บทบาทผู้ใช้</h3>
+      <table class="help-table">
+        <tr><th>บทบาท</th><th>สิทธิ์การใช้งาน</th></tr>
+        <tr><td><span class="help-role-badge role-admin">Admin</span></td><td>เข้าถึงทุกเมนู รวมถึงตั้งค่าระบบ จัดการผู้ใช้ จัดการวันหยุด คลังคะแนน ส่งออกระบบ</td></tr>
+        <tr><td><span class="help-role-badge role-teacher">Teacher</span></td><td>เช็คชื่อ บันทึกคะแนน ประเมินผล พิมพ์รายงาน จัดการข้อมูลนักเรียน</td></tr>
+        <tr><td><span class="help-role-badge role-parent">Parent</span></td><td>ดูผลการเรียนและข้อมูลบุตรหลานผ่านระบบผู้ปกครอง</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 2. เข้าสู่ระบบ -->
+  <div class="help-section" id="sec-login" data-keywords="เข้าสู่ระบบ login ออกจากระบบ logout รหัสผ่าน password เปลี่ยน">
+    <div class="help-section-header" onclick="toggleSection(this)">
+      <h2><i class="bi bi-box-arrow-in-right"></i> 2. การเข้าสู่ระบบ</h2>
+      <span class="toggle"><i class="fas fa-chevron-down"></i></span>
+    </div>
+    <div class="help-section-body">
+      <ol class="help-steps">
+        <li>เปิดลิงก์ Web App ที่ได้รับจากผู้ดูแลระบบ</li>
+        <li>กรอก <strong>ชื่อผู้ใช้</strong> และ <strong>รหัสผ่าน</strong></li>
+        <li>กดปุ่ม <strong>เข้าสู่ระบบ</strong></li>
+        <li>ระบบจะพาไปหน้า Dashboard โดยอัตโนมัติ</li>
+      </ol>
+      <div class="help-tip"><strong>หมายเหตุ:</strong> หากลืมรหัสผ่าน ให้ติดต่อผู้ดูแลระบบ (Admin) เพื่อรีเซ็ตรหัสผ่าน</div>
+      <h3>เปลี่ยนรหัสผ่าน</h3>
+      <p>ไปที่เมนู <strong>บัญชีผู้ใช้ > เปลี่ยนรหัสผ่าน</strong> → กรอกรหัสผ่านเก่าและใหม่ → กดบันทึก</p>
+    </div>
+  </div>
+
+  <!-- 3. ข้อมูลนักเรียน -->
+  <div class="help-section" id="sec-student" data-keywords="นักเรียน student รายชื่อ เพิ่ม ลบ แก้ไข นำเข้า DMC import ส่งออก PDF ผู้ปกครอง">
+    <div class="help-section-header" onclick="toggleSection(this)">
+      <h2><i class="bi bi-people-fill"></i> 3. ข้อมูลนักเรียน</h2>
+      <span class="toggle"><i class="fas fa-chevron-down"></i></span>
+    </div>
+    <div class="help-section-body">
+      <h3>รายชื่อนักเรียน</h3>
+      <p>เลือก <strong>ชั้น</strong> และ <strong>ห้อง</strong> เพื่อดูรายชื่อ แสดงข้อมูลรหัส คำนำหน้า ชื่อ-นามสกุล สามารถค้นหาและกรองได้</p>
+
+      <h3>เพิ่มนักเรียน <span class="help-role-badge role-admin">Admin</span></h3>
+      <p>กรอกข้อมูล: รหัสนักเรียน, คำนำหน้า, ชื่อ, นามสกุล, ชั้น, ห้อง แล้วกดบันทึก</p>
+
+      <h3>จัดการข้อมูลนักเรียน <span class="help-role-badge role-admin">Admin</span> <span class="help-role-badge role-teacher">Teacher</span></h3>
+      <p>แก้ไขข้อมูลรายคน เปลี่ยนสถานะ (ปกติ/จำหน่าย/ย้ายออก/พ้นสภาพ) หรือลบข้อมูล</p>
+
+      <h3>นำเข้ารายชื่อ DMC <span class="help-role-badge role-admin">Admin</span> <span class="help-role-badge role-teacher">Teacher</span></h3>
+      <p>นำเข้าข้อมูลนักเรียนจากไฟล์ DMC (ระบบจัดเก็บข้อมูลนักเรียนรายบุคคล) รองรับรูปแบบมาตรฐาน</p>
+
+      <h3>ส่งออกรายชื่อ PDF <span class="help-role-badge role-teacher">Teacher</span></h3>
+      <p>เลือกชั้น/ห้อง แล้วส่งออกเป็น PDF สำหรับพิมพ์</p>
+    </div>
+  </div>
+
+  <!-- 4. เวลาเรียน -->
+  <div class="help-section" id="sec-attendance" data-keywords="เช็คชื่อ เวลาเรียน attendance มา ลา ขาด รายวัน รายเดือน วันหยุด พิมพ์ สรุป ภาคเรียน">
+    <div class="help-section-header" onclick="toggleSection(this)">
+      <h2><i class="bi bi-calendar-check"></i> 4. เวลาเรียน (เช็คชื่อ)</h2>
+      <span class="toggle"><i class="fas fa-chevron-down"></i></span>
+    </div>
+    <div class="help-section-body">
+      <h3>เช็คชื่อรายวัน <span class="help-role-badge role-teacher">Teacher</span></h3>
+      <ol class="help-steps">
+        <li>เลือก <strong>ชั้น</strong> และ <strong>ห้อง</strong></li>
+        <li>เลือก <strong>วันที่</strong> ที่ต้องการเช็คชื่อ</li>
+        <li>เลือกสถานะ: <strong>มา</strong> / <strong>ลา</strong> / <strong>ขาด</strong> สำหรับนักเรียนแต่ละคน</li>
+        <li>กดบันทึก</li>
+      </ol>
+
+      <h3>เช็คชื่อรายเดือน <span class="help-role-badge role-teacher">Teacher</span></h3>
+      <p>แสดงตารางเช็คชื่อทั้งเดือน (แนวนอน: วันที่, แนวตั้ง: รายชื่อ) คลิกที่ช่องเพื่อเปลี่ยนสถานะ แสดงจำนวนวันที่เช็คชื่อจริงใต้หัวข้อ "มา"</p>
+
+      <h3>พิมพ์เวลาเรียนรายเดือน <span class="help-role-badge role-teacher">Teacher</span></h3>
+      <p>ส่งออกตารางเวลาเรียนรายเดือนเป็น PDF</p>
+
+      <h3>สรุปมาเรียนรายภาคเรียน <span class="help-role-badge role-teacher">Teacher</span></h3>
+      <p>แสดงสรุปสถิติมา/ลา/ขาด ของนักเรียนทั้งภาคเรียน</p>
+
+      <h3>จัดการวันหยุด <span class="help-role-badge role-admin">Admin</span></h3>
+      <p>เพิ่ม/แก้ไข/ลบวันหยุดราชการและวันหยุดพิเศษ</p>
+    </div>
+  </div>
+
+  <!-- 5. บันทึกคะแนน -->
+  <div class="help-section" id="sec-score" data-keywords="คะแนน score เกรด grade สร้างตาราง บันทึก รายงาน สรุป คลัง warehouse ภาคเรียน">
+    <div class="help-section-header" onclick="toggleSection(this)">
+      <h2><i class="bi bi-pen"></i> 5. บันทึกคะแนน</h2>
+      <span class="toggle"><i class="fas fa-chevron-down"></i></span>
+    </div>
+    <div class="help-section-body">
+      <h3>สร้างตารางคะแนน <span class="help-role-badge role-teacher">Teacher</span></h3>
+      <ol class="help-steps">
+        <li>เลือก <strong>ชั้น</strong>, <strong>ห้อง</strong>, <strong>วิชา</strong></li>
+        <li>ระบบสร้างชีตคะแนนพร้อมรายชื่อนักเรียนอัตโนมัติ</li>
+        <li>แต่ละภาคเรียนมี: คะแนนครั้งที่ 1-4 (ระหว่างเรียน), ครั้งที่ 5 (กลางภาค), ซ่อม, ครั้งที่ 6-9, ครั้งที่ 10 (ปลายภาค)</li>
+      </ol>
+
+      <h3>บันทึกคะแนนรายวิชา <span class="help-role-badge role-teacher">Teacher</span></h3>
+      <p>เลือกชีตคะแนน → กรอกคะแนนนักเรียนแต่ละคน → ระบบคำนวณรวม+เกรดอัตโนมัติ → กดบันทึก</p>
+
+      <h3>รายงานคะแนนรายวิชา <span class="help-role-badge role-teacher">Teacher</span></h3>
+      <p>แสดงสรุปคะแนนพร้อมค่าสถิติ (เฉลี่ย สูงสุด ต่ำสุด)</p>
+
+      <h3>สรุปผลการเรียนรายชั้น <span class="help-role-badge role-teacher">Teacher</span></h3>
+      <p>แสดงสรุปผลการเรียนทุกวิชาของนักเรียนในชั้นที่เลือก</p>
+
+      <h3>คลังคะแนนรวม <span class="help-role-badge role-admin">Admin</span></h3>
+      <p>ดูและจัดการข้อมูลคะแนนทั้งหมดในระบบ</p>
+    </div>
+  </div>
+
+  <!-- 6. ประเมินผล -->
+  <div class="help-section" id="sec-assess" data-keywords="ประเมิน assessment อ่าน คิด เขียน คุณลักษณะ กิจกรรม สมรรถนะ ความคิดเห็น ครู">
+    <div class="help-section-header" onclick="toggleSection(this)">
+      <h2><i class="bi bi-clipboard-check"></i> 6. ประเมินผล</h2>
+      <span class="toggle"><i class="fas fa-chevron-down"></i></span>
+    </div>
+    <div class="help-section-body">
+      <h3>ประเมินอ่าน คิด เขียน</h3>
+      <p>ประเมินความสามารถด้านการอ่าน คิดวิเคราะห์ เขียน — ระดับ: ดีเยี่ยม / ดี / ผ่าน / ไม่ผ่าน</p>
+
+      <h3>ประเมินคุณลักษณะอันพึงประสงค์</h3>
+      <p>ประเมิน 8 ประการตามหลักสูตร เช่น รักชาติ มีวินัย ใฝ่เรียนรู้ ฯลฯ</p>
+
+      <h3>ประเมินกิจกรรมพัฒนาผู้เรียน</h3>
+      <p>ประเมินลูกเสือ-เนตรนารี ชุมนุม จิตอาสา — ระดับ: ผ่าน / ไม่ผ่าน</p>
+
+      <h3>ประเมินสมรรถนะสำคัญ</h3>
+      <p>ประเมิน 5 ด้าน: สื่อสาร คิด แก้ปัญหา ใช้เทคโนโลยี ฯลฯ</p>
+
+      <h3>บันทึกความคิดเห็นครู</h3>
+      <p>เขียนข้อสังเกต/ความคิดเห็นเกี่ยวกับนักเรียน ข้อมูลนี้จะแสดงใน ปพ.6</p>
+
+      <div class="help-tip"><strong>ขั้นตอน:</strong> เลือกชั้น/ห้อง → เลือกระดับสำหรับนักเรียนแต่ละคน → กดบันทึก</div>
+    </div>
+  </div>
+
+  <!-- 7. เอกสาร/รายงาน -->
+  <div class="help-section" id="sec-report" data-keywords="เอกสาร รายงาน report ปพ.5 ปพ.6 PDF ปก รายงานหน้าเดียว ส่งออก export พิมพ์">
+    <div class="help-section-header" onclick="toggleSection(this)">
+      <h2><i class="bi bi-file-earmark-pdf"></i> 7. เอกสาร / รายงาน</h2>
+      <span class="toggle"><i class="fas fa-chevron-down"></i></span>
+    </div>
+    <div class="help-section-body">
+      <h3>รวมส่งออกรายงาน</h3>
+      <p>หน้ารวมลิงก์สำหรับส่งออกรายงานทุกประเภท</p>
+
+      <h3>ปก ปพ.5</h3>
+      <p>สร้างปกเอกสาร ปพ.5 (แบบบันทึกผลการเรียน) เป็น PDF แสดงข้อมูลโรงเรียน ชั้น ห้อง ครูประจำชั้น วิชา</p>
+
+      <h3>ปพ.5 รวมเล่ม (PDF)</h3>
+      <p>สร้าง ปพ.5 ฉบับเต็มรวมทุกวิชาของชั้นที่เลือก รวมคะแนน เกรด สถิติ ในเล่มเดียว</p>
+
+      <h3>ปพ.6 - รายงานผลการพัฒนา</h3>
+      <p>สมุดรายงานผลการพัฒนาคุณภาพผู้เรียน รวมผลการเรียน เวลาเรียน ประเมินคุณลักษณะ สมรรถนะ กิจกรรม และความคิดเห็นครู</p>
+
+      <h3>รายงานหน้าเดียว</h3>
+      <p>สรุปผลการเรียนรายบุคคลในหน้าเดียว เหมาะสำหรับแจกผู้ปกครองในวันประชุม</p>
+
+      <div class="help-tip"><strong>ก่อนพิมพ์รายงาน:</strong> ตรวจสอบว่ากรอกคะแนน, ประเมินผล, และบันทึกเวลาเรียนเรียบร้อยแล้ว</div>
+    </div>
+  </div>
+
+  <!-- 8. ระบบผู้ปกครอง -->
+  <div class="help-section" id="sec-parent" data-keywords="ผู้ปกครอง parent portal บุตรหลาน ดูผลการเรียน">
+    <div class="help-section-header" onclick="toggleSection(this)">
+      <h2><i class="bi bi-people"></i> 8. ระบบผู้ปกครอง</h2>
+      <span class="toggle"><i class="fas fa-chevron-down"></i></span>
+    </div>
+    <div class="help-section-body">
+      <p>เฉพาะผู้ใช้ที่มีบทบาท <span class="help-role-badge role-parent">Parent</span> เท่านั้นที่จะเห็นเมนูนี้</p>
+      <ul>
+        <li>ดูผลการเรียนของบุตรหลาน</li>
+        <li>ดูสถิติเวลาเรียน</li>
+        <li>ดูผลประเมินด้านต่าง ๆ</li>
+      </ul>
+      <div class="help-tip"><strong>สำหรับ Admin:</strong> สร้างบัญชี Parent ที่เมนู <strong>จัดการผู้ใช้</strong> โดยระบุบทบาทเป็น "parent" และผูกกับรหัสนักเรียนของบุตรหลาน</div>
+    </div>
+  </div>
+
+  <!-- 9. ตั้งค่าระบบ -->
+  <div class="help-section" id="sec-admin" data-keywords="ตั้งค่า settings admin ผู้ใช้ user โลโก้ logo วิชา subject ครูประจำชั้น ปีการศึกษา อัปเดต ส่งออก export โรงเรียนอื่น">
+    <div class="help-section-header" onclick="toggleSection(this)">
+      <h2><i class="bi bi-gear"></i> 9. ตั้งค่าระบบ <span class="help-role-badge role-admin">Admin</span></h2>
+      <span class="toggle"><i class="fas fa-chevron-down"></i></span>
+    </div>
+    <div class="help-section-body">
+      <h3>ตั้งค่าระบบ</h3>
+      <p>แก้ไขข้อมูลพื้นฐาน: ชื่อโรงเรียน, ปีการศึกษา, ที่อยู่ ฯลฯ</p>
+
+      <h3>จัดการโลโก้</h3>
+      <p>อัปโหลดโลโก้โรงเรียนสำหรับใช้ในเอกสาร/รายงาน</p>
+
+      <h3>จัดการรายวิชา</h3>
+      <p>เพิ่ม/แก้ไข/ลบรายวิชา กำหนดชื่อวิชา รหัสวิชา จำนวนหน่วยกิต</p>
+
+      <h3>จัดการครูประจำชั้น</h3>
+      <p>กำหนดครูประจำชั้นแต่ละห้อง ข้อมูลจะแสดงในรายงาน ปพ.5, ปพ.6</p>
+
+      <h3>จัดการผู้ใช้</h3>
+      <p>เพิ่ม/แก้ไข/ลบบัญชีผู้ใช้ กำหนดบทบาท (Admin/Teacher/Parent) รีเซ็ตรหัสผ่าน</p>
+
+      <h3>เตรียมข้อมูลปีการศึกษาใหม่</h3>
+      <p>สร้างชีตเช็คชื่อสำหรับทุกเดือนในปีการศึกษาใหม่ (พ.ค.-มี.ค.) สร้างเฉพาะชีตที่ยังไม่มี</p>
+
+      <h3>เช็คอัปเดตระบบ</h3>
+      <p>ตรวจสอบเวอร์ชันใหม่และแสดงวิธีอัปเดต</p>
+
+      <h3>ส่งออกระบบให้โรงเรียนอื่น</h3>
+      <p>เฉพาะโรงเรียนต้นแบบ — สร้าง Template สำหรับแจกจ่าย ระบบจะลบข้อมูลส่วนบุคคลออกก่อนส่ง</p>
+    </div>
+  </div>
+
+  <!-- 10. FAQ -->
+  <div class="help-section" id="sec-faq" data-keywords="คำถาม FAQ ปัญหา ช้า หาย ลืม dark mode">
+    <div class="help-section-header" onclick="toggleSection(this)">
+      <h2><i class="bi bi-question-circle"></i> 10. คำถามที่พบบ่อย</h2>
+      <span class="toggle"><i class="fas fa-chevron-down"></i></span>
+    </div>
+    <div class="help-section-body">
+      <dl class="help-faq">
+        <dt>ระบบโหลดช้ามาก</dt>
+        <dd>Google Apps Script มี cold start ครั้งแรกอาจใช้เวลา 5-10 วินาที ครั้งต่อไปจะเร็วขึ้น หากช้าตลอดให้รีโหลดหน้าเว็บ หรือล้าง Cache</dd>
+
+        <dt>บันทึกคะแนนแล้วหาย</dt>
+        <dd>ตรวจสอบว่ากด "บันทึก" แล้วรอจนระบบแจ้ง "สำเร็จ" ก่อนปิดหน้า</dd>
+
+        <dt>เช็คชื่อแล้วไม่ขึ้นใน Dashboard</dt>
+        <dd>Dashboard มีระบบ cache ข้อมูลจะอัปเดตภายใน 5 นาที หรือรีโหลดหน้าใหม่</dd>
+
+        <dt>ลืมรหัสผ่าน</dt>
+        <dd>ติดต่อ Admin ให้รีเซ็ตที่เมนู "จัดการผู้ใช้"</dd>
+
+        <dt>อยากเปลี่ยน Dark Mode</dt>
+        <dd>คลิกไอคอนพระจันทร์/พระอาทิตย์ ที่มุมบนขวาของหน้าจอ</dd>
+
+        <dt>ปพ.5 ไม่แสดงข้อมูลคะแนน</dt>
+        <dd>ตรวจสอบว่าสร้างตารางคะแนนแล้ว กรอกคะแนนและกดบันทึกแล้ว เลือกชั้น/ห้อง/วิชาตรงกัน</dd>
+
+        <dt>จะอัปเดตระบบได้อย่างไร</dt>
+        <dd>ไปที่ ตั้งค่าระบบ > เช็คอัปเดตระบบ ระบบจะตรวจสอบและแสดงวิธีอัปเดต</dd>
+      </dl>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleSection(headerEl) {
+  headerEl.classList.toggle('open');
+  const body = headerEl.nextElementSibling;
+  body.classList.toggle('show');
+}
+
+function openSection(id) {
+  const section = document.getElementById(id);
+  if (!section) return;
+  const header = section.querySelector('.help-section-header');
+  const body = section.querySelector('.help-section-body');
+  if (!body.classList.contains('show')) {
+    header.classList.add('open');
+    body.classList.add('show');
+  }
+  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Search
+document.getElementById('helpSearchInput')?.addEventListener('input', function() {
+  const query = this.value.trim().toLowerCase();
+  document.querySelectorAll('.help-section').forEach(function(sec) {
+    if (!query) { sec.style.display = ''; return; }
+    const keywords = (sec.dataset.keywords || '').toLowerCase();
+    const text = sec.textContent.toLowerCase();
+    const match = keywords.includes(query) || text.includes(query);
+    sec.style.display = match ? '' : 'none';
+    if (match) {
+      sec.querySelector('.help-section-header')?.classList.add('open');
+      sec.querySelector('.help-section-body')?.classList.add('show');
+    }
+  });
+  document.getElementById('helpToc').style.display = query ? 'none' : '';
+});
+</script>
