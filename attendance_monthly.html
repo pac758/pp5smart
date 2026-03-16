@@ -2048,7 +2048,7 @@ AttendanceMonthly.changeMonth = function (offset) {
       const dk = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       if (dow !== 0 && dow !== 6 && !holidayMap[dk]) schoolDays++;
     }
-    dayNumberHTML += `<th class="text-success" rowspan="3" scope="col">มา<br><small class="fw-normal" style="font-size:0.7em;opacity:0.8">${schoolDays} วัน</small></th><th class="text-warning" rowspan="3" scope="col">ลา</th><th class="text-danger" rowspan="3" scope="col">ขาด</th>`;
+    dayNumberHTML += `<th class="text-success" rowspan="3" scope="col">มา<br><small class="fw-normal" style="font-size:0.7em;opacity:0.8">${schoolDays}</small></th><th class="text-warning" rowspan="3" scope="col">ลา</th><th class="text-danger" rowspan="3" scope="col">ขาด</th>`;
     dayNameHTML += ''; // ไม่ต้องมี summary ในแถวที่ 2
     dayControlHTML += ''; // ไม่ต้องมี summary ในแถวที่ 3
    
