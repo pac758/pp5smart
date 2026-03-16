@@ -907,12 +907,17 @@ function _syncSubjectToWarehouse_(sheetName, studentRows) {
     if (subjSheet) {
       const sd = subjSheet.getDataRange().getValues();
       const h  = sd[0];
-      const nameCol = h.findIndex(v => /ชื่อวิชา/i.test(v));
-      const codeCol = h.findIndex(v => /รหัสวิชา/i.test(v));
-      const typeCol = h.findIndex(v => /ประเภท/i.test(v));
-      const hourCol = h.findIndex(v => /ชั่วโมง/i.test(v));
+      const nameCol  = h.findIndex(v => /ชื่อวิชา/i.test(v));
+      const codeCol  = h.findIndex(v => /รหัสวิชา/i.test(v));
+      const typeCol  = h.findIndex(v => /ประเภท/i.test(v));
+      const hourCol  = h.findIndex(v => /ชั่วโมง/i.test(v));
+      const gradeCol = h.findIndex(v => /^ชั้น$|ระดับชั้น/i.test(String(v || '').trim()));
+      if (gradeCol < 0) Logger.log('⚠️ _syncSubjectToWarehouse_: ไม่พบคอลัมน์ชั้นในชีตรายวิชา — fallback ใช้ชื่อวิชาอย่างเดียว');
       for (let i = 1; i < sd.length; i++) {
-        if (String(sd[i][nameCol] || '').trim() === subjectName) {
+        const rowName  = String(sd[i][nameCol] || '').trim();
+        const rowGrade = gradeCol >= 0 ? String(sd[i][gradeCol] || '').trim() : '';
+        // ✅ match ทั้งชื่อวิชา + ระดับชั้น เพื่อป้องกันวิชาชื่อซ้ำคนละชั้น (เช่น ภาษาอังกฤษ ป.1 vs ป.3)
+        if (rowName === subjectName && (gradeCol < 0 || rowGrade === grade)) {
           subjectCode  = String(sd[i][codeCol] || '').trim();
           subjectType  = String(sd[i][typeCol] || '').trim();
           subjectHours = Number(sd[i][hourCol]) || 0;
@@ -936,12 +941,15 @@ function _syncSubjectToWarehouse_(sheetName, studentRows) {
   const iCode  = whHeaders.indexOf('subject_code');
   if (iSid < 0 || iGrade < 0 || iClass < 0 || iCode < 0) return; // header ไม่ตรง
 
-  // กรองแถวเก่าของวิชา+ห้องนี้ออก
+  // กรองแถวเก่าของวิชา+ห้องนี้ออก (ใช้ทั้ง code + ชื่อวิชา เผื่อ code เก่าผิด)
+  const iName = whHeaders.indexOf('subject_name');
   const kept = whData.filter((row, idx) => {
     if (idx === 0) return true;
-    return !(String(row[iGrade]) === grade &&
-             String(row[iClass]) == classNo &&
-             String(row[iCode])  === subjectCode);
+    if (String(row[iGrade]) !== grade || String(row[iClass]) != classNo) return true;
+    // ลบถ้า code ตรง หรือ ชื่อวิชาตรง (กวาดข้อมูลเก่าที่ code ผิดออกด้วย)
+    if (String(row[iCode]) === subjectCode) return false;
+    if (iName >= 0 && String(row[iName] || '').trim() === subjectName) return false;
+    return true;
   });
 
   const settings = (typeof getCachedSettings_ === 'function') ? getCachedSettings_() : {};
