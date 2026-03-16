@@ -162,14 +162,13 @@ function oprLoadStudents() {
     var html = '';
     students.forEach(function(s, i) {
       html += '<label class="opr-item">' +
-        '<input type="checkbox" class="oprChk" value="'+s.id+'" checked onchange="oprUpdateCount()">' +
+        '<input type="checkbox" class="oprChk" value="'+s.id+'" onchange="oprUpdateCount()">' +
         '<span class="no">'+(i+1)+'</span>' +
         '<span class="name">'+s.fullName+'</span>' +
         '</label>';
     });
     list.innerHTML = html;
     oprUpdateCount();
-    document.getElementById('oprGenBtn').disabled = false;
   }).withFailureHandler(function(e) {
     list.innerHTML = '<div class="opr-empty" style="color:#dc2626;">โหลดข้อมูลผิดพลาด: '+e.message+'</div>';
   }).getAllStudentDataOptimized();
