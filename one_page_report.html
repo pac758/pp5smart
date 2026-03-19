@@ -63,15 +63,17 @@
   <div class="opr-card">
     <div class="opr-row">
       <div class="opr-field">
-        <label>ระดับชั้น</label>
-        <select id="oprGrade" onchange="oprLoadClasses()">
-          <option value="">-- เลือกชั้น --</option>
+        <label>ชั้น/ห้อง</label>
+        <select id="oprClassRoom" onchange="oprOnClassSelect()">
+          <option value="">-- กำลังโหลด... --</option>
         </select>
       </div>
       <div class="opr-field">
-        <label>ห้อง</label>
-        <select id="oprClass" onchange="oprLoadStudents()" disabled>
-          <option value="">-- เลือกห้อง --</option>
+        <label>ภาคเรียน</label>
+        <select id="oprTerm">
+          <option value="both">ทั้งปี</option>
+          <option value="1">ภาคเรียนที่ 1</option>
+          <option value="2">ภาคเรียนที่ 2</option>
         </select>
       </div>
       <button class="opr-btn opr-btn-primary" id="oprGenBtn" onclick="oprGenerate()" disabled>
@@ -107,71 +109,61 @@
 var oprStudentData = {};
 
 function oprInit() {
-  google.script.run.withSuccessHandler(function(grades) {
-    var sel = document.getElementById('oprGrade');
-    (grades || []).forEach(function(g) {
-      var o = document.createElement('option');
-      o.value = g; o.textContent = g;
-      sel.appendChild(o);
-    });
-  }).withFailureHandler(function(e) {
-    console.error('Load grades error:', e);
-  }).getAvailableGrades();
-}
-
-function oprLoadClasses() {
-  var grade = document.getElementById('oprGrade').value;
-  var cls = document.getElementById('oprClass');
-  cls.innerHTML = '<option value="">-- เลือกห้อง --</option>';
-  cls.disabled = !grade;
-  document.getElementById('oprList').innerHTML = '<div class="opr-empty">กรุณาเลือกชั้นและห้อง</div>';
-  document.getElementById('oprGenBtn').disabled = true;
-  if (!grade) return;
-
-  google.script.run.withSuccessHandler(function(classes) {
-    (classes || []).forEach(function(c) {
-      var o = document.createElement('option');
-      o.value = c; o.textContent = 'ห้อง ' + c;
-      cls.appendChild(o);
-    });
-    cls.disabled = false;
-  }).withFailureHandler(function(e) {
-    console.error('Load classes error:', e);
-  }).getAvailableClasses(grade);
-}
-
-function oprLoadStudents() {
-  var grade = document.getElementById('oprGrade').value;
-  var classNo = document.getElementById('oprClass').value;
-  var list = document.getElementById('oprList');
-  list.innerHTML = '<div class="opr-empty">กำลังโหลด...</div>';
-  document.getElementById('oprGenBtn').disabled = true;
-  document.getElementById('oprResults').innerHTML = '';
-  if (!grade || !classNo) {
-    list.innerHTML = '<div class="opr-empty">กรุณาเลือกชั้นและห้อง</div>';
-    return;
-  }
-
   google.script.run.withSuccessHandler(function(data) {
     oprStudentData = data || {};
-    var students = (oprStudentData[grade] && oprStudentData[grade][classNo]) || [];
-    if (students.length === 0) {
-      list.innerHTML = '<div class="opr-empty">ไม่พบนักเรียน</div>';
-      return;
-    }
-    var html = '';
-    students.forEach(function(s, i) {
-      html += '<label class="opr-item">' +
-        '<input type="checkbox" class="oprChk" value="'+s.id+'" onchange="oprUpdateCount()">' +
-        '<span class="no">'+(i+1)+'</span>' +
-        '<span class="name">'+s.fullName+'</span>' +
-        '</label>';
+    var sel = document.getElementById('oprClassRoom');
+    sel.innerHTML = '<option value="">-- เลือกชั้น/ห้อง --</option>';
+
+    // เรียงลำดับชั้น: ป.1, ป.2, ..., ม.1, ม.2, ...
+    var gradeOrder = ['ป.1','ป.2','ป.3','ป.4','ป.5','ป.6','ม.1','ม.2','ม.3','ม.4','ม.5','ม.6'];
+    var grades = Object.keys(oprStudentData).sort(function(a, b) {
+      var ia = gradeOrder.indexOf(a), ib = gradeOrder.indexOf(b);
+      if (ia === -1) ia = 99; if (ib === -1) ib = 99;
+      return ia - ib;
     });
-    list.innerHTML = html;
-    oprUpdateCount();
+
+    grades.forEach(function(g) {
+      var rooms = Object.keys(oprStudentData[g]).sort(function(a, b) { return parseInt(a) - parseInt(b); });
+      rooms.forEach(function(r) {
+        var count = oprStudentData[g][r].length;
+        var o = document.createElement('option');
+        o.value = g + '|' + r;
+        o.textContent = g + '/' + r + '  (' + count + ' คน)';
+        sel.appendChild(o);
+      });
+    });
   }).withFailureHandler(function(e) {
-    list.innerHTML = '<div class="opr-empty" style="color:#dc2626;">โหลดข้อมูลผิดพลาด: '+e.message+'</div>';
+    document.getElementById('oprClassRoom').innerHTML = '<option value="">โหลดผิดพลาด</option>';
+    console.error('Load error:', e);
   }).getAllStudentDataOptimized();
+}
+
+function oprOnClassSelect() {
+  var val = document.getElementById('oprClassRoom').value;
+  var list = document.getElementById('oprList');
+  document.getElementById('oprGenBtn').disabled = true;
+  document.getElementById('oprResults').innerHTML = '';
+  if (!val) {
+    list.innerHTML = '<div class="opr-empty">กรุณาเลือกชั้น/ห้อง</div>';
+    return;
+  }
+  var parts = val.split('|');
+  var grade = parts[0], classNo = parts[1];
+  var students = (oprStudentData[grade] && oprStudentData[grade][classNo]) || [];
+  if (students.length === 0) {
+    list.innerHTML = '<div class="opr-empty">ไม่พบนักเรียน</div>';
+    return;
+  }
+  var html = '';
+  students.forEach(function(s, i) {
+    html += '<label class="opr-item">' +
+      '<input type="checkbox" class="oprChk" value="'+s.id+'" onchange="oprUpdateCount()">' +
+      '<span class="no">'+(i+1)+'</span>' +
+      '<span class="name">'+s.fullName+'</span>' +
+      '</label>';
+  });
+  list.innerHTML = html;
+  oprUpdateCount();
 }
 
 function oprSelectAll(checked) {
@@ -274,7 +266,7 @@ function oprGenerate() {
           '<span>' + name + ': ' + e.message + '</span></div>';
         next();
       })
-      .generateOnePageReportPdf(id);
+      .generateOnePageReportPdf(id, document.getElementById('oprTerm').value);
   }
   next();
 }
