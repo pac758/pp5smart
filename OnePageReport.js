@@ -5,6 +5,11 @@
 
 var OPR_FONT = 'Sarabun';
 
+function _fmtGrade(g) {
+  if (g == null || isNaN(g)) return '';
+  return g % 1 === 0 ? String(g) : g.toFixed(1);
+}
+
 function _opr_gradeFullName(grade) {
   var map = {
     'ป.1':'ประถมศึกษาปีที่ 1','ป.2':'ประถมศึกษาปีที่ 2',
@@ -430,11 +435,11 @@ function _opr_generateSingle(studentId, cache) {
           s.type,
           String(s.credit || ''),
           s.t1 > 0 ? String(Math.round(s.t1)) : '',
-          s.t1g > 0 ? s.t1g.toFixed(0) : '',
+          s.t1g > 0 ? _fmtGrade(s.t1g) : '',
           s.t2 > 0 ? String(Math.round(s.t2)) : '',
-          s.t2g > 0 ? s.t2g.toFixed(0) : '',
+          s.t2g > 0 ? _fmtGrade(s.t2g) : '',
           s.avg > 0 ? s.avg.toFixed(2) : '',
-          s.fg >= 0 ? s.fg.toFixed(0) : ''
+          s.fg >= 0 ? _fmtGrade(s.fg) : ''
         ];
         v.forEach(function(val, i) {
           var al = (i === 2) ? LEFT : null;
@@ -463,7 +468,7 @@ function _opr_generateSingle(studentId, cache) {
           s.type,
           String(s.credit || ''),
           (Number.isFinite(score) && score > 0) ? String(Math.round(score)) : '',
-          (Number.isFinite(gradeVal) && gradeVal > 0) ? gradeVal.toFixed(0) : ''
+          (Number.isFinite(gradeVal) && gradeVal > 0) ? _fmtGrade(gradeVal) : ''
         ];
         vv.forEach(function(val, i) {
           var al2 = (i === 2) ? LEFT : null;
@@ -628,10 +633,12 @@ function _opr_generateSingle(studentId, cache) {
     bp3_2.setAlignment(CENTER);
     bp3_2.setSpacingAfter(0).setSpacingBefore(0);
     bp3_2.editAsText().setFontSize(11).setFontFamily(F);
-    var bp3_3 = bc3.appendParagraph(sd.name);
-    bp3_3.setAlignment(CENTER);
-    bp3_3.setSpacingAfter(0).setSpacingBefore(0);
-    bp3_3.editAsText().setFontSize(11).setFontFamily(F);
+    if (sd.dirPos.indexOf(sd.name) === -1) {
+      var bp3_3 = bc3.appendParagraph(sd.name);
+      bp3_3.setAlignment(CENTER);
+      bp3_3.setSpacingAfter(0).setSpacingBefore(0);
+      bp3_3.editAsText().setFontSize(11).setFontFamily(F);
+    }
 
     // =============================================
     // SAVE → MERGE CELLS → PDF
