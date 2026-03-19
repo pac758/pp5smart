@@ -474,7 +474,7 @@ function saveGlobalSettings_(ss, formData) {
 }
 
 function createAdminUser_(ss, formData) {
-  const sheet = ss.getSheetByName('Users');
+  const sheet = ss.getSheetByName('Users') || ss.getSheetByName('users');
   if (!sheet) return;
 
   const now = new Date().toISOString();

@@ -120,7 +120,7 @@ function isUserAdmin() {
     if (!userEmail) return false;
 
     const ss = SS();
-    const usersSheet = ss.getSheetByName('Users');
+    const usersSheet = ss.getSheetByName('Users') || ss.getSheetByName('users');
     if (!usersSheet) return false;
 
     const data = usersSheet.getDataRange().getValues();
