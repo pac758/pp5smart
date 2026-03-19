@@ -243,19 +243,25 @@ function setupNewSchool(formData) {
       Logger.log('✅ สร้าง Spreadsheet ใหม่: ' + ss.getId());
     }
 
-    // 2. สร้าง Sheet (ข้ามถ้ามีอยู่แล้ว)
+    // 2. ล้างข้อมูลโรงเรียนเดิม (เฉพาะ Spreadsheet ที่คัดลอกมา)
+    if (usedExisting) {
+      cleanupCopiedSpreadsheet_(ss);
+      Logger.log('✅ ล้างข้อมูลโรงเรียนเดิมแล้ว');
+    }
+
+    // 3. สร้าง Sheet (ข้ามถ้ามีอยู่แล้ว)
     setupSheets_(ss, formData);
     Logger.log('✅ สร้าง/ตรวจสอบ Sheets แล้ว');
 
-    // 3. บันทึก Settings ลง global_settings sheet
+    // 4. บันทึก Settings ลง global_settings sheet
     saveGlobalSettings_(ss, formData);
     Logger.log('✅ บันทึก Settings แล้ว');
 
-    // 4. สร้าง Admin User
+    // 5. สร้าง Admin User
     createAdminUser_(ss, formData);
     Logger.log('✅ สร้าง Admin User แล้ว');
 
-    // 5. บันทึก ScriptProperties
+    // 6. บันทึก ScriptProperties
     const props = PropertiesService.getScriptProperties();
     props.setProperties({
       'SPREADSHEET_ID': ss.getId(),
@@ -500,7 +506,84 @@ function createAdminUser_(ss, formData) {
 }
 
 // ============================================================
-// � MIGRATE: สำหรับโรงเรียนที่มีอยู่แล้ว (รันครั้งเดียว)
+// 🧹 CLEANUP: ล้างข้อมูลโรงเรียนเดิมจาก Spreadsheet ที่คัดลอกมา
+// ============================================================
+
+function cleanupCopiedSpreadsheet_(ss) {
+  var allSheets = ss.getSheets();
+  var keepSheets = new Set(PERMANENT_SHEETS);
+  var yearlyBases = (typeof S_YEARLY_SHEETS !== 'undefined') ? S_YEARLY_SHEETS : [
+    'SCORES_WAREHOUSE', 'การประเมินอ่านคิดเขียน', 'การประเมินคุณลักษณะ',
+    'การประเมินกิจกรรมพัฒนาผู้เรียน', 'การประเมินสมรรถนะ',
+    'AttendanceLog', 'ความเห็นครู'
+  ];
+  yearlyBases.forEach(function(b) { keepSheets.add(b); });
+
+  // รายชื่อชีตที่ต้องล้างข้อมูล (เก็บ header ไว้)
+  var sheetsToClean = [];
+  // รายชื่อชีตที่ต้องลบทิ้ง (ชีตคะแนนรายวิชา, เช็คชื่อ, BACKUP)
+  var sheetsToDelete = [];
+
+  allSheets.forEach(function(sheet) {
+    var name = sheet.getName();
+
+    // ชีตถาวร + ชีตรายปี → ล้างข้อมูล (เก็บ header แถว 1)
+    if (keepSheets.has(name) || yearlyBases.some(function(b) { return name.indexOf(b) === 0; })) {
+      sheetsToClean.push(sheet);
+      return;
+    }
+
+    // ชีตคะแนนรายวิชา (เช่น "ภาษาไทย ป3-1", "คณิตศาสตร์ ป.1-1")
+    if (/ป\d|ป\.\d|ม\d|ม\.\d/.test(name) && name.indexOf(' ') > 0) {
+      sheetsToDelete.push(sheet);
+      return;
+    }
+
+    // ชีตเช็คชื่อรายเดือน (เช่น "พฤษภาคม 2568")
+    if (/(มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม)/.test(name)) {
+      sheetsToDelete.push(sheet);
+      return;
+    }
+
+    // ชีต BACKUP
+    if (name.indexOf('BACKUP_') === 0 || name.indexOf('Template_') === 0) {
+      sheetsToDelete.push(sheet);
+      return;
+    }
+
+    // ชีตอื่นๆ ที่ไม่รู้จัก → ล้างข้อมูล (เก็บ header)
+    sheetsToClean.push(sheet);
+  });
+
+  // ล้างข้อมูล (เก็บ header แถว 1)
+  sheetsToClean.forEach(function(sheet) {
+    var lastRow = sheet.getLastRow();
+    if (lastRow > 1) {
+      sheet.deleteRows(2, lastRow - 1);
+    }
+    Logger.log('🧹 ล้างข้อมูล: ' + sheet.getName() + ' (' + (lastRow - 1) + ' แถว)');
+  });
+
+  // ลบชีตที่ไม่ต้องการ (ต้องเหลืออย่างน้อย 1 ชีต)
+  var remaining = allSheets.length - sheetsToDelete.length;
+  if (remaining < 1) {
+    // เก็บชีตแรกไว้ไม่ลบ
+    sheetsToDelete.shift();
+  }
+  sheetsToDelete.forEach(function(sheet) {
+    try {
+      Logger.log('🗑️ ลบชีต: ' + sheet.getName());
+      ss.deleteSheet(sheet);
+    } catch (e) {
+      Logger.log('⚠️ ลบไม่ได้: ' + sheet.getName() + ' — ' + e.message);
+    }
+  });
+
+  Logger.log('🧹 ล้างเสร็จ: ล้างข้อมูล ' + sheetsToClean.length + ' ชีต, ลบ ' + sheetsToDelete.length + ' ชีต');
+}
+
+// ============================================================
+// 🔄 MIGRATE: สำหรับโรงเรียนที่มีอยู่แล้ว (รันครั้งเดียว)
 // ============================================================
 
 function migrateExistingSchool() {
