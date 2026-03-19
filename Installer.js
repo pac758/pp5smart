@@ -511,14 +511,35 @@ function createAdminUser_(ss, formData) {
 
 /**
  * 🧹 รันจาก GAS Editor เพื่อล้าง Template ก่อนส่งให้โรงเรียนอื่น
- * จะลบชีตคะแนน, เช็คชื่อ, สรุป, BACKUP ทั้งหมด
- * และล้างข้อมูลในชีตถาวร (เก็บ header ไว้)
+ * ⚠️ ต้องใส่ TEMPLATE_SHEET_ID ก่อนรัน — จะไม่ทำงานบน Spreadsheet หลักของโรงเรียน
  */
 function cleanTemplateForSharing() {
-  var ss = SS();
-  Logger.log('🧹 เริ่มล้าง Template สำหรับแชร์...');
-  cleanupCopiedSpreadsheet_(ss);
-  Logger.log('✅ ล้าง Template เสร็จ! พร้อมส่งให้โรงเรียนอื่น');
+  // ⚠️ ใส่ ID ของ Template Spreadsheet ที่ต้องการล้างข้อมูลที่นี่
+  var TEMPLATE_SHEET_ID = '1AcdypFst0F4pr7bjaMH1WwuTyohekV8BeO36MWZOWJE';
+
+  // ป้องกัน: ห้ามรันบน Spreadsheet หลักของโรงเรียน
+  var mainId = '';
+  try { mainId = SS().getId(); } catch(_) {}
+  if (TEMPLATE_SHEET_ID === mainId) {
+    Logger.log('⛔ ห้ามรันบน Spreadsheet หลักของโรงเรียน! ข้อมูลจะหายทั้งหมด');
+    return;
+  }
+
+  var props = PropertiesService.getScriptProperties();
+  var installedId = props.getProperty('SPREADSHEET_ID') || '';
+  if (TEMPLATE_SHEET_ID === installedId) {
+    Logger.log('⛔ ID นี้คือ Spreadsheet หลักของโรงเรียน! ห้ามล้าง');
+    return;
+  }
+
+  try {
+    var ss = SpreadsheetApp.openById(TEMPLATE_SHEET_ID);
+    Logger.log('🧹 เริ่มล้าง Template: ' + ss.getName());
+    cleanupCopiedSpreadsheet_(ss);
+    Logger.log('✅ ล้าง Template เสร็จ! พร้อมส่งให้โรงเรียนอื่น');
+  } catch (e) {
+    Logger.log('❌ เปิด Template ไม่ได้: ' + e.message);
+  }
 }
 
 function cleanupCopiedSpreadsheet_(ss) {
