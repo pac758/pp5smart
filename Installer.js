@@ -8,6 +8,111 @@
 const INSTALLER_VERSION = '1.0.0';
 
 /**
+ * 🔍 DIAGNOSE: ตรวจสอบสถานะชีตทั้งหมดในสเปรดชีต
+ * รันจาก GAS Editor → ดู Execution log
+ * @returns {Object} สรุปสถานะชีตทั้งหมด
+ */
+function diagnoseSheetsStatus() {
+  var ss = SS();
+  var allSheets = ss.getSheets();
+  var year = '';
+  try { year = S_getAcademicYear(); } catch(_) {}
+
+  var permanent = ['global_settings','Users','Students','รายวิชา','Holidays','HomeroomTeachers'];
+  var yearlyBase = ['SCORES_WAREHOUSE','การประเมินอ่านคิดเขียน','การประเมินคุณลักษณะ','การประเมินกิจกรรมพัฒนาผู้เรียน','การประเมินสมรรถนะ','AttendanceLog','ความเห็นครู'];
+  var otherExpected = ['สรุปการมาเรียน','สรุปวันมา','โปรไฟล์นักเรียน'];
+
+  Logger.log('=== 🔍 DIAGNOSE SHEETS STATUS ===');
+  Logger.log('ปีการศึกษา: ' + (year || '(ไม่ทราบ)'));
+  Logger.log('จำนวนชีตทั้งหมด: ' + allSheets.length);
+  Logger.log('');
+
+  // 1) List all existing sheets
+  var sheetMap = {};
+  Logger.log('--- ชีตทั้งหมดที่มี ---');
+  allSheets.forEach(function(s) {
+    var name = s.getName();
+    var rows = s.getLastRow();
+    var cols = s.getLastColumn();
+    sheetMap[name] = { rows: rows, cols: cols };
+    var tag = '';
+    if (name.startsWith('BACKUP_')) tag = ' [BACKUP]';
+    else if (name.startsWith('Template_')) tag = ' [TEMPLATE]';
+    else if (name.match(/^(ม\.|ป\.)/)) tag = ' [คะแนนรายวิชา]';
+    else if (name.match(/^\d{1,2}$/)) tag = ' [attendance-month?]';
+    else if (name.match(/(มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม)/)) tag = ' [attendance-month]';
+    Logger.log('  ✅ ' + name + ' (' + rows + ' rows, ' + cols + ' cols)' + tag);
+  });
+
+  // 2) Check permanent sheets
+  Logger.log('');
+  Logger.log('--- ชีตถาวร (PERMANENT) ---');
+  var missingPerm = [];
+  permanent.forEach(function(name) {
+    if (sheetMap[name]) {
+      Logger.log('  ✅ ' + name + ' → ' + sheetMap[name].rows + ' rows');
+    } else {
+      Logger.log('  ❌ ' + name + ' → ไม่พบ!');
+      missingPerm.push(name);
+    }
+  });
+
+  // 3) Check yearly sheets
+  Logger.log('');
+  Logger.log('--- ชีตรายปี (YEARLY) ---');
+  var missingYearly = [];
+  yearlyBase.forEach(function(base) {
+    var withYear = year ? base + '_' + year : '';
+    if (sheetMap[base]) {
+      Logger.log('  ✅ ' + base + ' → ' + sheetMap[base].rows + ' rows');
+    } else if (withYear && sheetMap[withYear]) {
+      Logger.log('  ✅ ' + withYear + ' → ' + sheetMap[withYear].rows + ' rows');
+    } else {
+      Logger.log('  ❌ ' + base + (withYear ? ' / ' + withYear : '') + ' → ไม่พบ!');
+      missingYearly.push(base);
+    }
+  });
+
+  // 4) Check other expected
+  Logger.log('');
+  Logger.log('--- ชีตอื่นที่คาดว่าจะมี ---');
+  var missingOther = [];
+  otherExpected.forEach(function(name) {
+    if (sheetMap[name]) {
+      Logger.log('  ✅ ' + name + ' → ' + sheetMap[name].rows + ' rows');
+    } else {
+      Logger.log('  ⚠️ ' + name + ' → ไม่พบ');
+      missingOther.push(name);
+    }
+  });
+
+  // 5) Count by category
+  var backups = allSheets.filter(function(s) { return s.getName().startsWith('BACKUP_'); });
+  var scoreSheets = allSheets.filter(function(s) { return s.getName().match(/^(ม\.|ป\.)/); });
+  var attendanceMonths = allSheets.filter(function(s) { return s.getName().match(/(มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม)/); });
+
+  Logger.log('');
+  Logger.log('=== สรุป ===');
+  Logger.log('ชีตทั้งหมด: ' + allSheets.length);
+  Logger.log('ชีตคะแนนรายวิชา: ' + scoreSheets.length + ' → ' + scoreSheets.map(function(s){return s.getName();}).join(', '));
+  Logger.log('ชีตเช็คชื่อรายเดือน: ' + attendanceMonths.length + ' → ' + attendanceMonths.map(function(s){return s.getName();}).join(', '));
+  Logger.log('ชีต BACKUP: ' + backups.length + ' → ' + backups.map(function(s){return s.getName();}).join(', '));
+  Logger.log('❌ ชีตถาวรที่หาย: ' + (missingPerm.length > 0 ? missingPerm.join(', ') : 'ไม่มี'));
+  Logger.log('❌ ชีตรายปีที่หาย: ' + (missingYearly.length > 0 ? missingYearly.join(', ') : 'ไม่มี'));
+  Logger.log('⚠️ ชีตอื่นที่หาย: ' + (missingOther.length > 0 ? missingOther.join(', ') : 'ไม่มี'));
+
+  return {
+    total: allSheets.length,
+    missingPermanent: missingPerm,
+    missingYearly: missingYearly,
+    missingOther: missingOther,
+    scoreSheets: scoreSheets.length,
+    attendanceMonths: attendanceMonths.length,
+    backups: backups.length
+  };
+}
+
+/**
  * 🔍 DEBUG: รันฟังก์ชันนี้ใน GAS Editor เพื่อดูสถานะ ScriptProperties
  * ไปที่ Execution log เพื่อดูผลลัพธ์
  */
