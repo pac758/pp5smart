@@ -977,7 +977,7 @@ function getStudentScores_(id, year, assessmentsCache) {
 
         if (!isNaN(gradeValue)) {
 
-          gradeValue = gradeValue.toFixed(1);
+          gradeValue = gradeValue % 1 === 0 ? String(gradeValue) : gradeValue.toFixed(1);
 
         } else {
 
@@ -991,7 +991,9 @@ function getStudentScores_(id, year, assessmentsCache) {
 
         if (!isNaN(avg)) {
 
-          gradeValue = _scoreToGPA(avg).gpa.toFixed(1);
+          var g = _scoreToGPA(avg).gpa;
+
+          gradeValue = g % 1 === 0 ? String(g) : g.toFixed(1);
 
         }
 
