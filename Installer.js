@@ -509,50 +509,56 @@ function createAdminUser_(ss, formData) {
 // 🧹 CLEANUP: ล้างข้อมูลโรงเรียนเดิมจาก Spreadsheet ที่คัดลอกมา
 // ============================================================
 
+/**
+ * 🧹 รันจาก GAS Editor เพื่อล้าง Template ก่อนส่งให้โรงเรียนอื่น
+ * จะลบชีตคะแนน, เช็คชื่อ, สรุป, BACKUP ทั้งหมด
+ * และล้างข้อมูลในชีตถาวร (เก็บ header ไว้)
+ */
+function cleanTemplateForSharing() {
+  var ss = SS();
+  Logger.log('🧹 เริ่มล้าง Template สำหรับแชร์...');
+  cleanupCopiedSpreadsheet_(ss);
+  Logger.log('✅ ล้าง Template เสร็จ! พร้อมส่งให้โรงเรียนอื่น');
+}
+
 function cleanupCopiedSpreadsheet_(ss) {
   var allSheets = ss.getSheets();
-  var keepSheets = new Set(PERMANENT_SHEETS);
+
+  // === WHITELIST: ชีตที่เก็บไว้ (ล้างข้อมูล เก็บ header) ===
+  var keepNames = new Set(PERMANENT_SHEETS);  // global_settings, Users, Students, รายวิชา, Holidays, HomeroomTeachers
   var yearlyBases = (typeof S_YEARLY_SHEETS !== 'undefined') ? S_YEARLY_SHEETS : [
     'SCORES_WAREHOUSE', 'การประเมินอ่านคิดเขียน', 'การประเมินคุณลักษณะ',
     'การประเมินกิจกรรมพัฒนาผู้เรียน', 'การประเมินสมรรถนะ',
     'AttendanceLog', 'ความเห็นครู'
   ];
-  yearlyBases.forEach(function(b) { keepSheets.add(b); });
+  yearlyBases.forEach(function(b) { keepNames.add(b); });
 
-  // รายชื่อชีตที่ต้องล้างข้อมูล (เก็บ header ไว้)
   var sheetsToClean = [];
-  // รายชื่อชีตที่ต้องลบทิ้ง (ชีตคะแนนรายวิชา, เช็คชื่อ, BACKUP)
   var sheetsToDelete = [];
 
   allSheets.forEach(function(sheet) {
     var name = sheet.getName();
 
-    // ชีตถาวร + ชีตรายปี → ล้างข้อมูล (เก็บ header แถว 1)
-    if (keepSheets.has(name) || yearlyBases.some(function(b) { return name.indexOf(b) === 0; })) {
+    // ตรงชื่อ permanent/yearly → เก็บ (ล้างข้อมูล)
+    if (keepNames.has(name)) {
       sheetsToClean.push(sheet);
       return;
     }
 
-    // ชีตคะแนนรายวิชา (เช่น "ภาษาไทย ป3-1", "คณิตศาสตร์ ป.1-1")
-    if (/ป\d|ป\.\d|ม\d|ม\.\d/.test(name) && name.indexOf(' ') > 0) {
-      sheetsToDelete.push(sheet);
+    // ชีตรายปี + suffix (เช่น SCORES_WAREHOUSE_2568) → เก็บ (ล้างข้อมูล)
+    var isYearly = yearlyBases.some(function(b) { return name.indexOf(b + '_') === 0; });
+    if (isYearly) {
+      sheetsToClean.push(sheet);
       return;
     }
 
+    // === ทุกอย่างที่เหลือ → ลบทิ้ง ===
+    // ชีตคะแนนรายวิชา (เช่น "ภาษาไทย ป3-1", "ชุมนุมวิทยาศาสตร์ ป4-1")
     // ชีตเช็คชื่อรายเดือน (เช่น "พฤษภาคม 2568")
-    if (/(มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม)/.test(name)) {
-      sheetsToDelete.push(sheet);
-      return;
-    }
-
-    // ชีต BACKUP
-    if (name.indexOf('BACKUP_') === 0 || name.indexOf('Template_') === 0) {
-      sheetsToDelete.push(sheet);
-      return;
-    }
-
-    // ชีตอื่นๆ ที่ไม่รู้จัก → ล้างข้อมูล (เก็บ header)
-    sheetsToClean.push(sheet);
+    // ชีตสรุป (เช่น "สรุปวันมาต่ละเดือน_ป.31_2568", "สรุปการมาเรียน")
+    // ชีต BACKUP/Template
+    // ชีตโปรไฟล์นักเรียน
+    sheetsToDelete.push(sheet);
   });
 
   // ล้างข้อมูล (เก็บ header แถว 1)
@@ -561,15 +567,13 @@ function cleanupCopiedSpreadsheet_(ss) {
     if (lastRow > 1) {
       sheet.deleteRows(2, lastRow - 1);
     }
-    Logger.log('🧹 ล้างข้อมูล: ' + sheet.getName() + ' (' + (lastRow - 1) + ' แถว)');
+    Logger.log('🧹 ล้างข้อมูล: ' + sheet.getName() + ' (' + Math.max(0, lastRow - 1) + ' แถว)');
   });
 
-  // ลบชีตที่ไม่ต้องการ (ต้องเหลืออย่างน้อย 1 ชีต)
+  // ลบชีตที่ไม่อยู่ใน whitelist (ต้องเหลืออย่างน้อย 1 ชีต)
   var remaining = allSheets.length - sheetsToDelete.length;
-  if (remaining < 1) {
-    // เก็บชีตแรกไว้ไม่ลบ
-    sheetsToDelete.shift();
-  }
+  if (remaining < 1) sheetsToDelete.shift();
+
   sheetsToDelete.forEach(function(sheet) {
     try {
       Logger.log('🗑️ ลบชีต: ' + sheet.getName());
@@ -579,7 +583,7 @@ function cleanupCopiedSpreadsheet_(ss) {
     }
   });
 
-  Logger.log('🧹 ล้างเสร็จ: ล้างข้อมูล ' + sheetsToClean.length + ' ชีต, ลบ ' + sheetsToDelete.length + ' ชีต');
+  Logger.log('🧹 ล้างเสร็จ: เก็บ+ล้าง ' + sheetsToClean.length + ' ชีต, ลบ ' + sheetsToDelete.length + ' ชีต');
 }
 
 // ============================================================
