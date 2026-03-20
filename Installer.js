@@ -113,7 +113,50 @@ function diagnoseSheetsStatus() {
 }
 
 /**
- * 🔍 DEBUG: รันฟังก์ชันนี้ใน GAS Editor เพื่อดูสถานะ ScriptProperties
+ * � แก้ไข SPREADSHEET_ID ให้ชี้กลับไปชีตเดิม (กรณี script ไปรันบนสำเนาสำรอง)
+ * วิธีใช้: 
+ *   1. ใส่ ID ของ Spreadsheet เดิม (ดูจาก URL: /d/xxxxx/edit → xxxxx คือ ID)
+ *   2. รัน fixSpreadsheetId() จาก GAS Editor
+ */
+function fixSpreadsheetId() {
+  // ⚠️ ใส่ ID ของ Spreadsheet เดิมที่ถูกต้องที่นี่
+  var CORRECT_ID = '';  // ← ใส่ ID ตรงนี้
+
+  if (!CORRECT_ID) {
+    // ถ้ายังไม่ได้ใส่ ID → แสดง ID ปัจจุบันให้ดู
+    var props = PropertiesService.getScriptProperties();
+    var currentSsId = props.getProperty('SPREADSHEET_ID') || '(ไม่มี)';
+    Logger.log('=== SPREADSHEET_ID ปัจจุบัน ===');
+    Logger.log('SPREADSHEET_ID: ' + currentSsId);
+    Logger.log('');
+    Logger.log('วิธีแก้: ใส่ ID ของ Spreadsheet เดิมในตัวแปร CORRECT_ID แล้วรันใหม่');
+    Logger.log('ดู ID จาก URL: https://docs.google.com/spreadsheets/d/[ID_อยู่ตรงนี้]/edit');
+    return;
+  }
+
+  try {
+    // ตรวจว่าเปิดได้จริง
+    var ss = SpreadsheetApp.openById(CORRECT_ID);
+    var name = ss.getName();
+
+    var props = PropertiesService.getScriptProperties();
+    var oldId = props.getProperty('SPREADSHEET_ID') || '(ไม่มี)';
+    props.setProperty('SPREADSHEET_ID', CORRECT_ID);
+    props.setProperty('SCRIPT_ID', ScriptApp.getScriptId());
+
+    Logger.log('✅ แก้ไขสำเร็จ!');
+    Logger.log('   เดิม: ' + oldId);
+    Logger.log('   ใหม่: ' + CORRECT_ID);
+    Logger.log('   ชื่อ: ' + name);
+    Logger.log('   isSetupComplete_: ' + isSetupComplete_());
+  } catch (e) {
+    Logger.log('❌ เปิด Spreadsheet ไม่ได้: ' + e.message);
+    Logger.log('กรุณาตรวจสอบ ID อีกครั้ง');
+  }
+}
+
+/**
+ * � DEBUG: รันฟังก์ชันนี้ใน GAS Editor เพื่อดูสถานะ ScriptProperties
  * ไปที่ Execution log เพื่อดูผลลัพธ์
  */
 function debugSetupStatus() {
@@ -277,7 +320,8 @@ function setupNewSchool(formData) {
       message: 'ติดตั้งระบบสำเร็จ! ยินดีต้อนรับ ' + formData.schoolName,
       spreadsheetId: ss.getId(),
       spreadsheetUrl: ss.getUrl(),
-      schoolName: formData.schoolName
+      schoolName: formData.schoolName,
+      tip: '💡 แนะนำ: เปลี่ยนชื่อ Apps Script project เป็น "ระบบ ปพ.5 — ' + formData.schoolName + '" เพื่อแยกจากโรงเรียนอื่น'
     };
 
   } catch (e) {

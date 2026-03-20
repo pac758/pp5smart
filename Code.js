@@ -168,6 +168,26 @@ function SS() {
 
 }
 
+function getSchoolName_() {
+  try {
+    var cache = CacheService.getScriptCache();
+    var cached = cache.get('school_name');
+    if (cached) return cached;
+    var ss = SS();
+    var sheet = ss.getSheetByName('global_settings');
+    if (!sheet) return '';
+    var data = sheet.getDataRange().getValues();
+    for (var i = 0; i < data.length; i++) {
+      if (data[i][0] === 'ชื่อโรงเรียน') {
+        var name = String(data[i][1] || '').trim();
+        if (name) cache.put('school_name', name, 600);
+        return name;
+      }
+    }
+    return '';
+  } catch (e) { return ''; }
+}
+
 
 
 function escapeHtml(text) {
@@ -754,7 +774,7 @@ function serveLoginPage() {
 
     const output = HtmlService.createHtmlOutputFromFile("login")
 
-      .setTitle("เข้าสู่ระบบ - ระบบ ปพ.5")
+      .setTitle(getSchoolName_() ? 'เข้าสู่ระบบ - ' + getSchoolName_() : 'เข้าสู่ระบบ - ระบบ ปพ.5')
 
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 
@@ -826,9 +846,11 @@ function serveMainApp() {
 
   try {
 
+    var sn = getSchoolName_();
+
     const output = HtmlService.createHtmlOutputFromFile("spa_main_menu")
 
-      .setTitle("ระบบจัดการนักเรียน ปพ.5")
+      .setTitle(sn ? 'ระบบ ปพ.5 — ' + sn : 'ระบบจัดการนักเรียน ปพ.5')
 
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 
@@ -882,7 +904,9 @@ function serveMainAppWithSession_(session) {
 
     output.append(sessionScript);
 
-    output.setTitle("ระบบจัดการนักเรียน ปพ.5")
+    var sn2 = getSchoolName_();
+
+    output.setTitle(sn2 ? 'ระบบ ปพ.5 — ' + sn2 : 'ระบบจัดการนักเรียน ปพ.5')
 
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 
