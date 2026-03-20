@@ -796,6 +796,21 @@ function saveScoreSheetData(sheetName, term, studentScores, fullScores, fullFina
       if (sid) idToRowMap[sid] = r;
     }
 
+    // ✅ ตรวจสอบข้อมูลก่อนบันทึก — ป้องกันคะแนนสูญหาย
+    if (!studentScores || studentScores.length === 0) {
+      throw new Error('ไม่มีข้อมูลคะแนนที่จะบันทึก');
+    }
+    var matchCount = 0;
+    studentScores.forEach(function(s) {
+      if (idToRowMap[String(s.id || '').trim()] !== undefined) matchCount++;
+    });
+    if (matchCount === 0) {
+      throw new Error('ไม่พบนักเรียนที่ตรงกันในชีต กรุณาโหลดหน้าใหม่');
+    }
+    if (matchCount < studentScores.length * 0.5) {
+      Logger.log('⚠️ พบนักเรียนตรงกันแค่ ' + matchCount + '/' + studentScores.length + ' คน');
+    }
+
     studentScores.forEach((student, idx) => {
       const studentId = String(student.id || '').trim();
       // จับคู่ด้วยรหัสนักเรียน ถ้าไม่เจอใช้ลำดับเดิมเป็น fallback
@@ -978,8 +993,12 @@ function _syncSubjectToWarehouse_(sheetName, studentRows) {
   });
 
   const finalData = [...kept, ...newRows];
-  warehouseSheet.clear();
+  // ✅ Safe write: เขียนข้อมูลใหม่ก่อน แล้วค่อยลบแถวเกิน (ป้องกัน data loss จาก timeout)
   warehouseSheet.getRange(1, 1, finalData.length, whHeaders.length).setValues(finalData);
+  var lastRow = warehouseSheet.getLastRow();
+  if (lastRow > finalData.length) {
+    warehouseSheet.deleteRows(finalData.length + 1, lastRow - finalData.length);
+  }
 
   if (typeof invalidateCacheAfterDataUpdate === 'function') {
     invalidateCacheAfterDataUpdate('SCORES_WAREHOUSE');
