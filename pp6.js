@@ -986,11 +986,13 @@ function generatePp6PDFCompleteNoDrive(studentId, term = 'both') {
     const classNo = studentScoreData['class_no'];
 
     const subjects = getStudentAllSubjectScores(studentId, term);
-    if (typeof _sortBySubjectName === 'function') _sortBySubjectName(subjects, 'name');
+    _pp6SortSubjects(subjects);
     const gpaInfo = calculateGPAAndRank(studentId, grade, classNo);
     const assessments = getStudentAssessments(studentId);
-    const homeroomTeacher = getHomeroomTeacher(grade, classNo);
+    const homeroomTeacher = getHomeroomTeacher(String(grade).trim(), String(classNo).trim());
     const teacherComment = typeof getTeacherComment_ === 'function' ? getTeacherComment_(studentId) : '';
+
+    Logger.log('🔍 PP6 NoDrive: grade=' + grade + ', classNo=' + classNo + ', teacher=' + homeroomTeacher);
 
     const html = _createPp6ReportHTML({
       schoolName: settings['ชื่อโรงเรียน'],
