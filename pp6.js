@@ -909,15 +909,15 @@ function _pp6_buildDocPdf(data) {
   var headers = ['ลำดับ', 'รหัสวิชา', 'ชื่อวิชา', 'ประเภท', 'จำนวน\nชั่วโมง', 'คะแนน\nที่ได้', 'ระดับผล\nการเรียน'];
   var hr = T.appendTableRow();
   headers.forEach(function(h, i) {
-    _opr_cell(hr.appendTableCell(h), W[i], FS_H, true, HDR_BG, (i === 2 ? LEFT : null));
+    _opr_cell(hr.appendTableCell(h), W[i], FS_H, true, HDR_BG);
   });
 
   var fmtAct = function(txt) {
     if (!txt) return 'มผ';
     var s = String(txt).trim();
-    if (s === 'ผ่าน' || s === 'ผ') return 'ผ';
+    if (s === 'ผ่าน' || s === 'ผ') return 'ผ่าน';
     if (s === 'ไม่ผ่าน' || s === 'มผ') return 'มผ';
-    if (!isNaN(parseFloat(s))) return 'ผ';
+    if (!isNaN(parseFloat(s))) return 'ผ่าน';
     return s;
   };
 
@@ -959,12 +959,14 @@ function _pp6_buildDocPdf(data) {
     ['จำนวนหน่วยกิต/น้ำหนักวิชาเพิ่มเติม:', String(data.gpaInfo.additionalCredits || '0'), 'ผลการประเมินการอ่าน คิดวิเคราะห์ และเขียน:', readRes],
     ['รวมจำนวนหน่วยกิต/น้ำหนัก:', String(data.gpaInfo.totalCredits || '0'), 'ผลการประเมินกิจกรรมพัฒนาผู้เรียน:', actRes],
     ['ระดับผลการเรียนเฉลี่ย (GPA):', String(data.gpaInfo.gpa || '0.00'),
-      data.showRank ? ('ได้ลำดับที่ ' + (data.gpaInfo.classRank || '-') + ' จาก ' + (data.gpaInfo.totalStudents || '-') + ' คน') : '', '']
+      data.showRank ? ('ได้ลำดับที่ จากนักเรียน ' + (data.gpaInfo.totalStudents || '-') + ' คน') : '',
+      data.showRank ? String(data.gpaInfo.classRank || '-') : '']
   ];
   sumRows.forEach(function(rd) {
     var r = sT.appendTableRow();
     rd.forEach(function(val, i) {
-      _opr_cell(r.appendTableCell(val), SW[i], 11, (i === 1 || i === 3), null, LEFT);
+      var align = (i === 0 || i === 2) ? LEFT : null; // label=LEFT, value=CENTER
+      _opr_cell(r.appendTableCell(val), SW[i], 11, (i === 1 || i === 3), null, align);
     });
   });
 
