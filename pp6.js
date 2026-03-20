@@ -556,6 +556,43 @@ function calculateGPAAndRank(studentId, grade, classNo) {
 }
 
 /**
+ * เรียงลำดับวิชาสำหรับ ปพ.6: พื้นฐาน → เพิ่มเติม → กิจกรรม ตามลำดับมาตรฐาน
+ */
+function _pp6SortSubjects(subjects) {
+  var SUBJECT_ORDER = [
+    'ภาษาไทย','คณิตศาสตร์','วิทยาศาสตร์','สังคมศึกษา',
+    'ประวัติศาสตร์','สุขศึกษา','ศิลปะ','การงาน',
+    'ภาษาอังกฤษ','หน้าที่พลเมือง','การป้องกัน'
+  ];
+  var ACTIVITY_ORDER = ['แนะแนว','ลูกเสือ','เนตรนารี','ชุมนุม','สาธารณ','กิจกรรม'];
+
+  function getTypeRank(s) {
+    var t = String(s.type || '').trim();
+    if (t.includes('กิจกรรม')) return 2;
+    if (t.includes('เพิ่มเติม')) return 1;
+    return 0;
+  }
+
+  function getSubjectIdx(name, orderList) {
+    var n = String(name || '').trim();
+    for (var i = 0; i < orderList.length; i++) {
+      if (n.indexOf(orderList[i]) !== -1) return i;
+    }
+    return 999;
+  }
+
+  subjects.sort(function(a, b) {
+    var typeA = getTypeRank(a), typeB = getTypeRank(b);
+    if (typeA !== typeB) return typeA - typeB;
+    if (typeA === 2) {
+      return getSubjectIdx(a.name, ACTIVITY_ORDER) - getSubjectIdx(b.name, ACTIVITY_ORDER);
+    }
+    return getSubjectIdx(a.name, SUBJECT_ORDER) - getSubjectIdx(b.name, SUBJECT_ORDER);
+  });
+  return subjects;
+}
+
+/**
  * 5. ดึงคะแนนทุกวิชาของนักเรียน (ฉบับ Final - ยึดชีต "รายวิชา" เป็นหลัก)
  */
 function getStudentAllSubjectScores(studentId, term = 'both') {
@@ -867,11 +904,11 @@ function generatePp6PDFComplete(studentId, term = 'both') {
     if (!subjects || subjects.length === 0) {
       throw new Error(`ไม่พบข้อมูลวิชาสำหรับนักเรียน ${studentId}`);
     }
-    if (typeof _sortBySubjectName === 'function') _sortBySubjectName(subjects, 'name');
+    _pp6SortSubjects(subjects);
 
     const gpaInfo = calculateGPAAndRank(studentId, grade, classNo);
     const assessments = getStudentAssessments(studentId);
-    const homeroomTeacher = getHomeroomTeacher(grade, classNo);
+    const homeroomTeacher = getHomeroomTeacher(String(grade).trim(), String(classNo).trim());
     const teacherComment = typeof getTeacherComment_ === 'function' ? getTeacherComment_(studentId) : '';
 
     const html = _createPp6ReportHTML({
@@ -1017,8 +1054,8 @@ const formatActivityResult = (resultText) => {
     .report-title { font-size: 15px; font-weight: bold; margin-bottom: 2px;}
     .school-info { font-size: 13px; margin-bottom: 1px;}
     .student-info { margin: 8px 0; padding: 4px 0; font-size: 13px; }
-    .main-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; font-size: 12px; }
-    .main-table th, .main-table td { border: 1px solid #000; padding: 5px 6px; text-align: center; }
+    .main-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; font-size: 12px; table-layout: fixed; }
+    .main-table th, .main-table td { border: 1px solid #000; padding: 5px 6px; text-align: center; word-wrap: break-word; }
     .main-table th { background: #f0f0f0; font-weight: bold; }
     .main-table td:nth-child(3) { text-align: left; padding-left: 6px; }
     .summary-section { margin: 8px 0; }
