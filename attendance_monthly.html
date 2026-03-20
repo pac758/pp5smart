@@ -1935,8 +1935,16 @@ AttendanceMonthly.changeMonth = function (offset) {
     }
 
     try {
-      await AttendanceMonthly.fetchHolidays();
-      const students = await AttendanceMonthly.runGAS('getStudentsForAttendance', grade, classNo);
+      // ✅ Performance: คำนวณ year/month ก่อน แล้วยิง 2 calls พร้อมกัน (ไม่ต้อง fetchHolidays แยก — getSavedAttendance ส่งมาด้วยแล้ว)
+      const DateUtils = window.AttendanceMonthly.DateUtils;
+      const d = DateUtils.parseLocalDate(monthValue + '-01');
+      const year = d.getFullYear();
+      const month = d.getMonth();
+
+      const [students, saved] = await Promise.all([
+        AttendanceMonthly.runGAS('getStudentsForAttendance', grade, classNo),
+        AttendanceMonthly.runGAS('getSavedAttendance', grade, classNo, year, month)
+      ]);
 
       if (!students || !Array.isArray(students)) {
         AttendanceMonthly.hideStatusMessage();
@@ -1963,14 +1971,6 @@ AttendanceMonthly.changeMonth = function (offset) {
       });
 
       window.AttendanceMonthly.attendanceStudents = students;
-
-      // 🆕 ใช้ DateUtils
-      const DateUtils = window.AttendanceMonthly.DateUtils;
-      const d = DateUtils.parseLocalDate(monthValue + '-01');
-      const year = d.getFullYear();
-      const month = d.getMonth();
-      
-      const saved = await AttendanceMonthly.runGAS('getSavedAttendance', grade, classNo, year, month);
 
       // ✅ ใช้ holidays จาก getSavedAttendance response (ฝังมาจาก server)
       if (saved && saved.holidays && Object.keys(saved.holidays).length > 0) {
