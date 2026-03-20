@@ -1017,8 +1017,8 @@ const formatActivityResult = (resultText) => {
     .report-title { font-size: 15px; font-weight: bold; margin-bottom: 2px;}
     .school-info { font-size: 13px; margin-bottom: 1px;}
     .student-info { margin: 8px 0; padding: 4px 0; font-size: 13px; }
-    .main-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; font-size: 11px; }
-    .main-table th, .main-table td { border: 1px solid #000; padding: 2px 4px; text-align: center; }
+    .main-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; font-size: 12px; }
+    .main-table th, .main-table td { border: 1px solid #000; padding: 5px 6px; text-align: center; }
     .main-table th { background: #f0f0f0; font-weight: bold; }
     .main-table td:nth-child(3) { text-align: left; padding-left: 6px; }
     .summary-section { margin: 8px 0; }
@@ -1052,14 +1052,14 @@ const formatActivityResult = (resultText) => {
   <table class="main-table">
     <thead>
       <tr>
-        <th style="width: 8%">ลำดับ</th><th style="width: 12%">รหัสวิชา</th><th style="width: 35%">ชื่อวิชา</th>
-        <th style="width: 10%">ประเภท</th><th style="width: 10%">จำนวนชั่วโมง</th><th style="width: 12%">คะแนนที่ได้</th><th style="width: 13%">ระดับผลการเรียน</th>
+        <th style="width: 6%">ลำดับ</th><th style="width: 10%">รหัสวิชา</th><th style="width: 30%">ชื่อวิชา</th>
+        <th style="width: 12%">ประเภท</th><th style="width: 12%">จำนวนชั่วโมง</th><th style="width: 14%">คะแนนที่ได้</th><th style="width: 16%">ระดับผลการเรียน</th>
       </tr>
     </thead>
     <tbody>
-      ${subjects.map(subject => `
+      ${subjects.map((subject, idx) => `
         <tr>
-          <td>${subject.order}</td>
+          <td>${idx + 1}</td>
           <td>${subject.code}</td>
           <td>${subject.name}</td>
           <td>${subject.type}</td>
