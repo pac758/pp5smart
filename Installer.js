@@ -554,35 +554,61 @@ function createAdminUser_(ss, formData) {
 // ============================================================
 
 /**
- * 🧹 รันจาก GAS Editor เพื่อล้าง Template ก่อนส่งให้โรงเรียนอื่น
- * ⚠️ ต้องใส่ TEMPLATE_SHEET_ID ก่อนรัน — จะไม่ทำงานบน Spreadsheet หลักของโรงเรียน
+ * 🧹 สร้าง Template สะอาดจากชีตโรงเรียนต้นแบบ
+ * วิธีใช้: รันจาก GAS Editor → ดู Execution log เพื่อรับ URL ของ Template ใหม่
+ * ✅ ปลอดภัย: ไม่แตะต้องข้อมูลโรงเรียนต้นแบบเลย (สร้างสำเนาแยก)
  */
-function cleanTemplateForSharing() {
-  // ⚠️ ใส่ ID ของ Template Spreadsheet ที่ต้องการล้างข้อมูลที่นี่
-  var TEMPLATE_SHEET_ID = '1AcdypFst0F4pr7bjaMH1WwuTyohekV8BeO36MWZOWJE';
-
-  // ป้องกัน: ห้ามรันบน Spreadsheet หลักของโรงเรียน
-  var mainId = '';
-  try { mainId = SS().getId(); } catch(_) {}
-  if (TEMPLATE_SHEET_ID === mainId) {
-    Logger.log('⛔ ห้ามรันบน Spreadsheet หลักของโรงเรียน! ข้อมูลจะหายทั้งหมด');
-    return;
-  }
-
-  var props = PropertiesService.getScriptProperties();
-  var installedId = props.getProperty('SPREADSHEET_ID') || '';
-  if (TEMPLATE_SHEET_ID === installedId) {
-    Logger.log('⛔ ID นี้คือ Spreadsheet หลักของโรงเรียน! ห้ามล้าง');
-    return;
-  }
-
+function createCleanTemplate() {
   try {
-    var ss = SpreadsheetApp.openById(TEMPLATE_SHEET_ID);
-    Logger.log('🧹 เริ่มล้าง Template: ' + ss.getName());
-    cleanupCopiedSpreadsheet_(ss);
-    Logger.log('✅ ล้าง Template เสร็จ! พร้อมส่งให้โรงเรียนอื่น');
+    var ss = SS();
+    var schoolName = '';
+    try {
+      var gs = ss.getSheetByName('global_settings');
+      if (gs) {
+        var gsData = gs.getDataRange().getValues();
+        for (var i = 0; i < gsData.length; i++) {
+          if (gsData[i][0] === 'ชื่อโรงเรียน') { schoolName = String(gsData[i][1] || ''); break; }
+        }
+      }
+    } catch(_) {}
+
+    // 1. สร้างสำเนา
+    var templateName = 'Template ระบบ ปพ.5' + (schoolName ? ' — ' + schoolName : '') + ' (สะอาด)';
+    var file = DriveApp.getFileById(ss.getId());
+    var copy = file.makeCopy(templateName);
+    var copySs = SpreadsheetApp.openById(copy.getId());
+    Logger.log('📋 สร้างสำเนา: ' + copySs.getName());
+
+    // 2. ล้างข้อมูลในสำเนา
+    cleanupCopiedSpreadsheet_(copySs);
+
+    // 3. ล้าง installed_script_id ใน global_settings ของสำเนา (ให้เป็น fresh template)
+    var gsSheet = copySs.getSheetByName('global_settings');
+    if (gsSheet) {
+      var data = gsSheet.getDataRange().getValues();
+      for (var r = 0; r < data.length; r++) {
+        if (data[r][0] === 'installed_script_id') {
+          gsSheet.deleteRow(r + 1);
+          break;
+        }
+      }
+    }
+
+    var url = copySs.getUrl();
+    Logger.log('');
+    Logger.log('==============================================');
+    Logger.log('✅ Template สะอาดพร้อมแชร์!');
+    Logger.log('📎 URL: ' + url);
+    Logger.log('==============================================');
+    Logger.log('');
+    Logger.log('วิธีส่งให้โรงเรียนอื่น:');
+    Logger.log('1. เปิด URL ข้างบน');
+    Logger.log('2. แชร์ลิงก์ให้โรงเรียนใหม่');
+    Logger.log('3. โรงเรียนใหม่: File → Make a copy → ทำตาม Setup Wizard');
+    return { success: true, url: url, id: copy.getId() };
   } catch (e) {
-    Logger.log('❌ เปิด Template ไม่ได้: ' + e.message);
+    Logger.log('❌ Error: ' + e.message);
+    return { success: false, error: e.message };
   }
 }
 
