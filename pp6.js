@@ -912,6 +912,13 @@ function _pp6_buildDocPdf(data) {
     _opr_cell(hr.appendTableCell(h), W[i], FS_H, true, HDR_BG);
   });
 
+  var _fmtGrade0 = function(g) {
+    if (!g) return '';
+    var n = parseFloat(g);
+    if (isNaN(n)) return String(g);
+    return n % 1 === 0 ? String(Math.round(n)) : n.toFixed(1);
+  };
+
   var fmtAct = function(txt) {
     if (!txt) return 'มผ';
     var s = String(txt).trim();
@@ -931,7 +938,7 @@ function _pp6_buildDocPdf(data) {
       sub.type || '',
       String(sub.hours || ''),
       sub.score ? String(sub.score) : '',
-      isAct ? fmtAct(sub.grade) : (sub.grade || '')
+      isAct ? fmtAct(sub.grade) : _fmtGrade0(sub.grade)
     ];
     vals.forEach(function(val, i) {
       _opr_cell(row.appendTableCell(val), W[i], FS_D, (i >= 5), null, (i === 2 ? LEFT : null));
