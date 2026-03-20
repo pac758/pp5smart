@@ -900,12 +900,12 @@ function _pp6_buildDocPdf(data) {
   // === ตารางรายวิชา (7 คอลัมน์) ===
   var HDR_BG = '#E8E8E8';
   var FS_H = 10;
-  var FS_D = 10;
+  var FS_D = 11;
   var T = body.appendTable();
   T.setBorderWidth(0.5);
   T.setBorderColor('#000000');
 
-  var W = [22, 48, 185, 52, 48, 60, 80];
+  var W = [25, 52, 190, 55, 50, 68, 89];
   var headers = ['ลำดับ', 'รหัสวิชา', 'ชื่อวิชา', 'ประเภท', 'จำนวนชั่วโมง', 'คะแนนที่ได้', 'ระดับผลการเรียน'];
   var hr = T.appendTableRow();
   headers.forEach(function(h, i) {
@@ -941,7 +941,7 @@ function _pp6_buildDocPdf(data) {
       isAct ? fmtAct(sub.grade) : _fmtGrade0(sub.grade)
     ];
     vals.forEach(function(val, i) {
-      _opr_cell(row.appendTableCell(val), W[i], FS_D, (i >= 5), null, (i === 2 ? LEFT : null));
+      _opr_cell(row.appendTableCell(val), W[i], FS_D, false, null, (i === 2 ? LEFT : null));
     });
   });
 
@@ -973,7 +973,7 @@ function _pp6_buildDocPdf(data) {
     var r = sT.appendTableRow();
     rd.forEach(function(val, i) {
       var align = (i === 0 || i === 2) ? LEFT : null; // label=LEFT, value=CENTER
-      _opr_cell(r.appendTableCell(val), SW[i], 10, (i === 1 || i === 3), null, align);
+      _opr_cell(r.appendTableCell(val), SW[i], 10, false, null, align);
     });
   });
 
