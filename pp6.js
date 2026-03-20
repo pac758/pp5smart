@@ -908,7 +908,13 @@ function generatePp6PDFComplete(studentId, term = 'both') {
 
     const gpaInfo = calculateGPAAndRank(studentId, grade, classNo);
     const assessments = getStudentAssessments(studentId);
-    const homeroomTeacher = getHomeroomTeacher(String(grade).trim(), String(classNo).trim());
+
+    // ✅ ใช้ getStudentInfo_ เหมือนรายงานหน้าเดียว เพื่อให้ grade/classNo format ตรงกับ HomeroomTeachers
+    const studentInfo = typeof getStudentInfo_ === 'function' ? getStudentInfo_(studentId) : null;
+    const teacherGrade = studentInfo ? studentInfo.grade : grade;
+    const teacherClassNo = studentInfo ? String(studentInfo.classNo) : String(classNo);
+    const homeroomTeacher = getHomeroomTeacher(teacherGrade, teacherClassNo);
+    Logger.log('🔍 PP6 teacher lookup: grade=' + teacherGrade + ', classNo=' + teacherClassNo + ', result=' + homeroomTeacher);
     const teacherComment = typeof getTeacherComment_ === 'function' ? getTeacherComment_(studentId) : '';
 
     const html = _createPp6ReportHTML({
@@ -989,10 +995,14 @@ function generatePp6PDFCompleteNoDrive(studentId, term = 'both') {
     _pp6SortSubjects(subjects);
     const gpaInfo = calculateGPAAndRank(studentId, grade, classNo);
     const assessments = getStudentAssessments(studentId);
-    const homeroomTeacher = getHomeroomTeacher(String(grade).trim(), String(classNo).trim());
-    const teacherComment = typeof getTeacherComment_ === 'function' ? getTeacherComment_(studentId) : '';
 
-    Logger.log('🔍 PP6 NoDrive: grade=' + grade + ', classNo=' + classNo + ', teacher=' + homeroomTeacher);
+    // ✅ ใช้ getStudentInfo_ เหมือนรายงานหน้าเดียว เพื่อให้ grade/classNo format ตรงกับ HomeroomTeachers
+    const studentInfo = typeof getStudentInfo_ === 'function' ? getStudentInfo_(studentId) : null;
+    const teacherGrade = studentInfo ? studentInfo.grade : grade;
+    const teacherClassNo = studentInfo ? String(studentInfo.classNo) : String(classNo);
+    const homeroomTeacher = getHomeroomTeacher(teacherGrade, teacherClassNo);
+    Logger.log('🔍 PP6 NoDrive teacher lookup: grade=' + teacherGrade + ', classNo=' + teacherClassNo + ', result=' + homeroomTeacher);
+    const teacherComment = typeof getTeacherComment_ === 'function' ? getTeacherComment_(studentId) : '';
 
     const html = _createPp6ReportHTML({
       schoolName: settings['ชื่อโรงเรียน'],
