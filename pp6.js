@@ -862,10 +862,10 @@ function _pp6_buildDocPdf(data) {
   var doc = DocumentApp.create('ปพ6_' + data.studentId + '_' + Date.now());
   var body = doc.getBody();
   body.clear();
-  body.setMarginTop(22);
-  body.setMarginBottom(14);
-  body.setMarginLeft(50);
-  body.setMarginRight(28);
+  body.setMarginTop(14);
+  body.setMarginBottom(10);
+  body.setMarginLeft(42);
+  body.setMarginRight(24);
   body.setPageWidth(595);
   body.setPageHeight(842);
 
@@ -883,57 +883,33 @@ function _pp6_buildDocPdf(data) {
       var lp = body.appendParagraph('');
       lp.setAlignment(CENTER);
       var img = lp.appendInlineImage(DriveApp.getFileById(data.logoFileId).getBlob());
-      img.setHeight(45); img.setWidth(45);
+      img.setHeight(35); img.setWidth(35);
       lp.setSpacingAfter(0).setSpacingBefore(0);
     } catch(e) { Logger.log('PP6 Logo: ' + e.message); }
   }
 
-  addLine('แบบรายงานผลพัฒนาคุณภาพผู้เรียนรายบุคคล', 15, true, 0);
-  addLine('ปีการศึกษา ' + data.academicYear, 13, false, 0);
-  addLine(data.schoolName, 14, true, 0);
-  if (data.schoolAddress) addLine(data.schoolAddress, 13, false, 1);
+  addLine('แบบรายงานผลพัฒนาคุณภาพผู้เรียนรายบุคคล', 13, true, 0);
+  addLine('ปีการศึกษา ' + data.academicYear, 11, false, 0);
+  addLine(data.schoolName, 12, true, 0);
+  if (data.schoolAddress) addLine(data.schoolAddress, 11, false, 0);
 
   // === ข้อมูลนักเรียน ===
-  var infoText = 'ชื่อ - นามสกุล: ' + data.studentName + '     รหัสประจำตัว: ' + data.studentId + '     ชั้น: ' + data.grade + '/' + data.classNo;
-  addLine(infoText, 13, false, 2, LEFT);
-
-  // === pp6 cell helper — จัดกลางอย่างถูกต้อง ===
-  var _pp6_cell = function(cell, w, fs, bold, bg, align) {
-    cell.setWidth(w);
-    if (bg) cell.setBackgroundColor(bg);
-    cell.setVerticalAlignment(DocumentApp.VerticalAlignment.CENTER);
-    cell.setPaddingTop(2).setPaddingBottom(2).setPaddingLeft(3).setPaddingRight(3);
-    var a = align || CENTER;
-    var txt = cell.getChild(0).asParagraph().getText();
-    var lines = txt.split('\n');
-    if (lines.length > 1) {
-      cell.getChild(0).asParagraph().setText(lines[0]);
-    }
-    for (var li = 0; li < (lines.length > 1 ? lines.length : 1); li++) {
-      var p = (li === 0) ? cell.getChild(0).asParagraph() : cell.appendParagraph(lines[li]);
-      p.setAlignment(a);
-      p.setSpacingAfter(0).setSpacingBefore(0);
-      p.setIndentFirstLine(0).setIndentStart(0).setIndentEnd(0);
-      var t = p.editAsText();
-      t.setFontSize(fs).setFontFamily(F);
-      if (bold) t.setBold(true);
-    }
-    return cell;
-  };
+  var infoText = 'ชื่อ - นามสกุล: ' + data.studentName + '   รหัสประจำตัว: ' + data.studentId + '   ชั้น: ' + data.grade + '/' + data.classNo;
+  addLine(infoText, 11, false, 1, LEFT);
 
   // === ตารางรายวิชา (7 คอลัมน์) ===
   var HDR_BG = '#E8E8E8';
-  var FS_H = 11;
-  var FS_D = 12;
+  var FS_H = 10;
+  var FS_D = 10;
   var T = body.appendTable();
   T.setBorderWidth(0.5);
   T.setBorderColor('#000000');
 
-  var W = [25, 52, 170, 55, 55, 70, 90];
-  var headers = ['ลำดับ', 'รหัสวิชา', 'ชื่อวิชา', 'ประเภท', 'จำนวน\nชั่วโมง', 'คะแนน\nที่ได้', 'ระดับผล\nการเรียน'];
+  var W = [22, 48, 185, 52, 48, 60, 80];
+  var headers = ['ลำดับ', 'รหัสวิชา', 'ชื่อวิชา', 'ประเภท', 'จำนวนชั่วโมง', 'คะแนนที่ได้', 'ระดับผลการเรียน'];
   var hr = T.appendTableRow();
   headers.forEach(function(h, i) {
-    _pp6_cell(hr.appendTableCell(h), W[i], FS_H, true, HDR_BG);
+    _opr_cell(hr.appendTableCell(h), W[i], FS_H, true, HDR_BG);
   });
 
   var _fmtGrade0 = function(g) {
@@ -965,7 +941,7 @@ function _pp6_buildDocPdf(data) {
       isAct ? fmtAct(sub.grade) : _fmtGrade0(sub.grade)
     ];
     vals.forEach(function(val, i) {
-      _pp6_cell(row.appendTableCell(val), W[i], FS_D, (i >= 5), null, (i === 2 ? LEFT : null));
+      _opr_cell(row.appendTableCell(val), W[i], FS_D, (i >= 5), null, (i === 2 ? LEFT : null));
     });
   });
 
@@ -974,9 +950,9 @@ function _pp6_buildDocPdf(data) {
   shT.setBorderWidth(0.5);
   shT.setBorderColor('#000000');
   var shR = shT.appendTableRow();
-  _pp6_cell(shR.appendTableCell('สรุปผลการประเมิน'), 517, 13, true, HDR_BG);
+  _opr_cell(shR.appendTableCell('สรุปผลการประเมิน'), 529, 11, true, HDR_BG);
 
-  var SW = [170, 60, 220, 67];
+  var SW = [175, 55, 230, 69];
   var sT = body.appendTable();
   sT.setBorderWidth(0.5);
   sT.setBorderColor('#000000');
@@ -997,19 +973,19 @@ function _pp6_buildDocPdf(data) {
     var r = sT.appendTableRow();
     rd.forEach(function(val, i) {
       var align = (i === 0 || i === 2) ? LEFT : null; // label=LEFT, value=CENTER
-      _pp6_cell(r.appendTableCell(val), SW[i], 11, (i === 1 || i === 3), null, align);
+      _opr_cell(r.appendTableCell(val), SW[i], 10, (i === 1 || i === 3), null, align);
     });
   });
 
   // === ความคิดเห็นของครูประจำชั้น ===
   var cmtH = body.appendParagraph('ความคิดเห็นของครูประจำชั้น / ครูที่ปรึกษา:');
-  cmtH.editAsText().setBold(true).setFontSize(12).setFontFamily(F);
-  cmtH.setSpacingAfter(1).setSpacingBefore(6);
+  cmtH.editAsText().setBold(true).setFontSize(11).setFontFamily(F);
+  cmtH.setSpacingAfter(0).setSpacingBefore(3);
 
   var cmtText = data.teacherComment && data.teacherComment !== '-' ? data.teacherComment : '..........................................................................................................................................................................................';
   var cmtP = body.appendParagraph(cmtText);
-  cmtP.editAsText().setBold(false).setFontSize(12).setFontFamily(F);
-  cmtP.setSpacingAfter(4).setSpacingBefore(0);
+  cmtP.editAsText().setBold(false).setFontSize(11).setFontFamily(F);
+  cmtP.setSpacingAfter(2).setSpacingBefore(0);
 
   // === ลายเซ็น 3 คอลัมน์ (ไม่มีเส้นกรอบ) ===
   var sigT = body.appendTable();
@@ -1029,19 +1005,19 @@ function _pp6_buildDocPdf(data) {
   signData.forEach(function(lines, ci) {
     var c = sr.appendTableCell(lines[0]);
     c.setWidth(SgW[ci]);
-    c.setPaddingTop(6).setPaddingBottom(2).setPaddingLeft(2).setPaddingRight(2);
+    c.setPaddingTop(3).setPaddingBottom(1).setPaddingLeft(2).setPaddingRight(2);
     var p0 = c.getChild(0).asParagraph();
     p0.setAlignment(CENTER);
     p0.setSpacingAfter(0).setSpacingBefore(0);
-    p0.editAsText().setFontSize(12).setFontFamily(F);
+    p0.editAsText().setFontSize(11).setFontFamily(F);
     var p1 = c.appendParagraph(lines[1]);
     p1.setAlignment(CENTER);
     p1.setSpacingAfter(0).setSpacingBefore(0);
-    p1.editAsText().setFontSize(12).setFontFamily(F);
+    p1.editAsText().setFontSize(11).setFontFamily(F);
     var p2 = c.appendParagraph(lines[2]);
     p2.setAlignment(CENTER);
     p2.setSpacingAfter(0).setSpacingBefore(0);
-    p2.editAsText().setFontSize(12).setFontFamily(F);
+    p2.editAsText().setFontSize(11).setFontFamily(F);
   });
 
   // === Export PDF ===
