@@ -852,7 +852,177 @@ function getStudentListForPp6(grade, classNo) {
  */
 
 /**
- * ฟังก์ชันสร้าง PDF รายงานรายบุคคล (ปพ.6) - เวอร์ชันปรับปรุงให้รองรับครูประจำชั้น
+ * สร้าง PDF จาก Google Docs (ฟอนต์ Sarabun เหมือนรายงานหน้าเดียว)
+ */
+function _pp6_buildDocPdf(data) {
+  var F = OPR_FONT; // 'Sarabun'
+  var CENTER = DocumentApp.HorizontalAlignment.CENTER;
+  var LEFT = DocumentApp.HorizontalAlignment.LEFT;
+
+  var doc = DocumentApp.create('ปพ6_' + data.studentId + '_' + Date.now());
+  var body = doc.getBody();
+  body.clear();
+  body.setMarginTop(22);
+  body.setMarginBottom(14);
+  body.setMarginLeft(50);
+  body.setMarginRight(28);
+  body.setPageWidth(595);
+  body.setPageHeight(842);
+
+  var addLine = function(txt, sz, bold, sa, align) {
+    var p = body.appendParagraph(txt);
+    p.setAlignment(align || CENTER);
+    p.editAsText().setBold(bold).setFontSize(sz).setFontFamily(F);
+    p.setSpacingAfter(sa !== undefined ? sa : 0).setSpacingBefore(0);
+    return p;
+  };
+
+  // === HEADER: โลโก้ + ชื่อโรงเรียน ===
+  if (data.logoFileId) {
+    try {
+      var lp = body.appendParagraph('');
+      lp.setAlignment(CENTER);
+      var img = lp.appendInlineImage(DriveApp.getFileById(data.logoFileId).getBlob());
+      img.setHeight(45); img.setWidth(45);
+      lp.setSpacingAfter(0).setSpacingBefore(0);
+    } catch(e) { Logger.log('PP6 Logo: ' + e.message); }
+  }
+
+  addLine('แบบรายงานผลพัฒนาคุณภาพผู้เรียนรายบุคคล', 15, true, 0);
+  addLine('ปีการศึกษา ' + data.academicYear, 13, false, 0);
+  addLine(data.schoolName, 14, true, 0);
+  if (data.schoolAddress) addLine(data.schoolAddress, 13, false, 1);
+
+  // === ข้อมูลนักเรียน ===
+  var infoText = 'ชื่อ - นามสกุล: ' + data.studentName + '     รหัสประจำตัว: ' + data.studentId + '     ชั้น: ' + data.grade + '/' + data.classNo;
+  addLine(infoText, 13, false, 2, LEFT);
+
+  // === ตารางรายวิชา (7 คอลัมน์) ===
+  var HDR_BG = '#E8E8E8';
+  var FS_H = 11;
+  var FS_D = 12;
+  var T = body.appendTable();
+  T.setBorderWidth(0.5);
+  T.setBorderColor('#000000');
+
+  var W = [25, 52, 170, 55, 55, 70, 90];
+  var headers = ['ลำดับ', 'รหัสวิชา', 'ชื่อวิชา', 'ประเภท', 'จำนวน\nชั่วโมง', 'คะแนน\nที่ได้', 'ระดับผล\nการเรียน'];
+  var hr = T.appendTableRow();
+  headers.forEach(function(h, i) {
+    _opr_cell(hr.appendTableCell(h), W[i], FS_H, true, HDR_BG, (i === 2 ? LEFT : null));
+  });
+
+  var fmtAct = function(txt) {
+    if (!txt) return 'มผ';
+    var s = String(txt).trim();
+    if (s === 'ผ่าน' || s === 'ผ') return 'ผ';
+    if (s === 'ไม่ผ่าน' || s === 'มผ') return 'มผ';
+    if (!isNaN(parseFloat(s))) return 'ผ';
+    return s;
+  };
+
+  data.subjects.forEach(function(sub, idx) {
+    var isAct = sub.isActivity || String(sub.type || '').trim().indexOf('กิจกรรม') !== -1;
+    var row = T.appendTableRow();
+    var vals = [
+      String(idx + 1),
+      sub.code || '',
+      sub.name || '',
+      sub.type || '',
+      String(sub.hours || ''),
+      sub.score ? String(sub.score) : '',
+      isAct ? fmtAct(sub.grade) : (sub.grade || '')
+    ];
+    vals.forEach(function(val, i) {
+      _opr_cell(row.appendTableCell(val), W[i], FS_D, (i >= 5), null, (i === 2 ? LEFT : null));
+    });
+  });
+
+  // === สรุปผลการประเมิน (หัว 1 คอลัมน์ + ข้อมูล 4 คอลัมน์) ===
+  var shT = body.appendTable();
+  shT.setBorderWidth(0.5);
+  shT.setBorderColor('#000000');
+  var shR = shT.appendTableRow();
+  _opr_cell(shR.appendTableCell('สรุปผลการประเมิน'), 517, 13, true, HDR_BG);
+
+  var SW = [170, 60, 220, 67];
+  var sT = body.appendTable();
+  sT.setBorderWidth(0.5);
+  sT.setBorderColor('#000000');
+
+  var charRes = (data.assessments.character && data.assessments.character.result) || '-';
+  var readRes = (data.assessments.reading && data.assessments.reading.result) || '-';
+  var actRes = fmtAct(data.assessments.activities && data.assessments.activities.result);
+
+  var sumRows = [
+    ['จำนวนหน่วยกิต/น้ำหนักวิชาพื้นฐาน:', String(data.gpaInfo.basicCredits || '0'), 'ผลการประเมินคุณลักษณะอันพึงประสงค์:', charRes],
+    ['จำนวนหน่วยกิต/น้ำหนักวิชาเพิ่มเติม:', String(data.gpaInfo.additionalCredits || '0'), 'ผลการประเมินการอ่าน คิดวิเคราะห์ และเขียน:', readRes],
+    ['รวมจำนวนหน่วยกิต/น้ำหนัก:', String(data.gpaInfo.totalCredits || '0'), 'ผลการประเมินกิจกรรมพัฒนาผู้เรียน:', actRes],
+    ['ระดับผลการเรียนเฉลี่ย (GPA):', String(data.gpaInfo.gpa || '0.00'), '', '']
+  ];
+  sumRows.forEach(function(rd) {
+    var r = sT.appendTableRow();
+    rd.forEach(function(val, i) {
+      _opr_cell(r.appendTableCell(val), SW[i], 11, (i === 1 || i === 3), null, LEFT);
+    });
+  });
+
+  // === ความคิดเห็นของครูประจำชั้น ===
+  var cmtH = body.appendParagraph('ความคิดเห็นของครูประจำชั้น / ครูที่ปรึกษา:');
+  cmtH.editAsText().setBold(true).setFontSize(12).setFontFamily(F);
+  cmtH.setSpacingAfter(1).setSpacingBefore(6);
+
+  var cmtText = data.teacherComment && data.teacherComment !== '-' ? data.teacherComment : '..........................................................................................................................................................................................';
+  var cmtP = body.appendParagraph(cmtText);
+  cmtP.editAsText().setBold(false).setFontSize(12).setFontFamily(F);
+  cmtP.setSpacingAfter(4).setSpacingBefore(0);
+
+  // === ลายเซ็น 3 คอลัมน์ (ไม่มีเส้นกรอบ) ===
+  var sigT = body.appendTable();
+  sigT.setBorderWidth(0);
+  var SgW = [173, 172, 172];
+
+  var tName = (data.homeroomTeacher && data.homeroomTeacher !== '...') ? data.homeroomTeacher : '';
+  var nm1 = tName ? '(' + tName + ')' : '(.................................)';
+  var nm2 = data.principalName ? '(' + data.principalName + ')' : '(.................................)';
+
+  var signData = [
+    ['ลงชื่อ..................................', nm1, 'ครูที่ปรึกษา'],
+    ['ลงชื่อ..................................', nm2, 'ผู้บริหารสถานศึกษา'],
+    ['ลงชื่อ..................................', '(.................................)', 'ผู้ปกครอง']
+  ];
+  var sr = sigT.appendTableRow();
+  signData.forEach(function(lines, ci) {
+    var c = sr.appendTableCell(lines[0]);
+    c.setWidth(SgW[ci]);
+    c.setPaddingTop(6).setPaddingBottom(2).setPaddingLeft(2).setPaddingRight(2);
+    var p0 = c.getChild(0).asParagraph();
+    p0.setAlignment(CENTER);
+    p0.setSpacingAfter(0).setSpacingBefore(0);
+    p0.editAsText().setFontSize(12).setFontFamily(F);
+    var p1 = c.appendParagraph(lines[1]);
+    p1.setAlignment(CENTER);
+    p1.setSpacingAfter(0).setSpacingBefore(0);
+    p1.editAsText().setFontSize(12).setFontFamily(F);
+    var p2 = c.appendParagraph(lines[2]);
+    p2.setAlignment(CENTER);
+    p2.setSpacingAfter(0).setSpacingBefore(0);
+    p2.editAsText().setFontSize(12).setFontFamily(F);
+  });
+
+  // === Export PDF ===
+  doc.saveAndClose();
+  var docId = doc.getId();
+  var docFile = DriveApp.getFileById(docId);
+  var pdfBlob = docFile.getAs('application/pdf');
+  pdfBlob.setName(data.fileName);
+  docFile.setTrashed(true);
+
+  return pdfBlob;
+}
+
+/**
+ * ฟังก์ชันสร้าง PDF รายงานรายบุคคล (ปพ.6) - ใช้ Google Docs (ฟอนต์ Sarabun)
  */
 function generatePp6PDFComplete(studentId, term = 'both') {
   try {
@@ -878,7 +1048,6 @@ function generatePp6PDFComplete(studentId, term = 'both') {
       throw new Error('ไม่พบการตั้งค่าโรงเรียน');
     }
 
-    const logoDataUrl = _getLogoDataUrl(settings['logoFileId']);
     const allStudentsData = _readSheetToObjects('Students');
     const studentMasterData = allStudentsData.find(row => String(row.student_id).trim() === String(studentId).trim());
     
@@ -917,10 +1086,12 @@ function generatePp6PDFComplete(studentId, term = 'both') {
     Logger.log('🔍 PP6 teacher lookup: grade=' + teacherGrade + ', classNo=' + teacherClassNo + ', result=' + homeroomTeacher);
     const teacherComment = typeof getTeacherComment_ === 'function' ? getTeacherComment_(studentId) : '';
 
-    const html = _createPp6ReportHTML({
+    const fileName = `ปพ6_${studentFullName || studentId}_${studentId}_${term}.pdf`;
+
+    const pdfBlob = _pp6_buildDocPdf({
       schoolName: settings['ชื่อโรงเรียน'],
       schoolAddress: settings['ที่อยู่โรงเรียน'],
-      logoDataUrl: logoDataUrl,
+      logoFileId: settings['logoFileId'],
       studentId: studentId,
       studentName: studentFullName,
       grade: grade,
@@ -932,17 +1103,13 @@ function generatePp6PDFComplete(studentId, term = 'both') {
       principalName: settings['ชื่อผู้อำนวยการ'],
       homeroomTeacher: homeroomTeacher,
       teacherComment: teacherComment,
-      academicYear: settings['ปีการศึกษา'] || new Date().getFullYear() + 543
+      academicYear: settings['ปีการศึกษา'] || new Date().getFullYear() + 543,
+      fileName: fileName
     });
-
-    const fileName = `ปพ6_${studentFullName || studentId}_${studentId}_${term}.pdf`;
-    const pdfBlob = HtmlService.createHtmlOutput(html)
-                               .getAs('application/pdf')
-                               .setName(fileName);
     
     const folder = getOutputFolder_();
     const file = folder.createFile(pdfBlob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    try { file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch(shareErr) { Logger.log('setSharing skipped: ' + shareErr.message); }
     
     _savePDFCache(cacheKey, file.getId(), fileName);
     Logger.log(`✅ PP6 PDF generated: ${fileName}`);
@@ -964,14 +1131,6 @@ function generatePp6PDFCompleteNoDrive(studentId, term = 'both') {
     const settings = getWebAppSettings();
     if (!settings['ชื่อโรงเรียน']) {
       throw new Error('ไม่พบการตั้งค่าโรงเรียน');
-    }
-
-    let logoDataUrl = '';
-    try {
-      const logoFileId = settings['logoFileId'];
-      if (logoFileId) logoDataUrl = _getLogoDataUrl(logoFileId) || '';
-    } catch (_) {
-      logoDataUrl = '';
     }
 
     const allStudentsData = _readSheetToObjects('Students');
@@ -1004,10 +1163,12 @@ function generatePp6PDFCompleteNoDrive(studentId, term = 'both') {
     Logger.log('🔍 PP6 NoDrive teacher lookup: grade=' + teacherGrade + ', classNo=' + teacherClassNo + ', result=' + homeroomTeacher);
     const teacherComment = typeof getTeacherComment_ === 'function' ? getTeacherComment_(studentId) : '';
 
-    const html = _createPp6ReportHTML({
+    const fileName = `ปพ6_${studentFullName || studentId}_${studentId}_${term}.pdf`;
+
+    const pdfBlob = _pp6_buildDocPdf({
       schoolName: settings['ชื่อโรงเรียน'],
       schoolAddress: settings['ที่อยู่โรงเรียน'],
-      logoDataUrl: logoDataUrl,
+      logoFileId: settings['logoFileId'],
       studentId: studentId,
       studentName: studentFullName,
       grade: grade,
@@ -1019,11 +1180,10 @@ function generatePp6PDFCompleteNoDrive(studentId, term = 'both') {
       principalName: settings['ชื่อผู้อำนวยการ'],
       homeroomTeacher: homeroomTeacher,
       teacherComment: teacherComment,
-      academicYear: settings['ปีการศึกษา'] || new Date().getFullYear() + 543
+      academicYear: settings['ปีการศึกษา'] || new Date().getFullYear() + 543,
+      fileName: fileName
     });
 
-    const fileName = `ปพ6_${studentFullName || studentId}_${studentId}_${term}.pdf`;
-    const pdfBlob = HtmlService.createHtmlOutput(html).getAs('application/pdf').setName(fileName);
     const base64 = Utilities.base64Encode(pdfBlob.getBytes());
     return { fileName: fileName, mimeType: 'application/pdf', base64: base64 };
   } catch (error) {
