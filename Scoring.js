@@ -811,10 +811,16 @@ function saveScoreSheetData(sheetName, term, studentScores, fullScores, fullFina
       Logger.log('⚠️ พบนักเรียนตรงกันแค่ ' + matchCount + '/' + studentScores.length + ' คน');
     }
 
+    var skippedStudents = [];
     studentScores.forEach((student, idx) => {
       const studentId = String(student.id || '').trim();
-      // จับคู่ด้วยรหัสนักเรียน ถ้าไม่เจอใช้ลำดับเดิมเป็น fallback
-      const dataRow = idToRowMap[studentId] !== undefined ? idToRowMap[studentId] : (startRow - 1 + idx);
+      // ✅ จับคู่ด้วยรหัสนักเรียนเท่านั้น — ไม่ใช้ fallback ป้องกันคะแนนไปลงผิดคน
+      if (idToRowMap[studentId] === undefined) {
+        Logger.log('⚠️ ข้ามนักเรียน ID=' + studentId + ' ไม่พบในชีต (ไม่ใช้ fallback)');
+        skippedStudents.push(studentId);
+        return; // skip นักเรียนคนนี้
+      }
+      const dataRow = idToRowMap[studentId];
       if (!allData[dataRow]) allData[dataRow] = [];
       var scores = student.scores || [];
 
@@ -862,6 +868,11 @@ function saveScoreSheetData(sheetName, term, studentScores, fullScores, fullFina
       allData[dataRow][sheetLayout.yearAvgCol]   = average;
       allData[dataRow][sheetLayout.yearGradeCol] = finalGradeVal;
     });
+
+    // ✅ สรุปผลนักเรียนที่ข้าม
+    if (skippedStudents.length > 0) {
+      Logger.log('⚠️ ข้ามนักเรียน ' + skippedStudents.length + ' คนที่ไม่พบในชีต: ' + skippedStudents.join(', '));
+    }
 
     // === Batch write: เขียนทั้งหมดครั้งเดียว ===
     const numCols = allData[0].length;
@@ -1250,9 +1261,25 @@ function getSubjectScoreData(subjectName, subjectCode, grade, classNo) {
       throw new Error('ข้อมูลในชีตคะแนนไม่ครบถ้วน');
     }
     
+    // ✅ ตรวจ layout ชีต (15 vs 16 col/term) อัตโนมัติ
+    const sheetLayout = detectSheetLayout_(scoreSheet);
+    Logger.log('📐 getSubjectScoreData layout: ' + sheetLayout.layout + ' for ' + foundSheetName);
+    
     // ดึงข้อมูลพื้นฐาน
     const sheetSubjectCode = data[0][1] || subjectCode;
     const sheetSubjectName = data[1][1] || subjectName;
+    
+    // ✅ ฟังก์ชันดึงคะแนนตาม layout (แทน hardcoded column)
+    function extractTermByLayout(row, cols) {
+      var scores = cols.scoreSlots.map(function(idx) { return idx >= 0 ? (Number(row[idx]) || 0) : 0; });
+      return {
+        scores: scores,
+        midtermScore: Number(row[cols.midTotal]) || 0,
+        finalScore: Number(row[cols.s10]) || 0,
+        totalScore: Number(row[cols.total]) || 0,
+        grade: String(row[cols.grade] || '0')
+      };
+    }
     
     // ดึงข้อมูลนักเรียนและคะแนน
     const students = [];
@@ -1267,10 +1294,10 @@ function getSubjectScoreData(subjectName, subjectCode, grade, classNo) {
         no: row[0],
         studentId: String(row[1]).trim(),
         name: String(row[2]).trim(),
-        term1: extractTermScores(row, 3, 16),   // คอลัมน์ D-Q
-        term2: extractTermScores(row, 17, 30),  // คอลัมน์ R-AE
-        yearAverage: Number(row[31]) || 0,      // คะแนนเฉลี่ยปี
-        finalGrade: String(row[32] || '0')      // เกรดสุดท้าย
+        term1: extractTermByLayout(row, sheetLayout.term1),
+        term2: extractTermByLayout(row, sheetLayout.term2),
+        yearAverage: Number(row[sheetLayout.yearAvgCol]) || 0,
+        finalGrade: String(row[sheetLayout.yearGradeCol] || '0')
       };
       
       students.push(student);
