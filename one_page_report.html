@@ -32,6 +32,7 @@
   .opr-item:last-child { border-bottom: none; }
   .opr-item input[type=checkbox] { width: 16px; height: 16px; accent-color: #10b981; }
   .opr-item .no { font-weight: 600; color: #64748b; min-width: 28px; text-align: center; font-size: 0.85rem; }
+  .opr-item .sid { font-size: 0.78rem; color: #94a3b8; min-width: 50px; text-align: center; }
   .opr-item .name { font-size: 0.92rem; color: #1e293b; }
   .opr-toolbar { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
   .opr-toolbar .count { font-size: 0.82rem; color: #64748b; margin-left: auto; }
@@ -159,6 +160,7 @@ function oprOnClassSelect() {
     html += '<label class="opr-item">' +
       '<input type="checkbox" class="oprChk" value="'+s.id+'" onchange="oprUpdateCount()">' +
       '<span class="no">'+(i+1)+'</span>' +
+      '<span class="sid">['+s.id+']</span>' +
       '<span class="name">'+s.fullName+'</span>' +
       '</label>';
   });

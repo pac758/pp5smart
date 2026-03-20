@@ -1531,6 +1531,12 @@ AttendanceMonthly.setupEventListeners = function () {
         ['status-none','status-absent','status-leave','status-present'].forEach(cls => span.classList.remove(cls));
         span.classList.add('status-none');
         span.textContent = '';
+        // ⭐ บันทึกการเปลี่ยนแปลงลง changedRecords
+        const studentId = span.dataset.id;
+        const day = span.dataset.day;
+        if (studentId && day) {
+          window.AttendanceMonthly.changedRecords[`${studentId}_${day}`] = 'none';
+        }
         AttendanceMonthly.updateSummaryRow(span.closest('tr'));
       });
       AttendanceMonthly.showStatusMessage('✅ เคลียร์สถานะทั้งหมดแล้ว', 'success');
@@ -1574,6 +1580,12 @@ AttendanceMonthly.setupEventListeners = function () {
         });
         span.classList.add('status-present');
         span.textContent = 'มา';
+       
+        // ⭐ บันทึกการเปลี่ยนแปลงลง changedRecords
+        const studentId = span.dataset.id;
+        if (studentId) {
+          window.AttendanceMonthly.changedRecords[`${studentId}_${day}`] = 'present';
+        }
        
         // อัปเดต summary row
         AttendanceMonthly.updateSummaryRow(span.closest('tr'));
@@ -1963,16 +1975,39 @@ AttendanceMonthly.changeMonth = function (offset) {
       // ✅ ใช้ holidays จาก getSavedAttendance response (ฝังมาจาก server)
       if (saved && saved.holidays && Object.keys(saved.holidays).length > 0) {
         window.AttendanceMonthly.holidaysData = saved.holidays;
-        // console.log('📅 Holidays from getSavedAttendance:', Object.keys(saved.holidays).length);
+      }
+
+      // ✅ รวมนักเรียนจากชีตเช็คชื่อ (กรณี ID ต่างจาก master เช่น นร.เก่า/ใหม่)
+      const savedRecords = saved?.records || {};
+      const sheetStudents = saved?.sheetStudents || [];
+      const masterIdSet = new Set(students.map(s => String(s.id)));
+      let addedFromSheet = 0;
+      sheetStudents.forEach(ss => {
+        if (!masterIdSet.has(String(ss.id))) {
+          students.push({
+            id: String(ss.id),
+            title: '',
+            firstname: ss.name || '',
+            lastname: '',
+            _fromSheet: true
+          });
+          masterIdSet.add(String(ss.id));
+          addedFromSheet++;
+        }
+      });
+      if (addedFromSheet > 0) {
+        students.sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, {numeric: true}));
+        window.AttendanceMonthly.attendanceStudents = students;
       }
 
       AttendanceMonthly.hideStatusMessage();
       AttendanceMonthly.updateMonthDisplay();
       AttendanceMonthly.renderMonthlyHeader(`${monthValue}-01`, window.AttendanceMonthly.holidaysData);
-      AttendanceMonthly.renderMonthlyBody(`${monthValue}-01`, students, window.AttendanceMonthly.holidaysData, saved?.records || {});
+      AttendanceMonthly.renderMonthlyBody(`${monthValue}-01`, students, window.AttendanceMonthly.holidaysData, savedRecords);
       AttendanceMonthly.addDateNavigationButtons();
 
-      AttendanceMonthly.showStatusMessage(`โหลดข้อมูลสำเร็จ - พบนักเรียน ${students.length} คน`, 'success');
+      const extraMsg = addedFromSheet > 0 ? ` (+${addedFromSheet} คนจากชีตเช็คชื่อ)` : '';
+      AttendanceMonthly.showStatusMessage(`โหลดข้อมูลสำเร็จ - พบนักเรียน ${students.length} คน${extraMsg}`, 'success');
       
     } catch (error) {
       // 🆕 ใช้ ErrorHandler
@@ -2000,6 +2035,7 @@ AttendanceMonthly.changeMonth = function (offset) {
     const dayNumberRow = document.getElementById('dayNumberRow');
     const dayNameRow = document.getElementById('dayNameRow');
     const dayControlRow = document.getElementById('dayControlRow');
+    if (!dayNumberRow || !dayNameRow || !dayControlRow) return;
    
     const thaiDays = ['อา','จ','อ','พ','พฤ','ศ','ส'];
    
@@ -2059,6 +2095,7 @@ AttendanceMonthly.changeMonth = function (offset) {
   // ============ RENDER FUNCTIONS ============
   AttendanceMonthly.renderMonthlyBody = function(dateString, students, holidayMap, savedStatus) {
     const tbody = document.getElementById('attendanceBody');
+    if (!tbody) return;
     const fab = document.getElementById('fabSaveContainer');
     if (fab) fab.style.display = (students && students.length > 0) ? 'block' : 'none';
    

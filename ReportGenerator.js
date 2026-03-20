@@ -140,7 +140,7 @@ function getAllStudentDataOptimized() {
 
     Object.keys(result[grade]).forEach(classNo => {
 
-      result[grade][classNo].sort((a, b) => a.id.localeCompare(b.id));
+      result[grade][classNo].sort((a, b) => a.id.localeCompare(b.id, undefined, {numeric: true}));
 
     });
 

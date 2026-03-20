@@ -292,9 +292,7 @@ function _opr_generateSingle(studentId, cache) {
     try {
       var students = getStudentsByClass(student.grade, String(student.classNo));
       students.sort(function(a, b) {
-        var na = (a.title||'') + (a.firstname||'') + ' ' + (a.lastname||'');
-        var nb = (b.title||'') + (b.firstname||'') + ' ' + (b.lastname||'');
-        return na.localeCompare(nb, 'th');
+        return String(a.id||'').localeCompare(String(b.id||''), undefined, {numeric: true});
       });
       cache.classLists[classListKey] = students;
     } catch(e) { cache.classLists[classListKey] = []; }
@@ -533,12 +531,14 @@ function _opr_generateSingle(studentId, cache) {
     var SW = [173, 172, 172];
     var nm1 = tName ? '(' + tName + ')' : '(.................................)';
     var nm2 = '(.................................)';
+    var acHead = (settings && settings['ชื่อหัวหน้างานวิชาการ']) ? settings['ชื่อหัวหน้างานวิชาการ'] : '';
+    var nmAc = acHead ? '(' + acHead + ')' : '(.................................)';
 
     // แยกแต่ละบรรทัดเป็น paragraph แยก เพื่อให้จัด CENTER ทีละบรรทัด
     var signData = [
       ['ลงชื่อ..................................', nm1, 'ครูประจำชั้นคนที่ 1'],
       ['ลงชื่อ..................................', nm2, 'ครูประจำชั้นคนที่ 2'],
-      ['ลงชื่อ..................................', nm1, 'หัวหน้า/รอง ฝ่ายวิชาการ']
+      ['ลงชื่อ..................................', nmAc, 'หัวหน้า/รอง ฝ่ายวิชาการ']
     ];
     var sr = ST.appendTableRow();
     signData.forEach(function(lines, ci) {

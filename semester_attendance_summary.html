@@ -1653,20 +1653,29 @@ function renderMonthlyAttendanceTable(data, grade, classNo, yearDisplay) {
       <table class="table table-bordered modern-table">
         <thead>
           <tr>
-            <th rowspan="2" class="text-center align-middle">ที่</th>
-            <th rowspan="2" class="text-center align-middle">รหัส</th>
-            <th rowspan="2" class="text-center align-middle">ชื่อ-นามสกุล</th>`;
+            <th rowspan="3" class="text-center align-middle">ที่</th>
+            <th rowspan="3" class="text-center align-middle">รหัส</th>
+            <th rowspan="3" class="text-center align-middle">ชื่อ-นามสกุล</th>`;
     
     // หัวตารางเดือน
     data.months.forEach(month => {
     html += `<th class="text-center">${month.shortName}</th>`;
     });
-    html += `<th rowspan="2" class="text-center align-middle bg-light">รวมวันมา/ร้อยละ</th>`;
+    html += `<th rowspan="3" class="text-center align-middle bg-light">รวมวันมา/ร้อยละ</th>`;
     html += `</tr><tr>`;
     
     // แถวย่อยแสดงปี
     data.months.forEach(month => {
     html += `<th class="text-center text-muted" style="font-size: 0.8rem;">${month.year}</th>`;
+    });
+    html += `</tr><tr>`;
+    
+    // แถวย่อยแสดงจำนวนวันเรียนจริง
+    data.months.forEach(month => {
+    const sd = month.schoolDays || 0;
+    html += `<th class="text-center" style="font-size: 0.7rem; padding: 2px;">
+      ${sd > 0 ? '<span class="badge bg-success bg-opacity-75">' + sd + ' วัน</span>' : '<span class="text-muted">-</span>'}
+    </th>`;
     });
     html += `</tr></thead><tbody>`;
     

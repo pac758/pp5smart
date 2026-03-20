@@ -1,4 +1,82 @@
 // ============================================================
+// 🔧 DEBUG: ตรวจสอบข้อมูลเช็คชื่อในชีต vs สิ่งที่ getSavedAttendance ส่งกลับ
+// ============================================================
+function debugAttendanceData() {
+  var grade = 'ป.1', classNo = '1';
+  var thaiMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  var ss = SS();
+  Logger.log('=== DEBUG v4: เปรียบเทียบภาคเรียน 1 vs 2 ===');
+
+  // === 1. หา ป.1/1 IDs จาก Students ===
+  var studentsSheet = ss.getSheetByName('Students');
+  var sData = studentsSheet.getDataRange().getValues();
+  var classMatchIds = new Set();
+  for (var i = 1; i < sData.length; i++) {
+    var sid = String(sData[i][0] || '').trim();
+    var g = String(sData[i][5] || '').trim();
+    var c = String(sData[i][6] || '').trim();
+    if (g === grade && c === classNo && sid) classMatchIds.add(sid);
+  }
+  Logger.log('ป.1/1 IDs from Students: ' + Array.from(classMatchIds).join(', '));
+
+  // === 2. ตรวจหลายเดือน: ภาคเรียน1 + ภาคเรียน2 ===
+  var monthsToCheck = [
+    { y: 2025, m: 5, label: 'มิ.ย.68 (ภาค1)' },   // มิถุนายน2568
+    { y: 2025, m: 7, label: 'ส.ค.68 (ภาค1)' },     // สิงหาคม2568
+    { y: 2025, m: 10, label: 'พ.ย.68 (ภาค2)' },    // พฤศจิกายน2568
+    { y: 2025, m: 11, label: 'ธ.ค.68 (ภาค2)' },    // ธันวาคม2568
+    { y: 2026, m: 0, label: 'ม.ค.69 (ภาค2)' },     // มกราคม2569
+    { y: 2026, m: 2, label: 'มี.ค.69 (ภาค2)' }     // มีนาคม2569
+  ];
+
+  monthsToCheck.forEach(function(mc) {
+    var sheetName = thaiMonths[mc.m] + (mc.y + 543);
+    var sheet = ss.getSheetByName(sheetName);
+    if (!sheet) {
+      Logger.log('❌ ' + mc.label + ' (' + sheetName + '): ไม่พบชีต');
+      return;
+    }
+    var data = sheet.getDataRange().getValues();
+    var totalRows = data.length - 1;
+    var matchCount = 0;
+    var matchedIds = [];
+    var allSheetIds = [];
+    var classSummary = {};
+
+    for (var i = 1; i < data.length; i++) {
+      var rawId = String(data[i][1] || '').trim().match(/^(\d+)/);
+      var sheetId = rawId ? rawId[1] : '';
+      if (!sheetId) continue;
+      allSheetIds.push(sheetId);
+      if (classMatchIds.has(sheetId)) {
+        matchCount++;
+        matchedIds.push(sheetId);
+      }
+      // นับจำนวนนร.แต่ละชั้นจาก Students master
+      var sInfo = null;
+      for (var j = 1; j < sData.length; j++) {
+        if (String(sData[j][0] || '').trim() === sheetId) {
+          sInfo = String(sData[j][5] || '').trim() + '/' + String(sData[j][6] || '').trim();
+          break;
+        }
+      }
+      var key = sInfo || 'ไม่พบใน Students';
+      classSummary[key] = (classSummary[key] || 0) + 1;
+    }
+
+    Logger.log('✅ ' + mc.label + ' (' + sheetName + '): ' + totalRows + ' นร., ป.1/1 match=' + matchCount + ' IDs=' + matchedIds.join(','));
+    // แสดงจำนวนนร.แต่ละชั้นที่อยู่ในชีตนี้
+    var summaryParts = [];
+    Object.keys(classSummary).sort().forEach(function(k) {
+      summaryParts.push(k + ':' + classSummary[k]);
+    });
+    Logger.log('   ชั้นในชีต: ' + summaryParts.join(', '));
+  });
+
+  Logger.log('=== END DEBUG v4 ===');
+}
+
+// ============================================================
 // 🔧 CORE FUNCTIONS - อัปเดตให้รองรับระบบปีการศึกษา
 // ============================================================
 // ⚠️ หมายเหตุ: SPREADSHEET_ID และ monthNames ได้ประกาศไว้ใน code.gs แล้ว
@@ -230,48 +308,57 @@ function getSavedAttendance(grade, classNo, year, month) {
     
     Logger.log(`Found ${dateCols.length} date columns:`, dateCols.slice(0, 5));
     
-    // รายชื่อรหัสตามห้อง/ชั้น
-    const students = getStudentsForAttendance(grade, classNo);
-    const studentIdSet = new Set(students.map(s => String(s.id)));
-    Logger.log(`Students in ${grade}/${classNo}:`, Array.from(studentIdSet));
-    
+    // ✅ อ่านชีต Students ทั้งหมด (รวมนร.จำหน่าย/ย้ายออก) เพื่อสร้าง ID → class map
+    const studentsSheet = ss.getSheetByName("Students");
+    const allStudentIdToClass = {}; // map: studentId → {grade, classNo}
+    if (studentsSheet) {
+      const sData = studentsSheet.getDataRange().getValues();
+      for (let i = 1; i < sData.length; i++) {
+        const row = sData[i];
+        const sid = String(row[0] || '').trim();
+        const g = String(row[5] || '').trim();
+        const c = String(row[6] || '').trim();
+        if (sid && g && c) allStudentIdToClass[sid] = { grade: g, classNo: c };
+      }
+    }
+    Logger.log(`All students map (incl. inactive): ${Object.keys(allStudentIdToClass).length} entries`);
+
+    // ✅ หา IDs ที่อยู่ในห้องที่เลือก (จาก master ทั้งหมด)
+    const classMatchIds = new Set();
+    Object.keys(allStudentIdToClass).forEach(sid => {
+      const info = allStudentIdToClass[sid];
+      if (info.grade === grade && info.classNo === classNo) {
+        classMatchIds.add(sid);
+      }
+    });
+    Logger.log(`IDs in ${grade}/${classNo} from full master: ${classMatchIds.size} (sample: ${Array.from(classMatchIds).slice(0,5)})`);
+
+    // ✅ อ่าน records เฉพาะนักเรียนในห้องที่เลือก
     const records = {};
-    
+    const sheetStudents = []; // นักเรียนจากชีตเช็คชื่อที่ตรงห้อง
+    let matchedCount = 0;
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
-      const studentIdCell = String(row[1] || '').trim(); // คอลัมน์ B = รหัสนักเรียน
-      
-      // ดึงรหัสนักเรียนจากเซลล์ (อาจมีข้อความอื่นปนอยู่)
-      const match = studentIdCell.match(/^(\d+)/);
-      const studentId = match ? match[1] : '';
-      
-      if (!studentIdSet.has(studentId)) {
-        continue; // ข้ามถ้าไม่ใช่นักเรียนในชั้น/ห้องที่เลือก
-      }
-      
-      Logger.log(`Processing student ${studentId} (row ${i+1})`);
-      
-      // วนดูแต่ละคอลัมน์วันที่
+      const match = String(row[1] || '').trim().match(/^(\d+)/);
+      const sheetId = match ? match[1] : '';
+      if (!sheetId) continue;
+
+      // ตรวจสอบว่า sheetId อยู่ในห้องที่เลือกหรือไม่
+      if (!classMatchIds.has(sheetId)) continue;
+      matchedCount++;
+      sheetStudents.push({ id: sheetId, name: String(row[2] || '').trim() });
+
       dateCols.forEach(dateCol => {
         const cellValue = String(row[dateCol.col] || '').trim();
-        const key = `${studentId}_${dateCol.day}`;
+        const key = `${sheetId}_${dateCol.day}`;
         
         let normalizedStatus = '';
-        
-        // แก้ไขการแปลงสถานะให้ถูกต้อง
         if (cellValue === 'ข' || cellValue === '0') {
           normalizedStatus = 'absent';
         } else if (cellValue === 'ล' || cellValue.toLowerCase() === 'l') {
           normalizedStatus = 'leave';
         } else if (cellValue === '/' || cellValue === 'ม') {
           normalizedStatus = 'present';
-        } else if (cellValue === '-' || cellValue === '' || cellValue === ' ') {
-          // เครื่องหมาย "-" หรือเซลล์ว่าง = ไม่มีข้อมูล (ไม่ใช่ "มา")
-          normalizedStatus = ''; // ไม่เซ็ตค่าใด ๆ = จะเป็น default
-        } else {
-          // ค่าอื่น ๆ ที่ไม่รู้จัก
-          Logger.log(`Unknown status: "${cellValue}" for ${key}`);
-          normalizedStatus = '';
         }
         
         if (normalizedStatus) {
@@ -280,9 +367,8 @@ function getSavedAttendance(grade, classNo, year, month) {
       });
     }
     
-    Logger.log(`Total records loaded: ${Object.keys(records).length}`);
-    Logger.log(`Sample records:`, Object.entries(records).slice(0, 10));
-    
+    Logger.log(`Matched ${matchedCount} sheet students to ${grade}/${classNo}, records: ${Object.keys(records).length}`);
+
     // ดึงข้อมูลวันหยุดแนบไปด้วย
     let holidays = {};
     try {
@@ -299,7 +385,7 @@ function getSavedAttendance(grade, classNo, year, month) {
       Logger.log('⚠️ Could not load holidays: ' + he.message);
     }
     
-    return { records: records, holidays: holidays };
+    return { records: records, holidays: holidays, sheetStudents: sheetStudents };
     
   } catch (e) {
     Logger.log("Error in getSavedAttendance: " + e.message);
@@ -702,11 +788,25 @@ function saveMonthlyAttendance(payload) {
     const headerRow = sheetData[0];
     const numCols = headerRow.length;
 
-    // Map วัน → colIndex (1-based)
+    // Map วัน → colIndex (0-based) + หาขอบเขตคอลัมน์วันที่
     const dayToCol = {};
+    let firstDayCol = -1, lastDayCol = -1;
     for (let i = 2; i < headerRow.length; i++) {
       const h = String(headerRow[i]).match(/^(\d+)/);
-      if (h) dayToCol[parseInt(h[1])] = i + 1;
+      if (h) {
+        dayToCol[parseInt(h[1])] = i; // 0-based index
+        if (firstDayCol === -1) firstDayCol = i;
+        lastDayCol = i;
+      }
+    }
+
+    // หาคอลัมน์สรุป มา/ลา/ขาด
+    let idxPresent = -1, idxLeave = -1, idxAbsent = -1;
+    for (let i = 0; i < headerRow.length; i++) {
+      const ht = String(headerRow[i] || '').trim();
+      if ((ht === 'มา' || ht.startsWith('มา')) && idxPresent === -1) idxPresent = i;
+      else if ((ht === 'ลา' || ht.startsWith('ลา')) && idxLeave === -1) idxLeave = i;
+      else if ((ht === 'ขาด' || ht.startsWith('ขาด')) && idxAbsent === -1) idxAbsent = i;
     }
 
     // Map studentId → index ใน sheetData (0-based ใน sheetData)
@@ -733,10 +833,10 @@ function saveMonthlyAttendance(payload) {
         const newRow = new Array(numCols).fill('');
         newRow[1] = studentId;
         newRow[2] = `${student.title || ''}${student.firstname} ${student.lastname}`.trim();
-        dataIdx = sheetData.length + newRows.length;
+        sheetData.push(newRow);
+        dataIdx = sheetData.length - 1; // index ของแถวที่เพิ่งเพิ่ม
         newRows.push(newRow);
         studentRowMap.set(studentId, dataIdx);
-        sheetData.push(newRow); // เพิ่มใน memory ด้วยเพื่อให้ record loop ด้านล่างเข้าถึงได้
       }
 
       // ใช้ in-memory sheetData แทน getValue/setValue ทีละ cell
@@ -744,29 +844,46 @@ function saveMonthlyAttendance(payload) {
         const [rid, day] = key.split('_');
         if (rid !== studentId) return;
         const status = records[key];
-        const colIndex = dayToCol[parseInt(day)]; // 1-based
-        if (!colIndex || !status) return;
+        const colIndex = dayToCol[parseInt(day)]; // 0-based
+        if (colIndex === undefined || !status) return;
         const symbol = statusMap[status];
         if (!symbol) return;
-        if (sheetData[dataIdx][colIndex - 1] !== symbol) {
-          sheetData[dataIdx][colIndex - 1] = symbol;
+        if (sheetData[dataIdx][colIndex] !== symbol) {
+          sheetData[dataIdx][colIndex] = symbol;
           updateCount++;
         }
       });
     });
 
+    // ✅ เขียนสูตร COUNTIF กลับทุกแถว (ป้องกันสูตรหาย)
+    if (firstDayCol > -1 && lastDayCol > -1 && idxPresent > -1 && idxLeave > -1 && idxAbsent > -1) {
+      const startCol = columnNumberToLetter(firstDayCol + 1);
+      const endCol = columnNumberToLetter(lastDayCol + 1);
+      for (let i = 1; i < sheetData.length; i++) {
+        const rowNum = i + 1;
+        const rangeForRow = `${startCol}${rowNum}:${endCol}${rowNum}`;
+        sheetData[i][idxPresent] = `=COUNTIF(${rangeForRow},"/")`;
+        sheetData[i][idxLeave] = `=COUNTIF(${rangeForRow},"ล")`;
+        sheetData[i][idxAbsent] = `=COUNTIF(${rangeForRow},"ข")`;
+      }
+    }
+
     // === Batch write ===
     const existingRows = sheetData.length - newRows.length;
     if (existingRows > 1) {
-      // เขียนข้อมูลเดิม (rows 2+) ครั้งเดียว
       sheet.getRange(2, 1, existingRows - 1, numCols)
            .setValues(sheetData.slice(1, existingRows));
     }
     if (newRows.length > 0) {
-      // append แถวใหม่ทีเดียว
-      const startRow = sheet.getLastRow() + 1;
+      if (sheetData.length > sheet.getLastRow()) {
+        const rowsToAdd = sheetData.length - sheet.getLastRow();
+        sheet.insertRows(sheet.getLastRow() + 1, rowsToAdd);
+      }
+      const startRow = existingRows + 1;
       sheet.getRange(startRow, 1, newRows.length, numCols).setValues(newRows);
     }
+
+    SpreadsheetApp.flush();
 
     Logger.log(`saveMonthlyAttendance เสร็จ: อัปเดต ${updateCount} ช่อง, เพิ่มใหม่ ${newRows.length} แถว`);
     return { message: `บันทึกข้อมูลสำเร็จ (อัปเดต ${updateCount} ช่อง)` };
@@ -805,7 +922,23 @@ function saveMonthlyAttendanceOptimized(payload) {
     const MONTH_NAMES_TH = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
 const monthName = `${MONTH_NAMES_TH[month]}${year + 543}`;
     let sheet = ss.getSheetByName(monthName);
-    if (!sheet) throw new Error(`ไม่พบชีต ${monthName}`);
+
+    // ✅ สร้างชีตใหม่ถ้ายังไม่มี (แทนที่จะ throw error)
+    if (!sheet) {
+      Logger.log(`📄 ไม่พบชีต ${monthName} — กำลังสร้างใหม่...`);
+      sheet = ss.insertSheet(monthName);
+      const daysInMonthForHeader = new Date(year, month + 1, 0).getDate();
+      const thaiWeekdaysShort = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+      const hdr = ["เลขที่", "รหัส", "ชื่อ-สกุล"];
+      for (let d = 1; d <= daysInMonthForHeader; d++) {
+        const dt = new Date(year, month, d);
+        hdr.push(`${d} ${thaiWeekdaysShort[dt.getDay()]}`);
+      }
+      hdr.push("มา", "ลา", "ขาด");
+      sheet.appendRow(hdr);
+      sheet.getRange(1, 1, 1, hdr.length).setFontWeight("bold");
+      Logger.log(`✅ สร้างชีต ${monthName} สำเร็จ (${hdr.length} คอลัมน์)`);
+    }
 
     const studentsFromMaster = getStudentsForAttendance(grade, classNo);
     if (studentsFromMaster.length === 0) {
@@ -1352,12 +1485,7 @@ function exportSemesterAttendancePDF(grade, classNo, semester, academicYear) {
       .setName(`สรุปภาคเรียนที่${semester}_${grade}_ห้อง${classNo}_ปี${academicYear}.pdf`)
       .getAs('application/pdf');
     
-    const folderName = "AttendancePDFs";
-    let folder, folders = DriveApp.getFoldersByName(folderName);
-    if (folders.hasNext()) folder = folders.next();
-    else folder = DriveApp.createFolder(folderName);
-    
-    const file = folder.createFile(blob);
+    const file = DriveApp.createFile(blob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     
     return file.getUrl();
@@ -1603,16 +1731,7 @@ function exportStudentAttendancePDF(grade, classNo, studentId, academicYear) {
       .getAs('application/pdf');
     
     // บันทึกลง Drive
-    const folderName = "AttendancePDFs";
-    let folder;
-    const folders = DriveApp.getFoldersByName(folderName);
-    if (folders.hasNext()) {
-      folder = folders.next();
-    } else {
-      folder = DriveApp.createFolder(folderName);
-    }
-    
-    const file = folder.createFile(blob);
+    const file = DriveApp.createFile(blob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     
     Logger.log(`✅ Student PDF created: ${file.getUrl()}`);
@@ -2695,16 +2814,7 @@ function exportAcademicYearZIP(grade, classNo, academicYearBE) {
     const zipBlob = Utilities.zip(pdfBlobs, `รายงานการเข้าเรียน_${grade}_ห้อง${classNo}_ปีการศึกษา${academicYearBE}.zip`);
     
     // บันทึกลง Google Drive
-    const folderName = "AttendancePDFs";
-    let folder;
-    const folders = DriveApp.getFoldersByName(folderName);
-    if (folders.hasNext()) {
-      folder = folders.next();
-    } else {
-      folder = DriveApp.createFolder(folderName);
-    }
-    
-    const zipFile = folder.createFile(zipBlob);
+    const zipFile = DriveApp.createFile(zipBlob);
     zipFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     
     // สร้างรายงานสรุป
@@ -2841,16 +2951,7 @@ function exportMonthlyAttendancePDF(grade, classNo, yearCE, month) {
       .setName(`รายงานรายเดือน_${grade}_ห้อง${classNo}_${monthName}${yearBE}_${semester}.pdf`)
       .getAs('application/pdf');
     
-    const folderName = "AttendancePDFs";
-    let folder;
-    const folders = DriveApp.getFoldersByName(folderName);
-    if (folders.hasNext()) {
-      folder = folders.next();
-    } else {
-      folder = DriveApp.createFolder(folderName);
-    }
-    
-    const file = folder.createFile(blob);
+    const file = DriveApp.createFile(blob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     
     Logger.log(`✅ Monthly PDF created: ${file.getUrl()}`);
@@ -2884,16 +2985,7 @@ function exportYearlyAttendancePDF(grade, classNo, academicYear) {
       .setName(`รายงานสรุปการมาเรียน_${grade}_ห้อง${classNo}_ปี${academicYear}.pdf`)
       .getAs('application/pdf');
     
-    const folderName = "AttendancePDFs";
-    let folder;
-    const folders = DriveApp.getFoldersByName(folderName);
-    if (folders.hasNext()) {
-      folder = folders.next();
-    } else {
-      folder = DriveApp.createFolder(folderName);
-    }
-    
-    const file = folder.createFile(blob);
+    const file = DriveApp.createFile(blob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     
     Logger.log(`✅ Yearly PDF created successfully: ${file.getUrl()}`);
@@ -3023,16 +3115,7 @@ function createEmptyMonthPDF(grade, classNo, year, month) {
       .setName(`รายงานรายเดือน_${grade}_ห้อง${classNo}_${monthName}${yearBE}_ไม่มีข้อมูล.pdf`)
       .getAs('application/pdf');
     
-    const folderName = "AttendancePDFs";
-    let folder;
-    const folders = DriveApp.getFoldersByName(folderName);
-    if (folders.hasNext()) {
-      folder = folders.next();
-    } else {
-      folder = DriveApp.createFolder(folderName);
-    }
-    
-    const file = folder.createFile(blob);
+    const file = DriveApp.createFile(blob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     
     return file.getUrl();
@@ -3409,16 +3492,7 @@ function createZipFromResults(grade, classNo, academicYear, successResults) {
     const zipBlob = Utilities.zip(blobs, `รายงานการเข้าเรียน_${grade}_ห้อง${classNo}_ปีการศึกษา${academicYear}.zip`);
     
     // บันทึกลง Google Drive
-    const folderName = "AttendancePDFs";
-    let folder;
-    const folders = DriveApp.getFoldersByName(folderName);
-    if (folders.hasNext()) {
-      folder = folders.next();
-    } else {
-      folder = DriveApp.createFolder(folderName);
-    }
-    
-    const zipFile = folder.createFile(zipBlob);
+    const zipFile = DriveApp.createFile(zipBlob);
     zipFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     
     Logger.log(`✅ ZIP created successfully with ${blobs.length} files: ${zipFile.getUrl()}`);
@@ -4966,16 +5040,7 @@ function exportAttendanceChecklistPDF(grade, classNo, year, month) {
     const pdfBlob = response.getBlob().setName(`ตารางเช็คชื่อ_${grade}_ห้อง${classNo}_${monthName}${yearBE}.pdf`);
     
     // บันทึก PDF
-    const folderName = "AttendancePDFs";
-    let folder;
-    const folders = DriveApp.getFoldersByName(folderName);
-    if (folders.hasNext()) {
-      folder = folders.next();
-    } else {
-      folder = DriveApp.createFolder(folderName);
-    }
-    
-    const pdfFile = folder.createFile(pdfBlob);
+    const pdfFile = DriveApp.createFile(pdfBlob);
     pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     
     // ลบ Spreadsheet ชั่วคราว
@@ -5395,16 +5460,7 @@ function exportAcademicYearChecklistZIP(grade, classNo, academicYearBE) {
     const zipBlob = Utilities.zip(pdfBlobs, `ตารางเช็คชื่อ_${grade}_ห้อง${classNo}_ปีการศึกษา${academicYearBE}.zip`);
     
     // บันทึกลง Google Drive
-    const folderName = "AttendancePDFs";
-    let folder;
-    const folders = DriveApp.getFoldersByName(folderName);
-    if (folders.hasNext()) {
-      folder = folders.next();
-    } else {
-      folder = DriveApp.createFolder(folderName);
-    }
-    
-    const zipFile = folder.createFile(zipBlob);
+    const zipFile = DriveApp.createFile(zipBlob);
     zipFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     
     Logger.log(`✅ Real checklist ZIP export completed: ${results.length}/${academicMonths.length} successful`);
@@ -5676,17 +5732,34 @@ function getMonthlyAttendanceMatrix(grade, classNo, academicYear) {
         const leaveColIdx = headers.findIndex(h => String(h).startsWith("ลา"));
         const absentColIdx = headers.findIndex(h => String(h).startsWith("ขาด"));
         
-        // ตรวจสอบว่ามีคอลัมน์สรุปหรือไม่
-        if ([idColIdx, presentColIdx, leaveColIdx, absentColIdx].includes(-1)) {
-          Logger.log(`ชีต ${month.sheetName} ไม่มีคอลัมน์สรุป (มา/ลา/ขาด), ข้ามไป`);
-          studentMap.forEach(student => {
-            student.monthlyData[month.key] = 0;
-          });
-          return;
-        }
-        
-        // 5. วนลูปประมวลผลข้อมูลในหน่วยความจำ
-        for (let i = 1; i < data.length; i++) {
+         // ตรวจสอบว่ามีคอลัมน์สรุปหรือไม่
+        if ([idColIdx, presentColIdx, leaveColIdx, absentColIdx].includes(-1)) {
+          Logger.log(`ชีต ${month.sheetName} ไม่มีคอลัมน์สรุป (มา/ลา/ขาด), ข้ามไป`);
+          studentMap.forEach(student => {
+            student.monthlyData[month.key] = 0;
+          });
+          return;
+        }
+        
+        // คำนวณจำนวนวันเรียนจริง (นับวันที่มีข้อมูลเช็คชื่ออย่างน้อย 1 คน)
+        const dateCols = headers.map((h, i) => {
+          const m = String(h).match(/^(\d{1,2})/);
+          return m ? { col: i, day: parseInt(m[1]) } : null;
+        }).filter(Boolean);
+        
+        const schoolDaysSet = new Set();
+        for (let i = 1; i < data.length; i++) {
+          dateCols.forEach(dc => {
+            const v = String(data[i][dc.col] || '').trim();
+            if (v === '/' || v === 'ม' || v === 'ล' || v === 'ข' || v === '0' || v === '1' || v.toLowerCase() === 'l') {
+              schoolDaysSet.add(dc.day);
+            }
+          });
+        }
+        month.schoolDays = schoolDaysSet.size;
+        
+        // 5. วนลูปประมวลผลข้อมูลในหน่วยความจำ
+        for (let i = 1; i < data.length; i++) {
           const row = data[i];
           const studentIdMatch = String(row[idColIdx] || '').match(/^(\d+)/);
           const studentId = studentIdMatch ? studentIdMatch[1] : null;
@@ -6346,11 +6419,7 @@ function exportMonthlyAttendanceMatrixPDF(grade, classNo, academicYear) {
     }
     const html = createMonthlyAttendanceMatrixHTML(data, grade, classNo, academicYear);
     const blob = HtmlService.createHtmlOutput(html).getBlob().setName('Attendance.pdf').getAs('application/pdf');
-    const folderName = 'AttendancePDFs';
-    let folder;
-    const folders = DriveApp.getFoldersByName(folderName);
-    if (folders.hasNext()) { folder = folders.next(); } else { folder = DriveApp.createFolder(folderName); }
-    const file = folder.createFile(blob);
+    const file = DriveApp.createFile(blob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     return file.getUrl();
   } catch (error) {

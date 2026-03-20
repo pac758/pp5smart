@@ -1146,37 +1146,70 @@ function exportProjectAsZip(token) {
 
     var settings = S_getGlobalSettings(false) || {};
     var schoolName = settings['ชื่อโรงเรียน'] || 'โรงเรียนต้นแบบ';
-
-    // ใช้ /copy link ของ spreadsheet ต้นฉบับ เพื่อให้ bound script ติดไปด้วย
-    // (DriveApp.makeCopy ไม่ copy bound script — ต้องใช้ /copy จาก UI เท่านั้น)
     var ssId = getSpreadsheetId_();
-    var copyUrl = 'https://docs.google.com/spreadsheets/d/' + ssId + '/copy';
+    var props = PropertiesService.getScriptProperties();
 
-    // ตั้งสิทธิ์ชั่วคราวให้คนที่มีลิงก์เปิดได้ (จำเป็นสำหรับ /copy)
-    var sharingNote = '';
-    try {
-      var file = DriveApp.getFileById(ssId);
-      var access = file.getSharingAccess();
-      if (access !== DriveApp.Access.ANYONE_WITH_LINK && access !== DriveApp.Access.ANYONE) {
-        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-        sharingNote = 'เปิดสิทธิ์แชร์ลิงก์ชั่วคราวแล้ว — หลังจากโรงเรียนอื่นทำสำเนาเสร็จ แนะนำให้ปิดสิทธิ์คืน';
+    // ---- หา template ID จาก ScriptProperties หรือใช้ค่าเริ่มต้น (ไม่เรียก DriveApp) ----
+    var HARDCODED_TEMPLATE_ID = '1KDhoNNzAqwvbNcbpMFVa5xXgo081Xc8W4U6ieaKAsqg';
+    var templateId = String(props.getProperty('EXPORT_TEMPLATE_READY_ID') || '').trim()
+                  || String(props.getProperty('PENDING_EXPORT_TEMPLATE_ID') || '').trim()
+                  || HARDCODED_TEMPLATE_ID;
+
+    if (templateId) {
+      // มี template อยู่แล้ว — ใช้ซ้ำได้เลย (ไม่ต้อง verify ด้วย DriveApp)
+      var copyUrl = 'https://docs.google.com/spreadsheets/d/' + templateId + '/copy';
+
+      // ถ้ายังไม่เคย mark ready → mark ให้เลย
+      if (!String(props.getProperty('EXPORT_TEMPLATE_READY_ID') || '').trim()) {
+        try { props.setProperty('EXPORT_TEMPLATE_READY_ID', templateId); } catch(_e) {}
       }
+
+      return {
+        success: true,
+        copyUrl: copyUrl,
+        activeSpreadsheetId: ssId,
+        templateId: templateId,
+        warning: '',
+        sanitized: true,
+        excludedData: ['ข้อมูลนักเรียน', 'ผู้ใช้', 'คะแนน', 'เช็คชื่อ', 'ชีตคะแนนรายวิชา'],
+        schoolName: schoolName,
+        steps: [
+          'ขั้นที่ 1: ส่งลิงก์ให้โรงเรียนอื่น → กดลิงก์ → กด "ทำสำเนา" → ได้ Spreadsheet + โค้ดทั้งหมด',
+          'ขั้นที่ 2: เปิดสำเนา → ส่วนขยาย → Apps Script → รัน debugSetupStatus (อนุญาตสิทธิ์) → Deploy → New deployment → Web app → Execute as: Me, Who: Anyone → Deploy',
+          'ขั้นที่ 3: เปิด Web App URL → ระบบจะแสดงหน้าติดตั้ง → กรอกข้อมูลโรงเรียน → เสร็จ!'
+        ],
+        _codeVersion: 'v202_stable_template',
+        message: 'สร้างลิงก์ส่งออกสำเร็จ (ข้อมูลสะอาด + Script พร้อม)'
+      };
+    }
+
+    // ---- ยังไม่มี template → สร้าง clean copy ใหม่ (ต้องใช้ DriveApp) ----
+    var newTemplateId = createExportTemplateForOtherSchools_(ssId, schoolName);
+
+    try { props.setProperty('PENDING_EXPORT_TEMPLATE_ID', newTemplateId); } catch(_e) {}
+    try {
+      DriveApp.getFileById(newTemplateId).setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.EDIT);
     } catch(_e) {}
 
+    var copyUrl = 'https://docs.google.com/spreadsheets/d/' + newTemplateId + '/copy';
     return {
       success: true,
       copyUrl: copyUrl,
       activeSpreadsheetId: ssId,
-      warning: sharingNote,
+      templateId: newTemplateId,
+      needsScriptSetup: true,
+      warning: '⚠️ Template ใหม่สร้างแล้ว — ต้องผูก Script อีก 1 ครั้ง',
       sanitized: true,
       excludedData: ['ข้อมูลนักเรียน', 'ผู้ใช้', 'คะแนน', 'เช็คชื่อ', 'ชีตคะแนนรายวิชา'],
       schoolName: schoolName,
       steps: [
+        'ขั้นที่ 0 (ทำครั้งเดียว): เปิด Template → ส่วนขยาย → Apps Script → สร้างโครงการ → แจ้ง Script ID ให้ผู้พัฒนา push โค้ด',
         'ขั้นที่ 1: ส่งลิงก์ให้โรงเรียนอื่น → กดลิงก์ → กด "ทำสำเนา" → ได้ Spreadsheet + โค้ดทั้งหมด',
         'ขั้นที่ 2: เปิดสำเนา → ส่วนขยาย → Apps Script → รัน debugSetupStatus (อนุญาตสิทธิ์) → Deploy → New deployment → Web app → Execute as: Me, Who: Anyone → Deploy',
-        'ขั้นที่ 3: เปิด Web App URL → ระบบจะล้างข้อมูลเก่าอัตโนมัติ + แสดงหน้าติดตั้ง → กรอกข้อมูลโรงเรียน → เสร็จ!'
+        'ขั้นที่ 3: เปิด Web App URL → ระบบจะแสดงหน้าติดตั้ง → กรอกข้อมูลโรงเรียน → เสร็จ!'
       ],
-      message: 'สร้างลิงก์ส่งออกสำเร็จ (ลิงก์ทำสำเนาพร้อม Script)'
+      _codeVersion: 'v202_stable_template',
+      message: 'สร้าง Template สำเร็จ — ต้องผูก Script อีก 1 ครั้ง'
     };
 
   } catch (e) {
@@ -1242,7 +1275,7 @@ function createExportTemplateForOtherSchools_(activeSpreadsheetId, schoolName) {
   } catch(_e) {}
 
   var copiedFile = targetFolder ? sourceFile.makeCopy(exportName, targetFolder) : sourceFile.makeCopy(exportName);
-  copiedFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  copiedFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.EDIT);
 
   var ss = SpreadsheetApp.openById(copiedFile.getId());
   sanitizeExportTemplateSpreadsheet_(ss);
