@@ -871,6 +871,7 @@ function generatePp6PDFComplete(studentId, term = 'both') {
     const gpaInfo = calculateGPAAndRank(studentId, grade, classNo);
     const assessments = getStudentAssessments(studentId);
     const homeroomTeacher = getHomeroomTeacher(grade, classNo);
+    const teacherComment = typeof getTeacherComment_ === 'function' ? getTeacherComment_(studentId) : '';
 
     const html = _createPp6ReportHTML({
       schoolName: settings['ชื่อโรงเรียน'],
@@ -886,6 +887,7 @@ function generatePp6PDFComplete(studentId, term = 'both') {
       assessments: assessments,
       principalName: settings['ชื่อผู้อำนวยการ'],
       homeroomTeacher: homeroomTeacher,
+      teacherComment: teacherComment,
       academicYear: settings['ปีการศึกษา'] || new Date().getFullYear() + 543
     });
 
@@ -898,16 +900,14 @@ function generatePp6PDFComplete(studentId, term = 'both') {
     const file = folder.createFile(pdfBlob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     
-_savePDFCache(cacheKey, file.getId(), fileName);
-Logger.log(`✅ PP6 PDF generated: ${fileName}`);
+    _savePDFCache(cacheKey, file.getId(), fileName);
+    Logger.log(`✅ PP6 PDF generated: ${fileName}`);
 
-const id = file.getId();
-const previewUrl  = `https://drive.google.com/file/d/${id}/preview`;          // ใช้กับ <iframe>
-const downloadUrl = `https://drive.google.com/uc?export=download&id=${id}`;   // ใช้กับปุ่มดาวน์โหลด
+    const id = file.getId();
+    const previewUrl  = `https://drive.google.com/file/d/${id}/preview`;
+    const downloadUrl = `https://drive.google.com/uc?export=download&id=${id}`;
 
-// คืนเป็น "อ็อบเจกต์" เพื่อให้ฝั่งหน้าเว็บเลือกใช้ได้ถูกบริบท
-return { previewUrl, downloadUrl, fileId: id, name: fileName };
-
+    return { previewUrl, downloadUrl, fileId: id, name: fileName };
     
   } catch (error) {
     Logger.log(`❌ Error in generatePp6PDFComplete for student ${studentId}: ${error.message}`);
@@ -920,6 +920,14 @@ function generatePp6PDFCompleteNoDrive(studentId, term = 'both') {
     const settings = getWebAppSettings();
     if (!settings['ชื่อโรงเรียน']) {
       throw new Error('ไม่พบการตั้งค่าโรงเรียน');
+    }
+
+    let logoDataUrl = '';
+    try {
+      const logoFileId = settings['logoFileId'];
+      if (logoFileId) logoDataUrl = _getLogoDataUrl(logoFileId) || '';
+    } catch (_) {
+      logoDataUrl = '';
     }
 
     const allStudentsData = _readSheetToObjects('Students');
@@ -938,26 +946,12 @@ function generatePp6PDFCompleteNoDrive(studentId, term = 'both') {
 
     const grade = studentScoreData['grade'];
     const classNo = studentScoreData['class_no'];
-    if (!grade || !classNo) {
-      throw new Error(`ข้อมูล grade (${grade}) หรือ class_no (${classNo}) ไม่ครบถ้วน`);
-    }
 
     const subjects = getStudentAllSubjectScores(studentId, term);
-    if (!subjects || subjects.length === 0) {
-      throw new Error(`ไม่พบข้อมูลวิชาสำหรับนักเรียน ${studentId}`);
-    }
-
     const gpaInfo = calculateGPAAndRank(studentId, grade, classNo);
     const assessments = getStudentAssessments(studentId);
     const homeroomTeacher = getHomeroomTeacher(grade, classNo);
-
-    let logoDataUrl = '';
-    try {
-      const logoFileId = settings['logoFileId'];
-      if (logoFileId) logoDataUrl = _getLogoDataUrl(logoFileId) || '';
-    } catch (_) {
-      logoDataUrl = '';
-    }
+    const teacherComment = typeof getTeacherComment_ === 'function' ? getTeacherComment_(studentId) : '';
 
     const html = _createPp6ReportHTML({
       schoolName: settings['ชื่อโรงเรียน'],
@@ -973,6 +967,7 @@ function generatePp6PDFCompleteNoDrive(studentId, term = 'both') {
       assessments: assessments,
       principalName: settings['ชื่อผู้อำนวยการ'],
       homeroomTeacher: homeroomTeacher,
+      teacherComment: teacherComment,
       academicYear: settings['ปีการศึกษา'] || new Date().getFullYear() + 543
     });
 
@@ -986,611 +981,13 @@ function generatePp6PDFCompleteNoDrive(studentId, term = 'both') {
   }
 }
 
-// ======== Advanced Cache Functions ========
-
-/**
- * Cache Warming - โหลดข้อมูลล่วงหน้า
- */
-function warmupCache() {
-  const startTime = new Date().getTime();
-  let warmedCount = 0;
-  
-  try {
-    Logger.log('🔥 Starting cache warmup...');
-    
-    // 1. Warm up การตั้งค่าระบบ
-    getWebAppSettingsWithCache();
-    warmedCount++;
-    
-    // 2. Warm up รายวิชาทุกระดับชั้น
-    const grades = ['ป.1', 'ป.2', 'ป.3', 'ป.4', 'ป.5', 'ป.6'];
-    grades.forEach(grade => {
-      getSubjectList(grade);
-      warmedCount++;
-    });
-    
-    // 3. Warm up ข้อมูล SCORES_WAREHOUSE
-    _readSheetToObjects('SCORES_WAREHOUSE');
-    warmedCount++;
-    
-    // 4. Warm up ข้อมูลการประเมิน
-    _readSheetToObjects('การประเมินอ่านคิดเขียน');
-    _readSheetToObjects('การประเมินคุณลักษณะ');
-    _readSheetToObjects('การประเมินกิจกรรมพัฒนาผู้เรียน');
-    warmedCount += 3;
-    
-    const endTime = new Date().getTime();
-    const duration = (endTime - startTime) / 1000;
-    
-    Logger.log(`🔥 Cache warmup completed: ${warmedCount} items in ${duration}s`);
-    return `Cache Warmup เสร็จสิ้น: โหลดข้อมูล ${warmedCount} รายการใน ${duration} วินาที`;
-    
-  } catch (error) {
-    Logger.log('❌ Cache warmup error: ' + error.message);
-    throw new Error('ไม่สามารถ Warmup Cache ได้: ' + error.message);
-  }
-}
-
-/**
- * ดูสถิติ Cache
- */
-function getCacheStatistics() {
-  try {
-    const cache = CacheService.getScriptCache();
-    const stats = {
-      timestamp: new Date().toLocaleString('th-TH'),
-      cacheType: 'Script Cache',
-      limits: {
-        maxSize: '10 MB',
-        maxItemSize: '100 KB', 
-        maxItems: 'ไม่จำกัด',
-        defaultExpiration: '10 นาที'
-      },
-      recommendations: [
-        'ใช้ Cache Warmup เพื่อโหลดข้อมูลล่วงหน้า',
-        'ล้าง Cache เมื่อข้อมูลในชีตมีการเปลี่ยนแปลง',
-        'PDF Cache จะช่วยลดเวลาสร้างรายงานที่เหมือนเดิม',
-        'การตั้งค่าระบบและรายวิชาถูกแคชไว้นานเพราะไม่ค่อยเปลี่ยน'
-      ]
-    };
-    
-    return stats;
-  } catch (error) {
-    Logger.log('Error in getCacheStatistics: ' + error.message);
-    throw new Error('ไม่สามารถดูสถิติ Cache ได้: ' + error.message);
-  }
-}
-
-/**
- * ล้าง Cache เมื่อข้อมูลใน Sheets มีการเปลี่ยนแปลง
- */
-function invalidateCacheAfterDataUpdate(sheetName = null) {
-  try {
-    const cache = CacheService.getScriptCache();
-    let clearedCount = 0;
-    
-    if (sheetName) {
-      // ล้างแคชเฉพาะที่เกี่ยวข้องกับชีตนี้
-      const relatedKeys = [];
-      
-      if (sheetName === 'รายวิชา') {
-        ['ป.1', 'ป.2', 'ป.3', 'ป.4', 'ป.5', 'ป.6'].forEach(grade => {
-          relatedKeys.push(_createCacheKey('subjects', grade));
-        });
-      } else if (sheetName === 'SCORES_WAREHOUSE') {
-        relatedKeys.push(_createCacheKey('sheet', 'SCORES_WAREHOUSE'));
-        // ล้าง PDF cache ทั้งหมด เพราะคะแนนเปลี่ยน
-        Logger.log('🗑️ Clearing PDF cache due to score updates');
-      } else if (sheetName.includes('การประเมิน')) {
-        relatedKeys.push(_createCacheKey('sheet', sheetName));
-      }
-      
-      relatedKeys.forEach(key => {
-        cache.remove(key);
-        clearedCount++;
-      });
-      
-    } else {
-      // ล้างทั้งหมด
-      cache.removeAll();
-      clearedCount = 'ทั้งหมด';
-    }
-    
-    const message = `ล้าง Cache เรียบร้อย: ${clearedCount} รายการ สำหรับ ${sheetName || 'ทุกข้อมูล'}`;
-    Logger.log(`🧹 ${message}`);
-    return message;
-    
-  } catch (error) {
-    Logger.log('Error in invalidateCacheAfterDataUpdate: ' + error.message);
-    throw new Error('ไม่สามารถล้าง Cache ได้: ' + error.message);
-  }
-}
-
-/**
- * ฟังก์ชันเสริมสำหรับ Performance Monitoring
- */
-function measureFunctionPerformance(functionName, ...args) {
-  const startTime = new Date().getTime();
-  
-  try {
-    let result;
-    switch (functionName) {
-      case 'getSubjectList':
-        result = getSubjectList(...args);
-        break;
-      case 'getStudentListForPp6':
-        result = getStudentListForPp6(...args);
-        break;
-      case 'getStudentAssessments':
-        result = getStudentAssessments(...args);
-        break;
-      case 'generatePp6PDFComplete':
-        result = generatePp6PDFComplete(...args);
-        break;
-      default:
-        throw new Error(`ไม่รองรับการวัด performance ของฟังก์ชัน ${functionName}`);
-    }
-    
-    const endTime = new Date().getTime();
-    const duration = endTime - startTime;
-    
-    Logger.log(`⏱️ ${functionName}(${args.join(', ')}) took ${duration}ms`);
-    
-    return {
-      result: result,
-      performance: {
-        duration: duration,
-        timestamp: new Date().toISOString()
-      }
-    };
-    
-  } catch (error) {
-    const endTime = new Date().getTime();
-    const duration = endTime - startTime;
-    
-    Logger.log(`❌ ${functionName}(${args.join(', ')}) failed after ${duration}ms: ${error.message}`);
-    throw error;
-  }
-}
-
-// ======== Warehouse Management Functions ========
-
-/**
- * รีบิลด์คลังคะแนนสำหรับห้องเฉพาะ (เวอร์ชันสมบูรณ์)
- */
-/**
- * รีบิลด์คลังคะแนนสำหรับห้องเฉพาะ (แก้ไขชื่อชีตให้ถูกต้อง)
- */
-function rebuildScoresWarehouseForClass(grade, classNo, academicYear) {
-  try {
-    Logger.log(`🔨 Starting rebuild for ${grade} ห้อง ${classNo}`);
-    
-    const ss = _openSpreadsheet();
-    const warehouseSheet = S_getYearlySheet('SCORES_WAREHOUSE');
-    
-    if (!warehouseSheet) {
-      throw new Error('ไม่พบชีต SCORES_WAREHOUSE สำหรับปีปัจจุบัน');
-    }
-    
-    // สำรอง: คัดลอกชีต SCORES_WAREHOUSE ก่อนแก้ไข
-    // ✅ เก็บ backup เพียง 1 ชีตล่าสุด
-const backupName = 'BACKUP_WAREHOUSE_LATEST';
-
-// ลบ backup เก่าก่อน (ถ้ามี)
-const oldBackup = ss.getSheetByName(backupName);
-if (oldBackup) {
-  ss.deleteSheet(oldBackup);
-  Logger.log(`🗑️ ลบ backup เก่า: ${backupName}`);
-}
-
-// สร้าง backup ใหม่
-warehouseSheet.copyTo(ss).setName(backupName);
-Logger.log(`💾 สร้าง backup ใหม่: ${backupName} (${new Date().toLocaleString('th-TH')})`);
-    
-    // 1. อ่านข้อมูลเดิมทั้งหมด
-    const allData = warehouseSheet.getDataRange().getValues();
-    const headers = allData[0];
-    
-    // 2. กรองเอาข้อมูลชั้นอื่นๆ ออก (เก็บไว้)
-    const otherClassData = [];
-    for (let i = 1; i < allData.length; i++) {
-      const row = allData[i];
-      const gradeColIndex = headers.indexOf('grade');
-      const classColIndex = headers.indexOf('class_no');
-      
-      if (row[gradeColIndex] !== grade || row[classColIndex] != classNo) {
-        otherClassData.push(row);
-      }
-    }
-    
-    Logger.log(`📋 Kept ${otherClassData.length} rows from other classes`);
-    
-    // 3. ดึงรายวิชาของชั้นนี้จากชีต "รายวิชา"
-    const subjects = getSubjectList(grade);
-    Logger.log(`📚 Found ${subjects.length} subjects for ${grade}`);
-    
-    const newRows = [];
-    let successCount = 0;
-    let errorCount = 0;
-    const errorDetails = [];
-    
-    // 4. วนลูปแต่ละวิชา
-    subjects.forEach(subject => {
-      try {
-        // ⭐ แก้ไข: ลบจุดออกจากชื่อชั้น (ป.3 → ป3)
-        const sheetName = `${subject.name} ${grade.replace('.', '')}-${classNo}`;
-        const scoreSheet = ss.getSheetByName(sheetName);
-        
-        if (!scoreSheet) {
-          const error = `ไม่พบชีต: ${sheetName}`;
-          Logger.log(`⚠️ ${error}`);
-          errorDetails.push(error);
-          errorCount++;
-          return;
-        }
-        
-        Logger.log(`✅ Processing: ${sheetName}`);
-        
-        // อ่านข้อมูลจากชีตคะแนน
-        const scoreData = scoreSheet.getDataRange().getValues();
-        
-        if (scoreData.length < 5) {
-          const error = `ชีต ${sheetName} มีข้อมูลไม่ครบ (${scoreData.length} แถว)`;
-          Logger.log(`⚠️ ${error}`);
-          errorDetails.push(error);
-          errorCount++;
-          return;
-        }
-        
-        // ✅ ตรวจ layout ให้ถูก (old15 vs new16) แทน hardcoded index
-        const sl = detectSheetLayout_(scoreSheet);
-        const t1TotalIdx  = sl.term1.total;   // 0-based
-        const t2TotalIdx  = sl.term2.total;   // 0-based
-        const yearAvgIdx  = sl.yearAvgCol;    // 0-based
-        const yearGradeIdx = sl.yearGradeCol; // 0-based
-
-        let studentCount = 0;
-        
-        // แถวที่ 5 (index 4) เป็นต้นไป คือข้อมูลนักเรียน
-        for (let i = 4; i < scoreData.length; i++) {
-          const row = scoreData[i];
-          
-          const studentId = String(row[1] || '').trim(); // Col 1 = รหัสนักเรียน
-          if (!studentId || isNaN(studentId)) {
-            Logger.log(`⚠️ Skip row ${i+1}: รหัสนักเรียนไม่ถูกต้อง (${studentId})`);
-            continue;
-          }
-          
-          const term1Total = parseFloat(row[t1TotalIdx]) || 0;
-          const term2Total = parseFloat(row[t2TotalIdx]) || 0;
-          const rawAvg     = parseFloat(row[yearAvgIdx]);
-          const average    = !isNaN(rawAvg) && rawAvg > 0 ? rawAvg : ((term1Total + term2Total) / 2);
-          
-          // คำนวณ final_grade
-          const gradeInfo = _scoreToGPA(average);
-          
-          // เพิ่มข้อมูลลง warehouse
-          newRows.push([
-            studentId,                    // student_id
-            grade,                        // grade
-            classNo,                      // class_no
-            subject.code,                 // subject_code
-            subject.name,                 // subject_name
-            subject.type,                 // subject_type
-            subject.hours,                // hours
-            term1Total,                   // term1_total
-            term2Total,                   // term2_total
-            average,                      // average
-            gradeInfo.gpa,                // final_grade
-            sheetName,                    // sheet_name
-            academicYear || 2568,         // academic_year
-            new Date()                    // updated_at
-          ]);
-          
-          studentCount++;
-        }
-        
-        Logger.log(`   📝 บันทึก ${studentCount} นักเรียน`);
-        successCount++;
-        
-      } catch (e) {
-        const error = `Error ${subject.name}: ${e.message}`;
-        Logger.log(`❌ ${error}`);
-        errorDetails.push(error);
-        errorCount++;
-      }
-    });
-    
-    // 5. ตรวจสอบว่ามีข้อมูลใหม่หรือไม่
-    if (newRows.length === 0) {
-      throw new Error(
-        `ไม่สามารถดึงคะแนนได้เลย!\n\n` +
-        `ปัญหาที่พบ:\n${errorDetails.join('\n')}\n\n` +
-        `กรุณาตรวจสอบว่า:\n` +
-        `1. ชีตคะแนนมีชื่อถูกต้อง (เช่น "ศิลปะ ป3-1")\n` +
-        `2. ชีตคะแนนมีข้อมูลนักเรียนตั้งแต่แถวที่ 5\n` +
-        `3. คอลัมน์ที่ 1 เป็นรหัสนักเรียน`
-      );
-    }
-    
-    // 6. เขียนข้อมูลกลับลงชีต
-    const finalData = [headers, ...otherClassData, ...newRows];
-    
-    warehouseSheet.clear();
-    if (finalData.length > 0) {
-      warehouseSheet.getRange(1, 1, finalData.length, headers.length)
-                    .setValues(finalData);
-    }
-    
-    // 7. ล้าง cache
-    invalidateCacheAfterDataUpdate('SCORES_WAREHOUSE');
-    
-    const message = `✅ รีบิลด์สำเร็จ: ${grade} ห้อง ${classNo}\n\n` +
-                   `📊 วิชาที่ประมวลผลสำเร็จ: ${successCount}/${subjects.length}\n` +
-                   `📝 นักเรียนที่บันทึก: ${newRows.length} รายการ\n` +
-                   `ปีการศึกษา: ${academicYear || 2568}\n\n` +
-                   (errorCount > 0 ? `⚠️ ข้อผิดพลาด ${errorCount} รายการ:\n${errorDetails.join('\n')}` : '');
-    
-    Logger.log(message);
-    return message;
-    
-  } catch (error) {
-    Logger.log(`❌ Error in rebuildScoresWarehouseForClass: ${error.message}`);
-    throw error;
-  }
-}
-
-/**
- * 9. รีบิลด์คลังคะแนนสำหรับทั้งชั้น (พร้อม Cache Invalidation)
- */
-function rebuildScoresWarehouseForGrade(grade, academicYear) {
-  try {
-    rebuildScoresWarehouseForClass(grade, '1', academicYear);
-    rebuildScoresWarehouseForClass(grade, '2', academicYear);
-    
-    // ล้างแคชที่เกี่ยวข้อง
-    invalidateCacheAfterDataUpdate('SCORES_WAREHOUSE');
-    
-    const message = `รีบิลด์คลังคะแนนทั้งชั้นสำเร็จสำหรับ ${grade} ปีการศึกษา ${academicYear}`;
-    Logger.log(message);
-    return message;
-  } catch (error) {
-    Logger.log('Error in rebuildScoresWarehouseForGrade:', error.message);
-    throw new Error('ไม่สามารถรีบิลด์คลังคะแนนทั้งชั้นได้: ' + error.message);
-  }
-}
-
-/**
- * 10. รีบิลด์คลังคะแนนทั้งหมด (พร้อม Cache Invalidation)
- */
-function rebuildScoresWarehouseAll(academicYear) {
-  try {
-    const grades = ['ป.1', 'ป.2', 'ป.3', 'ป.4', 'ป.5', 'ป.6'];
-    
-    grades.forEach(grade => {
-      rebuildScoresWarehouseForGrade(grade, academicYear);
-    });
-    
-    // ล้างแคชทั้งหมด
-    clearAllCache();
-    
-    const message = `รีบิลด์คลังคะแนนทั้งหมดสำเร็จสำหรับปีการศึกษา ${academicYear}`;
-    Logger.log(message);
-    return message;
-  } catch (error) {
-    Logger.log('Error in rebuildScoresWarehouseAll:', error.message);
-    throw new Error('ไม่สามารถรีบิลด์คลังคะแนนทั้งหมดได้: ' + error.message);
-  }
-}
-
-// ======== HTML Template Functions ========
-
-/**
- * สร้าง HTML Template สำหรับรายงานรายวิชา
- */
-function _createSubjectReportHTML(data) {
-  const { schoolName, logoDataUrl, subjectName, subjectCode, grade, classNo, term, students } = data;
-  
-  // คำนวณสถิติคะแนน
-  const scores = students.map(s => parseFloat(s.average) || 0).filter(score => score > 0);
-  const avgScore = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
-  const maxScore = scores.length ? Math.max(...scores) : 0;
-  const minScore = scores.length ? Math.min(...scores) : 0;
-  
-  const termText = term === 'both' ? 'ทั้งสองภาคเรียน' : `ภาคเรียนที่ ${term}`;
-  
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <style>
-    @page { 
-      size: A4; 
-      margin: 15mm; 
-    }
-    body { 
-      font-family: 'Sarabun', 'TH SarabunPSK', sans-serif; 
-      font-size: 14px; 
-      line-height: 1.4; 
-      color: #333; 
-    }
-    .header { 
-      text-align: center; 
-      margin-bottom: 20px; 
-      border-bottom: 2px solid #4a90e2;
-      padding-bottom: 15px;
-    }
-    .logo { 
-      width: 60px; 
-      height: 60px; 
-      margin-bottom: 10px; 
-    }
-    .school-name { 
-      font-size: 18px; 
-      font-weight: bold; 
-      margin-bottom: 5px; 
-      color: #2c5282;
-    }
-    .report-title { 
-      font-size: 16px; 
-      font-weight: bold; 
-      margin-bottom: 3px;
-    }
-    .report-info { 
-      font-size: 14px; 
-      color: #4a5568;
-    }
-    .info-section { 
-      display: flex; 
-      justify-content: space-between; 
-      margin-bottom: 15px; 
-      background: #f7fafc;
-      padding: 10px;
-      border-radius: 5px;
-    }
-    table { 
-      width: 100%; 
-      border-collapse: collapse; 
-      margin-bottom: 15px; 
-    }
-    th, td { 
-      border: 1px solid #ccc; 
-      padding: 8px; 
-      text-align: center; 
-    }
-    th { 
-      background: #4a90e2; 
-      color: white; 
-      font-weight: bold; 
-    }
-    tr:nth-child(even) { 
-      background: #f8f9fa; 
-    }
-    tr:hover { 
-      background: #e2f4ff; 
-    }
-    .stats-section { 
-      margin-top: 20px; 
-      background: #f0f8ff;
-      padding: 15px;
-      border-radius: 8px;
-    }
-    .stats-title { 
-      font-weight: bold; 
-      margin-bottom: 10px;
-      color: #2c5282;
-    }
-    .stats-grid { 
-      display: grid; 
-      grid-template-columns: repeat(3, 1fr); 
-      gap: 15px; 
-    }
-    .stat-item { 
-      text-align: center; 
-      padding: 10px;
-      background: white;
-      border-radius: 5px;
-      border: 1px solid #e2e8f0;
-    }
-    .stat-value { 
-      font-size: 18px; 
-      font-weight: bold; 
-      color: #2b6cb0; 
-    }
-    .stat-label { 
-      font-size: 12px; 
-      color: #4a5568; 
-    }
-    .footer { 
-      margin-top: 30px; 
-      text-align: center; 
-      font-size: 12px; 
-      color: #666;
-    }
-    .grade-a { color: #22c55e; font-weight: bold; }
-    .grade-b { color: #3b82f6; font-weight: bold; }
-    .grade-c { color: #f59e0b; font-weight: bold; }
-    .grade-f { color: #ef4444; font-weight: bold; }
-  </style>
-</head>
-<body>
-  <div class="header">
-    ${logoDataUrl ? `<img src="${logoDataUrl}" class="logo" alt="โลโก้โรงเรียน">` : ''}
-    <div class="school-name">${schoolName || 'โรงเรียน'}</div>
-    <div class="report-title">รายงานผลการเรียนรายวิชา</div>
-    <div class="report-info">${termText} ปีการศึกษา ${new Date().getFullYear() + 543}</div>
-  </div>
-
-  <div class="info-section">
-    <div><strong>วิชา:</strong> ${subjectName} (${subjectCode})</div>
-    <div><strong>ระดับชั้น:</strong> ${grade} ห้อง ${classNo}</div>
-    <div><strong>จำนวนนักเรียน:</strong> ${students.length} คน</div>
-  </div>
-
-  <table>
-    <thead>
-      <tr>
-        <th style="width: 8%">ลำดับ</th>
-        <th style="width: 15%">รหัสนักเรียน</th>
-        <th style="width: 35%">ชื่อ - นามสกุล</th>
-        <th style="width: 12%">คะแนนเฉลี่ย</th>
-        <th style="width: 15%">ระดับผลการเรียน</th>
-        <th style="width: 15%">ผลการเรียน</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${students.map((student, index) => {
-        const score = parseFloat(student.average) || 0;
-        const gradeInfo = _scoreToGPA(score);
-        const gradeClass = gradeInfo.gpa >= 3.5 ? 'grade-a' : gradeInfo.gpa >= 2.5 ? 'grade-b' : gradeInfo.gpa >= 1.5 ? 'grade-c' : 'grade-f';
-        
-        return `
-        <tr>
-          <td>${index + 1}</td>
-          <td>${student.student_id}</td>
-          <td style="text-align: left; padding-left: 10px;">${student.student_name || 'นักเรียนรหัส ' + student.student_id}</td>
-          <td><strong>${score.toFixed(1)}</strong></td>
-          <td class="${gradeClass}">${gradeInfo.gpa}</td>
-          <td class="${gradeClass}">${gradeInfo.letter}</td>
-        </tr>`;
-      }).join('')}
-    </tbody>
-  </table>
-
-  <div class="stats-section">
-    <div class="stats-title">สถิติผลการเรียน</div>
-    <div class="stats-grid">
-      <div class="stat-item">
-        <div class="stat-value">${avgScore.toFixed(1)}</div>
-        <div class="stat-label">คะแนนเฉลี่ย</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-value">${maxScore.toFixed(1)}</div>
-        <div class="stat-label">คะแนนสูงสุด</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-value">${minScore.toFixed(1)}</div>
-        <div class="stat-label">คะแนนต่ำสุด</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="footer">
-    สร้างเมื่อ: ${new Date().toLocaleString('th-TH')}
-    <br>ระบบรายงานผลการเรียน - ${schoolName || 'โรงเรียน'}
-  </div>
-</body>
-</html>`;
-}
-
 /**
  * เทมเพลต HTML ที่ปรับปรุงให้แสดงชื่อครูประจำชั้น และชื่อวิชาชิดซ้าย
  */
 function _createPp6ReportHTML(data) {
   const { 
     schoolName, schoolAddress, logoDataUrl, studentId, studentName, grade, classNo, 
-    term, subjects, gpaInfo, assessments, principalName, homeroomTeacher, academicYear 
+    term, subjects, gpaInfo, assessments, principalName, homeroomTeacher, teacherComment, academicYear 
   } = data;
   
   const termText = term === 'both' ? 'ภาคเรียนที่ 1 และ 2' : `ภาคเรียนที่ ${term}`;
@@ -1708,6 +1105,11 @@ const formatActivityResult = (resultText) => {
             <td class="value"></td>
         </tr>
     </table>
+  </div>
+
+  <div class="comment-section" style="margin: 15px 0; border: 1px solid #ccc; padding: 10px;">
+    <div style="font-weight: bold; font-size: 13px; margin-bottom: 5px;">ความคิดเห็นของครูประจำชั้น / ครูที่ปรึกษา:</div>
+    <div style="min-height: 40px; font-size: 13px; line-height: 1.5; padding: 4px;">${teacherComment && teacherComment !== '-' ? teacherComment : '......................................................................................................................................................................................................................................................'}</div>
   </div>
 
   <div class="signatures">
