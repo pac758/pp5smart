@@ -1254,31 +1254,24 @@ function createExportTemplateForOtherSchools_(activeSpreadsheetId, schoolName) {
 }
 
 function sanitizeExportTemplateSpreadsheet_(ss) {
-  var clearNames = ['Users', 'Students', 'HomeroomTeachers', 'global_settings', 'SCORES_WAREHOUSE', 'AttendanceLog', 'ความเห็นครู'];
-  clearNames.forEach(function(n){
-    var sh = ss.getSheetByName(n);
-    if (sh) clearSheetData_(sh, 1);
-  });
+  // ใช้ cleanupCopiedSpreadsheet_ ซึ่งลบชีตคะแนนรายวิชา, Backup, เช็คชื่อรายเดือน, โปรไฟล์ ฯลฯ ครบ
+  cleanupCopiedSpreadsheet_(ss);
 
-  var yearlyBases = (typeof S_YEARLY_SHEETS !== 'undefined') ? S_YEARLY_SHEETS : [
-    'SCORES_WAREHOUSE', 'การประเมินอ่านคิดเขียน', 'การประเมินคุณลักษณะ',
-    'การประเมินกิจกรรมพัฒนาผู้เรียน', 'การประเมินสมรรถนะ',
-    'AttendanceLog', 'ความเห็นครู'
-  ];
-  var sheets = ss.getSheets();
-  sheets.forEach(function(sh){
-    var name = sh.getName();
-    for (var i = 0; i < yearlyBases.length; i++) {
-      var base = yearlyBases[i];
-      if (name === base || name.indexOf(base + '_') === 0) {
-        clearSheetData_(sh, 1);
+  // ล้างชื่อครูผู้สอนในรายวิชา
+  var subj = ss.getSheetByName('รายวิชา');
+  if (subj) blankTeacherInSubjects_(subj);
+
+  // ล้าง installed_script_id เพื่อให้เป็น fresh template
+  var gsSheet = ss.getSheetByName('global_settings');
+  if (gsSheet) {
+    var data = gsSheet.getDataRange().getValues();
+    for (var r = 0; r < data.length; r++) {
+      if (data[r][0] === 'installed_script_id') {
+        gsSheet.deleteRow(r + 1);
         break;
       }
     }
-  });
-
-  var subj = ss.getSheetByName('รายวิชา');
-  if (subj) blankTeacherInSubjects_(subj);
+  }
 }
 
 function clearSheetData_(sheet, headerRows) {
