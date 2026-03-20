@@ -867,6 +867,7 @@ function generatePp6PDFComplete(studentId, term = 'both') {
     if (!subjects || subjects.length === 0) {
       throw new Error(`ไม่พบข้อมูลวิชาสำหรับนักเรียน ${studentId}`);
     }
+    if (typeof _sortBySubjectName === 'function') _sortBySubjectName(subjects, 'name');
 
     const gpaInfo = calculateGPAAndRank(studentId, grade, classNo);
     const assessments = getStudentAssessments(studentId);
@@ -948,6 +949,7 @@ function generatePp6PDFCompleteNoDrive(studentId, term = 'both') {
     const classNo = studentScoreData['class_no'];
 
     const subjects = getStudentAllSubjectScores(studentId, term);
+    if (typeof _sortBySubjectName === 'function') _sortBySubjectName(subjects, 'name');
     const gpaInfo = calculateGPAAndRank(studentId, grade, classNo);
     const assessments = getStudentAssessments(studentId);
     const homeroomTeacher = getHomeroomTeacher(grade, classNo);
@@ -1014,7 +1016,7 @@ const formatActivityResult = (resultText) => {
     .logo { width: 50px; height: 50px; margin-bottom: 8px; }
     .report-title { font-size: 16px; font-weight: bold; margin-bottom: 3px;}
     .school-info { font-size: 14px; margin-bottom: 2px;}
-    .student-info { margin: 15px 0; background: #f9f9f9; padding: 8px; border: 1px solid #ddd; }
+    .student-info { margin: 15px 0; padding: 8px; }
     .student-info div { margin-bottom: 3px; }
     .main-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 12px; }
     .main-table th, .main-table td { border: 1px solid #000; padding: 4px 6px; text-align: center; }
