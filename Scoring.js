@@ -752,15 +752,21 @@ function detectSheetLayout_(sheet) {
 /**
  * บันทึกคะแนนเฉพาะภาคเรียน (term) - แก้ไขแล้ว
  * พร้อมคำนวณคะแนนเฉลี่ย 2 ภาคและเกรด (อัปเดตทุกครั้ง)
+ * @param {number} [loadedAt] - timestamp ตอนโหลดข้อมูล (ป้องกันเขียนทับ)
  */
-function saveScoreSheetData(sheetName, term, studentScores, fullScores, fullFinal) {
-  const lock = LockService.getScriptLock();
+function saveScoreSheetData(sheetName, term, studentScores, fullScores, fullFinal, loadedAt) {
   try {
-    if (!lock.tryLock(30000)) throw new Error('ระบบกำลังบันทึกคะแนนอยู่ กรุณารอสักครู่แล้วลองใหม่');
-
     const ss = SS();
     const sheet = ss.getSheetByName(sheetName);
     if (!sheet) throw new Error(`ไม่พบชีต: ${sheetName}`);
+
+    // ✅ Stale Data Detection: เช็คว่ามีครูคนอื่นแก้ไปแล้วหรือยัง
+    if (loadedAt) {
+      var currentEditTime = sheet.getLastEditTime ? sheet.getLastEditTime().getTime() : 0;
+      if (currentEditTime > 0 && loadedAt > 0 && currentEditTime > loadedAt) {
+        throw new Error('⚠️ มีครูคนอื่นแก้ไขคะแนนวิชานี้ไปแล้ว กรุณากด "โหลดข้อมูล" ใหม่อีกครั้ง');
+      }
+    }
 
     const startRow = 5;
     // อ่านข้อมูลทั้งหมด 1 ครั้ง
@@ -878,7 +884,7 @@ function saveScoreSheetData(sheetName, term, studentScores, fullScores, fullFina
     const numCols = allData[0].length;
     sheet.getRange(1, 1, allData.length, numCols).setValues(allData);
 
-    // === Sync to SCORES_WAREHOUSE อัตโนมัติ ===
+    // === ✅ Sync to SCORES_WAREHOUSE (ใช้ lock เฉพาะตรงนี้) ===
     try {
       const studentRows = [];
       for (let i = startRow - 1; i < allData.length; i++) {
@@ -893,7 +899,16 @@ function saveScoreSheetData(sheetName, term, studentScores, fullScores, fullFina
           yearGrade:  String(r[sheetLayout.yearGradeCol] || '')
         });
       }
-      _syncSubjectToWarehouse_(sheetName, studentRows);
+      var whLock = LockService.getScriptLock();
+      if (whLock.tryLock(15000)) {
+        try {
+          _syncSubjectToWarehouse_(sheetName, studentRows);
+        } finally {
+          whLock.releaseLock();
+        }
+      } else {
+        Logger.log('⚠️ Warehouse lock timeout — sync จะถูกข้ามครั้งนี้');
+      }
     } catch (syncErr) {
       Logger.log('Warehouse sync warning: ' + syncErr.message);
     }
@@ -902,8 +917,6 @@ function saveScoreSheetData(sheetName, term, studentScores, fullScores, fullFina
   } catch (e) {
     Logger.log('Error in saveScoreSheetData: ' + e.message + '\n' + e.stack);
     throw new Error('ไม่สามารถบันทึกคะแนนได้: ' + e.message);
-  } finally {
-    lock.releaseLock();
   }
 }
 
@@ -967,48 +980,83 @@ function _syncSubjectToWarehouse_(sheetName, studentRows) {
   const iCode  = whHeaders.indexOf('subject_code');
   if (iSid < 0 || iGrade < 0 || iClass < 0 || iCode < 0) return; // header ไม่ตรง
 
-  // กรองแถวเก่าของวิชา+ห้องนี้ออก (ใช้ทั้ง code + ชื่อวิชา เผื่อ code เก่าผิด)
   const iName = whHeaders.indexOf('subject_name');
-  const kept = whData.filter((row, idx) => {
-    if (idx === 0) return true;
-    if (String(row[iGrade]) !== grade || String(row[iClass]) != classNo) return true;
-    // ลบถ้า code ตรง หรือ ชื่อวิชาตรง (กวาดข้อมูลเก่าที่ code ผิดออกด้วย)
-    if (String(row[iCode]) === subjectCode) return false;
-    if (iName >= 0 && String(row[iName] || '').trim() === subjectName) return false;
-    return true;
-  });
-
   const settings = (typeof getCachedSettings_ === 'function') ? getCachedSettings_() : {};
   const academicYear = settings['ปีการศึกษา'] || '';
+  const numCols = whHeaders.length;
 
-  const newRows = studentRows.map(s => {
+  // ✅ Fix 3: อัปเดตเฉพาะแถวแทนเขียนทั้ง sheet
+  // สร้าง helper สำหรับเตรียมแถว
+  function buildRow_(s) {
     const avg = s.yearAvg > 0 ? s.yearAvg : ((s.term1Total + s.term2Total) / 2);
     const finalGpa = s.yearGrade || ((typeof _scoreToGPA === 'function') ? _scoreToGPA(avg).gpa : '');
-    const row = new Array(whHeaders.length).fill('');
-    function setW(col, val) { const i = whHeaders.indexOf(col); if (i >= 0) row[i] = val; }
-    setW('student_id',   s.id);
-    setW('grade',        grade);
-    setW('class_no',     classNo);
-    setW('subject_code', subjectCode);
-    setW('subject_name', subjectName);
-    setW('subject_type', subjectType);
-    setW('hours',        subjectHours);
-    setW('term1_total',  s.term1Total);
-    setW('term2_total',  s.term2Total);
-    setW('average',      avg);
-    setW('final_grade',  finalGpa);
-    setW('sheet_name',   sheetName);
+    const row = new Array(numCols).fill('');
+    function setW(col, val) { const ci = whHeaders.indexOf(col); if (ci >= 0) row[ci] = val; }
+    setW('student_id',    s.id);
+    setW('grade',         grade);
+    setW('class_no',      classNo);
+    setW('subject_code',  subjectCode);
+    setW('subject_name',  subjectName);
+    setW('subject_type',  subjectType);
+    setW('hours',         subjectHours);
+    setW('term1_total',   s.term1Total);
+    setW('term2_total',   s.term2Total);
+    setW('average',       avg);
+    setW('final_grade',   finalGpa);
+    setW('sheet_name',    sheetName);
     setW('academic_year', academicYear);
-    setW('updated_at',   new Date());
+    setW('updated_at',    new Date());
     return row;
+  }
+
+  // หาแถวเดิมของวิชา+ห้องนี้ → สร้าง map: studentId → rowIndex (1-based)
+  var existingRowMap = {};
+  var existingRowIndices = [];
+  for (var ri = 1; ri < whData.length; ri++) {
+    var rowGrade = String(whData[ri][iGrade]);
+    var rowClass = String(whData[ri][iClass]);
+    if (rowGrade !== grade || rowClass != classNo) continue;
+    var rowCode = String(whData[ri][iCode]);
+    var rowName = iName >= 0 ? String(whData[ri][iName] || '').trim() : '';
+    if (rowCode === subjectCode || rowName === subjectName) {
+      var rowSid = String(whData[ri][iSid] || '').trim();
+      existingRowMap[rowSid] = ri; // 0-based index in whData
+      existingRowIndices.push(ri);
+    }
+  }
+
+  // แยก: นักเรียนที่มีแถวเดิม (update in-place) vs นักเรียนใหม่ (append)
+  var rowsToUpdate = [];  // [{sheetRow (1-based), data}]
+  var rowsToAppend = [];
+  studentRows.forEach(function(s) {
+    var sid = String(s.id || '').trim();
+    var newRow = buildRow_(s);
+    if (existingRowMap[sid] !== undefined) {
+      rowsToUpdate.push({ idx: existingRowMap[sid], data: newRow });
+      delete existingRowMap[sid]; // ลบออกจาก map (ที่เหลือ = แถวเก่าที่ต้องลบ)
+    } else {
+      rowsToAppend.push(newRow);
+    }
   });
 
-  const finalData = [...kept, ...newRows];
-  // ✅ Safe write: เขียนข้อมูลใหม่ก่อน แล้วค่อยลบแถวเกิน (ป้องกัน data loss จาก timeout)
-  warehouseSheet.getRange(1, 1, finalData.length, whHeaders.length).setValues(finalData);
-  var lastRow = warehouseSheet.getLastRow();
-  if (lastRow > finalData.length) {
-    warehouseSheet.deleteRows(finalData.length + 1, lastRow - finalData.length);
+  // อัปเดตแถวเดิม (เขียนเฉพาะแถวที่เปลี่ยน)
+  rowsToUpdate.forEach(function(item) {
+    warehouseSheet.getRange(item.idx + 1, 1, 1, numCols).setValues([item.data]);
+  });
+
+  // เพิ่มแถวใหม่ต่อท้าย
+  if (rowsToAppend.length > 0) {
+    var appendStart = warehouseSheet.getLastRow() + 1;
+    warehouseSheet.getRange(appendStart, 1, rowsToAppend.length, numCols).setValues(rowsToAppend);
+  }
+
+  // ลบแถวเก่าที่ไม่มีนักเรียนแล้ว (ลบจากล่างขึ้นบนเพื่อไม่ให้ index เลื่อน)
+  var orphanIndices = Object.values(existingRowMap);
+  if (orphanIndices.length > 0) {
+    orphanIndices.sort(function(a, b) { return b - a; }); // ลบจากล่างขึ้นบน
+    orphanIndices.forEach(function(idx) {
+      warehouseSheet.deleteRow(idx + 1);
+    });
   }
 
   if (typeof invalidateCacheAfterDataUpdate === 'function') {
@@ -1121,10 +1169,15 @@ function getScoreSheetData(sheetName) {
       });
     }
 
+    // ✅ ส่ง loadedAt เพื่อใช้เช็ค stale data ตอน save
+    var loadedAt = 0;
+    try { loadedAt = sheet.getLastEditTime ? sheet.getLastEditTime().getTime() : 0; } catch(e) {}
+
     return {
       term1: extractTermData(sheetLayout.term1),
       term2: extractTermData(sheetLayout.term2),
-      yearSummary: yearSummary
+      yearSummary: yearSummary,
+      loadedAt: loadedAt
     };
   } catch (e) {
     Logger.log("❌ Error in getScoreSheetData: " + e.message);

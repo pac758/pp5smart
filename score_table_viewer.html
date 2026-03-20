@@ -2815,7 +2815,7 @@ window.ScoreEntrySystem = (function() {
           showButtonStatus(statusId, "บันทึกล้มเหลว", "error");
           showLoading(false);
         })
-        .saveScoreSheetData(sheetName, termId, data, fullScores, fullFinal);
+        .saveScoreSheetData(sheetName, termId, data, fullScores, fullFinal, currentData ? currentData.loadedAt : 0);
     }
 
     function loadData() {

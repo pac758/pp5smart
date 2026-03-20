@@ -1230,12 +1230,8 @@ table.querySelectorAll('.score-entry-full-score').forEach(input => {
       showButtonStatus(statusId, "บันทึกล้มเหลว", "error");
       showLoading(false);
     })
-    .saveScoreSheetData(sheetName, termId, data, fullScores, fullFinal);
+    .saveScoreSheetData(sheetName, termId, data, fullScores, fullFinal, currentData ? currentData.loadedAt : 0);
 }
-
-// ==== [PATCH] เก็บ payload เพื่อส่งบันทึก ====
-function collectPayloadForSave() {
-  const rows = [...document.querySelectorAll('.score-row')];
   return rows.map(rowEl => {
     const { midTotal, finalScore, grandTotal } = computeRowTotals(rowEl); // ค่าที่คุมแล้ว
     const items = [...rowEl.querySelectorAll('.score-item-input')].map(ip => Number(ip.value || 0));
