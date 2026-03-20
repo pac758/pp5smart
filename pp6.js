@@ -1010,37 +1010,30 @@ const formatActivityResult = (resultText) => {
 <head>
   <meta charset="UTF-8">
   <style>
-    @page { size: A4; margin: 12mm; }
-    body { font-family: 'Sarabun', 'TH SarabunPSK', sans-serif; font-size: 13px; line-height: 1.3; color: #000; }
-    .header { text-align: center; margin-bottom: 15px; }
-    .logo { width: 50px; height: 50px; margin-bottom: 8px; }
-    .report-title { font-size: 16px; font-weight: bold; margin-bottom: 3px;}
-    .school-info { font-size: 14px; margin-bottom: 2px;}
-    .student-info { margin: 15px 0; padding: 8px; }
-    .student-info div { margin-bottom: 3px; }
-    .main-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 12px; }
-    .main-table th, .main-table td { border: 1px solid #000; padding: 4px 6px; text-align: center; }
+    @page { size: A4; margin: 10mm 12mm; }
+    body { font-family: 'Sarabun', 'TH SarabunPSK', sans-serif; font-size: 12px; line-height: 1.2; color: #000; margin: 0; padding: 0; }
+    .header { text-align: center; margin-bottom: 8px; }
+    .logo { width: 45px; height: 45px; margin-bottom: 5px; }
+    .report-title { font-size: 15px; font-weight: bold; margin-bottom: 2px;}
+    .school-info { font-size: 13px; margin-bottom: 1px;}
+    .student-info { margin: 8px 0; padding: 4px 0; font-size: 13px; }
+    .main-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; font-size: 11px; }
+    .main-table th, .main-table td { border: 1px solid #000; padding: 2px 4px; text-align: center; }
     .main-table th { background: #f0f0f0; font-weight: bold; }
-    
-    /* ปรับให้คอลัมน์ชื่อวิชา (คอลัมน์ที่ 3) ชิดซ้าย ยกเว้นหัวข้อ */
-    .main-table td:nth-child(3) { text-align: left; padding-left: 8px; }
-    
-    .summary-section { margin: 15px 0; }
-    .summary-title { font-weight: bold; font-size: 14px; margin-bottom: 8px; text-align: center; background: #e0e0e0; padding: 5px; border: 1px solid #ccc; }
-    .summary-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .summary-table td { padding: 4px; vertical-align: top; }
+    .main-table td:nth-child(3) { text-align: left; padding-left: 6px; }
+    .summary-section { margin: 8px 0; }
+    .summary-title { font-weight: bold; font-size: 13px; margin-bottom: 4px; text-align: center; background: #e0e0e0; padding: 3px; border: 1px solid #ccc; }
+    .summary-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .summary-table td { padding: 2px 4px; vertical-align: top; }
     .summary-table td.value { font-weight: bold; }
-
-    /* ความกว้างคอลัมน์ที่ปรับแก้แล้ว */
     .summary-table td:nth-child(1) { width: 28%; }
     .summary-table td:nth-child(2) { width: 15%; }
     .summary-table td:nth-child(3) { width: 39%; }
     .summary-table td:nth-child(4) { width: 18%; }
-
-    .signatures { margin-top: 20px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; text-align: center; }
-    .signature-box { padding: 8px; }
-    .signature-line { border-top: 1px solid #000; margin-top: 30px; padding-top: 5px; }
-    .footer { margin-top: 15px; text-align: right; font-size: 11px; }
+    .signatures { margin-top: 10px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; }
+    .signature-box { padding: 4px; }
+    .signature-line { border-top: 1px solid #000; margin-top: 20px; padding-top: 3px; }
+    .footer { margin-top: 8px; text-align: right; font-size: 10px; }
   </style>
 </head>
 <body>
@@ -1053,8 +1046,7 @@ const formatActivityResult = (resultText) => {
   </div>
 
   <div class="student-info">
-    <div><strong>รหัสประจำตัวนักเรียน:</strong> ${studentId} <strong>ชั้น:</strong> ${grade} ห้อง ${classNo}</div>
-    <div><strong>ชื่อ - นามสกุล:</strong> ${studentName}</div>
+    <strong>ชื่อ - นามสกุล:</strong> ${studentName} &nbsp;&nbsp; <strong>รหัสประจำตัว:</strong> ${studentId} &nbsp;&nbsp; <strong>ชั้น:</strong> ${grade}/${classNo}
   </div>
 
   <table class="main-table">
@@ -1109,25 +1101,25 @@ const formatActivityResult = (resultText) => {
     </table>
   </div>
 
-  <div class="comment-section" style="margin: 15px 0; border: 1px solid #ccc; padding: 10px;">
-    <div style="font-weight: bold; font-size: 13px; margin-bottom: 5px;">ความคิดเห็นของครูประจำชั้น / ครูที่ปรึกษา:</div>
-    <div style="min-height: 40px; font-size: 13px; line-height: 1.5; padding: 4px;">${teacherComment && teacherComment !== '-' ? teacherComment : '......................................................................................................................................................................................................................................................'}</div>
+  <div class="comment-section" style="margin: 8px 0; border: 1px solid #ccc; padding: 6px 8px;">
+    <div style="font-weight: bold; font-size: 12px; margin-bottom: 3px;">ความคิดเห็นของครูประจำชั้น / ครูที่ปรึกษา:</div>
+    <div style="min-height: 30px; font-size: 12px; line-height: 1.4; padding: 2px;">${teacherComment && teacherComment !== '-' ? teacherComment : '......................................................................................................................................................................................................................................................'}</div>
   </div>
 
   <div class="signatures">
      <div class="signature-box">
        <div>ลงชื่อ</div>
-       <div class="signature-line">( ${homeroomTeacher || 'ครูประจำชั้น'} )</div>
+       <div class="signature-line">( ${homeroomTeacher && homeroomTeacher !== '...' ? homeroomTeacher : '.................................'} )</div>
        <div>ครูที่ปรึกษา</div>
      </div>
      <div class="signature-box">
        <div>ลงชื่อ</div>
-       <div class="signature-line">( ${principalName || 'ผู้อำนวยการโรงเรียน'} )</div>
+       <div class="signature-line">( ${principalName || '.................................'} )</div>
        <div>ผู้บริหารสถานศึกษา</div>
      </div>
      <div class="signature-box">
        <div>ลงชื่อ</div>
-       <div class="signature-line">( ............................................................... )</div>
+       <div class="signature-line">( ................................. )</div>
        <div>ผู้ปกครอง</div>
      </div>
   </div>
