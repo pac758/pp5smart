@@ -1877,8 +1877,9 @@ window.AppNavigation.exportSystemZip = function() {
             var ex = Array.isArray(result.excludedData) ? result.excludedData : [];
             excludedMeta =
               '<div style="background:#ecfdf5;border:2px solid #34d399;border-radius:12px;padding:12px;margin-bottom:14px;color:#065f46;font-size:0.92rem;">' +
-                '<div style="font-weight:800;margin:0 0 6px;">✅ ส่งออกแบบไม่มีข้อมูลส่วนบุคคล</div>' +
-                (ex.length ? ('<div style="line-height:1.55;"><strong>ไม่ส่งออก:</strong> ' + ex.join(', ') + '</div>') : '') +
+                '<div style="font-weight:800;margin:0 0 6px;">✅ Script + โครงสร้างชีตติดไปกับสำเนา</div>' +
+                '<div style="line-height:1.55;">Setup Wizard จะล้างข้อมูลเหล่านี้อัตโนมัติเมื่อโรงเรียนอื่นติดตั้ง:</div>' +
+                (ex.length ? ('<div style="line-height:1.55;"><strong>ล้างอัตโนมัติ:</strong> ' + ex.join(', ') + '</div>') : '') +
               '</div>';
           }
           overlay.innerHTML = '<div style="background:#fff;padding:30px;border-radius:16px;max-width:560px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.2);font-family:sans-serif;">' +

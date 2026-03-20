@@ -1147,40 +1147,36 @@ function exportProjectAsZip(token) {
     var settings = S_getGlobalSettings(false) || {};
     var schoolName = settings['ชื่อโรงเรียน'] || 'โรงเรียนต้นแบบ';
 
-    var props = PropertiesService.getScriptProperties();
-    var activeId = SpreadsheetApp.getActiveSpreadsheet().getId();
-    var exportTemplateId = createExportTemplateForOtherSchools_(activeId, schoolName);
-    props.setProperty('EXPORT_TEMPLATE_SPREADSHEET_ID', exportTemplateId);
-    var copyUrl = 'https://docs.google.com/spreadsheets/d/' + exportTemplateId + '/copy';
+    // ใช้ /copy link ของ spreadsheet ต้นฉบับ เพื่อให้ bound script ติดไปด้วย
+    // (DriveApp.makeCopy ไม่ copy bound script — ต้องใช้ /copy จาก UI เท่านั้น)
+    var ssId = getSpreadsheetId_();
+    var copyUrl = 'https://docs.google.com/spreadsheets/d/' + ssId + '/copy';
 
-    var templateInfo = null;
+    // ตั้งสิทธิ์ชั่วคราวให้คนที่มีลิงก์เปิดได้ (จำเป็นสำหรับ /copy)
+    var sharingNote = '';
     try {
-      var f = DriveApp.getFileById(exportTemplateId);
-      templateInfo = {
-        id: exportTemplateId,
-        name: f.getName(),
-        url: f.getUrl(),
-        lastUpdated: (f.getLastUpdated && f.getLastUpdated()) ? f.getLastUpdated().toISOString() : null
-      };
+      var file = DriveApp.getFileById(ssId);
+      var access = file.getSharingAccess();
+      if (access !== DriveApp.Access.ANYONE_WITH_LINK && access !== DriveApp.Access.ANYONE) {
+        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        sharingNote = 'เปิดสิทธิ์แชร์ลิงก์ชั่วคราวแล้ว — หลังจากโรงเรียนอื่นทำสำเนาเสร็จ แนะนำให้ปิดสิทธิ์คืน';
+      }
     } catch(_e) {}
 
     return {
       success: true,
       copyUrl: copyUrl,
-      exportTemplateId: exportTemplateId,
-      templateSource: 'generated_from_active',
-      activeSpreadsheetId: activeId,
-      templateInfo: templateInfo,
-      warning: '',
+      activeSpreadsheetId: ssId,
+      warning: sharingNote,
       sanitized: true,
-      excludedData: ['Students', 'Users', 'HomeroomTeachers', 'global_settings', 'SCORES_WAREHOUSE', 'AttendanceLog', 'assessment_sheets', 'comments'],
+      excludedData: ['ข้อมูลนักเรียน', 'ผู้ใช้', 'คะแนน', 'เช็คชื่อ', 'ชีตคะแนนรายวิชา'],
       schoolName: schoolName,
       steps: [
-        'ขั้นที่ 1: กดลิงก์ "ทำสำเนา" → Google จะถามยืนยัน → กด "ทำสำเนา" → ได้ Spreadsheet + โค้ดทั้งหมด',
-        'ขั้นที่ 2: เปิดสำเนา → ส่วนขยาย → Apps Script → กด Deploy → New deployment → Web app → Execute as: Me, Who: Anyone → Deploy',
-        'ขั้นที่ 3: เปิด URL ที่ได้ → ระบบจะเข้าหน้าติดตั้งอัตโนมัติ → กรอกข้อมูลโรงเรียน → กดติดตั้ง'
+        'ขั้นที่ 1: ส่งลิงก์ให้โรงเรียนอื่น → กดลิงก์ → กด "ทำสำเนา" → ได้ Spreadsheet + โค้ดทั้งหมด',
+        'ขั้นที่ 2: เปิดสำเนา → ส่วนขยาย → Apps Script → รัน debugSetupStatus (อนุญาตสิทธิ์) → Deploy → New deployment → Web app → Execute as: Me, Who: Anyone → Deploy',
+        'ขั้นที่ 3: เปิด Web App URL → ระบบจะล้างข้อมูลเก่าอัตโนมัติ + แสดงหน้าติดตั้ง → กรอกข้อมูลโรงเรียน → เสร็จ!'
       ],
-      message: 'สร้างลิงก์ส่งออกสำเร็จ (ลิงก์ทำสำเนา Spreadsheet พร้อมโค้ด)'
+      message: 'สร้างลิงก์ส่งออกสำเร็จ (ลิงก์ทำสำเนาพร้อม Script)'
     };
 
   } catch (e) {
