@@ -958,7 +958,8 @@ function _pp6_buildDocPdf(data) {
     ['จำนวนหน่วยกิต/น้ำหนักวิชาพื้นฐาน:', String(data.gpaInfo.basicCredits || '0'), 'ผลการประเมินคุณลักษณะอันพึงประสงค์:', charRes],
     ['จำนวนหน่วยกิต/น้ำหนักวิชาเพิ่มเติม:', String(data.gpaInfo.additionalCredits || '0'), 'ผลการประเมินการอ่าน คิดวิเคราะห์ และเขียน:', readRes],
     ['รวมจำนวนหน่วยกิต/น้ำหนัก:', String(data.gpaInfo.totalCredits || '0'), 'ผลการประเมินกิจกรรมพัฒนาผู้เรียน:', actRes],
-    ['ระดับผลการเรียนเฉลี่ย (GPA):', String(data.gpaInfo.gpa || '0.00'), '', '']
+    ['ระดับผลการเรียนเฉลี่ย (GPA):', String(data.gpaInfo.gpa || '0.00'),
+      data.showRank ? ('ได้ลำดับที่ ' + (data.gpaInfo.classRank || '-') + ' จาก ' + (data.gpaInfo.totalStudents || '-') + ' คน') : '', '']
   ];
   sumRows.forEach(function(rd) {
     var r = sT.appendTableRow();
@@ -1024,7 +1025,7 @@ function _pp6_buildDocPdf(data) {
 /**
  * ฟังก์ชันสร้าง PDF รายงานรายบุคคล (ปพ.6) - ใช้ Google Docs (ฟอนต์ Sarabun)
  */
-function generatePp6PDFComplete(studentId, term = 'both') {
+function generatePp6PDFComplete(studentId, term = 'both', showRank = true) {
   try {
     try { DriveApp.getRootFolder().getName(); } catch (e) {
       throw new Error(
@@ -1104,7 +1105,8 @@ function generatePp6PDFComplete(studentId, term = 'both') {
       homeroomTeacher: homeroomTeacher,
       teacherComment: teacherComment,
       academicYear: settings['ปีการศึกษา'] || new Date().getFullYear() + 543,
-      fileName: fileName
+      fileName: fileName,
+      showRank: showRank
     });
     
     const folder = getOutputFolder_();
@@ -1126,7 +1128,7 @@ function generatePp6PDFComplete(studentId, term = 'both') {
   }
 }
 
-function generatePp6PDFCompleteNoDrive(studentId, term = 'both') {
+function generatePp6PDFCompleteNoDrive(studentId, term = 'both', showRank = true) {
   try {
     const settings = getWebAppSettings();
     if (!settings['ชื่อโรงเรียน']) {
@@ -1181,7 +1183,8 @@ function generatePp6PDFCompleteNoDrive(studentId, term = 'both') {
       homeroomTeacher: homeroomTeacher,
       teacherComment: teacherComment,
       academicYear: settings['ปีการศึกษา'] || new Date().getFullYear() + 543,
-      fileName: fileName
+      fileName: fileName,
+      showRank: showRank
     });
 
     const base64 = Utilities.base64Encode(pdfBlob.getBytes());

@@ -1212,12 +1212,12 @@ function generateParentReportCard(studentId, options) {
 function generateStudentReportPdfUnified(studentId, options) {
   options = options || {};
   var term = options.term || 'both';
+  var showRank = options.showRank !== false; // default true
 
   // ✅ เรียก generatePp6PDFComplete โดยตรง (ปพ.6 จริง มีส่วนผู้ปกครอง/คุณลักษณะ)
-  // ไม่ผ่าน generateParentReportCard ที่ redirect ไป generateOnePageReportPdf
   if (typeof generatePp6PDFComplete === 'function') {
     try {
-      var res = generatePp6PDFComplete(studentId, term);
+      var res = generatePp6PDFComplete(studentId, term, showRank);
       var pdfUrl = typeof res === 'string' ? res : (res && (res.previewUrl || res.downloadUrl) ? (res.previewUrl || res.downloadUrl) : '');
       if (pdfUrl) return { mode: 'url', url: pdfUrl };
     } catch (e) {
@@ -1229,7 +1229,7 @@ function generateStudentReportPdfUnified(studentId, options) {
   var raw = null;
   if (typeof generatePp6PDFCompleteNoDrive === 'function') {
     try {
-      raw = generatePp6PDFCompleteNoDrive(studentId, term);
+      raw = generatePp6PDFCompleteNoDrive(studentId, term, showRank);
     } catch (e2) {
       Logger.log('⚠️ generatePp6PDFCompleteNoDrive failed: ' + e2.message);
     }

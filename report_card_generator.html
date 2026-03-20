@@ -521,7 +521,7 @@
         updateProgress();
         processNext(); // ต่อคนถัดไป (แม้จะ error)
       })
-      .generateStudentReportPdfUnified(current.id, { term: 'both' });
+      .generateStudentReportPdfUnified(current.id, { term: 'both', showRank: elements.showRankToggle.checked });
   }
 
   function updateProgress() {
