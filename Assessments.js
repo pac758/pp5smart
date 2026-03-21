@@ -1078,6 +1078,14 @@ function getHomeroomTeacher(grade, classNo) {
   }
 }
 
+// ════════════════════════════════════════════════════════════════
+// ⚠️  WARNING: PDF LAYOUT LOCKED — DO NOT MODIFY WITHOUT TESTING
+// ════════════════════════════════════════════════════════════════
+// ฟังก์ชันที่ล็อค: generateCharacteristicAssessmentPDF,
+//   generateActivityAssessmentPDF, generateSubjectScoreAssessmentPDF,
+//   exportCompetencyReport, exportCompetencySummaryReport
+// ════════════════════════════════════════════════════════════════
+
 /**
  * ดึงข้อมูลที่ใช้ร่วมกันสำหรับสร้าง PDF
  */

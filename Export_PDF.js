@@ -1,3 +1,10 @@
+// ════════════════════════════════════════════════════════════════
+// ⚠️  WARNING: PDF LAYOUT LOCKED — DO NOT MODIFY WITHOUT TESTING
+// ════════════════════════════════════════════════════════════════
+// ฟังก์ชันที่ล็อค: generateStudentListPDF, generateSubjectScorePDF,
+//   exportAttendancePDF
+// ════════════════════════════════════════════════════════════════
+
 /**
  * ฟังก์ชันสร้าง PDF รายชื่อนักเรียนพร้อมช่องคะแนน 1-10
  * ใช้ Google Sheets สร้างตารางแล้ว export เป็น PDF (ฟอนต์ TH Sarabun New คมชัด)

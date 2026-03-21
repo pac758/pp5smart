@@ -2911,6 +2911,13 @@ function hasDataForMonth(grade, classNo, year, month) {
 
 
 
+// ════════════════════════════════════════════════════════════════
+// ⚠️  WARNING: PDF LAYOUT LOCKED — DO NOT MODIFY WITHOUT TESTING
+// ════════════════════════════════════════════════════════════════
+// ฟังก์ชันที่ล็อค: exportMonthlyAttendancePDF, exportYearlyAttendancePDF,
+//   createEmptyMonthPDF, createMonthlyPDFBlob, createChecklistPDFBlob
+// ════════════════════════════════════════════════════════════════
+
 /**
  * ✅ ส่งออก PDF รายเดือน - รองรับระบบปีการศึกษา
  */
