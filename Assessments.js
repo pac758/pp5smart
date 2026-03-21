@@ -1107,11 +1107,13 @@ function getPDFCommonData_(grade, classNo) {
  * สร้าง PDF จาก HTML แล้วคืน base64 data URL (ไม่ใช้ DriveApp)
  */
 function _pdfToBase64_(htmlContent) {
-  // Inject embedded Sarabun font for proper Thai font rendering in PDF
+  // Inject embedded Sarabun font as separate <style> tag (avoid mixing with page CSS)
   var fontCss = _getEmbeddedSarabunCss_();
   if (fontCss && htmlContent.indexOf('<style>') > -1) {
-    htmlContent = htmlContent.replace('<style>', '<style>' + fontCss);
+    htmlContent = htmlContent.replace('<style>', '<style>' + fontCss + '</style><style>');
   }
+  // Remove external Google Fonts <link> tags (font is now embedded)
+  htmlContent = htmlContent.replace(/<link[^>]*fonts\.googleapis\.com[^>]*>/gi, '');
   var blob = HtmlService.createHtmlOutput(htmlContent).getBlob().getAs('application/pdf');
   return 'data:application/pdf;base64,' + Utilities.base64Encode(blob.getBytes());
 }
