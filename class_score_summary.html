@@ -1,0 +1,320 @@
+<style>
+  .css-page { max-width: 1400px; margin: 0 auto; padding: 0 1rem; }
+  .css-header {
+    background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
+    border-radius: 20px; padding: 2rem 2.5rem; color: #fff;
+    margin-bottom: 1.5rem; position: relative; overflow: hidden;
+  }
+  .css-header::before {
+    content: ''; position: absolute; top: -50%; right: -20%;
+    width: 400px; height: 400px; border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+  }
+  .css-header h2 { font-weight: 700; font-size: 1.5rem; margin: 0; position: relative; z-index: 1; }
+  .css-header p { opacity: 0.85; margin: 0.3rem 0 0; font-size: 0.9rem; position: relative; z-index: 1; }
+
+  .css-controls {
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: end;
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 16px;
+    padding: 1.25rem; margin-bottom: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .css-controls .form-group { display: flex; flex-direction: column; gap: 4px; }
+  .css-controls label { font-size: 0.8rem; font-weight: 600; color: #475569; }
+  .css-controls select {
+    padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 10px;
+    font-size: 0.9rem; min-width: 120px; background: #f8fafc;
+  }
+  .css-controls select:focus { outline: none; border-color: #0891b2; box-shadow: 0 0 0 3px rgba(8,145,178,0.15); }
+  .css-btn {
+    padding: 8px 20px; border: none; border-radius: 10px; font-size: 0.9rem;
+    font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+    transition: all 0.2s;
+  }
+  .css-btn-primary { background: #0891b2; color: #fff; }
+  .css-btn-primary:hover { background: #0e7490; transform: translateY(-1px); }
+  .css-btn-success { background: #059669; color: #fff; }
+  .css-btn-success:hover { background: #047857; }
+  .css-btn-pdf { background: #dc2626; color: #fff; }
+  .css-btn-pdf:hover { background: #b91c1c; }
+
+  .css-info {
+    padding: 1rem 1.5rem; border-radius: 12px; margin-bottom: 1rem;
+    color: #fff; display: none;
+  }
+  .css-info.show { display: block; }
+  .css-info-success { background: linear-gradient(135deg, #0891b2, #0e7490); }
+  .css-info-error { background: linear-gradient(135deg, #ef4444, #dc2626); }
+
+  .css-loading {
+    text-align: center; padding: 3rem; display: none;
+  }
+  .css-loading.show { display: block; }
+
+  .css-table-wrap {
+    overflow-x: auto; background: #fff; border: 1px solid #e2e8f0;
+    border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    display: none; margin-bottom: 1.5rem;
+  }
+  .css-table-wrap.show { display: block; }
+
+  .css-table {
+    width: 100%; border-collapse: collapse; font-size: 0.82rem;
+    white-space: nowrap;
+  }
+  .css-table th, .css-table td {
+    border: 1px solid #e2e8f0; padding: 6px 8px; text-align: center;
+  }
+  .css-table thead th {
+    background: #f1f5f9; font-weight: 700; color: #334155;
+    position: sticky; top: 0; z-index: 2;
+  }
+  .css-table .subject-header {
+    background: linear-gradient(135deg, #e0f2fe, #bae6fd);
+    color: #0c4a6e; font-weight: 700;
+  }
+  .css-table .name-col { text-align: left; min-width: 160px; font-weight: 500; }
+  .css-table tbody tr:hover { background: #f0f9ff; }
+  .css-table .grade-cell { font-weight: 700; }
+  .css-table .total-cell { font-weight: 600; background: #f8fafc; }
+
+  .css-export-bar {
+    display: none; gap: 10px; margin-bottom: 1.5rem;
+  }
+  .css-export-bar.show { display: flex; flex-wrap: wrap; }
+
+  @media (max-width: 768px) {
+    .css-header { padding: 1.5rem; }
+    .css-controls { flex-direction: column; }
+    .css-table { font-size: 0.75rem; }
+  }
+</style>
+
+<div class="css-page animate-fade-in">
+  <div class="css-header">
+    <h2><i class="bi bi-bar-chart-line me-2"></i>สรุปคะแนน วิชาพื้นฐาน</h2>
+    <p>แสดงคะแนนเก็บ / สอบ / รวม / เกรด ทุกวิชาในตารางเดียว แยกตามห้อง</p>
+  </div>
+
+  <div class="css-controls">
+    <div class="form-group">
+      <label>ชั้นเรียน</label>
+      <select id="cssGradeSelect">
+        <option value="">-- เลือกชั้น --</option>
+        <option value="ป.1">ป.1</option><option value="ป.2">ป.2</option>
+        <option value="ป.3">ป.3</option><option value="ป.4">ป.4</option>
+        <option value="ป.5">ป.5</option><option value="ป.6">ป.6</option>
+        <option value="ม.1">ม.1</option><option value="ม.2">ม.2</option>
+        <option value="ม.3">ม.3</option><option value="ม.4">ม.4</option>
+        <option value="ม.5">ม.5</option><option value="ม.6">ม.6</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>ห้อง</label>
+      <select id="cssClassSelect">
+        <option value="">-- ห้อง --</option>
+        <option value="1">1</option><option value="2">2</option>
+        <option value="3">3</option><option value="4">4</option>
+        <option value="5">5</option><option value="6">6</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>ภาคเรียน</label>
+      <select id="cssTermSelect">
+        <option value="1">ภาคเรียนที่ 1</option>
+        <option value="2">ภาคเรียนที่ 2</option>
+      </select>
+    </div>
+    <button class="css-btn css-btn-primary" onclick="cssLoadData()">
+      <i class="bi bi-search"></i> ค้นหา
+    </button>
+  </div>
+
+  <div class="css-info" id="cssInfoBanner">
+    <strong id="cssInfoTitle"></strong>
+    <div id="cssInfoText" style="font-size:0.85rem;margin-top:2px;opacity:0.9"></div>
+  </div>
+
+  <div class="css-loading" id="cssLoading">
+    <div class="spinner-border text-info" role="status"></div>
+    <div style="margin-top:10px;color:#64748b">กำลังโหลดข้อมูล...</div>
+  </div>
+
+  <div class="css-export-bar" id="cssExportBar">
+    <button class="css-btn css-btn-pdf" onclick="cssExportPDF()">
+      <i class="bi bi-file-earmark-pdf-fill"></i> ส่งออก PDF
+    </button>
+    <button class="css-btn css-btn-success" onclick="cssExportExcel()">
+      <i class="bi bi-file-earmark-excel-fill"></i> ส่งออก Excel
+    </button>
+  </div>
+
+  <div class="css-table-wrap" id="cssTableWrap">
+    <table class="css-table">
+      <thead id="cssTableHead"></thead>
+      <tbody id="cssTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+var cssData = null;
+
+function cssLoadData() {
+  var grade = document.getElementById('cssGradeSelect').value;
+  var classNo = document.getElementById('cssClassSelect').value;
+  var term = document.getElementById('cssTermSelect').value;
+  if (!grade || !classNo) {
+    cssShowInfo('error', 'กรุณาเลือกชั้นและห้อง');
+    return;
+  }
+
+  document.getElementById('cssLoading').classList.add('show');
+  document.getElementById('cssTableWrap').classList.remove('show');
+  document.getElementById('cssExportBar').classList.remove('show');
+  document.getElementById('cssInfoBanner').classList.remove('show');
+
+  google.script.run
+    .withSuccessHandler(cssDisplayData)
+    .withFailureHandler(function(err) {
+      document.getElementById('cssLoading').classList.remove('show');
+      cssShowInfo('error', 'เกิดข้อผิดพลาด: ' + err.message);
+    })
+    .getClassSubjectScoreSummary(grade, classNo, term);
+}
+
+function cssDisplayData(data) {
+  document.getElementById('cssLoading').classList.remove('show');
+  if (!data || !data.success) {
+    cssShowInfo('error', data ? data.message : 'ไม่สามารถโหลดข้อมูลได้');
+    return;
+  }
+  cssData = data;
+
+  cssShowInfo('success', data.gradeFullName + ' ห้อง ' + data.classNo + ' ภาคเรียนที่ ' + data.term,
+    'จำนวนนักเรียน: ' + data.students.length + ' คน | วิชา: ' + data.subjects.length + ' วิชา');
+
+  var shortNames = {
+    'ภาษาไทย': 'ภาษาไทย', 'คณิตศาสตร์': 'คณิต',
+    'วิทยาศาสตร์และเทคโนโลยี': 'วิทย์ฯ', 'วิทยาศาสตร์': 'วิทย์',
+    'สังคมศึกษา ศาสนา และวัฒนธรรม': 'สังคมฯ', 'สังคมศึกษา': 'สังคม',
+    'ประวัติศาสตร์': 'ประวัติฯ',
+    'สุขศึกษาและพลศึกษา': 'สุขศึกษาฯ', 'สุขศึกษา': 'สุขศึกษาฯ',
+    'ศิลปะ': 'ศิลปะ', 'การงานอาชีพ': 'การงานฯ',
+    'ภาษาอังกฤษ': 'อังกฤษ', 'หน้าที่พลเมือง': 'หน้าที่ฯ'
+  };
+  function getShort(name) {
+    for (var k in shortNames) { if (name.indexOf(k) !== -1) return shortNames[k]; }
+    return name.length > 10 ? name.substring(0, 10) + 'ฯ' : name;
+  }
+
+  // Build header
+  var thead = document.getElementById('cssTableHead');
+  var t = data.term;
+  var row1 = '<tr><th rowspan="2" style="width:40px">เลขที่</th><th rowspan="2" class="name-col">ชื่อ-สกุล</th>';
+  data.subjects.forEach(function(s) {
+    row1 += '<th colspan="4" class="subject-header" title="' + s.name + '">' + getShort(s.name) + '</th>';
+  });
+  row1 += '</tr>';
+
+  var row2 = '<tr>';
+  data.subjects.forEach(function(s) {
+    row2 += '<th>เก็บ' + t + '<br><small>(' + s.midMax + ')</small></th>';
+    row2 += '<th>สอบ' + t + '<br><small>(' + s.finalMax + ')</small></th>';
+    row2 += '<th>รวม' + t + '<br><small>(' + (s.midMax + s.finalMax) + ')</small></th>';
+    row2 += '<th>เกรด' + t + '</th>';
+  });
+  row2 += '</tr>';
+  thead.innerHTML = row1 + row2;
+
+  // Build body
+  var tbody = document.getElementById('cssTableBody');
+  var rows = '';
+  data.students.forEach(function(st, idx) {
+    rows += '<tr><td>' + (idx + 1) + '</td>';
+    rows += '<td class="name-col">' + st.fullName + '</td>';
+    data.subjects.forEach(function(s) {
+      var key = s.code || s.name;
+      var sc = st.scores[key];
+      if (sc) {
+        rows += '<td>' + sc.mid + '</td>';
+        rows += '<td>' + sc.final + '</td>';
+        rows += '<td class="total-cell">' + sc.total + '</td>';
+        rows += '<td class="grade-cell">' + sc.grade + '</td>';
+      } else {
+        rows += '<td>-</td><td>-</td><td>-</td><td>-</td>';
+      }
+    });
+    rows += '</tr>';
+  });
+  tbody.innerHTML = rows;
+
+  document.getElementById('cssTableWrap').classList.add('show');
+  document.getElementById('cssExportBar').classList.add('show');
+}
+
+function cssShowInfo(type, title, text) {
+  var banner = document.getElementById('cssInfoBanner');
+  banner.className = 'css-info show ' + (type === 'error' ? 'css-info-error' : 'css-info-success');
+  document.getElementById('cssInfoTitle').textContent = title;
+  document.getElementById('cssInfoText').textContent = text || '';
+}
+
+function cssExportPDF() {
+  if (!cssData) return;
+  var btn = event.target.closest('button');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> กำลังสร้าง...';
+
+  google.script.run
+    .withSuccessHandler(function(url) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-file-earmark-pdf-fill"></i> ส่งออก PDF';
+      window.open(url, '_blank');
+      cssShowInfo('success', 'สร้าง PDF สำเร็จ', 'ไฟล์เปิดในแท็บใหม่');
+    })
+    .withFailureHandler(function(err) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-file-earmark-pdf-fill"></i> ส่งออก PDF';
+      cssShowInfo('error', 'สร้าง PDF ล้มเหลว: ' + err.message);
+    })
+    .exportClassSubjectScorePDF(cssData.grade, cssData.classNo, String(cssData.term));
+}
+
+function cssExportExcel() {
+  if (!cssData) return;
+  var wsData = [];
+  var h1 = ['เลขที่', 'ชื่อ-สกุล'];
+  cssData.subjects.forEach(function(s) {
+    h1.push('เก็บ(' + s.name + ')', 'สอบ(' + s.name + ')', 'รวม(' + s.name + ')', 'เกรด(' + s.name + ')');
+  });
+  wsData.push(h1);
+
+  cssData.students.forEach(function(st, idx) {
+    var row = [idx + 1, st.fullName];
+    cssData.subjects.forEach(function(s) {
+      var key = s.code || s.name;
+      var sc = st.scores[key];
+      row.push(sc ? sc.mid : '', sc ? sc.final : '', sc ? sc.total : '', sc ? sc.grade : '');
+    });
+    wsData.push(row);
+  });
+
+  var wb = XLSX.utils.book_new();
+  var ws = XLSX.utils.aoa_to_sheet(wsData);
+  XLSX.utils.book_append_sheet(wb, ws, 'สรุปคะแนน');
+  XLSX.writeFile(wb, 'สรุปคะแนน_' + cssData.grade + '_' + cssData.classNo + '_ภาค' + cssData.term + '.xlsx');
+}
+
+// Auto-load on select change
+document.getElementById('cssGradeSelect').addEventListener('change', function() {
+  if (this.value && document.getElementById('cssClassSelect').value) cssLoadData();
+});
+document.getElementById('cssClassSelect').addEventListener('change', function() {
+  if (this.value && document.getElementById('cssGradeSelect').value) cssLoadData();
+});
+document.getElementById('cssTermSelect').addEventListener('change', function() {
+  if (document.getElementById('cssGradeSelect').value && document.getElementById('cssClassSelect').value) cssLoadData();
+});
+</script>

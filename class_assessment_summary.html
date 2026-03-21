@@ -1,0 +1,299 @@
+<style>
+  .cas-page { max-width: 1200px; margin: 0 auto; padding: 0 1rem; }
+  .cas-header {
+    background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+    border-radius: 20px; padding: 2rem 2.5rem; color: #fff;
+    margin-bottom: 1.5rem; position: relative; overflow: hidden;
+  }
+  .cas-header::before {
+    content: ''; position: absolute; top: -50%; right: -20%;
+    width: 400px; height: 400px; border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+  }
+  .cas-header h2 { font-weight: 700; font-size: 1.5rem; margin: 0; position: relative; z-index: 1; }
+  .cas-header p { opacity: 0.85; margin: 0.3rem 0 0; font-size: 0.9rem; position: relative; z-index: 1; }
+
+  .cas-controls {
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: end;
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 16px;
+    padding: 1.25rem; margin-bottom: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .cas-controls .form-group { display: flex; flex-direction: column; gap: 4px; }
+  .cas-controls label { font-size: 0.8rem; font-weight: 600; color: #475569; }
+  .cas-controls select {
+    padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 10px;
+    font-size: 0.9rem; min-width: 120px; background: #f8fafc;
+  }
+  .cas-controls select:focus { outline: none; border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,0.15); }
+  .cas-btn {
+    padding: 8px 20px; border: none; border-radius: 10px; font-size: 0.9rem;
+    font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+    transition: all 0.2s;
+  }
+  .cas-btn-primary { background: #7c3aed; color: #fff; }
+  .cas-btn-primary:hover { background: #6d28d9; transform: translateY(-1px); }
+  .cas-btn-success { background: #059669; color: #fff; }
+  .cas-btn-success:hover { background: #047857; }
+  .cas-btn-pdf { background: #dc2626; color: #fff; }
+  .cas-btn-pdf:hover { background: #b91c1c; }
+
+  .cas-info {
+    padding: 1rem 1.5rem; border-radius: 12px; margin-bottom: 1rem;
+    color: #fff; display: none;
+  }
+  .cas-info.show { display: block; }
+  .cas-info-success { background: linear-gradient(135deg, #7c3aed, #6d28d9); }
+  .cas-info-error { background: linear-gradient(135deg, #ef4444, #dc2626); }
+
+  .cas-loading {
+    text-align: center; padding: 3rem; display: none;
+  }
+  .cas-loading.show { display: block; }
+
+  .cas-table-wrap {
+    overflow-x: auto; background: #fff; border: 1px solid #e2e8f0;
+    border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    display: none; margin-bottom: 1.5rem;
+  }
+  .cas-table-wrap.show { display: block; }
+
+  .cas-table {
+    width: 100%; border-collapse: collapse; font-size: 0.85rem;
+  }
+  .cas-table th, .cas-table td {
+    border: 1px solid #e2e8f0; padding: 8px 10px; text-align: center;
+  }
+  .cas-table thead th {
+    background: #f1f5f9; font-weight: 700; color: #334155;
+    position: sticky; top: 0; z-index: 2;
+  }
+  .cas-table .summary-header {
+    background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+    color: #4c1d95; font-weight: 700;
+  }
+  .cas-table .assess-header {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    color: #92400e; font-weight: 700;
+  }
+  .cas-table .name-col { text-align: left; min-width: 160px; font-weight: 500; }
+  .cas-table tbody tr:hover { background: #faf5ff; }
+  .cas-table .gpa-cell { font-weight: 700; color: #4c1d95; }
+  .cas-table .rank-cell { font-weight: 600; }
+  .cas-table .good { color: #059669; font-weight: 600; }
+  .cas-table .improve { color: #dc2626; font-weight: 600; }
+
+  .cas-export-bar {
+    display: none; gap: 10px; margin-bottom: 1.5rem;
+  }
+  .cas-export-bar.show { display: flex; flex-wrap: wrap; }
+
+  @media (max-width: 768px) {
+    .cas-header { padding: 1.5rem; }
+    .cas-controls { flex-direction: column; }
+    .cas-table { font-size: 0.78rem; }
+  }
+</style>
+
+<div class="cas-page animate-fade-in">
+  <div class="cas-header">
+    <h2><i class="bi bi-clipboard2-data me-2"></i>สรุปการประเมินทางการเรียน</h2>
+    <p>รวมคะแนน, GPA, ลำดับห้อง/ชั้น, อ่านฯ, คุณลักษณะฯ, สมรรถนะฯ</p>
+  </div>
+
+  <div class="cas-controls">
+    <div class="form-group">
+      <label>ชั้นเรียน</label>
+      <select id="casGradeSelect">
+        <option value="">-- เลือกชั้น --</option>
+        <option value="ป.1">ป.1</option><option value="ป.2">ป.2</option>
+        <option value="ป.3">ป.3</option><option value="ป.4">ป.4</option>
+        <option value="ป.5">ป.5</option><option value="ป.6">ป.6</option>
+        <option value="ม.1">ม.1</option><option value="ม.2">ม.2</option>
+        <option value="ม.3">ม.3</option><option value="ม.4">ม.4</option>
+        <option value="ม.5">ม.5</option><option value="ม.6">ม.6</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>ห้อง</label>
+      <select id="casClassSelect">
+        <option value="">-- ห้อง --</option>
+        <option value="1">1</option><option value="2">2</option>
+        <option value="3">3</option><option value="4">4</option>
+        <option value="5">5</option><option value="6">6</option>
+      </select>
+    </div>
+    <button class="cas-btn cas-btn-primary" onclick="casLoadData()">
+      <i class="bi bi-search"></i> ค้นหา
+    </button>
+  </div>
+
+  <div class="cas-info" id="casInfoBanner">
+    <strong id="casInfoTitle"></strong>
+    <div id="casInfoText" style="font-size:0.85rem;margin-top:2px;opacity:0.9"></div>
+  </div>
+
+  <div class="cas-loading" id="casLoading">
+    <div class="spinner-border text-primary" role="status"></div>
+    <div style="margin-top:10px;color:#64748b">กำลังโหลดข้อมูล...</div>
+  </div>
+
+  <div class="cas-export-bar" id="casExportBar">
+    <button class="cas-btn cas-btn-pdf" onclick="casExportPDF()">
+      <i class="bi bi-file-earmark-pdf-fill"></i> ส่งออก PDF
+    </button>
+    <button class="cas-btn cas-btn-success" onclick="casExportExcel()">
+      <i class="bi bi-file-earmark-excel-fill"></i> ส่งออก Excel
+    </button>
+  </div>
+
+  <div class="cas-table-wrap" id="casTableWrap">
+    <table class="cas-table">
+      <thead>
+        <tr>
+          <th rowspan="2" style="width:40px">เลขที่</th>
+          <th rowspan="2" class="name-col">ชื่อ-สกุล</th>
+          <th colspan="6" class="summary-header">สรุปการประเมิน</th>
+          <th rowspan="2" class="assess-header">อ่านฯ</th>
+          <th rowspan="2" class="assess-header">คุณลักษณะฯ</th>
+          <th rowspan="2" class="assess-header">สมรรถนะฯ</th>
+        </tr>
+        <tr>
+          <th>รวมคะแนน</th>
+          <th>เต็ม</th>
+          <th>ร้อยละ</th>
+          <th>เกรดเฉลี่ย<br>GPA</th>
+          <th>ลำดับ<br>ห้อง</th>
+          <th>ลำดับ<br>ชั้น</th>
+        </tr>
+      </thead>
+      <tbody id="casTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+var casData = null;
+
+function casLoadData() {
+  var grade = document.getElementById('casGradeSelect').value;
+  var classNo = document.getElementById('casClassSelect').value;
+  if (!grade || !classNo) {
+    casShowInfo('error', 'กรุณาเลือกชั้นและห้อง');
+    return;
+  }
+
+  document.getElementById('casLoading').classList.add('show');
+  document.getElementById('casTableWrap').classList.remove('show');
+  document.getElementById('casExportBar').classList.remove('show');
+  document.getElementById('casInfoBanner').classList.remove('show');
+
+  google.script.run
+    .withSuccessHandler(casDisplayData)
+    .withFailureHandler(function(err) {
+      document.getElementById('casLoading').classList.remove('show');
+      casShowInfo('error', 'เกิดข้อผิดพลาด: ' + err.message);
+    })
+    .getClassAssessmentSummary(grade, classNo);
+}
+
+function casDisplayData(data) {
+  document.getElementById('casLoading').classList.remove('show');
+  if (!data || !data.success) {
+    casShowInfo('error', data ? data.message : 'ไม่สามารถโหลดข้อมูลได้');
+    return;
+  }
+  casData = data;
+
+  casShowInfo('success',
+    data.gradeFullName + ' ห้อง ' + data.classNo,
+    'นักเรียน: ' + data.totalClassStudents + ' คน (ทั้งชั้น: ' + data.totalGradeStudents + ' คน)');
+
+  var tbody = document.getElementById('casTableBody');
+  var rows = '';
+  data.students.forEach(function(st, idx) {
+    rows += '<tr>';
+    rows += '<td>' + (idx + 1) + '</td>';
+    rows += '<td class="name-col">' + st.fullName + '</td>';
+    rows += '<td>' + st.sumTotal + '</td>';
+    rows += '<td>' + st.fullScore + '</td>';
+    rows += '<td>' + st.pct.toFixed(2) + '</td>';
+    rows += '<td class="gpa-cell">' + st.gpa.toFixed(2) + '</td>';
+    rows += '<td class="rank-cell">' + st.classRank + '</td>';
+    rows += '<td class="rank-cell">' + st.gradeRank + '</td>';
+    rows += '<td class="' + casAssessCls(st.reading) + '">' + st.reading + '</td>';
+    rows += '<td class="' + casAssessCls(st.character) + '">' + st.character + '</td>';
+    rows += '<td class="' + casAssessCls(st.competency) + '">' + st.competency + '</td>';
+    rows += '</tr>';
+  });
+  tbody.innerHTML = rows;
+
+  document.getElementById('casTableWrap').classList.add('show');
+  document.getElementById('casExportBar').classList.add('show');
+}
+
+function casAssessCls(val) {
+  if (val === 'ดีเยี่ยม' || val === 'ดี') return 'good';
+  if (val === 'ปรับปรุง') return 'improve';
+  return '';
+}
+
+function casShowInfo(type, title, text) {
+  var banner = document.getElementById('casInfoBanner');
+  banner.className = 'cas-info show ' + (type === 'error' ? 'cas-info-error' : 'cas-info-success');
+  document.getElementById('casInfoTitle').textContent = title;
+  document.getElementById('casInfoText').textContent = text || '';
+}
+
+function casExportPDF() {
+  if (!casData) return;
+  var btn = event.target.closest('button');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> กำลังสร้าง...';
+
+  google.script.run
+    .withSuccessHandler(function(url) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-file-earmark-pdf-fill"></i> ส่งออก PDF';
+      window.open(url, '_blank');
+      casShowInfo('success', 'สร้าง PDF สำเร็จ', 'ไฟล์เปิดในแท็บใหม่');
+    })
+    .withFailureHandler(function(err) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-file-earmark-pdf-fill"></i> ส่งออก PDF';
+      casShowInfo('error', 'สร้าง PDF ล้มเหลว: ' + err.message);
+    })
+    .exportClassAssessmentSummaryPDF(casData.grade, casData.classNo);
+}
+
+function casExportExcel() {
+  if (!casData) return;
+  var wsData = [
+    ['เลขที่', 'ชื่อ-สกุล', 'รวมคะแนน', 'เต็ม', 'ร้อยละ', 'GPA', 'ลำดับห้อง', 'ลำดับชั้น', 'อ่านฯ', 'คุณลักษณะฯ', 'สมรรถนะฯ']
+  ];
+  casData.students.forEach(function(st, idx) {
+    wsData.push([
+      idx + 1, st.fullName, st.sumTotal, st.fullScore,
+      st.pct, st.gpa, st.classRank, st.gradeRank,
+      st.reading, st.character, st.competency
+    ]);
+  });
+
+  var wb = XLSX.utils.book_new();
+  var ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = [
+    {wch:6},{wch:30},{wch:10},{wch:8},{wch:8},{wch:8},{wch:8},{wch:8},{wch:10},{wch:12},{wch:10}
+  ];
+  XLSX.utils.book_append_sheet(wb, ws, 'สรุปประเมิน');
+  XLSX.writeFile(wb, 'สรุปประเมิน_' + casData.grade + '_' + casData.classNo + '.xlsx');
+}
+
+// Auto-load on select change
+document.getElementById('casGradeSelect').addEventListener('change', function() {
+  if (this.value && document.getElementById('casClassSelect').value) casLoadData();
+});
+document.getElementById('casClassSelect').addEventListener('change', function() {
+  if (this.value && document.getElementById('casGradeSelect').value) casLoadData();
+});
+</script>
