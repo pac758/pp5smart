@@ -248,10 +248,16 @@ function casExportPDF() {
   btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> กำลังสร้าง...';
 
   google.script.run
-    .withSuccessHandler(function(url) {
+    .withSuccessHandler(function(dataUrl) {
       btn.disabled = false;
       btn.innerHTML = '<i class="bi bi-file-earmark-pdf-fill"></i> ส่งออก PDF';
-      window.open(url, '_blank');
+      var byteStr = atob(dataUrl.split(',')[1]);
+      var ab = new ArrayBuffer(byteStr.length);
+      var ia = new Uint8Array(ab);
+      for (var i = 0; i < byteStr.length; i++) ia[i] = byteStr.charCodeAt(i);
+      var blob = new Blob([ab], {type: 'application/pdf'});
+      var blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank');
       casShowInfo('success', 'สร้าง PDF สำเร็จ', 'ไฟล์เปิดในแท็บใหม่');
     })
     .withFailureHandler(function(err) {

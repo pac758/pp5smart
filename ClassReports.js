@@ -2,7 +2,7 @@
 // ClassReports.js — รายงานสรุปคะแนนและการประเมินรายชั้น
 // ═══════════════════════════════════════════════════════════════
 // ⚠️ ไฟล์นี้สร้างใหม่ทั้งหมด ไม่แก้ไขฟังก์ชัน PDF เดิม
-// ⚠️ ใช้ savePDFToDrive_ (Assessments.js) สำหรับ PDF — ไม่สร้างใหม่
+// ⚠️ PDF ใช้ base64 data URL (ไม่ใช้ DriveApp) เพื่อเลี่ยงปัญหา authorization
 // ═══════════════════════════════════════════════════════════════
 
 /* ── helpers ภายในไฟล์ ────────────────────────────────── */
@@ -73,6 +73,25 @@ var _CR_SHORT = {
   'ประวัติศาสตร์':'ประวัติศาสตร์','หน้าที่พลเมือง':'หน้าที่พลเมือง'
 };
 function _cr_shortName(n) { return _CR_SHORT[n] || (n.length>15 ? n.substring(0,15)+'ฯ' : n); }
+
+/** สร้าง PDF blob จาก HTML แล้วคืน base64 data URL (ไม่ใช้ DriveApp) */
+function _cr_htmlToBase64Pdf(html) {
+  var blob = HtmlService.createHtmlOutput(html).getBlob().getAs('application/pdf');
+  return 'data:application/pdf;base64,' + Utilities.base64Encode(blob.getBytes());
+}
+
+/** ดึงโลโก้โรงเรียนผ่าน URL (ไม่ใช้ DriveApp) */
+function _cr_getLogoBase64(settings) {
+  try {
+    var url = settings['logoUrl_lh3'] || settings['logo'] || settings['schoolLogo'] || '';
+    if (!url) return null;
+    var resp = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    if (resp.getResponseCode() !== 200) return null;
+    var blob = resp.getBlob();
+    var mime = blob.getContentType() || 'image/png';
+    return 'data:' + mime + ';base64,' + Utilities.base64Encode(blob.getBytes());
+  } catch(e) { return null; }
+}
 
 /* ════════════════════════════════════════════════════════════
    1. สรุปคะแนน — เก็บ/สอบ/รวม/เกรด ทุกวิชา แยกตามห้อง
@@ -319,8 +338,7 @@ function exportClassSubjectScorePDF(grade, classNo, term) {
 
   var homeroomTeacher = '';
   try { homeroomTeacher = getHomeroomTeacher(grade, classNo); } catch(e) {}
-  var logoBase64 = null;
-  try { logoBase64 = getSchoolLogoBase64_(); } catch(e) {}
+  var logoBase64 = _cr_getLogoBase64(settings);
 
   var termLabel = isYear ? 'ทั้งปี' : ('ภาคเรียนที่ ' + termNum);
 
@@ -404,8 +422,7 @@ function exportClassSubjectScorePDF(grade, classNo, term) {
   var fullHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' + css + '</style></head><body>'
     + pages.join('') + '</body></html>';
 
-  var fileName = 'สรุปคะแนน_' + grade + '_' + classNo + '_' + (isYear?'ทั้งปี':'ภาค'+termNum) + '_' + new Date().toISOString().slice(0,10) + '.pdf';
-  return savePDFToDrive_(fullHtml, 'ClassReports_PDF', fileName);
+  return _cr_htmlToBase64Pdf(fullHtml);
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -421,8 +438,7 @@ function exportClassAssessmentSummaryPDF(grade, classNo) {
 
   var homeroomTeacher = '';
   try { homeroomTeacher = getHomeroomTeacher(grade, classNo); } catch(e) {}
-  var logoBase64 = null;
-  try { logoBase64 = getSchoolLogoBase64_(); } catch(e) {}
+  var logoBase64 = _cr_getLogoBase64(settings);
 
   var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
     + '<style>'
@@ -473,6 +489,5 @@ function exportClassAssessmentSummaryPDF(grade, classNo) {
   });
   html += '</tbody></table></body></html>';
 
-  var fileName = 'สรุปประเมิน_' + grade + '_' + classNo + '_' + new Date().toISOString().slice(0,10) + '.pdf';
-  return savePDFToDrive_(html, 'ClassReports_PDF', fileName);
+  return _cr_htmlToBase64Pdf(html);
 }
