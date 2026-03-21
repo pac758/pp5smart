@@ -149,8 +149,8 @@ function getClassSubjectScoreSummary(grade, classNo, term) {
           students[studentMap[sid]].scores[key] = {
             t1: Number(row[layout.term1.total]) || 0,
             t2: Number(row[layout.term2.total]) || 0,
-            yearAvg: Number(row[layout.yearAvg]) || 0,
-            yearGrade: String(row[layout.yearGrade] || '')
+            yearAvg: Number(row[layout.yearAvgCol]) || 0,
+            yearGrade: String(row[layout.yearGradeCol] || '')
           };
         } else {
           var tc = termNum === 2 ? layout.term2 : layout.term1;
