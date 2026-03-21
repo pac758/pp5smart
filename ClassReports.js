@@ -100,7 +100,7 @@ function _cr_getLogoBase64(settings) {
 function getClassSubjectScoreSummary(grade, classNo, term) {
   try {
     var ss = SS();
-    var termNum = parseInt(term) || 1; // 0=ทั้งปี, 1=ภาค1, 2=ภาค2
+    var termNum = term === '0' || term === 0 ? 0 : (parseInt(term) || 1); // 0=ทั้งปี, 1=ภาค1, 2=ภาค2
 
     var subjects = _cr_getSubjects(ss, grade);
     if (subjects.length === 0) return { success: false, message: 'ไม่พบรายวิชาสำหรับชั้น ' + grade };
@@ -230,7 +230,8 @@ function getClassAssessmentSummary(grade, classNo) {
       var t2 = w2!==-1?(parseFloat(wr[w2])||0):0;
       var avg = wA!==-1?(parseFloat(wr[wA])||0):0;
       var fg = wF!==-1?parseFloat(wr[wF]):NaN;
-      var totalScore = t1+t2; if(totalScore===0) totalScore=avg;
+      // ใช้เฉลี่ยปี (avg, เต็ม 100) แทน t1+t2 เพื่อให้ร้อยละถูกต้อง
+      var totalScore = avg > 0 ? avg : (t1+t2 > 0 ? (t1+t2)/2 : 0);
       var wCode = wC!==-1?String(wr[wC]||'').trim():'';
       var gpa = !isNaN(fg) ? fg : _scoreToGPA(avg).gpa;
       var credits = creditMap[wCode] || creditMap[wSubj] || 1;
