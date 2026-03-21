@@ -985,7 +985,7 @@ function _pp6_buildDocPdf(data) {
   var cmtText = data.teacherComment && data.teacherComment !== '-' ? data.teacherComment : '..........................................................................................................................................................................................';
   var cmtP = body.appendParagraph(cmtText);
   cmtP.editAsText().setBold(false).setFontSize(11).setFontFamily(F);
-  cmtP.setSpacingAfter(2).setSpacingBefore(0);
+  cmtP.setSpacingAfter(30).setSpacingBefore(0);
 
   // === ลายเซ็น 3 คอลัมน์ (ไม่มีเส้นกรอบ) ===
   var sigT = body.appendTable();
