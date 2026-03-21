@@ -1562,10 +1562,33 @@ function hardRedirectTo(url, fromUser = false) {
   try { if (window.top === window.self) window.location.replace(url); } catch (_e) {}
 }
 
+function _buildLoginUrl(serverUrl) {
+  var url = serverUrl || '';
+  // Try document.referrer
+  try {
+    var r = document.referrer || '';
+    if (r) {
+      var rb = r.split('?')[0].replace(/\/dev$/, '/exec');
+      if (rb.endsWith('/exec')) url = url || rb;
+    }
+  } catch(_) {}
+  // Fallback to current location
+  if (!url) url = window.location.origin + window.location.pathname;
+  return url + (url.includes('?') ? '&' : '?') + 'page=login&_t=' + Date.now();
+}
+
+function _doLogoutRedirect(url) {
+  // Try multiple redirect methods
+  try { var f = document.createElement('form'); f.method='GET'; f.action=url; f.target='_top'; f.style.display='none'; document.body.appendChild(f); f.submit(); return; } catch(_) {}
+  try { window.open(url, '_top'); return; } catch(_) {}
+  try { window.top.location.href = url; return; } catch(_) {}
+  try { window.location.href = url; } catch(_) {}
+}
+
 function showRedirectButton(url) {
-  document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);font-family:\'Sarabun\',sans-serif;margin:0;padding:20px;"><div style="background:white;border-radius:15px;padding:40px;box-shadow:0 15px 35px rgba(0,0,0,0.2);text-align:center;max-width:420px;width:100%;animation:fadeIn .35s ease-out;"><div style="font-size:48px;margin-bottom:20px;">✅</div><h2 style="color:#333;margin-bottom:12px;font-weight:600;">ออกจากระบบสำเร็จ</h2><p style="color:#666;margin-bottom:24px;line-height:1.6;">คลิกปุ่มด้านล่างเพื่อกลับไปหน้าเข้าสู่ระบบ</p><a id="redirectBtn" href="' + url + '" target="_top" rel="noopener" style="display:inline-block;width:100%;padding:14px 20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;text-decoration:none;border-radius:10px;font-weight:700;font-size:16px;">กลับไปหน้าเข้าสู่ระบบ</a></div></div><style>@keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}</style>';
-  const btn = document.getElementById('redirectBtn');
-  btn?.addEventListener('click', (e) => { e.preventDefault(); hardRedirectTo(url, true); });
+  document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);font-family:\'Sarabun\',sans-serif;margin:0;padding:20px;"><div style="background:white;border-radius:15px;padding:40px;box-shadow:0 15px 35px rgba(0,0,0,0.2);text-align:center;max-width:420px;width:100%;animation:fadeIn .35s ease-out;"><div style="font-size:48px;margin-bottom:20px;">✅</div><h2 style="color:#333;margin-bottom:12px;font-weight:600;">ออกจากระบบสำเร็จ</h2><p style="color:#666;margin-bottom:24px;line-height:1.6;">กำลังนำคุณไปหน้าเข้าสู่ระบบ...</p><a id="redirectBtn" href="' + url + '" target="_top" rel="noopener" style="display:inline-block;width:100%;padding:14px 20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;text-decoration:none;border-radius:10px;font-weight:700;font-size:16px;">กลับไปหน้าเข้าสู่ระบบ</a></div></div><style>@keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}</style>';
+  // Auto-redirect after 500ms, button as manual fallback
+  setTimeout(function() { _doLogoutRedirect(url); }, 500);
 }
 
 window.logout = function(ev) {
@@ -1577,20 +1600,26 @@ window.logout = function(ev) {
   document.getElementById('logoutLink')?.style && (document.getElementById('logoutLink').style.pointerEvents = 'none');
   try { localStorage.clear(); } catch (_) {}
   writeLogoutOverlay();
-  const _fixUrl = function(sUrl) { try { var r=document.referrer||''; if(r){var rb=r.split('?')[0].replace(/\/dev$/,'/exec'); if(rb.endsWith('/exec')){if(sUrl){var m=sUrl.match(/\/s\/([^\/]+)\/exec/); if(m&&rb.includes(m[1]))return rb;} return rb;}} } catch(_){} return sUrl||''; };
-  const _mkLogin = function(b) { return b + (b.includes('?') ? '&' : '?') + 'page=login&_t=' + Date.now(); };
-  const fallbackUrl = (window.location.origin + window.location.pathname) + '?page=login&_t=' + Date.now();
+
+  function finishLogout(serverUrl) {
+    document.getElementById('logoutOverlay')?.remove();
+    var loginUrl = _buildLoginUrl(serverUrl);
+    // Try auto-redirect first
+    _doLogoutRedirect(loginUrl);
+    // If still here after 800ms, show button as fallback
+    setTimeout(function() { showRedirectButton(loginUrl); }, 800);
+  }
+
   if (typeof google !== 'undefined' && google.script?.run) {
     try { google.script.run.clearLoginSession(); } catch(_) {}
     let done = false;
-    const timeout = setTimeout(() => { if (!done) { done = true; document.getElementById('logoutOverlay')?.remove(); showRedirectButton(_mkLogin(_fixUrl(''))||fallbackUrl); } }, 3000);
+    const timeout = setTimeout(() => { if (!done) { done = true; finishLogout(''); } }, 3000);
     google.script.run
-      .withSuccessHandler(url => { if (done) return; done = true; clearTimeout(timeout); document.getElementById('logoutOverlay')?.remove(); showRedirectButton(_mkLogin(_fixUrl(url))||fallbackUrl); })
-      .withFailureHandler(() => { if (done) return; done = true; clearTimeout(timeout); document.getElementById('logoutOverlay')?.remove(); showRedirectButton(_mkLogin(_fixUrl(''))||fallbackUrl); })
+      .withSuccessHandler(url => { if (done) return; done = true; clearTimeout(timeout); finishLogout(url); })
+      .withFailureHandler(() => { if (done) return; done = true; clearTimeout(timeout); finishLogout(''); })
       .getDeploymentUrl();
   } else {
-    document.getElementById('logoutOverlay')?.remove();
-    showRedirectButton(_mkLogin(_fixUrl(''))||fallbackUrl);
+    finishLogout('');
   }
   return false;
 };
