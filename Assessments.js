@@ -1397,7 +1397,7 @@ function createOfficialReportHTML(students, grade, classNo, year, school, direct
       + '<td class="center">' + (Math.floor(Number(s.art)) || '-') + '</td>'
       + '<td class="center">' + (Math.floor(Number(s.work)) || '-') + '</td>'
       + '<td class="center">' + (Math.floor(Number(s.english)) || '-') + '</td>'
-      + '<td class="center font-bold">' + result + '</td></tr>';
+      + '<td class="center">' + result + '</td></tr>';
   });
 
   return '<!DOCTYPE html><html><head><meta charset="UTF-8"><link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet"><style>'
