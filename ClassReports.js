@@ -76,6 +76,13 @@ function _cr_shortName(n) { return _CR_SHORT[n] || (n.length>15 ? n.substring(0,
 
 /** สร้าง PDF blob จาก HTML แล้วคืน base64 data URL (ไม่ใช้ DriveApp) */
 function _cr_htmlToBase64Pdf(html) {
+  // Inject embedded Sarabun font as separate <style> tag
+  var fontCss = _getEmbeddedSarabunCss_();
+  if (fontCss && html.indexOf('<style>') > -1) {
+    html = html.replace('<style>', '<style>' + fontCss + '</style><style>');
+  }
+  // Remove external Google Fonts <link> tags
+  html = html.replace(/<link[^>]*fonts\.googleapis\.com[^>]*>/gi, '');
   var blob = HtmlService.createHtmlOutput(html).getBlob().getAs('application/pdf');
   return 'data:application/pdf;base64,' + Utilities.base64Encode(blob.getBytes());
 }
@@ -350,16 +357,17 @@ function exportClassSubjectScorePDF(grade, classNo, term) {
   }
 
   var css = '@page{size:A4 landscape;margin:12mm 10mm;}'
-    + 'body{font-family:"Sarabun",sans-serif;font-size:11pt;margin:0;}'
+    + '*{-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+    + 'body{font-family:"Sarabun",sans-serif;font-size:11pt;font-weight:300;margin:0;}'
     + '.page{page-break-after:always;}'
     + '.page:last-child{page-break-after:auto;}'
     + '.header{text-align:center;margin-bottom:8px;}'
     + '.header img{height:50px;margin-bottom:4px;}'
-    + '.title{font-size:14pt;font-weight:bold;margin:2px 0;}'
+    + '.title{font-size:14pt;font-weight:700;margin:2px 0;}'
     + '.info{font-size:10pt;margin:1px 0;}'
-    + 'table{border-collapse:collapse;width:100%;font-size:10pt;}'
-    + 'th,td{border:1px solid #000;padding:4px 6px;text-align:center;}'
-    + 'th{background:#f0f0f0;font-weight:bold;}'
+    + 'table{border-collapse:collapse;width:98%;font-size:10pt;}'
+    + 'th,td{border:1px solid #000;padding:4px 6px;text-align:center;font-weight:300;}'
+    + 'th{background:#f0f0f0;font-weight:700;}'
     + '.subject-header{background:#e0e0e0;}'
     + '.name-col{text-align:left;white-space:nowrap;}';
 
@@ -444,14 +452,15 @@ function exportClassAssessmentSummaryPDF(grade, classNo) {
   var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
     + '<style>'
     + '@page{size:A4 landscape;margin:12mm 10mm;}'
-    + 'body{font-family:"Sarabun",sans-serif;font-size:11pt;margin:0;}'
+    + '*{-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+    + 'body{font-family:"Sarabun",sans-serif;font-size:11pt;font-weight:300;margin:0;}'
     + '.header{text-align:center;margin-bottom:8px;}'
     + '.header img{height:50px;margin-bottom:4px;}'
-    + '.title{font-size:14pt;font-weight:bold;margin:2px 0;}'
+    + '.title{font-size:14pt;font-weight:700;margin:2px 0;}'
     + '.info{font-size:10pt;margin:1px 0;}'
-    + 'table{border-collapse:collapse;width:100%;font-size:10pt;}'
-    + 'th,td{border:1px solid #000;padding:5px 7px;text-align:center;}'
-    + 'th{background:#f0f0f0;font-weight:bold;}'
+    + 'table{border-collapse:collapse;width:98%;font-size:10pt;}'
+    + 'th,td{border:1px solid #000;padding:5px 7px;text-align:center;font-weight:300;}'
+    + 'th{background:#f0f0f0;font-weight:700;}'
     + '.name-col{text-align:left;white-space:nowrap;}'
     + '.good{color:#059669;font-weight:600;}'
     + '.improve{color:#dc3545;font-weight:600;}'
