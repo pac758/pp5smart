@@ -1104,7 +1104,15 @@ function getPDFCommonData_(grade, classNo) {
 }
 
 /**
- * บันทึก PDF ไปยัง Drive แล้วคืน URL
+ * สร้าง PDF จาก HTML แล้วคืน base64 data URL (ไม่ใช้ DriveApp)
+ */
+function _pdfToBase64_(htmlContent) {
+  var blob = HtmlService.createHtmlOutput(htmlContent).getBlob().getAs('application/pdf');
+  return 'data:application/pdf;base64,' + Utilities.base64Encode(blob.getBytes());
+}
+
+/**
+ * บันทึก PDF ไปยัง Drive แล้วคืน URL (เก็บไว้สำหรับ backward compat)
  */
 function savePDFToDrive_(htmlContent, folderName, fileName) {
   var blob = HtmlService.createHtmlOutput(htmlContent).getBlob().getAs('application/pdf').setName(fileName);
@@ -1147,8 +1155,7 @@ function generateCharacteristicAssessmentPDF(grade, classNo, sortMode) {
       common.academicYear, common.schoolName, common.directorName, common.teacherName, common.logoBase64
     );
 
-    var docName = 'รายงานคุณลักษณะอันพึงประสงค์_' + validated.grade + '_ห้อง' + validated.classNo + '_' + new Date().toISOString().slice(0, 10) + '.pdf';
-    return savePDFToDrive_(htmlContent, 'CharacteristicReports_PDF', docName);
+    return _pdfToBase64_(htmlContent);
   } catch (error) {
     Logger.log('❌ Characteristic PDF Error: ' + error.message);
     throw new Error('ไม่สามารถสร้าง PDF ได้: ' + error.message);
@@ -1169,8 +1176,7 @@ function generateActivityAssessmentPDF(grade, classNo, sortMode) {
       common.academicYear, common.schoolName, common.directorName, common.teacherName, common.logoBase64
     );
 
-    var docName = 'รายงานกิจกรรมพัฒนาผู้เรียน_' + validated.grade + '_ห้อง' + validated.classNo + '_' + new Date().toISOString().slice(0, 10) + '.pdf';
-    return savePDFToDrive_(htmlContent, 'ActivityReports_PDF', docName);
+    return _pdfToBase64_(htmlContent);
   } catch (error) {
     Logger.log('❌ Activity PDF Error: ' + error.message);
     throw new Error('ไม่สามารถสร้าง PDF ได้: ' + error.message);
@@ -1191,8 +1197,7 @@ function generateSubjectScoreAssessmentPDF(grade, classNo, sortMode) {
       common.academicYear, common.schoolName, common.directorName, common.teacherName, common.logoBase64
     );
 
-    var docName = 'ปพ.5_สรุปผลการเรียน_' + validated.grade + '_ห้อง' + validated.classNo + '_' + new Date().toISOString().slice(0, 10) + '.pdf';
-    return savePDFToDrive_(htmlContent, 'AcademicReports_PDF', docName);
+    return _pdfToBase64_(htmlContent);
   } catch (error) {
     Logger.log('❌ ปพ.5 PDF Error: ' + error.message);
     throw new Error('ไม่สามารถสร้าง PDF ได้: ' + error.message);
@@ -1213,8 +1218,7 @@ function exportCompetencyReport(grade, classNo, sortMode) {
       common.academicYear, common.schoolName, common.directorName, common.teacherName, common.logoBase64
     );
 
-    var docName = 'รายงานสมรรถนะละเอียด_' + validated.grade + '_ห้อง' + validated.classNo + '_' + new Date().toISOString().slice(0, 10) + '.pdf';
-    return savePDFToDrive_(htmlContent, 'CompetencyReports_PDF', docName);
+    return _pdfToBase64_(htmlContent);
   } catch (error) {
     Logger.log('❌ Competency Report Error: ' + error.message);
     throw new Error('ไม่สามารถสร้างรายงานได้: ' + error.message);
@@ -1235,8 +1239,7 @@ function exportCompetencySummaryReport(grade, classNo, sortMode) {
       common.academicYear, common.schoolName, common.directorName, common.teacherName, common.logoBase64
     );
 
-    var docName = 'รายงานสมรรถนะสรุป_' + validated.grade + '_ห้อง' + validated.classNo + '_' + new Date().toISOString().slice(0, 10) + '.pdf';
-    return savePDFToDrive_(htmlContent, 'CompetencyReports_PDF', docName);
+    return _pdfToBase64_(htmlContent);
   } catch (error) {
     Logger.log('❌ Competency Summary Error: ' + error.message);
     throw new Error('ไม่สามารถสร้างรายงานได้: ' + error.message);

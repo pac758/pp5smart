@@ -1037,8 +1037,8 @@
         // console.log('🚀 กำลังเรียก exportCompetencyReport...');
 
         google.script.run
-          .withSuccessHandler(function(url) {
-            // console.log('✅ ได้รับ URL:', url);
+          .withSuccessHandler(function(dataUrl) {
+            // console.log('✅ ได้รับ URL:', dataUrl);
             
             if (!checkPageActive()) return;
             
@@ -1048,13 +1048,12 @@
               btn.innerHTML = originalContent;
             }
             
-            if (url && url.startsWith('http')) {
-              showAlert('สร้างรายงานละเอียดเรียบร้อยแล้ว กำลังเปิดไฟล์...', 'success');
-              // เปิดใน tab ใหม่
-              window.open(url, '_blank');
-            } else {
-              showAlert('ไม่ได้รับ URL ที่ถูกต้อง: ' + url, 'warning');
-            }
+            var byteStr = atob(dataUrl.split(',')[1]);
+            var ab = new ArrayBuffer(byteStr.length);
+            var ia = new Uint8Array(ab);
+            for (var i = 0; i < byteStr.length; i++) ia[i] = byteStr.charCodeAt(i);
+            var blob = new Blob([ab], {type: 'application/pdf'});
+            window.open(URL.createObjectURL(blob), '_blank');
           })
           .withFailureHandler(function(error) {
             console.error('❌ เกิดข้อผิดพลาด:', error);
@@ -1107,8 +1106,8 @@
         // console.log('🚀 กำลังเรียก exportCompetencySummaryReport...');
 
         google.script.run
-          .withSuccessHandler(function(url) {
-            // console.log('✅ ได้รับ URL:', url);
+          .withSuccessHandler(function(dataUrl) {
+            // console.log('✅ ได้รับ URL:', dataUrl);
             
             if (!checkPageActive()) return;
             
@@ -1118,13 +1117,12 @@
               btn.innerHTML = originalContent;
             }
             
-            if (url && url.startsWith('http')) {
-              showAlert('สร้างรายงานสรุปเรียบร้อยแล้ว กำลังเปิดไฟล์...', 'success');
-              // เปิดใน tab ใหม่
-              window.open(url, '_blank');
-            } else {
-              showAlert('ไม่ได้รับ URL ที่ถูกต้อง: ' + url, 'warning');
-            }
+            var byteStr = atob(dataUrl.split(',')[1]);
+            var ab = new ArrayBuffer(byteStr.length);
+            var ia = new Uint8Array(ab);
+            for (var i = 0; i < byteStr.length; i++) ia[i] = byteStr.charCodeAt(i);
+            var blob = new Blob([ab], {type: 'application/pdf'});
+            window.open(URL.createObjectURL(blob), '_blank');
           })
           .withFailureHandler(function(error) {
             console.error('❌ เกิดข้อผิดพลาด:', error);

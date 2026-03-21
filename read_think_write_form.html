@@ -564,13 +564,18 @@
          btn.disabled = true;
 
          google.script.run
-           .withSuccessHandler(function(url){ 
+           .withSuccessHandler(function(dataUrl){ 
                btn.innerHTML = '<i class="fas fa-check"></i> เสร็จสิ้น';
                setTimeout(function() {
                    btn.innerHTML = originalText;
                    btn.disabled = false;
                }, 2000);
-               window.open(url, '_blank'); 
+               var byteStr = atob(dataUrl.split(',')[1]);
+               var ab = new ArrayBuffer(byteStr.length);
+               var ia = new Uint8Array(ab);
+               for (var i = 0; i < byteStr.length; i++) ia[i] = byteStr.charCodeAt(i);
+               var blob = new Blob([ab], {type: 'application/pdf'});
+               window.open(URL.createObjectURL(blob), '_blank'); 
            })
            .withFailureHandler(function(e) {
                alert('เกิดข้อผิดพลาด: ' + e.message);

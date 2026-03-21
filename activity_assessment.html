@@ -481,10 +481,15 @@
         updateExportBtnStatus('loading', 'กำลังสร้าง PDF...');
 
         google.script.run
-          .withSuccessHandler(function(url) {
+          .withSuccessHandler(function(dataUrl) {
             if (!checkPageActive()) return;
             updateExportBtnStatus('success', 'สำเร็จ!');
-            window.open(url, '_blank');
+            var byteStr = atob(dataUrl.split(',')[1]);
+            var ab = new ArrayBuffer(byteStr.length);
+            var ia = new Uint8Array(ab);
+            for (var i = 0; i < byteStr.length; i++) ia[i] = byteStr.charCodeAt(i);
+            var blob = new Blob([ab], {type: 'application/pdf'});
+            window.open(URL.createObjectURL(blob), '_blank');
           })
           .withFailureHandler(function(error) {
             if (!checkPageActive()) return;

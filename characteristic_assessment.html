@@ -1082,7 +1082,7 @@
         showExportModal();
 
         google.script.run
-          .withSuccessHandler(function(url) {
+          .withSuccessHandler(function(dataUrl) {
             if (!checkPageActive()) return;
             
             exportBtn.disabled = false;
@@ -1091,9 +1091,14 @@
             // ✅ แสดงสถานะสำเร็จ
             showExportSuccess();
             
-            // เปิดไฟล์ PDF หลังจากแสดง success สักครู่
+            // แปลง base64 เป็น Blob แล้วเปิด
             setTimeout(() => {
-              window.open(url, '_blank');
+              var byteStr = atob(dataUrl.split(',')[1]);
+              var ab = new ArrayBuffer(byteStr.length);
+              var ia = new Uint8Array(ab);
+              for (var i = 0; i < byteStr.length; i++) ia[i] = byteStr.charCodeAt(i);
+              var blob = new Blob([ab], {type: 'application/pdf'});
+              window.open(URL.createObjectURL(blob), '_blank');
             }, 1000);
           })
           .withFailureHandler(function(error) {
