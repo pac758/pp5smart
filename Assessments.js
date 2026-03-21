@@ -1122,7 +1122,7 @@ function _pdfToBase64_(htmlContent) {
  */
 function _getEmbeddedSarabunCss_() {
   try {
-    var cssUrl = 'https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap';
+    var cssUrl = 'https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap';
     var resp = UrlFetchApp.fetch(cssUrl, {
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
       muteHttpExceptions: true
@@ -1401,7 +1401,7 @@ function createOfficialReportHTML(students, grade, classNo, year, school, direct
   });
 
   return '<!DOCTYPE html><html><head><meta charset="UTF-8"><link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet"><style>'
-    + '@page{size:A4;margin:1.5cm 1.2cm}body{font-family:"Sarabun",sans-serif;font-size:11pt;line-height:1.2;color:#000}.header{text-align:center;margin-bottom:10px}.logo{width:50px;height:50px;object-fit:contain;margin-bottom:5px}.title{font-size:14pt;font-weight:bold}.subtitle{font-size:12pt;font-weight:bold;margin-top:3px}.info-box{text-align:center;margin-bottom:10px;font-size:12pt;font-weight:bold}table{width:100%;border-collapse:collapse;margin-bottom:15px}th,td{border:1px solid #000;padding:3px 2px;font-size:10pt;vertical-align:middle}th{background-color:#f0f0f0;font-weight:bold;height:30px}.center{text-align:center}.left{text-align:left}.font-bold{font-weight:bold}.name-cell{font-size:10pt;white-space:nowrap}'
+    + '@page{size:A4;margin:1.5cm 1.2cm}body{font-family:"Sarabun",sans-serif;font-size:11pt;font-weight:300;line-height:1.2;color:#000}.header{text-align:center;margin-bottom:10px}.logo{width:50px;height:50px;object-fit:contain;margin-bottom:5px}.title{font-size:14pt;font-weight:700}.subtitle{font-size:12pt;font-weight:600;margin-top:3px}.info-box{text-align:center;margin-bottom:10px;font-size:12pt;font-weight:600}table{width:100%;border-collapse:collapse;margin-bottom:15px}th,td{border:1px solid #000;padding:3px 2px;font-size:10pt;font-weight:300;vertical-align:middle}th{background-color:#f0f0f0;font-weight:700;height:30px}.center{text-align:center}.left{text-align:left}.font-bold{font-weight:bold}.name-cell{font-size:10pt;white-space:nowrap}'
     + '.footer{margin-top:30px;width:100%;display:table;page-break-inside:avoid}.sign-left,.sign-right{display:table-cell;width:50%;text-align:center;vertical-align:top}.sign-line{margin-bottom:4px;font-size:10pt;white-space:nowrap}'
     + '</style></head><body>'
     + '<div class="header">' + logoHtml + '<div class="title">แบบประเมินการอ่าน คิดวิเคราะห์ เขียน</div><div class="subtitle">' + school + '</div></div>'
