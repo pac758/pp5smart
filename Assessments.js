@@ -1355,13 +1355,12 @@ function createActivityAssessmentHTML_(students, grade, classNo, year, school, d
     if (overall === 'ผ่าน') passAllCount++;
     else if (overall === 'ไม่ผ่าน') notPassCount++;
 
-    var getRC = function(val) { return val === 'ผ่าน' ? 'pass' : (val === 'ไม่ผ่าน' ? 'not-pass' : ''); };
     rows += '<tr><td class="center">' + (i + 1) + '</td><td class="left name-cell">' + stu.name + '</td>'
-      + '<td class="center ' + getRC(guidance) + '">' + guidance + '</td>'
-      + '<td class="center ' + getRC(scout) + '">' + scout + '</td>'
-      + '<td class="center ' + getRC(club) + '">' + club + '</td>'
-      + '<td class="center ' + getRC(social) + '">' + social + '</td>'
-      + '<td class="center ' + getRC(overall) + '">' + overall + '</td></tr>';
+      + '<td class="center">' + guidance + '</td>'
+      + '<td class="center">' + scout + '</td>'
+      + '<td class="center">' + club + '</td>'
+      + '<td class="center">' + social + '</td>'
+      + '<td class="center"' + (overall === 'ไม่ผ่าน' ? ' style="color:#dc3545"' : '') + '>' + overall + '</td></tr>';
   });
 
   return '<!DOCTYPE html><html><head><meta charset="UTF-8"><link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet"><style>'
@@ -1371,9 +1370,9 @@ function createActivityAssessmentHTML_(students, grade, classNo, year, school, d
     + '</style></head><body>'
     + '<div class="header">' + logoHtml + '<div class="title">รายงานการประเมินกิจกรรมพัฒนาผู้เรียน</div><div class="subtitle">' + school + '</div></div>'
     + '<div class="info-box">ชั้นประถมศึกษาปีที่ ' + grade.replace('ป.', '') + ' ห้อง ' + classNo + ' &nbsp;&nbsp; ปีการศึกษา ' + year + '</div>'
-    + '<table><thead><tr><th style="width:5%">ที่</th><th style="width:32%">ชื่อ - นามสกุล</th><th style="width:11%">แนะแนว</th><th style="width:13%">ลูกเสือ/เนตรนารี</th><th style="width:11%">ชุมนุม</th><th style="width:13%">เพื่อสังคมฯ</th><th style="width:11%">สรุปผล</th></tr></thead><tbody>' + rows + '</tbody></table>'
-    + '<div class="legend-inline"><strong>เกณฑ์:</strong> &nbsp;<span class="pass"><strong>ผ่าน</strong></span> = เข้าร่วมกิจกรรมครบตามเกณฑ์ &nbsp;&nbsp;|&nbsp;&nbsp;<span class="not-pass"><strong>ไม่ผ่าน</strong></span> = เข้าร่วมกิจกรรมไม่ครบตามเกณฑ์</div>'
-    + '<div class="summary-inline"><strong>สรุปผลการประเมิน:</strong> &nbsp;&nbsp;ผ่าน <span class="value pass">' + passAllCount + '</span> คน &nbsp;&nbsp;|&nbsp;&nbsp;ไม่ผ่าน <span class="value not-pass">' + notPassCount + '</span> คน &nbsp;&nbsp;|&nbsp;&nbsp;รวมทั้งหมด <span class="value total">' + students.length + '</span> คน</div>'
+    + '<table><thead><tr><th style="width:5%;background:#000;color:#fff">ที่</th><th style="width:32%;background:#000;color:#fff">ชื่อ - นามสกุล</th><th style="width:11%;background:#000;color:#fff">แนะแนว</th><th style="width:13%;background:#000;color:#fff">ลูกเสือ/เนตรนารี</th><th style="width:11%;background:#000;color:#fff">ชุมนุม</th><th style="width:13%;background:#000;color:#fff">เพื่อสังคมฯ</th><th style="width:11%;background:#000;color:#fff">สรุปผล</th></tr></thead><tbody>' + rows + '</tbody></table>'
+    + '<div class="legend-inline"><strong>เกณฑ์:</strong> &nbsp;<strong>ผ่าน</strong> = เข้าร่วมกิจกรรมครบตามเกณฑ์ &nbsp;&nbsp;|&nbsp;&nbsp;<span style="color:#dc3545"><strong>ไม่ผ่าน</strong></span> = เข้าร่วมกิจกรรมไม่ครบตามเกณฑ์</div>'
+    + '<div class="summary-inline"><strong>สรุปผลการประเมิน:</strong> &nbsp;&nbsp;ผ่าน <span style="font-weight:700;font-size:12pt">' + passAllCount + '</span> คน &nbsp;&nbsp;|&nbsp;&nbsp;ไม่ผ่าน <span style="font-weight:700;font-size:12pt;color:#dc3545">' + notPassCount + '</span> คน &nbsp;&nbsp;|&nbsp;&nbsp;รวมทั้งหมด <span style="font-weight:700;font-size:12pt">' + students.length + '</span> คน</div>'
     + '<div class="footer"><table><tr><td><div class="sign-line">ลงชื่อ...............................................ครูประจำชั้น</div><div class="sign-line">(' + (teacherName || '..........................................') + ')</div><div class="sign-line">ตำแหน่ง ครู &nbsp;&nbsp; วันที่........./........./..........</div></td>'
     + '<td><div class="sign-line">ลงชื่อ...............................................ผู้อำนวยการ</div><div class="sign-line">(' + director + ')</div><div class="sign-line">ผู้อำนวยการสถานศึกษา &nbsp;&nbsp; วันที่........./........./..........</div></td></tr></table></div>'
     + '</body></html>';
