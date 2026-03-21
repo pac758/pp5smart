@@ -944,6 +944,34 @@ body.menu-open {
 }
 
 /* =========================
+   TOUCH DEVICES (iPad etc.) — accordion at any width
+   ========================= */
+@media (pointer: coarse) {
+  .menu-group .nav-item {
+    display: block;
+    max-height: 200px;
+    opacity: 1;
+    overflow: visible;
+    transition: max-height 0.3s ease, opacity 0.2s ease, padding 0.2s ease;
+  }
+  
+  .menu-group.menu-collapsed .nav-item {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    padding: 0;
+  }
+  
+  .menu-group.menu-collapsed .menu-header .toggle-icon {
+    transform: rotate(0deg);
+  }
+  
+  .menu-group:not(.menu-collapsed) .menu-header .toggle-icon {
+    transform: rotate(180deg);
+  }
+}
+
+/* =========================
    PRINT
    ========================= */
 @media print {
@@ -2167,7 +2195,8 @@ function openFlyout(menuGroup, trigger) {
 }
 
 function toggleAccordion(menuGroup) {
-  if (window.innerWidth >= 992) return;
+  var isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+  if (window.innerWidth >= 992 && !isTouchDevice) return;
   const isCollapsed = menuGroup.classList.contains('menu-collapsed');
   document.querySelectorAll('.menu-group').forEach(g => {
     if (g !== menuGroup) g.classList.add('menu-collapsed');
@@ -2523,8 +2552,9 @@ document.addEventListener('DOMContentLoaded', function() {
   renderMobileQuickMenu_();
   syncFavoriteStars_();
 
-  // Mobile: collapse all groups
-  if (window.innerWidth < 992) {
+  // Mobile / Touch device: collapse all groups
+  var isTouchInit = window.matchMedia('(pointer: coarse)').matches;
+  if (window.innerWidth < 992 || isTouchInit) {
     document.querySelectorAll('.menu-group').forEach(group => {
       group.classList.add('menu-collapsed');
     });
@@ -2551,6 +2581,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Bind menu headers
   let activeFlyoutHeader = null;
+  var isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
   document.querySelectorAll('.menu-group').forEach(group => {
     const header = group.querySelector('.menu-header');
     if (header) {
@@ -2558,8 +2589,8 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         e.stopPropagation();
         
-        if (window.innerWidth >= 992) {
-          // Desktop: flyout
+        if (window.innerWidth >= 992 && !isTouchDevice) {
+          // Desktop (mouse): flyout
           if (activeFlyoutHeader === header) {
             closeFlyout();
             activeFlyoutHeader = null;
@@ -2569,7 +2600,7 @@ document.addEventListener('DOMContentLoaded', function() {
             activeFlyoutHeader = header;
           }
         } else {
-          // Mobile: accordion
+          // Mobile / Touch device (iPad): accordion
           toggleAccordion(group);
         }
       });
