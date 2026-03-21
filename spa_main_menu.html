@@ -944,9 +944,9 @@ body.menu-open {
 }
 
 /* =========================
-   TOUCH DEVICES (iPad etc.) — accordion at any width
+   TOUCH DEVICES (phone/small tablet) — accordion only at mobile width
    ========================= */
-@media (pointer: coarse) {
+@media (pointer: coarse) and (max-width: 991.98px) {
   .menu-group .nav-item {
     display: block;
     max-height: 200px;
@@ -2552,9 +2552,8 @@ document.addEventListener('DOMContentLoaded', function() {
   renderMobileQuickMenu_();
   syncFavoriteStars_();
 
-  // Mobile / Touch device: collapse all groups
-  var isTouchInit = window.matchMedia('(pointer: coarse)').matches;
-  if (window.innerWidth < 992 || isTouchInit) {
+  // Mobile / Touch device: collapse all groups (only at mobile width)
+  if (window.innerWidth < 992) {
     document.querySelectorAll('.menu-group').forEach(group => {
       group.classList.add('menu-collapsed');
     });
@@ -2599,8 +2598,10 @@ document.addEventListener('DOMContentLoaded', function() {
             openFlyout(group, header);
             activeFlyoutHeader = header;
           }
+        } else if (window.innerWidth >= 992 && isTouchDevice) {
+          // iPad landscape: items already visible, no action needed
         } else {
-          // Mobile / Touch device (iPad): accordion
+          // Mobile / small touch: accordion
           toggleAccordion(group);
         }
       });
