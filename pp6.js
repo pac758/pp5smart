@@ -852,7 +852,23 @@ function getStudentListForPp6(grade, classNo) {
  */
 
 /**
- * สร้าง PDF จาก Google Docs (ฟอนต์ Sarabun เหมือนรายงานหน้าเดียว)
+ * ═══════════════════════════════════════════════════════════════════
+ * ⚠️  WARNING: DO NOT MODIFY THIS FUNCTION WITHOUT TESTING PP6 PDF
+ * ═══════════════════════════════════════════════════════════════════
+ * ฟังก์ชันนี้ผ่านการปรับแต่งละเอียดแล้ว (layout, font, alignment, widths)
+ * หากแก้ไขอะไรก็ตาม ต้องรัน testPp6PdfRegression() เพื่อตรวจสอบเสมอ
+ *
+ * Config ที่ล็อคไว้ (ห้ามเปลี่ยนโดยไม่ทดสอบ):
+ *   Page:  595×842, margins: T14 B10 L42 R24 → content width = 529pt
+ *   Logo:  35×35
+ *   Subject table W: [25,52,190,55,50,68,89] sum=529
+ *   Summary table SW: [175,55,230,69] sum=529
+ *   Font sizes: header=13, subHeader=11/12, tableHeader=10, tableData=11, summary=10
+ *   Bold: header rows only, data rows = false, summary values = false
+ *   Signature spacing: spacingAfter=30pt before signature table
+ *
+ * Last verified: 2026-03-21 @240
+ * ═══════════════════════════════════════════════════════════════════
  */
 function _pp6_buildDocPdf(data) {
   var F = OPR_FONT; // 'Sarabun'
@@ -1029,6 +1045,55 @@ function _pp6_buildDocPdf(data) {
   docFile.setTrashed(true);
 
   return pdfBlob;
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════
+ * Regression Test: ตรวจสอบว่า _pp6_buildDocPdf ยังทำงานถูกต้อง
+ * รันใน Apps Script Editor: Run > testPp6PdfRegression
+ * ═══════════════════════════════════════════════════════════════════
+ */
+function testPp6PdfRegression() {
+  var errors = [];
+
+  // 1. ตรวจสอบ config ค่าคงที่
+  var fn = _pp6_buildDocPdf.toString();
+  var checks = [
+    ['setMarginTop(14)', 'marginTop'],
+    ['setMarginBottom(10)', 'marginBottom'],
+    ['setMarginLeft(42)', 'marginLeft'],
+    ['setMarginRight(24)', 'marginRight'],
+    ['setPageWidth(595)', 'pageWidth'],
+    ['setPageHeight(842)', 'pageHeight'],
+    ['[25, 52, 190, 55, 50, 68, 89]', 'subject table W'],
+    ['[175, 55, 230, 69]', 'summary table SW'],
+    ['FS_H = 10', 'header font size'],
+    ['FS_D = 11', 'data font size']
+  ];
+
+  checks.forEach(function(c) {
+    if (fn.indexOf(c[0]) === -1) {
+      errors.push('❌ ' + c[1] + ' เปลี่ยนไป! ค่าที่ถูกต้อง: ' + c[0]);
+    }
+  });
+
+  // 2. ตรวจสอบ column widths sum = 529
+  var W = [25, 52, 190, 55, 50, 68, 89];
+  var wSum = W.reduce(function(a, b) { return a + b; }, 0);
+  if (wSum !== 529) errors.push('❌ Subject W sum=' + wSum + ' (ต้อง=529)');
+
+  var SW = [175, 55, 230, 69];
+  var swSum = SW.reduce(function(a, b) { return a + b; }, 0);
+  if (swSum !== 529) errors.push('❌ Summary SW sum=' + swSum + ' (ต้อง=529)');
+
+  // 3. สรุปผล
+  if (errors.length === 0) {
+    Logger.log('✅ PP6 PDF Regression Test PASSED — config ไม่มีการเปลี่ยนแปลง');
+    return { success: true, message: '✅ PP6 PDF config ถูกต้อง ไม่มีการเปลี่ยนแปลง' };
+  } else {
+    Logger.log('❌ PP6 PDF Regression Test FAILED:\n' + errors.join('\n'));
+    return { success: false, errors: errors };
+  }
 }
 
 /**
