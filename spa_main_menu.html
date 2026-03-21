@@ -669,36 +669,48 @@ body.menu-open {
 }
 
 .submenu-flyout .nav-link:hover i {
-  background: var(--primary);
-  color: white;
   transform: scale(1.1);
 }
 
-/* เพิ่มสีสันตามประเภทของเมนู (Icon Variants) */
-.submenu-flyout .nav-link[data-page*="setting"] i,
-.submenu-flyout .nav-link[onclick*="update"] i {
-  background: rgba(14, 165, 233, 0.1);
-  color: #0ea5e9;
+/* --- Flyout Icon Colors per Group --- */
+.submenu-flyout[data-group="หน้าหลัก"] .nav-link i { background: rgba(79, 70, 229, 0.12); color: #4F46E5; }
+.submenu-flyout[data-group="ระบบ"] .nav-link i { background: rgba(124, 58, 237, 0.12); color: #7C3AED; }
+.submenu-flyout[data-group="ข้อมูลนักเรียน"] .nav-link i { background: rgba(16, 185, 129, 0.12); color: #059669; }
+.submenu-flyout[data-group="เวลาเรียน"] .nav-link i { background: rgba(6, 182, 212, 0.12); color: #0891B2; }
+.submenu-flyout[data-group="บันทึกคะแนน"] .nav-link i { background: rgba(245, 158, 11, 0.12); color: #D97706; }
+.submenu-flyout[data-group="ประเมินผล"] .nav-link i { background: rgba(236, 72, 153, 0.12); color: #DB2777; }
+.submenu-flyout[data-group="เอกสารรายงานผล"] .nav-link i { background: rgba(99, 102, 241, 0.12); color: #4F46E5; }
+.submenu-flyout[data-group="ระบบผู้ปกครอง"] .nav-link i { background: rgba(217, 119, 6, 0.12); color: #B45309; }
+.submenu-flyout[data-group="ช่วยเหลือ"] .nav-link i { background: rgba(14, 165, 233, 0.12); color: #0284C7; }
+.submenu-flyout[data-group="บัญชีผู้ใช้"] .nav-link i { background: rgba(100, 116, 139, 0.12); color: #475569; }
+
+.submenu-flyout .nav-link:hover i {
+  color: white;
 }
-.submenu-flyout .nav-link[data-page*="student"] i,
-.submenu-flyout .nav-link[data-page*="user"] i {
-  background: rgba(79, 70, 229, 0.1);
-  color: #6366f1;
-}
-.submenu-flyout .nav-link[data-page*="report"] i,
-.submenu-flyout .nav-link[data-page*="pp5"] i,
-.submenu-flyout .nav-link[data-page*="pp6"] i {
-  background: rgba(16, 185, 129, 0.1);
-  color: #10b981;
-}
-.submenu-flyout .nav-link[data-page*="password"] i {
-  background: rgba(245, 158, 11, 0.1);
-  color: #f59e0b;
-}
-.submenu-flyout .nav-link.danger i {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-}
+.submenu-flyout[data-group="หน้าหลัก"] .nav-link:hover i { background: #4F46E5; }
+.submenu-flyout[data-group="ระบบ"] .nav-link:hover i { background: #7C3AED; }
+.submenu-flyout[data-group="ข้อมูลนักเรียน"] .nav-link:hover i { background: #059669; }
+.submenu-flyout[data-group="เวลาเรียน"] .nav-link:hover i { background: #0891B2; }
+.submenu-flyout[data-group="บันทึกคะแนน"] .nav-link:hover i { background: #D97706; }
+.submenu-flyout[data-group="ประเมินผล"] .nav-link:hover i { background: #DB2777; }
+.submenu-flyout[data-group="เอกสารรายงานผล"] .nav-link:hover i { background: #4F46E5; }
+.submenu-flyout[data-group="ระบบผู้ปกครอง"] .nav-link:hover i { background: #B45309; }
+.submenu-flyout[data-group="ช่วยเหลือ"] .nav-link:hover i { background: #0284C7; }
+.submenu-flyout[data-group="บัญชีผู้ใช้"] .nav-link:hover i { background: #475569; }
+
+.submenu-flyout .nav-link.danger i { background: rgba(239, 68, 68, 0.12); color: #ef4444; }
+
+/* Dark mode flyout */
+[data-theme="dark"] .submenu-flyout[data-group="หน้าหลัก"] .nav-link i { background: rgba(99, 102, 241, 0.18); color: #818CF8; }
+[data-theme="dark"] .submenu-flyout[data-group="ระบบ"] .nav-link i { background: rgba(139, 92, 246, 0.18); color: #A78BFA; }
+[data-theme="dark"] .submenu-flyout[data-group="ข้อมูลนักเรียน"] .nav-link i { background: rgba(52, 211, 153, 0.18); color: #34D399; }
+[data-theme="dark"] .submenu-flyout[data-group="เวลาเรียน"] .nav-link i { background: rgba(34, 211, 238, 0.18); color: #22D3EE; }
+[data-theme="dark"] .submenu-flyout[data-group="บันทึกคะแนน"] .nav-link i { background: rgba(251, 191, 36, 0.18); color: #FBBF24; }
+[data-theme="dark"] .submenu-flyout[data-group="ประเมินผล"] .nav-link i { background: rgba(244, 114, 182, 0.18); color: #F472B6; }
+[data-theme="dark"] .submenu-flyout[data-group="เอกสารรายงานผล"] .nav-link i { background: rgba(129, 140, 248, 0.18); color: #818CF8; }
+[data-theme="dark"] .submenu-flyout[data-group="ระบบผู้ปกครอง"] .nav-link i { background: rgba(251, 191, 36, 0.18); color: #FBBF24; }
+[data-theme="dark"] .submenu-flyout[data-group="ช่วยเหลือ"] .nav-link i { background: rgba(56, 189, 248, 0.18); color: #38BDF8; }
+[data-theme="dark"] .submenu-flyout[data-group="บัญชีผู้ใช้"] .nav-link i { background: rgba(148, 163, 184, 0.18); color: #94A3B8; }
 
 /* =========================
    MAIN CONTENT
@@ -2097,7 +2109,11 @@ function openFlyout(menuGroup, trigger) {
   const navLinks = menuGroup.querySelectorAll('.nav-item .nav-link');
   if (!navLinks.length) return;
   
-  // 1. สร้างเนื้อหาเมนู
+  // 1. ส่ง group label ไปให้ flyout เพื่อจับคู่สี
+  var groupLabel = menuGroup.getAttribute('aria-label') || '';
+  flyout.setAttribute('data-group', groupLabel);
+
+  // สร้างเนื้อหาเมนู
   flyout.innerHTML = Array.from(navLinks).map(link => {
     const icon = link.querySelector('i')?.outerHTML || '';
     const text = link.textContent.trim();
