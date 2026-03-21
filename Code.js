@@ -1018,7 +1018,13 @@ function addNoCacheMeta_(output) {
 
     output.addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
 
-          .addMetaTag('x-app-version', APP_VERSION);
+          .addMetaTag('x-app-version', APP_VERSION)
+
+          .addMetaTag('Cache-Control', 'no-cache, no-store, must-revalidate')
+
+          .addMetaTag('Pragma', 'no-cache')
+
+          .addMetaTag('Expires', '0');
 
   } catch (e) {}
 
