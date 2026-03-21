@@ -92,8 +92,8 @@
 
 <div class="css-page animate-fade-in">
   <div class="css-header">
-    <h2><i class="bi bi-bar-chart-line me-2"></i>สรุปคะแนน วิชาพื้นฐาน</h2>
-    <p>แสดงคะแนนเก็บ / สอบ / รวม / เกรด ทุกวิชาในตารางเดียว แยกตามห้อง</p>
+    <h2><i class="bi bi-bar-chart-line me-2"></i>สรุปคะแนน</h2>
+    <p>แสดงคะแนนเก็บ / สอบ / รวม / เกรด แต่ละรายวิชา แยกตามห้อง</p>
   </div>
 
   <div class="css-controls">
@@ -104,9 +104,6 @@
         <option value="ป.1">ป.1</option><option value="ป.2">ป.2</option>
         <option value="ป.3">ป.3</option><option value="ป.4">ป.4</option>
         <option value="ป.5">ป.5</option><option value="ป.6">ป.6</option>
-        <option value="ม.1">ม.1</option><option value="ม.2">ม.2</option>
-        <option value="ม.3">ม.3</option><option value="ม.4">ม.4</option>
-        <option value="ม.5">ม.5</option><option value="ม.6">ม.6</option>
       </select>
     </div>
     <div class="form-group">
@@ -114,13 +111,12 @@
       <select id="cssClassSelect">
         <option value="">-- ห้อง --</option>
         <option value="1">1</option><option value="2">2</option>
-        <option value="3">3</option><option value="4">4</option>
-        <option value="5">5</option><option value="6">6</option>
       </select>
     </div>
     <div class="form-group">
       <label>ภาคเรียน</label>
       <select id="cssTermSelect">
+        <option value="0">ทั้งปี</option>
         <option value="1">ภาคเรียนที่ 1</option>
         <option value="2">ภาคเรียนที่ 2</option>
       </select>
@@ -192,7 +188,8 @@ function cssDisplayData(data) {
   }
   cssData = data;
 
-  cssShowInfo('success', data.gradeFullName + ' ห้อง ' + data.classNo + ' ภาคเรียนที่ ' + data.term,
+  var termLabel = data.mode === 'year' ? 'ทั้งปี' : ('ภาคเรียนที่ ' + data.term);
+  cssShowInfo('success', data.gradeFullName + ' ห้อง ' + data.classNo + ' ' + termLabel,
     'จำนวนนักเรียน: ' + data.students.length + ' คน | วิชา: ' + data.subjects.length + ' วิชา');
 
   var shortNames = {
@@ -212,6 +209,7 @@ function cssDisplayData(data) {
   // Build header
   var thead = document.getElementById('cssTableHead');
   var t = data.term;
+  var isYear = data.mode === 'year';
   var row1 = '<tr><th rowspan="2" style="width:40px">เลขที่</th><th rowspan="2" class="name-col">ชื่อ-สกุล</th>';
   data.subjects.forEach(function(s) {
     row1 += '<th colspan="4" class="subject-header" title="' + s.name + '">' + getShort(s.name) + '</th>';
@@ -220,10 +218,17 @@ function cssDisplayData(data) {
 
   var row2 = '<tr>';
   data.subjects.forEach(function(s) {
-    row2 += '<th>เก็บ' + t + '<br><small>(' + s.midMax + ')</small></th>';
-    row2 += '<th>สอบ' + t + '<br><small>(' + s.finalMax + ')</small></th>';
-    row2 += '<th>รวม' + t + '<br><small>(' + (s.midMax + s.finalMax) + ')</small></th>';
-    row2 += '<th>เกรด' + t + '</th>';
+    if (isYear) {
+      row2 += '<th>ภาค1<br><small>(100)</small></th>';
+      row2 += '<th>ภาค2<br><small>(100)</small></th>';
+      row2 += '<th>เฉลี่ยปี<br><small>(100)</small></th>';
+      row2 += '<th>เกรดปี</th>';
+    } else {
+      row2 += '<th>เก็บ' + t + '<br><small>(' + s.midMax + ')</small></th>';
+      row2 += '<th>สอบ' + t + '<br><small>(' + s.finalMax + ')</small></th>';
+      row2 += '<th>รวม' + t + '<br><small>(' + (s.midMax + s.finalMax) + ')</small></th>';
+      row2 += '<th>เกรด' + t + '</th>';
+    }
   });
   row2 += '</tr>';
   thead.innerHTML = row1 + row2;
@@ -238,10 +243,17 @@ function cssDisplayData(data) {
       var key = s.code || s.name;
       var sc = st.scores[key];
       if (sc) {
-        rows += '<td>' + sc.mid + '</td>';
-        rows += '<td>' + sc.final + '</td>';
-        rows += '<td class="total-cell">' + sc.total + '</td>';
-        rows += '<td class="grade-cell">' + sc.grade + '</td>';
+        if (isYear) {
+          rows += '<td>' + sc.t1 + '</td>';
+          rows += '<td>' + sc.t2 + '</td>';
+          rows += '<td class="total-cell">' + sc.yearAvg + '</td>';
+          rows += '<td class="grade-cell">' + sc.yearGrade + '</td>';
+        } else {
+          rows += '<td>' + sc.mid + '</td>';
+          rows += '<td>' + sc.final + '</td>';
+          rows += '<td class="total-cell">' + sc.total + '</td>';
+          rows += '<td class="grade-cell">' + sc.grade + '</td>';
+        }
       } else {
         rows += '<td>-</td><td>-</td><td>-</td><td>-</td>';
       }
@@ -286,8 +298,13 @@ function cssExportExcel() {
   if (!cssData) return;
   var wsData = [];
   var h1 = ['เลขที่', 'ชื่อ-สกุล'];
+  var isYr = cssData.mode === 'year';
   cssData.subjects.forEach(function(s) {
-    h1.push('เก็บ(' + s.name + ')', 'สอบ(' + s.name + ')', 'รวม(' + s.name + ')', 'เกรด(' + s.name + ')');
+    if (isYr) {
+      h1.push('ภาค1(' + s.name + ')', 'ภาค2(' + s.name + ')', 'เฉลี่ยปี(' + s.name + ')', 'เกรดปี(' + s.name + ')');
+    } else {
+      h1.push('เก็บ(' + s.name + ')', 'สอบ(' + s.name + ')', 'รวม(' + s.name + ')', 'เกรด(' + s.name + ')');
+    }
   });
   wsData.push(h1);
 
@@ -296,7 +313,11 @@ function cssExportExcel() {
     cssData.subjects.forEach(function(s) {
       var key = s.code || s.name;
       var sc = st.scores[key];
-      row.push(sc ? sc.mid : '', sc ? sc.final : '', sc ? sc.total : '', sc ? sc.grade : '');
+      if (isYr) {
+        row.push(sc ? sc.t1 : '', sc ? sc.t2 : '', sc ? sc.yearAvg : '', sc ? sc.yearGrade : '');
+      } else {
+        row.push(sc ? sc.mid : '', sc ? sc.final : '', sc ? sc.total : '', sc ? sc.grade : '');
+      }
     });
     wsData.push(row);
   });
@@ -304,7 +325,8 @@ function cssExportExcel() {
   var wb = XLSX.utils.book_new();
   var ws = XLSX.utils.aoa_to_sheet(wsData);
   XLSX.utils.book_append_sheet(wb, ws, 'สรุปคะแนน');
-  XLSX.writeFile(wb, 'สรุปคะแนน_' + cssData.grade + '_' + cssData.classNo + '_ภาค' + cssData.term + '.xlsx');
+  var termSuffix = cssData.mode === 'year' ? 'ทั้งปี' : ('ภาค' + cssData.term);
+  XLSX.writeFile(wb, 'สรุปคะแนน_' + cssData.grade + '_' + cssData.classNo + '_' + termSuffix + '.xlsx');
 }
 
 // Auto-load on select change

@@ -2,104 +2,100 @@
 // ClassReports.js — รายงานสรุปคะแนนและการประเมินรายชั้น
 // ═══════════════════════════════════════════════════════════════
 // ⚠️ ไฟล์นี้สร้างใหม่ทั้งหมด ไม่แก้ไขฟังก์ชัน PDF เดิม
+// ⚠️ ใช้ savePDFToDrive_ (Assessments.js) สำหรับ PDF — ไม่สร้างใหม่
 // ═══════════════════════════════════════════════════════════════
 
-/**
- * 1. สรุปคะแนนวิชาพื้นฐาน — เก็บ/สอบ/รวม/เกรด ทุกวิชา แยกตามห้อง
- * @param {string} grade - ชั้น เช่น "ป.1"
- * @param {string} classNo - ห้อง เช่น "1"
- * @param {string} term - ภาคเรียน "1" หรือ "2"
- * @returns {Object}
- */
+/* ── helpers ภายในไฟล์ ────────────────────────────────── */
+function _cr_getStudents(ss, grade, classNo) {
+  var sheet = ss.getSheetByName('Students');
+  if (!sheet) throw new Error('ไม่พบชีต "Students"');
+  var data = sheet.getDataRange().getValues();
+  var h = data[0];
+  var gi = U_findColumnIndex(h, ['grade', 'ชั้น', 'ระดับชั้น']);
+  var ci = U_findColumnIndex(h, ['class_no', 'ห้อง']);
+  var ii = U_findColumnIndex(h, ['student_id', 'รหัสนักเรียน']);
+  var ni = U_findColumnIndex(h, ['student_no', 'เลขที่', 'ลำดับ']);
+  var ti = U_findColumnIndex(h, ['title', 'คำนำหน้า']);
+  var fi = U_findColumnIndex(h, ['firstname', 'first_name', 'ชื่อ']);
+  var li = U_findColumnIndex(h, ['lastname', 'last_name', 'นามสกุล']);
+  var ui = U_findColumnIndex(h, ['full_name', 'ชื่อเต็ม', 'ชื่อ-นามสกุล']);
+  var out = [];
+  for (var r = 1; r < data.length; r++) {
+    var row = data[r];
+    if (String(row[gi]||'').trim() !== grade) continue;
+    if (String(row[ci]||'').trim() !== classNo) continue;
+    var fn = '';
+    if (ui !== -1 && row[ui]) { fn = String(row[ui]).trim(); }
+    else if (fi !== -1 && li !== -1) { fn = (String(row[fi]||'')+' '+String(row[li]||'')).trim(); }
+    var title = ti !== -1 ? String(row[ti]||'').trim() : '';
+    if (title && fn) fn = title + fn;
+    out.push({ studentId: String(row[ii]||'').trim(), studentNo: ni!==-1?String(row[ni]||'').trim():'', fullName: fn });
+  }
+  out.sort(function(a,b) {
+    return (parseInt(a.studentNo)||0) - (parseInt(b.studentNo)||0) ||
+      String(a.studentId).localeCompare(String(b.studentId), undefined, {numeric:true});
+  });
+  return { students: out, allData: data, headers: h, gradeCol: gi, classCol: ci, idCol: ii };
+}
+
+function _cr_getSubjects(ss, grade) {
+  var sheet = ss.getSheetByName('รายวิชา');
+  if (!sheet) throw new Error('ไม่พบชีต "รายวิชา"');
+  var data = sheet.getDataRange().getValues();
+  var h = data[0];
+  var gi = h.indexOf('ชั้น'), ni = h.indexOf('ชื่อวิชา'), ci = h.indexOf('รหัสวิชา');
+  var ti = h.indexOf('ประเภทวิชา'), oi = h.indexOf('ลำดับ');
+  var mi = h.indexOf('คะแนนระหว่างปี'), fi = h.indexOf('คะแนนปลายปี');
+  var hi = h.indexOf('ชั่วโมง/ปี');
+  var out = [];
+  for (var r = 1; r < data.length; r++) {
+    var row = data[r];
+    if (String(row[gi]||'').trim() !== grade) continue;
+    var typ = String(row[ti]||'').trim();
+    if (typ === 'กิจกรรม') continue;
+    out.push({
+      name: String(row[ni]||'').trim(), code: String(row[ci]||'').trim(), type: typ,
+      order: parseInt(row[oi])||99,
+      midMax: parseInt(row[mi])||60, finalMax: parseInt(row[fi])||40,
+      hours: parseFloat(row[hi])||1
+    });
+  }
+  out.sort(function(a,b) { return a.order - b.order; });
+  return out;
+}
+
+var _CR_SHORT = {
+  'ภาษาไทย':'ภาษาไทย','คณิตศาสตร์':'คณิตศาสตร์',
+  'วิทยาศาสตร์และเทคโนโลยี':'วิทย์และเทคโนฯ',
+  'สังคมศึกษา ศาสนา และวัฒนธรรม':'สังคมศึกษาฯ',
+  'สุขศึกษาและพลศึกษา':'สุขศึกษาฯ','ศิลปะ':'ศิลปะ',
+  'การงานอาชีพ':'การงานอาชีพ','ภาษาอังกฤษ':'ภาษาอังกฤษ',
+  'ประวัติศาสตร์':'ประวัติศาสตร์','หน้าที่พลเมือง':'หน้าที่พลเมือง'
+};
+function _cr_shortName(n) { return _CR_SHORT[n] || (n.length>15 ? n.substring(0,15)+'ฯ' : n); }
+
+/* ════════════════════════════════════════════════════════════
+   1. สรุปคะแนน — เก็บ/สอบ/รวม/เกรด ทุกวิชา แยกตามห้อง
+      term: "1" | "2" | "0" (ทั้งปี)
+   ════════════════════════════════════════════════════════════ */
 function getClassSubjectScoreSummary(grade, classNo, term) {
   try {
     var ss = SS();
-    var termNum = parseInt(term) || 1;
+    var termNum = parseInt(term) || 1; // 0=ทั้งปี, 1=ภาค1, 2=ภาค2
 
-    // 1. ดึงรายวิชาพื้นฐาน+เพิ่มเติม (ไม่รวมกิจกรรม) สำหรับชั้นนี้
-    var subjectSheet = ss.getSheetByName('รายวิชา');
-    if (!subjectSheet) throw new Error('ไม่พบชีต "รายวิชา"');
-    var subjectData = subjectSheet.getDataRange().getValues();
-    var subjectHeaders = subjectData[0];
-    var idxGrade = subjectHeaders.indexOf('ชั้น');
-    var idxName = subjectHeaders.indexOf('ชื่อวิชา');
-    var idxCode = subjectHeaders.indexOf('รหัสวิชา');
-    var idxType = subjectHeaders.indexOf('ประเภทวิชา');
-    var idxOrder = subjectHeaders.indexOf('ลำดับ');
-    var idxMidMax = subjectHeaders.indexOf('คะแนนระหว่างปี');
-    var idxFinalMax = subjectHeaders.indexOf('คะแนนปลายปี');
+    var subjects = _cr_getSubjects(ss, grade);
+    if (subjects.length === 0) return { success: false, message: 'ไม่พบรายวิชาสำหรับชั้น ' + grade };
 
-    var subjects = [];
-    for (var i = 1; i < subjectData.length; i++) {
-      var row = subjectData[i];
-      var sGrade = String(row[idxGrade] || '').trim();
-      var sType = String(row[idxType] || '').trim();
-      if (sGrade !== grade) continue;
-      if (sType === 'กิจกรรม') continue;
-      subjects.push({
-        name: String(row[idxName] || '').trim(),
-        code: String(row[idxCode] || '').trim(),
-        type: sType,
-        order: parseInt(row[idxOrder]) || 99,
-        midMax: parseInt(row[idxMidMax]) || 60,
-        finalMax: parseInt(row[idxFinalMax]) || 40
-      });
-    }
-    subjects.sort(function(a, b) { return a.order - b.order; });
+    var stInfo = _cr_getStudents(ss, grade, classNo);
+    var students = stInfo.students;
+    if (students.length === 0) return { success: false, message: 'ไม่พบนักเรียนในชั้น ' + grade + ' ห้อง ' + classNo };
 
-    if (subjects.length === 0) {
-      return { success: false, message: 'ไม่พบรายวิชาสำหรับชั้น ' + grade };
-    }
-
-    // 2. ดึงรายชื่อนักเรียน
-    var studentsSheet = ss.getSheetByName('Students');
-    if (!studentsSheet) throw new Error('ไม่พบชีต "Students"');
-    var studentData = studentsSheet.getDataRange().getValues();
-    var stHeaders = studentData[0];
-    var stGradeCol = U_findColumnIndex(stHeaders, ['grade', 'ชั้น', 'ระดับชั้น']);
-    var stClassCol = U_findColumnIndex(stHeaders, ['class_no', 'ห้อง']);
-    var stIdCol = U_findColumnIndex(stHeaders, ['student_id', 'รหัสนักเรียน']);
-    var stNoCol = U_findColumnIndex(stHeaders, ['student_no', 'เลขที่', 'ลำดับ']);
-    var stTitleCol = U_findColumnIndex(stHeaders, ['title', 'คำนำหน้า']);
-    var stFirstCol = U_findColumnIndex(stHeaders, ['firstname', 'first_name', 'ชื่อ']);
-    var stLastCol = U_findColumnIndex(stHeaders, ['lastname', 'last_name', 'นามสกุล']);
-    var stFullCol = U_findColumnIndex(stHeaders, ['full_name', 'ชื่อเต็ม', 'ชื่อ-นามสกุล']);
-
-    var students = [];
-    for (var si = 1; si < studentData.length; si++) {
-      var sr = studentData[si];
-      if (String(sr[stGradeCol] || '').trim() !== grade) continue;
-      if (String(sr[stClassCol] || '').trim() !== classNo) continue;
-      var sId = String(sr[stIdCol] || '').trim();
-      var sNo = stNoCol !== -1 ? String(sr[stNoCol] || '').trim() : '';
-      var fullName = '';
-      if (stFullCol !== -1 && sr[stFullCol]) {
-        fullName = String(sr[stFullCol]).trim();
-      } else if (stFirstCol !== -1 && stLastCol !== -1) {
-        fullName = (String(sr[stFirstCol] || '') + ' ' + String(sr[stLastCol] || '')).trim();
-      }
-      var title = stTitleCol !== -1 ? String(sr[stTitleCol] || '').trim() : '';
-      if (title && fullName) fullName = title + fullName;
-      students.push({ studentId: sId, studentNo: sNo, fullName: fullName, scores: {} });
-    }
-    students.sort(function(a, b) {
-      var nA = parseInt(a.studentNo) || 0;
-      var nB = parseInt(b.studentNo) || 0;
-      return nA - nB || String(a.studentId).localeCompare(String(b.studentId), undefined, { numeric: true });
-    });
-
-    if (students.length === 0) {
-      return { success: false, message: 'ไม่พบนักเรียนในชั้น ' + grade + ' ห้อง ' + classNo };
-    }
-
-    // 3. สร้าง map studentId → index เพื่อจับคู่เร็ว
     var studentMap = {};
-    students.forEach(function(s, idx) { studentMap[s.studentId] = idx; });
+    students.forEach(function(s, idx) { s.scores = {}; studentMap[s.studentId] = idx; });
 
-    // 4. อ่านคะแนนจากชีตรายวิชา
+    // อ่านคะแนนจากชีตรายวิชา
     var gradeNoSuffix = grade.replace(/\./g, '');
     subjects.forEach(function(subj) {
-      // ลองหาชีตหลายรูปแบบ
       var possibleNames = [
         subj.name + ' ' + gradeNoSuffix + '-' + classNo,
         subj.name + ' ' + grade + '-' + classNo,
@@ -111,60 +107,50 @@ function getClassSubjectScoreSummary(grade, classNo, term) {
         if (scoreSheet) break;
       }
       if (!scoreSheet) {
-        // fuzzy search
         var allSheets = ss.getSheets();
         for (var a = 0; a < allSheets.length; a++) {
           var sn = allSheets[a].getName();
           if ((sn.indexOf(subj.name) !== -1 || (subj.code && sn.indexOf(subj.code) !== -1)) &&
-              sn.indexOf(classNo) !== -1) {
-            scoreSheet = allSheets[a];
-            break;
-          }
+              sn.indexOf(classNo) !== -1) { scoreSheet = allSheets[a]; break; }
         }
       }
-      if (!scoreSheet) {
-        Logger.log('⚠️ ไม่พบชีตคะแนนสำหรับ: ' + subj.name);
-        return;
-      }
+      if (!scoreSheet) { Logger.log('⚠️ ไม่พบชีตคะแนน: ' + subj.name); return; }
 
       var layout = detectSheetLayout_(scoreSheet);
-      var termCols = termNum === 2 ? layout.term2 : layout.term1;
       var data = scoreSheet.getDataRange().getValues();
-
-      // อ่านคะแนนเต็มจาก row 4 (index 3)
-      var midMaxFromSheet = Number(data[3] ? data[3][termCols.midTotal] : 0) || 0;
-      var finalMaxFromSheet = Number(data[3] ? data[3][termCols.s10] : 0) || 0;
-      if (midMaxFromSheet > 0) subj.midMax = midMaxFromSheet;
-      if (finalMaxFromSheet > 0) subj.finalMax = finalMaxFromSheet;
 
       for (var r = 4; r < data.length; r++) {
         var row = data[r];
-        var sid = String(row[1] || '').trim();
-        if (!sid) continue;
-        var idx = studentMap[sid];
-        if (idx === undefined) continue;
+        var sid = String(row[1]||'').trim();
+        if (!sid || studentMap[sid] === undefined) continue;
+        var key = subj.code || subj.name;
 
-        students[idx].scores[subj.code || subj.name] = {
-          mid: Number(row[termCols.midTotal]) || 0,
-          final: Number(row[termCols.s10]) || 0,
-          total: Number(row[termCols.total]) || 0,
-          grade: String(row[termCols.grade] || '')
-        };
+        if (termNum === 0) {
+          // ทั้งปี: ภาค1 total, ภาค2 total, เฉลี่ยปี, เกรดปี
+          students[studentMap[sid]].scores[key] = {
+            t1: Number(row[layout.term1.total]) || 0,
+            t2: Number(row[layout.term2.total]) || 0,
+            yearAvg: Number(row[layout.yearAvg]) || 0,
+            yearGrade: String(row[layout.yearGrade] || '')
+          };
+        } else {
+          var tc = termNum === 2 ? layout.term2 : layout.term1;
+          students[studentMap[sid]].scores[key] = {
+            mid: Number(row[tc.midTotal]) || 0,
+            final: Number(row[tc.s10]) || 0,
+            total: Number(row[tc.total]) || 0,
+            grade: String(row[tc.grade] || '')
+          };
+        }
       }
     });
 
-    // 5. ดึงข้อมูลโรงเรียน
     var settings = S_getGlobalSettings();
-
     return {
-      success: true,
-      grade: grade,
-      classNo: classNo,
-      term: termNum,
+      success: true, grade: grade, classNo: classNo, term: termNum,
+      mode: termNum === 0 ? 'year' : 'term',
       gradeFullName: U_getGradeFullName(grade),
-      subjects: subjects,
-      students: students,
-      settings: settings
+      subjects: subjects, students: students, settings: settings
     };
   } catch (e) {
     Logger.log('❌ getClassSubjectScoreSummary error: ' + e.message);
@@ -172,247 +158,143 @@ function getClassSubjectScoreSummary(grade, classNo, term) {
   }
 }
 
-/**
- * 2. สรุปการประเมินทางการเรียน — GPA, ลำดับ, อ่านฯ, คุณลักษณะฯ, สมรรถนะฯ
- * @param {string} grade - ชั้น
- * @param {string} classNo - ห้อง
- * @returns {Object}
- */
+/* ════════════════════════════════════════════════════════════
+   2. สรุปการประเมินทางการเรียน
+   ════════════════════════════════════════════════════════════ */
 function getClassAssessmentSummary(grade, classNo) {
   try {
     var ss = SS();
+    var subjects = _cr_getSubjects(ss, grade);
 
-    // 1. ดึงรายวิชาพื้นฐาน+เพิ่มเติม (ไม่รวมกิจกรรม)
-    var subjectSheet = ss.getSheetByName('รายวิชา');
-    if (!subjectSheet) throw new Error('ไม่พบชีต "รายวิชา"');
-    var subjectData = subjectSheet.getDataRange().getValues();
-    var sjHeaders = subjectData[0];
-    var sjGradeIdx = sjHeaders.indexOf('ชั้น');
-    var sjNameIdx = sjHeaders.indexOf('ชื่อวิชา');
-    var sjCodeIdx = sjHeaders.indexOf('รหัสวิชา');
-    var sjTypeIdx = sjHeaders.indexOf('ประเภทวิชา');
-    var sjHoursIdx = sjHeaders.indexOf('ชั่วโมง/ปี');
-
-    var academicSubjects = [];
     var creditMap = {};
-    for (var si = 1; si < subjectData.length; si++) {
-      var sr = subjectData[si];
-      if (String(sr[sjGradeIdx] || '').trim() !== grade) continue;
-      var sType = String(sr[sjTypeIdx] || '').trim();
-      if (sType === 'กิจกรรม') continue;
-      var code = String(sr[sjCodeIdx] || '').trim();
-      var name = String(sr[sjNameIdx] || '').trim();
-      var hours = parseFloat(sr[sjHoursIdx]) || 1;
-      academicSubjects.push({ code: code, name: name, hours: hours });
-      creditMap[code] = hours;
-      creditMap[name] = hours;
-    }
+    subjects.forEach(function(s) { creditMap[s.code]=s.hours; creditMap[s.name]=s.hours; });
 
-    // 2. ดึงรายชื่อนักเรียน
-    var studentsSheet = ss.getSheetByName('Students');
-    if (!studentsSheet) throw new Error('ไม่พบชีต "Students"');
-    var studentData = studentsSheet.getDataRange().getValues();
-    var stHeaders = studentData[0];
-    var stGradeCol = U_findColumnIndex(stHeaders, ['grade', 'ชั้น', 'ระดับชั้น']);
-    var stClassCol = U_findColumnIndex(stHeaders, ['class_no', 'ห้อง']);
-    var stIdCol = U_findColumnIndex(stHeaders, ['student_id', 'รหัสนักเรียน']);
-    var stNoCol = U_findColumnIndex(stHeaders, ['student_no', 'เลขที่']);
-    var stTitleCol = U_findColumnIndex(stHeaders, ['title', 'คำนำหน้า']);
-    var stFirstCol = U_findColumnIndex(stHeaders, ['firstname', 'first_name', 'ชื่อ']);
-    var stLastCol = U_findColumnIndex(stHeaders, ['lastname', 'last_name', 'นามสกุล']);
-    var stFullCol = U_findColumnIndex(stHeaders, ['full_name', 'ชื่อเต็ม', 'ชื่อ-นามสกุล']);
+    var stInfo = _cr_getStudents(ss, grade, classNo);
+    var classStudents = stInfo.students;
+    if (classStudents.length === 0) return { success: false, message: 'ไม่พบนักเรียนในชั้น ' + grade + ' ห้อง ' + classNo };
 
-    var classStudents = [];
-    for (var ci = 1; ci < studentData.length; ci++) {
-      var cr = studentData[ci];
-      if (String(cr[stGradeCol] || '').trim() !== grade) continue;
-      if (String(cr[stClassCol] || '').trim() !== classNo) continue;
-      var sId = String(cr[stIdCol] || '').trim();
-      var sNo = stNoCol !== -1 ? String(cr[stNoCol] || '').trim() : '';
-      var fullName = '';
-      if (stFullCol !== -1 && cr[stFullCol]) {
-        fullName = String(cr[stFullCol]).trim();
-      } else if (stFirstCol !== -1 && stLastCol !== -1) {
-        fullName = (String(cr[stFirstCol] || '') + ' ' + String(cr[stLastCol] || '')).trim();
+    // ดึง allGradeStudentIds (ทุกห้อง) เพื่อจัดลำดับชั้น
+    var allGradeIds = [];
+    for (var ai = 1; ai < stInfo.allData.length; ai++) {
+      if (String(stInfo.allData[ai][stInfo.gradeCol]||'').trim() === grade) {
+        allGradeIds.push(String(stInfo.allData[ai][stInfo.idCol]||'').trim());
       }
-      var title = stTitleCol !== -1 ? String(cr[stTitleCol] || '').trim() : '';
-      if (title && fullName) fullName = title + fullName;
-      classStudents.push({ studentId: sId, studentNo: sNo, fullName: fullName });
-    }
-    classStudents.sort(function(a, b) {
-      var nA = parseInt(a.studentNo) || 0;
-      var nB = parseInt(b.studentNo) || 0;
-      return nA - nB || String(a.studentId).localeCompare(String(b.studentId), undefined, { numeric: true });
-    });
-
-    if (classStudents.length === 0) {
-      return { success: false, message: 'ไม่พบนักเรียนในชั้น ' + grade + ' ห้อง ' + classNo };
     }
 
-    // 3. ดึงข้อมูลจาก SCORES_WAREHOUSE
+    // SCORES_WAREHOUSE
     var warehouseSheet = S_getYearlySheet('SCORES_WAREHOUSE');
     if (!warehouseSheet) throw new Error('ไม่พบชีต SCORES_WAREHOUSE');
     var whData = warehouseSheet.getDataRange().getValues();
-    var whHeaders = whData[0];
-    var whIdCol = U_findColumnIndex(whHeaders, ['student_id', 'studentId', 'รหัสนักเรียน']);
-    var whGradeCol = U_findColumnIndex(whHeaders, ['grade', 'ชั้น']);
-    var whClassCol = U_findColumnIndex(whHeaders, ['class_no', 'ห้อง']);
-    var whSubjectCol = U_findColumnIndex(whHeaders, ['subject_name', 'วิชา', 'ชื่อวิชา']);
-    var whCodeCol = U_findColumnIndex(whHeaders, ['subject_code', 'รหัสวิชา']);
-    var whTypeCol = U_findColumnIndex(whHeaders, ['subject_type', 'ประเภทวิชา']);
-    var whT1Col = U_findColumnIndex(whHeaders, ['term1_total', 'term1Total']);
-    var whT2Col = U_findColumnIndex(whHeaders, ['term2_total', 'term2Total']);
-    var whAvgCol = U_findColumnIndex(whHeaders, ['average', 'avg']);
-    var whFGCol = U_findColumnIndex(whHeaders, ['final_grade', 'grade_result']);
+    var wh = whData[0];
+    var wI = U_findColumnIndex(wh,['student_id','studentId','รหัสนักเรียน']);
+    var wG = U_findColumnIndex(wh,['grade','ชั้น']);
+    var wS = U_findColumnIndex(wh,['subject_name','วิชา','ชื่อวิชา']);
+    var wC = U_findColumnIndex(wh,['subject_code','รหัสวิชา']);
+    var wT = U_findColumnIndex(wh,['subject_type','ประเภทวิชา']);
+    var w1 = U_findColumnIndex(wh,['term1_total','term1Total']);
+    var w2 = U_findColumnIndex(wh,['term2_total','term2Total']);
+    var wA = U_findColumnIndex(wh,['average','avg']);
+    var wF = U_findColumnIndex(wh,['final_grade','grade_result']);
 
-    // สร้าง map: studentId → [{ subject, score, gpa }]
     var scoresByStudent = {};
-    // สร้าง map สำหรับทุกนักเรียนในชั้นเดียวกัน (ทุกห้อง) เพื่อคำนวณลำดับชั้น
-    var allGradeStudentIds = new Set();
-    for (var ai = 1; ai < studentData.length; ai++) {
-      if (String(studentData[ai][stGradeCol] || '').trim() === grade) {
-        allGradeStudentIds.add(String(studentData[ai][stIdCol] || '').trim());
-      }
-    }
-
+    var actKw = ['แนะแนว','ลูกเสือ','เนตรนารี','ชุมนุม','กิจกรรมเพื่อสังคม','บำเพ็ญประโยชน์'];
     for (var wi = 1; wi < whData.length; wi++) {
       var wr = whData[wi];
-      var wGrade = String(wr[whGradeCol] || '').trim();
-      if (wGrade !== grade) continue;
+      if (String(wr[wG]||'').trim() !== grade) continue;
+      var wId = String(wr[wI]||'').trim();
+      var wSubj = String(wr[wS]||'').trim();
+      var wTyp = wT!==-1 ? String(wr[wT]||'').trim() : '';
+      if (wTyp==='กิจกรรม') continue;
+      if (actKw.some(function(k){return wSubj.indexOf(k)!==-1;})) continue;
 
-      var wId = String(wr[whIdCol] || '').trim();
-      var wSubject = String(wr[whSubjectCol] || '').trim();
-      var wCode = whCodeCol !== -1 ? String(wr[whCodeCol] || '').trim() : '';
-      var wType = whTypeCol !== -1 ? String(wr[whTypeCol] || '').trim() : '';
-
-      if (wType === 'กิจกรรม') continue;
-      var actKw = ['แนะแนว', 'ลูกเสือ', 'เนตรนารี', 'ชุมนุม', 'กิจกรรมเพื่อสังคม', 'บำเพ็ญประโยชน์'];
-      var isAct = actKw.some(function(k) { return wSubject.indexOf(k) !== -1; });
-      if (isAct) continue;
-
-      var t1 = whT1Col !== -1 ? (parseFloat(wr[whT1Col]) || 0) : 0;
-      var t2 = whT2Col !== -1 ? (parseFloat(wr[whT2Col]) || 0) : 0;
-      var avg = whAvgCol !== -1 ? (parseFloat(wr[whAvgCol]) || 0) : 0;
-      var fg = whFGCol !== -1 ? parseFloat(wr[whFGCol]) : NaN;
-      var totalScore = t1 + t2;
-      if (totalScore === 0) totalScore = avg;
-
+      var t1 = w1!==-1?(parseFloat(wr[w1])||0):0;
+      var t2 = w2!==-1?(parseFloat(wr[w2])||0):0;
+      var avg = wA!==-1?(parseFloat(wr[wA])||0):0;
+      var fg = wF!==-1?parseFloat(wr[wF]):NaN;
+      var totalScore = t1+t2; if(totalScore===0) totalScore=avg;
+      var wCode = wC!==-1?String(wr[wC]||'').trim():'';
       var gpa = !isNaN(fg) ? fg : _scoreToGPA(avg).gpa;
-      var credits = creditMap[wCode] || creditMap[wSubject] || 1;
-
+      var credits = creditMap[wCode] || creditMap[wSubj] || 1;
       if (!scoresByStudent[wId]) scoresByStudent[wId] = [];
-      scoresByStudent[wId].push({ totalScore: totalScore, gpa: gpa, credits: credits });
+      scoresByStudent[wId].push({ totalScore:totalScore, gpa:gpa, credits:credits });
     }
 
-    // 4. คำนวณ GPA ถ่วงน้ำหนัก + คะแนนรวม สำหรับทุกนักเรียนในชั้น (ทุกห้อง)
-    var totalFullScore = academicSubjects.reduce(function(sum, s) { return sum + 100; }, 0);
-    // Note: ถ้าจะใช้ full score จริง ต้องรวม max per subject; สมมติ 100 ต่อวิชา
-
-    function calcStudentSummary(sid) {
-      var scores = scoresByStudent[sid] || [];
-      var sumTotal = 0, sumCredits = 0, sumGradePoints = 0;
-      scores.forEach(function(s) {
-        sumTotal += s.totalScore;
-        sumCredits += s.credits;
-        sumGradePoints += s.gpa * s.credits;
-      });
-      var gpa = sumCredits > 0 ? sumGradePoints / sumCredits : 0;
-      var fullScore = scores.length * 100;
-      var pct = fullScore > 0 ? (sumTotal / fullScore) * 100 : 0;
-      return { sumTotal: sumTotal, fullScore: fullScore, pct: pct, gpa: gpa };
+    function calcSummary(sid) {
+      var sc = scoresByStudent[sid] || [];
+      var sum=0, cr=0, gp=0;
+      sc.forEach(function(s){sum+=s.totalScore;cr+=s.credits;gp+=s.gpa*s.credits;});
+      var gpa = cr>0?gp/cr:0;
+      var full = sc.length * 100;
+      return { sumTotal:sum, fullScore:full, pct:full>0?(sum/full)*100:0, gpa:gpa };
     }
 
-    // คำนวณ GPA ทุกนักเรียนในชั้นเดียวกัน (ทุกห้อง) เพื่อจัดลำดับชั้น
-    var gradeGPAs = [];
-    allGradeStudentIds.forEach(function(sid) {
-      var s = calcStudentSummary(sid);
-      gradeGPAs.push({ id: sid, gpa: s.gpa });
-    });
-    gradeGPAs.sort(function(a, b) { return b.gpa - a.gpa; });
+    // ลำดับชั้น
+    var gradeGPAs = allGradeIds.map(function(id){return{id:id,gpa:calcSummary(id).gpa};});
+    gradeGPAs.sort(function(a,b){return b.gpa-a.gpa;});
+    // ลำดับห้อง
+    var classGPAs = classStudents.map(function(st){return{id:st.studentId,gpa:calcSummary(st.studentId).gpa};});
+    classGPAs.sort(function(a,b){return b.gpa-a.gpa;});
 
-    // คำนวณ GPA นักเรียนในห้องเดียวกัน เพื่อจัดลำดับห้อง
-    var classGPAs = classStudents.map(function(st) {
-      var s = calcStudentSummary(st.studentId);
-      return { id: st.studentId, gpa: s.gpa };
-    });
-    classGPAs.sort(function(a, b) { return b.gpa - a.gpa; });
+    // ดึงผลประเมิน 3 ด้าน
+    var readingData=[], charData=[], compData=[];
+    try { readingData = _readSheetToObjects('การประเมินอ่านคิดเขียน'); } catch(e){}
+    try { charData = _readSheetToObjects('การประเมินคุณลักษณะ'); } catch(e){}
+    try { compData = _readSheetToObjects('การประเมินสมรรถนะ'); } catch(e){}
 
-    // 5. ดึงผลประเมิน 3 ด้าน
-    var readingData = [], charData = [], compData = [];
-    try { readingData = _readSheetToObjects('การประเมินอ่านคิดเขียน'); } catch(e) {}
-    try { charData = _readSheetToObjects('การประเมินคุณลักษณะ'); } catch(e) {}
-    try { compData = _readSheetToObjects('การประเมินสมรรถนะ'); } catch(e) {}
-
-    function findAssessment(dataArr, sid) {
-      return dataArr.find(function(r) { return String(r['รหัสนักเรียน']).trim() === sid; });
+    function findRec(arr, sid) {
+      return arr.find(function(r){return String(r['รหัสนักเรียน']||'').trim()===sid;});
     }
-
-    function getReadingResult(sid) {
-      var rec = findAssessment(readingData, sid);
+    function getReading(sid) {
+      var rec = findRec(readingData, sid);
       if (!rec) return '-';
-      var keys = Object.keys(rec);
-      var rKey = keys.find(function(k) { return k.trim() === 'สรุปผลการประเมิน' || k.indexOf('ผลการประเมิน') !== -1; });
-      if (rKey) {
-        var v = String(rec[rKey]).trim();
-        if (v) return v;
-      }
-      // fallback calculation
-      var scoreIdxs = [4,5,6,7,8,9,10,11];
-      var nums = scoreIdxs.map(function(i) { var val = rec[i]; var n = parseFloat(val ? val.toString().trim() : ''); return Number.isFinite(n) ? n : null; }).filter(function(x) { return x !== null; });
-      if (nums.length === 0) return '-';
-      var avg = nums.reduce(function(a,b) { return a+b; }, 0) / nums.length;
-      return avg >= 2.5 ? 'ดีเยี่ยม' : avg >= 2.0 ? 'ดี' : avg >= 1.0 ? 'ผ่าน' : 'ปรับปรุง';
-    }
-
-    function getCharResult(sid) {
-      var rec = findAssessment(charData, sid);
-      return rec ? (rec['ผลการประเมิน'] || '-') : '-';
-    }
-
-    function getCompResult(sid) {
-      var rec = findAssessment(compData, sid);
-      if (!rec) return '-';
-      // หาผลรวม — ลองหา column ที่มี "สรุป" หรือ "ผลรวม"
-      var keys = Object.keys(rec);
-      var rKey = keys.find(function(k) { return k.indexOf('สรุป') !== -1 || k.indexOf('ผลรวม') !== -1 || k.indexOf('ผลการประเมิน') !== -1; });
-      if (rKey) return String(rec[rKey]).trim() || '-';
+      var rKey = Object.keys(rec).find(function(k){return k.indexOf('สรุปผลการประเมิน')!==-1||k.indexOf('ผลการประเมิน')!==-1;});
+      if (rKey && String(rec[rKey]).trim()) return String(rec[rKey]).trim();
       return '-';
     }
+    function getChar(sid) {
+      var rec = findRec(charData, sid);
+      if (!rec) return '-';
+      return String(rec['ผลการประเมิน']||'').trim() || '-';
+    }
+    function getComp(sid) {
+      var rec = findRec(compData, sid);
+      if (!rec) return '-';
+      // คำนวณจากคะแนนย่อย 25 ข้อ (5 ด้าน × 5 ข้อ)
+      var scoreKeys = Object.keys(rec).filter(function(k) {
+        return k.indexOf('สื่อสาร_')===0 || k.indexOf('คิด_')===0 ||
+               k.indexOf('แก้ปัญหา_')===0 || k.indexOf('ทักษะชีวิต_')===0 ||
+               k.indexOf('เทคโนโลยี_')===0;
+      });
+      if (scoreKeys.length === 0) return '-';
+      var nums = scoreKeys.map(function(k){return parseFloat(rec[k]);}).filter(function(n){return !isNaN(n) && n > 0;});
+      if (nums.length === 0) return '-';
+      var avg = nums.reduce(function(a,b){return a+b;},0) / nums.length;
+      if (avg >= 2.5) return 'ดีเยี่ยม';
+      if (avg >= 2.0) return 'ดี';
+      if (avg >= 1.0) return 'ผ่าน';
+      return 'ปรับปรุง';
+    }
 
-    // 6. รวมผลลัพธ์สำหรับแต่ละนักเรียน
     var results = classStudents.map(function(st) {
       var sid = st.studentId;
-      var summary = calcStudentSummary(sid);
-
-      var classRank = classGPAs.findIndex(function(g) { return g.id === sid; }) + 1;
-      var gradeRank = gradeGPAs.findIndex(function(g) { return g.id === sid; }) + 1;
-
+      var s = calcSummary(sid);
+      var cRank = classGPAs.findIndex(function(g){return g.id===sid;})+1;
+      var gRank = gradeGPAs.findIndex(function(g){return g.id===sid;})+1;
       return {
-        studentNo: st.studentNo,
-        fullName: st.fullName,
-        sumTotal: Math.round(summary.sumTotal * 100) / 100,
-        fullScore: summary.fullScore,
-        pct: Math.round(summary.pct * 100) / 100,
-        gpa: Math.round(summary.gpa * 100) / 100,
-        classRank: classRank,
-        gradeRank: gradeRank,
-        reading: getReadingResult(sid),
-        character: getCharResult(sid),
-        competency: getCompResult(sid)
+        studentNo: st.studentNo, fullName: st.fullName,
+        sumTotal: Math.round(s.sumTotal*100)/100, fullScore: s.fullScore,
+        pct: Math.round(s.pct*100)/100, gpa: Math.round(s.gpa*100)/100,
+        classRank: cRank, gradeRank: gRank,
+        reading: getReading(sid), character: getChar(sid), competency: getComp(sid)
       };
     });
 
-    var settings = S_getGlobalSettings();
-
     return {
-      success: true,
-      grade: grade,
-      classNo: classNo,
+      success: true, grade: grade, classNo: classNo,
       gradeFullName: U_getGradeFullName(grade),
       totalClassStudents: classStudents.length,
-      totalGradeStudents: gradeGPAs.length,
-      students: results,
-      settings: settings
+      totalGradeStudents: allGradeIds.length,
+      students: results, settings: S_getGlobalSettings()
     };
   } catch (e) {
     Logger.log('❌ getClassAssessmentSummary error: ' + e.message);
@@ -420,199 +302,177 @@ function getClassAssessmentSummary(grade, classNo) {
   }
 }
 
-/**
- * สร้าง PDF สรุปคะแนนวิชาพื้นฐาน (Report 1)
- */
+/* ════════════════════════════════════════════════════════════
+   PDF — สรุปคะแนน (3 วิชา/หน้า + โลโก้)
+   ════════════════════════════════════════════════════════════ */
 function exportClassSubjectScorePDF(grade, classNo, term) {
   var data = getClassSubjectScoreSummary(grade, classNo, term);
   if (!data.success) throw new Error(data.message);
 
   var settings = data.settings || {};
-  var schoolName = settings.school_name || '';
-  var year = settings.academic_year || '';
+  var schoolName = settings['ชื่อโรงเรียน'] || settings.school_name || '';
+  var year = settings['ปีการศึกษา'] || settings.academic_year || '';
   var termNum = data.term;
   var subjects = data.subjects;
   var students = data.students;
+  var isYear = data.mode === 'year';
 
-  // ดึงครูประจำชั้น
   var homeroomTeacher = '';
   try { homeroomTeacher = getHomeroomTeacher(grade, classNo); } catch(e) {}
+  var logoBase64 = null;
+  try { logoBase64 = getSchoolLogoBase64_(); } catch(e) {}
 
-  // สร้าง HTML
-  var subjectCount = subjects.length;
-  var totalCols = 2 + (subjectCount * 4); // เลขที่ + ชื่อ + 4 cols per subject
+  var termLabel = isYear ? 'ทั้งปี' : ('ภาคเรียนที่ ' + termNum);
 
-  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
-    + '<style>'
-    + '@page { size: A4 landscape; margin: 15mm 10mm; }'
-    + 'body { font-family: "Sarabun", sans-serif; font-size: 11pt; margin: 0; }'
-    + '.title { text-align: center; font-size: 14pt; font-weight: bold; margin-bottom: 4px; }'
-    + '.info { text-align: center; font-size: 11pt; margin-bottom: 2px; }'
-    + 'table { border-collapse: collapse; width: 100%; font-size: 9pt; }'
-    + 'th, td { border: 1px solid #000; padding: 3px 4px; text-align: center; }'
-    + 'th { background: #f0f0f0; font-weight: bold; }'
-    + '.name-col { text-align: left; white-space: nowrap; }'
-    + '.subject-header { background: #e8e8e8; }'
-    + '</style></head><body>'
-    + '<div class="title">สรุปคะแนน วิชาพื้นฐาน (' + termNum + ')</div>'
-    + '<div class="info">ห้อง ' + data.gradeFullName + '/' + classNo
-    + ' &nbsp; ปีการศึกษา ' + termNum + '/' + year
-    + ' &nbsp; ระดับ ' + (grade.indexOf('ป.') === 0 ? 'ประถมศึกษา' : 'มัธยมศึกษา') + '</div>'
-    + '<div class="info">ครูประจำชั้น ' + homeroomTeacher
-    + ' &nbsp; โรงเรียน' + schoolName + '</div>';
+  // แบ่งวิชา 3 วิชา/หน้า
+  var subjectGroups = [];
+  for (var i = 0; i < subjects.length; i += 3) {
+    subjectGroups.push(subjects.slice(i, i + 3));
+  }
 
-  // สร้างตาราง
-  html += '<table>';
+  var css = '@page{size:A4 landscape;margin:12mm 10mm;}'
+    + 'body{font-family:"Sarabun",sans-serif;font-size:11pt;margin:0;}'
+    + '.page{page-break-after:always;}'
+    + '.page:last-child{page-break-after:auto;}'
+    + '.header{text-align:center;margin-bottom:8px;}'
+    + '.header img{height:50px;margin-bottom:4px;}'
+    + '.title{font-size:14pt;font-weight:bold;margin:2px 0;}'
+    + '.info{font-size:10pt;margin:1px 0;}'
+    + 'table{border-collapse:collapse;width:100%;font-size:10pt;}'
+    + 'th,td{border:1px solid #000;padding:4px 6px;text-align:center;}'
+    + 'th{background:#f0f0f0;font-weight:bold;}'
+    + '.subject-header{background:#e0e0e0;}'
+    + '.name-col{text-align:left;white-space:nowrap;}';
 
-  // แถวหัวข้อชื่อวิชา
-  html += '<thead><tr><th rowspan="2" style="width:30px">เลขที่</th>'
-    + '<th rowspan="2" style="min-width:120px">ชื่อ-สกุล</th>';
+  var pages = subjectGroups.map(function(group, pageIdx) {
+    var html = '<div class="page"><div class="header">';
+    if (logoBase64) html += '<img src="' + logoBase64 + '" alt="logo"><br>';
+    html += '<div class="title">สรุปคะแนน (' + termLabel + ')</div>';
+    html += '<div class="info">ชั้น ' + data.gradeFullName + '/' + classNo
+      + ' &nbsp;&nbsp; ปีการศึกษา ' + year
+      + ' &nbsp;&nbsp; ครูประจำชั้น ' + homeroomTeacher
+      + ' &nbsp;&nbsp; โรงเรียน' + schoolName + '</div>';
+    html += '<div class="info" style="font-size:9pt;color:#555;">หน้า ' + (pageIdx+1) + '/' + subjectGroups.length + '</div>';
+    html += '</div>';
 
-  var subjectShortNames = {
-    'ภาษาไทย': 'ภาษาไทย',
-    'คณิตศาสตร์': 'คณิตศาสตร์',
-    'วิทยาศาสตร์และเทคโนโลยี': 'วิทย์และเทคโนฯ',
-    'สังคมศึกษา ศาสนา และวัฒนธรรม': 'สังคมศึกษาฯ',
-    'สุขศึกษาและพลศึกษา': 'สุขศึกษาฯ',
-    'ศิลปะ': 'ศิลปะ',
-    'การงานอาชีพ': 'การงานอาชีพ',
-    'ภาษาอังกฤษ': 'ภาษาอังกฤษ',
-    'ประวัติศาสตร์': 'ประวัติศาสตร์',
-    'หน้าที่พลเมือง': 'หน้าที่พลเมือง'
-  };
-
-  subjects.forEach(function(subj) {
-    var shortName = subjectShortNames[subj.name] || (subj.name.length > 15 ? subj.name.substring(0, 15) + 'ฯ' : subj.name);
-    html += '<th colspan="4" class="subject-header">' + shortName + '</th>';
-  });
-  html += '</tr>';
-
-  // แถวหัวข้อ เก็บ/สอบ/รวม/เกรด
-  html += '<tr>';
-  subjects.forEach(function(subj) {
-    html += '<th>เก็บ' + termNum + '<br>(' + subj.midMax + ')</th>';
-    html += '<th>สอบ' + termNum + '<br>(' + subj.finalMax + ')</th>';
-    html += '<th>รวม' + termNum + '<br>(' + (subj.midMax + subj.finalMax) + ')</th>';
-    html += '<th>เกรด' + termNum + '</th>';
-  });
-  html += '</tr></thead>';
-
-  // ข้อมูลนักเรียน
-  html += '<tbody>';
-  students.forEach(function(st, idx) {
-    html += '<tr><td>' + (idx + 1) + '</td>';
-    html += '<td class="name-col">' + st.fullName + '</td>';
-    subjects.forEach(function(subj) {
-      var key = subj.code || subj.name;
-      var sc = st.scores[key];
-      if (sc) {
-        html += '<td>' + sc.mid + '</td>';
-        html += '<td>' + sc.final + '</td>';
-        html += '<td><b>' + sc.total + '</b></td>';
-        html += '<td><b>' + sc.grade + '</b></td>';
-      } else {
-        html += '<td>-</td><td>-</td><td>-</td><td>-</td>';
-      }
+    // Table header row 1
+    html += '<table><thead><tr><th rowspan="2" style="width:35px">เลขที่</th>'
+      + '<th rowspan="2" style="min-width:140px">ชื่อ-สกุล</th>';
+    group.forEach(function(subj) {
+      html += '<th colspan="4" class="subject-header">' + _cr_shortName(subj.name) + '</th>';
     });
     html += '</tr>';
+
+    // Table header row 2
+    html += '<tr>';
+    group.forEach(function(subj) {
+      if (isYear) {
+        html += '<th>ภาค1<br>(100)</th><th>ภาค2<br>(100)</th><th>เฉลี่ยปี<br>(100)</th><th>เกรดปี</th>';
+      } else {
+        html += '<th>เก็บ' + termNum + '<br>(' + subj.midMax + ')</th>';
+        html += '<th>สอบ' + termNum + '<br>(' + subj.finalMax + ')</th>';
+        html += '<th>รวม' + termNum + '<br>(' + (subj.midMax+subj.finalMax) + ')</th>';
+        html += '<th>เกรด' + termNum + '</th>';
+      }
+    });
+    html += '</tr></thead><tbody>';
+
+    // Student rows
+    students.forEach(function(st, idx) {
+      html += '<tr><td>' + (idx+1) + '</td><td class="name-col">' + st.fullName + '</td>';
+      group.forEach(function(subj) {
+        var key = subj.code || subj.name;
+        var sc = st.scores[key];
+        if (sc) {
+          if (isYear) {
+            html += '<td>' + sc.t1 + '</td><td>' + sc.t2 + '</td>';
+            html += '<td><b>' + sc.yearAvg + '</b></td><td><b>' + sc.yearGrade + '</b></td>';
+          } else {
+            html += '<td>' + sc.mid + '</td><td>' + sc.final + '</td>';
+            html += '<td><b>' + sc.total + '</b></td><td><b>' + sc.grade + '</b></td>';
+          }
+        } else {
+          html += '<td>-</td><td>-</td><td>-</td><td>-</td>';
+        }
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+    return html;
   });
-  html += '</tbody></table></body></html>';
 
-  // สร้าง PDF
-  var blob = HtmlService.createHtmlOutput(html)
-    .setTitle('สรุปคะแนนวิชาพื้นฐาน')
-    .getBlob()
-    .setName('สรุปคะแนน_' + grade + '_' + classNo + '_ภาค' + termNum + '.pdf')
-    .getAs('application/pdf');
+  var fullHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' + css + '</style></head><body>'
+    + pages.join('') + '</body></html>';
 
-  var folder = getOutputFolder_();
-  var file = folder.createFile(blob);
-  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-  return file.getUrl();
+  var fileName = 'สรุปคะแนน_' + grade + '_' + classNo + '_' + (isYear?'ทั้งปี':'ภาค'+termNum) + '_' + new Date().toISOString().slice(0,10) + '.pdf';
+  return savePDFToDrive_(fullHtml, 'ClassReports_PDF', fileName);
 }
 
-/**
- * สร้าง PDF สรุปการประเมินทางการเรียน (Report 2)
- */
+/* ════════════════════════════════════════════════════════════
+   PDF — สรุปการประเมินทางการเรียน (+ โลโก้)
+   ════════════════════════════════════════════════════════════ */
 function exportClassAssessmentSummaryPDF(grade, classNo) {
   var data = getClassAssessmentSummary(grade, classNo);
   if (!data.success) throw new Error(data.message);
 
   var settings = data.settings || {};
-  var schoolName = settings.school_name || '';
-  var year = settings.academic_year || '';
+  var schoolName = settings['ชื่อโรงเรียน'] || settings.school_name || '';
+  var year = settings['ปีการศึกษา'] || settings.academic_year || '';
 
   var homeroomTeacher = '';
   try { homeroomTeacher = getHomeroomTeacher(grade, classNo); } catch(e) {}
+  var logoBase64 = null;
+  try { logoBase64 = getSchoolLogoBase64_(); } catch(e) {}
 
   var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
     + '<style>'
-    + '@page { size: A4 landscape; margin: 15mm 10mm; }'
-    + 'body { font-family: "Sarabun", sans-serif; font-size: 11pt; margin: 0; }'
-    + '.title { text-align: center; font-size: 14pt; font-weight: bold; margin-bottom: 4px; }'
-    + '.info { text-align: center; font-size: 11pt; margin-bottom: 2px; }'
-    + 'table { border-collapse: collapse; width: 100%; font-size: 10pt; }'
-    + 'th, td { border: 1px solid #000; padding: 4px 6px; text-align: center; }'
-    + 'th { background: #f0f0f0; font-weight: bold; }'
-    + '.name-col { text-align: left; white-space: nowrap; }'
-    + '.good { color: #059669; } .improve { color: #dc3545; }'
-    + '</style></head><body>'
-    + '<div class="title">สรุปการประเมินทางการเรียน</div>'
-    + '<div class="info">ห้อง ' + data.gradeFullName + '/' + classNo
-    + ' &nbsp; ปีการศึกษา ' + year
-    + ' &nbsp; ระดับ ' + (data.grade.indexOf('ป.') === 0 ? 'ประถมศึกษา' : 'มัธยมศึกษา') + '</div>'
-    + '<div class="info">ครูประจำชั้น ' + homeroomTeacher
-    + ' &nbsp; โรงเรียน' + schoolName + '</div>';
+    + '@page{size:A4 landscape;margin:12mm 10mm;}'
+    + 'body{font-family:"Sarabun",sans-serif;font-size:11pt;margin:0;}'
+    + '.header{text-align:center;margin-bottom:8px;}'
+    + '.header img{height:50px;margin-bottom:4px;}'
+    + '.title{font-size:14pt;font-weight:bold;margin:2px 0;}'
+    + '.info{font-size:10pt;margin:1px 0;}'
+    + 'table{border-collapse:collapse;width:100%;font-size:10pt;}'
+    + 'th,td{border:1px solid #000;padding:5px 7px;text-align:center;}'
+    + 'th{background:#f0f0f0;font-weight:bold;}'
+    + '.name-col{text-align:left;white-space:nowrap;}'
+    + '.good{color:#059669;font-weight:600;}'
+    + '.improve{color:#dc3545;font-weight:600;}'
+    + '</style></head><body>';
+
+  html += '<div class="header">';
+  if (logoBase64) html += '<img src="' + logoBase64 + '" alt="logo"><br>';
+  html += '<div class="title">สรุปการประเมินทางการเรียน</div>';
+  html += '<div class="info">ชั้น ' + data.gradeFullName + '/' + classNo
+    + ' &nbsp;&nbsp; ปีการศึกษา ' + year
+    + ' &nbsp;&nbsp; ครูประจำชั้น ' + homeroomTeacher
+    + ' &nbsp;&nbsp; โรงเรียน' + schoolName + '</div>';
+  html += '</div>';
 
   html += '<table><thead>';
   html += '<tr>'
     + '<th rowspan="2" style="width:35px">เลขที่</th>'
-    + '<th rowspan="2" style="min-width:140px">ชื่อ-สกุล</th>'
+    + '<th rowspan="2" style="min-width:160px">ชื่อ-สกุล</th>'
     + '<th colspan="6">สรุปการประเมิน</th>'
     + '<th rowspan="2">อ่านฯ</th>'
     + '<th rowspan="2">คุณลักษณะฯ</th>'
-    + '<th rowspan="2">สมรรถนะฯ</th>'
-    + '</tr>';
-  html += '<tr>'
-    + '<th>รวมคะแนน</th>'
-    + '<th>เต็ม</th>'
-    + '<th>ร้อยละ</th>'
-    + '<th>เกรดเฉลี่ย<br>GPA</th>'
-    + '<th>ลำดับ<br>ห้อง</th>'
-    + '<th>ลำดับ<br>ชั้น</th>'
-    + '</tr></thead>';
+    + '<th rowspan="2">สมรรถนะฯ</th></tr>';
+  html += '<tr><th>รวมคะแนน</th><th>เต็ม</th><th>ร้อยละ</th>'
+    + '<th>เกรดเฉลี่ย<br>GPA</th><th>ลำดับ<br>ห้อง</th><th>ลำดับ<br>ชั้น</th></tr></thead>';
 
   html += '<tbody>';
   data.students.forEach(function(st, idx) {
-    html += '<tr>';
-    html += '<td>' + (idx + 1) + '</td>';
-    html += '<td class="name-col">' + st.fullName + '</td>';
-    html += '<td>' + st.sumTotal + '</td>';
-    html += '<td>' + st.fullScore + '</td>';
-    html += '<td>' + st.pct.toFixed(2) + '</td>';
-    html += '<td><b>' + st.gpa.toFixed(2) + '</b></td>';
-    html += '<td>' + st.classRank + '</td>';
-    html += '<td>' + st.gradeRank + '</td>';
-
-    var readCls = (st.reading === 'ดีเยี่ยม' || st.reading === 'ดี') ? 'good' : (st.reading === 'ปรับปรุง' ? 'improve' : '');
-    var charCls = (st.character === 'ดีเยี่ยม' || st.character === 'ดี') ? 'good' : (st.character === 'ปรับปรุง' ? 'improve' : '');
-    var compCls = (st.competency === 'ดีเยี่ยม' || st.competency === 'ดี') ? 'good' : (st.competency === 'ปรับปรุง' ? 'improve' : '');
-
-    html += '<td class="' + readCls + '">' + st.reading + '</td>';
-    html += '<td class="' + charCls + '">' + st.character + '</td>';
-    html += '<td class="' + compCls + '">' + st.competency + '</td>';
-    html += '</tr>';
+    html += '<tr><td>' + (idx+1) + '</td><td class="name-col">' + st.fullName + '</td>';
+    html += '<td>' + st.sumTotal + '</td><td>' + st.fullScore + '</td>';
+    html += '<td>' + st.pct.toFixed(2) + '</td><td><b>' + st.gpa.toFixed(2) + '</b></td>';
+    html += '<td>' + st.classRank + '</td><td>' + st.gradeRank + '</td>';
+    function cls(v){return(v==='ดีเยี่ยม'||v==='ดี')?'good':(v==='ปรับปรุง'?'improve':'');}
+    html += '<td class="'+cls(st.reading)+'">' + st.reading + '</td>';
+    html += '<td class="'+cls(st.character)+'">' + st.character + '</td>';
+    html += '<td class="'+cls(st.competency)+'">' + st.competency + '</td></tr>';
   });
   html += '</tbody></table></body></html>';
 
-  var blob = HtmlService.createHtmlOutput(html)
-    .setTitle('สรุปการประเมินทางการเรียน')
-    .getBlob()
-    .setName('สรุปประเมิน_' + grade + '_' + classNo + '.pdf')
-    .getAs('application/pdf');
-
-  var folder = getOutputFolder_();
-  var file = folder.createFile(blob);
-  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-  return file.getUrl();
+  var fileName = 'สรุปประเมิน_' + grade + '_' + classNo + '_' + new Date().toISOString().slice(0,10) + '.pdf';
+  return savePDFToDrive_(html, 'ClassReports_PDF', fileName);
 }
