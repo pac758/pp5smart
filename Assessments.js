@@ -1107,8 +1107,53 @@ function getPDFCommonData_(grade, classNo) {
  * สร้าง PDF จาก HTML แล้วคืน base64 data URL (ไม่ใช้ DriveApp)
  */
 function _pdfToBase64_(htmlContent) {
+  // Inject embedded Sarabun font for proper Thai font rendering in PDF
+  var fontCss = _getEmbeddedSarabunCss_();
+  if (fontCss && htmlContent.indexOf('<style>') > -1) {
+    htmlContent = htmlContent.replace('<style>', '<style>' + fontCss);
+  }
   var blob = HtmlService.createHtmlOutput(htmlContent).getBlob().getAs('application/pdf');
   return 'data:application/pdf;base64,' + Utilities.base64Encode(blob.getBytes());
+}
+
+/**
+ * ดึงฟอนต์ Sarabun จาก Google Fonts แล้ว embed เป็น base64 @font-face CSS
+ * แก้ปัญหาฟอนต์ไม่แสดงใน HtmlService PDF renderer
+ */
+function _getEmbeddedSarabunCss_() {
+  try {
+    var cssUrl = 'https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap';
+    var resp = UrlFetchApp.fetch(cssUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
+      muteHttpExceptions: true
+    });
+    if (resp.getResponseCode() !== 200) return '';
+
+    var css = resp.getContentText();
+
+    // Extract unique font file URLs
+    var urls = [], m, re = /url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/g;
+    while ((m = re.exec(css)) !== null) {
+      if (urls.indexOf(m[1]) === -1) urls.push(m[1]);
+    }
+    if (urls.length === 0) return '';
+
+    // Fetch all font files in parallel
+    var requests = urls.map(function(u) { return { url: u, muteHttpExceptions: true }; });
+    var responses = UrlFetchApp.fetchAll(requests);
+
+    responses.forEach(function(r, i) {
+      if (r.getResponseCode() === 200) {
+        var b64 = Utilities.base64Encode(r.getBlob().getBytes());
+        var mime = urls[i].indexOf('.woff2') > -1 ? 'font/woff2' : 'font/woff';
+        css = css.split(urls[i]).join('data:' + mime + ';base64,' + b64);
+      }
+    });
+
+    return css;
+  } catch(e) {
+    return '';
+  }
 }
 
 /**
