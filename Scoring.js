@@ -1628,7 +1628,7 @@ function getSystemSettings() {
     
     const defaultSettings = {
       schoolName: 'โรงเรียน',
-      academicYear: '2568',
+      academicYear: String(S_getCurrentAcademicYear_()),
       directorName: 'ผู้อำนวยการ',
       directorTitle: 'ผู้อำนวยการสถานศึกษา',
       academicHead: 'หัวหน้างานวิชาการ',

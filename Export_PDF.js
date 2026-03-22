@@ -800,7 +800,7 @@ function getStudentAcademicResults(studentId) {
   const scoreSheets = sheets.filter(sheet => {
     const name = sheet.getName();
     return !['Students', 'รายวิชา', 'global_settings', 'คุณลักษณะ', 'อ่านคิดเขียน', 'กิจกรรม'].includes(name) &&
-           !name.includes('2568') && !name.includes('2567') && !name.includes('2569');
+           !/_\d{4}$/.test(name) && !name.startsWith('BACKUP_');
   });
   
   scoreSheets.forEach(sheet => {

@@ -234,7 +234,7 @@ function exportAllSubjectsAsPdf() {
 function _buildSubjectsListHTML_(subjects) {
   const settings = getGlobalSettingsFixed();
   const schoolName = settings['ชื่อโรงเรียน'] || 'โรงเรียน';
-  const academicYear = settings['ปีการศึกษา'] || '2568';
+  const academicYear = settings['ปีการศึกษา'] || String(S_getCurrentAcademicYear_());
   const currentDate = Utilities.formatDate(new Date(), "Asia/Bangkok", "d MMMM yyyy");
   
   // จัดกลุ่มตามชั้น

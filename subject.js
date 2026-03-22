@@ -246,7 +246,7 @@ function _buildReportHTML_(settings, scoreData, info) {
   const safeSettings = {
     schoolName: settings['ชื่อโรงเรียน'] || "โรงเรียน",
     schoolAddress: settings['ที่อยู่โรงเรียน'] || "",
-    academicYear: settings['ปีการศึกษา'] || "2568",
+    academicYear: settings['ปีการศึกษา'] || String(S_getCurrentAcademicYear_()),
     directorName: settings['ชื่อผู้อำนวยการ'] || "ผู้อำนวยการ",
     directorPosition: settings['ตำแหน่งผู้อำนวยการ'] || "ผู้อำนวยการสถานศึกษา",
     academicHead: settings['ชื่อหัวหน้างานวิชาการ'] || "หัวหน้างานวิชาการ",
@@ -482,7 +482,7 @@ function generateSubjectScorePDFFixed(subjectName, subjectCode, grade, classNo, 
     // ดึงการตั้งค่าระบบ
     const settings = S_getGlobalSettings() || {};
     const schoolName = settings.schoolName || settings['ชื่อโรงเรียน'] || 'โรงเรียนของเรา';
-    const academicYear = settings.academicYear || settings['ปีการศึกษา'] || '2568';
+    const academicYear = settings.academicYear || settings['ปีการศึกษา'] || String(S_getCurrentAcademicYear_());
     
     // ดึงโลโก้
     let logoDataUrl = '';
@@ -881,11 +881,11 @@ function getStudentAllSubjectResults(studentId, term) {
     const subjects = [];
     
     // หาชีตที่เป็นรายวิชา (ไม่รวมชีตระบบ)
-    const excludeSheets = ['Students', 'รายวิชา', 'global_settings', 'การตั้งค่าระบบ', 'การประเมินคุณลักษณะ', 'การประเมินอ่านคิดเขียน', 'การประเมินกิจกรรมพัฒนาผู้เรียน', 'การประเมินสมรรถนะ', 'Users', 'users', 'Holidays', 'วันหยุด', 'HomeroomTeachers', 'SCORES_WAREHOUSE', 'AttendanceLog', 'ความเห็นครู', 'โปรไฟล์นักเรียน', 'BACKUP_WAREHOUSE_LATEST', 'Template_', 'สรุปวันมา', 'สรุปการมาเรียน', 'อ่านคิดเขียน', 'คุณลักษณะ', 'กิจกรรม', 'สมรรถนะ'];
+    const excludeSheets = ['Students', 'รายวิชา', 'global_settings', 'การตั้งค่าระบบ', 'การประเมินคุณลักษณะ', 'การประเมินอ่านคิดเขียน', 'การประเมินกิจกรรมพัฒนาผู้เรียน', 'การประเมินสมรรถนะ', 'Users', 'users', 'Holidays', 'วันหยุด', 'HomeroomTeachers', 'SCORES_WAREHOUSE', 'AttendanceLog', 'ความเห็นครู', 'โปรไฟล์นักเรียน', 'BACKUP_', 'Template_', 'สรุปวันมา', 'สรุปการมาเรียน', 'อ่านคิดเขียน', 'คุณลักษณะ', 'กิจกรรม', 'สมรรถนะ'];
     const scoreSheets = allSheets.filter(sheet => {
       const name = sheet.getName();
       return !excludeSheets.some(ex => name === ex || name.startsWith(ex)) &&
-             !name.includes('2567') && !name.includes('2568') && !name.includes('2569');
+             !/_\d{4}$/.test(name);
     });
     
     let totalGradePoints = 0;

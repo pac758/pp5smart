@@ -42,7 +42,7 @@ function generatePDFFromSameSheetTemplate(templateType, grade, classNo, students
     // สร้าง Google Doc แทน Sheet
     const settings = getGlobalSettings();
     const schoolName = settings['ชื่อโรงเรียน'] || 'โรงเรียนของคุณ';
-    const academicYear = settings['ปีการศึกษา'] || '2568';
+    const academicYear = settings['ปีการศึกษา'] || String(S_getCurrentAcademicYear_());
     const logoFileId = settings['logoFileId'];
     
     const docName = `ประเมินอ่าน-คิด-เขียน_${grade}_${classNo}_${new Date().toISOString().slice(0,10)}`;
@@ -374,7 +374,7 @@ function fillHeaderData(sheet, grade, classNo) {
       .setFontStyle('normal').setFontColor('#000');
     sheet.getRange('B4').setValue(`${fullGradeName} ห้อง ${classNo}`)
       .setFontStyle('normal').setFontColor('#000');
-    sheet.getRange('B5').setValue(`ปีการศึกษา ${settings['ปีการศึกษา'] || '2568'}`)
+    sheet.getRange('B5').setValue(`ปีการศึกษา ${settings['ปีการศึกษา'] || String(S_getCurrentAcademicYear_())}`)
       .setFontStyle('normal').setFontColor('#000');
   } catch (error) {
     Logger.log('⚠️ ไม่สามารถเติมข้อมูลหัวรายงานได้:', error.message);

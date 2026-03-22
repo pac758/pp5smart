@@ -7,7 +7,7 @@
 function handleExportClassCSV(grade, classNo, sortMode) {
   try {
     const settings = S_getGlobalSettings();
-    const academicYear = settings['ปีการศึกษา'] || '2568';
+    const academicYear = settings['ปีการศึกษา'] || String(S_getCurrentAcademicYear_());
     
     const result = exportClassScoresToCSV(grade, classNo, academicYear, sortMode);
     
