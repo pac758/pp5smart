@@ -868,7 +868,7 @@ function getDashboardAlerts() {
         var gradeSubjectMap = {};
         Object.keys(gradeSubjCount).forEach(function(g) {
           var total = _studPerGrade[g] || 1;
-          var minReq = Math.max(Math.ceil(total * 0.5), 2);
+          var minReq = Math.max(Math.ceil(total * 0.98), 2);
           gradeSubjectMap[g] = [];
           Object.keys(gradeSubjCount[g]).forEach(function(s) {
             if (gradeSubjCount[g][s] >= minReq) gradeSubjectMap[g].push(s);
@@ -1045,7 +1045,7 @@ function getGradeRecordingChartData() {
         allGrades.forEach(function(g) {
           if (!gradeSubjCount[g]) return;
           var totalStudents = studentsPerGrade[g] || 1;
-          var minRequired = Math.max(Math.ceil(totalStudents * 0.5), 2);
+          var minRequired = Math.max(Math.ceil(totalStudents * 0.98), 2);
           var recorded = [];
           Object.keys(gradeSubjCount[g]).forEach(function(subj) {
             if (gradeSubjCount[g][subj] >= minRequired) {
