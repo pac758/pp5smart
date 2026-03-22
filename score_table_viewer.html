@@ -2170,8 +2170,8 @@ window.ScoreEntrySystem = (function() {
 
         // แปลงสัดส่วน: mid = (คะแนนดิบ / คะแนนเต็มรวม) * midMax
         let mid = 0;
-        if (fullScoresSum > 0 && itemsSum > 0) {
-          mid = Math.round((itemsSum / fullScoresSum) * midMax);
+        if (itemsSum > 0) {
+          mid = (fullScoresSum === midMax) ? itemsSum : (fullScoresSum > 0 ? Math.round((itemsSum / fullScoresSum) * midMax) : 0);
         }
         if (sumCell) sumCell.textContent = mid;
 
@@ -3426,6 +3426,13 @@ window.ScoreEntrySystem = (function() {
           showStatus('❌ ไม่พบตารางภาคเรียน', 'danger', 'fas fa-exclamation-circle');
           return;
         }
+        
+        // ✅ คัดลอก fullScores ก่อน (ป้องกัน validateAndClamp clamp ค่าเป็น 0)
+        var t1FullScores = term1Container.querySelectorAll('.score-entry-full-score');
+        var t2FullScores = term2Container.querySelectorAll('.score-entry-full-score');
+        t1FullScores.forEach(function(inp, j) {
+          if (t2FullScores[j]) t2FullScores[j].value = inp.value;
+        });
         
         var t1Rows = term1Container.querySelectorAll('tbody tr');
         var t2Rows = term2Container.querySelectorAll('tbody tr');
