@@ -340,7 +340,7 @@ function getExistingScoreSheets() {
     }
 
     // ชีตที่ไม่ใช่ตารางคะแนน
-    const excludeSheets = ['Students', 'รายวิชา', 'Users', 'users', 'Settings', 'Attendance', 'global_settings', 'การตั้งค่าระบบ', 'Holidays', 'วันหยุด', 'SCORES_WAREHOUSE', 'AttendanceLog', 'HomeroomTeachers', 'การประเมินอ่านคิดเขียน', 'การประเมินคุณลักษณะ', 'การประเมินกิจกรรมพัฒนาผู้เรียน', 'การประเมินสมรรถนะ', 'ความเห็นครู', 'โปรไฟล์นักเรียน', 'BACKUP_WAREHOUSE_LATEST', 'Template_', 'สรุปวันมา', 'สรุปการมาเรียน', 'อ่านคิดเขียน', 'คุณลักษณะ', 'กิจกรรม', 'สมรรถนะ'];
+    const excludeSheets = ['Students', 'รายวิชา', 'Users', 'users', 'Settings', 'Attendance', 'global_settings', 'การตั้งค่าระบบ', 'Holidays', 'วันหยุด', 'SCORES_WAREHOUSE', 'AttendanceLog', 'HomeroomTeachers', 'การประเมินอ่านคิดเขียน', 'การประเมินคุณลักษณะ', 'การประเมินกิจกรรมพัฒนาผู้เรียน', 'การประเมินสมรรถนะ', 'ความเห็นครู', 'โปรไฟล์นักเรียน', 'BACKUP_', 'Template_', 'สรุปวันมา', 'สรุปการมาเรียน', 'อ่านคิดเขียน', 'คุณลักษณะ', 'กิจกรรม', 'สมรรถนะ'];
     
     allSheets.forEach(sheet => {
       const sheetName = sheet.getName();
