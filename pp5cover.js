@@ -372,7 +372,7 @@ function getSubjectScoreSummary(grade, classNo) {
         const subject = String(row[subjectCol]).trim();
         const score = parseFloat(row[scoreCol]) || 0;
         
-        if (!subject) return;
+        if (!subject || subject.indexOf('BACKUP_') === 0) return;
         if (!summary[subject]) {
           summary[subject] = { name: subject, count: { "4": 0, "3.5": 0, "3": 0, "2.5": 0, "2": 0, "1.5": 0, "1": 0, "0": 0 } };
         }
