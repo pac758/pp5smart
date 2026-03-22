@@ -193,6 +193,63 @@
     .alert-item:last-child { border-bottom: none; }
     .alert-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 2px; }
 
+    /* --- Grade Recording Chart --- */
+    .grade-chart-card {
+      background: var(--glass-bg); backdrop-filter: blur(12px);
+      border: var(--glass-border); border-radius: var(--radius);
+      box-shadow: var(--glass-shadow); padding: 1.5rem;
+    }
+    .grade-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,0.04);
+    }
+    .grade-row:last-child { border-bottom: none; }
+    .grade-label {
+      min-width: 48px; font-weight: 700; font-size: 0.95rem;
+      color: #1e293b; text-align: center;
+      background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
+      border-radius: 10px; padding: 6px 10px;
+    }
+    .grade-bar-wrap { flex: 1; }
+    .grade-bar-outer {
+      height: 22px; border-radius: 11px; background: #f1f5f9;
+      overflow: hidden; position: relative;
+    }
+    .grade-bar-inner {
+      height: 100%; border-radius: 11px;
+      transition: width 1s cubic-bezier(0.25, 0.8, 0.25, 1);
+      display: flex; align-items: center; justify-content: flex-end;
+      padding-right: 8px; font-size: 0.7rem; font-weight: 700; color: #fff;
+      min-width: 36px;
+    }
+    .grade-subjects {
+      display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;
+    }
+    .subj-badge {
+      font-size: 0.72rem; padding: 2px 8px; border-radius: 6px;
+      font-weight: 500; white-space: nowrap;
+    }
+    .subj-badge.recorded {
+      background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+      color: #065f46;
+    }
+    .subj-badge.missing {
+      background: #f1f5f9; color: #94a3b8;
+    }
+    .grade-pct {
+      min-width: 52px; text-align: right; font-weight: 700;
+      font-size: 0.95rem;
+    }
+    .grade-summary-row {
+      display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;
+    }
+    .grade-summary-item {
+      flex: 1; min-width: 100px; text-align: center;
+      background: rgba(247,250,252,0.8); border-radius: 12px;
+      padding: 10px; border: 1px solid rgba(0,0,0,0.03);
+    }
+    .grade-summary-item h4 { margin-bottom: 0; }
+
     @media (max-width: 768px) {
       body { padding: 1rem; }
       .stat-value { font-size: 2rem; }
@@ -301,6 +358,16 @@
           <div class="quick-action-icon" style="background:linear-gradient(135deg,#ff9a9e,#fecfef)"><i class="bi bi-calendar-x"></i></div>
           <div><div class="fw-bold">จัดการวันหยุด</div><small class="text-muted">กำหนดวันหยุด</small></div>
         </a>
+      </div>
+    </div>
+
+    <!-- Grade Recording Chart -->
+    <div class="mb-4">
+      <div class="grade-chart-card">
+        <h6 class="fw-bold text-dark mb-3"><i class="bi bi-grid-3x3-gap-fill text-primary me-2"></i>สถานะการบันทึกเกรด</h6>
+        <div id="gradeChartContainer">
+          <div class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm me-2"></span>กำลังโหลดข้อมูล...</div>
+        </div>
       </div>
     </div>
 
@@ -806,6 +873,48 @@ function renderGradeChart(chartData) {
         container.innerHTML = html;
       }
 
+      function renderGradeRecordingChart(data) {
+        var container = document.getElementById('gradeChartContainer');
+        if (!container) return;
+        if (!data || !data.hasData) {
+          container.innerHTML = '<div class="text-center py-3 text-muted"><i class="bi bi-inbox me-2" style="font-size:1.3rem"></i>ยังไม่มีข้อมูลการบันทึกเกรด</div>';
+          return;
+        }
+        var totalRecorded = 0, totalExpected = 0;
+        data.grades.forEach(function(g) { totalRecorded += g.recorded.length; totalExpected += g.total; });
+        var overallPct = totalExpected > 0 ? Math.round(totalRecorded / totalExpected * 100) : 0;
+
+        var html = '<div class="grade-summary-row">';
+        html += '<div class="grade-summary-item"><h4 class="text-primary">' + data.allSubjects.length + '</h4><small class="text-muted">วิชาทั้งหมด</small></div>';
+        html += '<div class="grade-summary-item"><h4 class="text-success">' + data.grades.filter(function(g){return g.pct>=100;}).length + '</h4><small class="text-muted">ชั้นครบแล้ว</small></div>';
+        html += '<div class="grade-summary-item"><h4 class="' + (overallPct >= 100 ? 'text-success' : overallPct >= 50 ? 'text-warning' : 'text-danger') + '">' + overallPct + '%</h4><small class="text-muted">ภาพรวม</small></div>';
+        html += '</div>';
+
+        data.grades.forEach(function(g) {
+          var barColor = g.pct >= 100 ? 'linear-gradient(90deg,#10b981,#34d399)' : g.pct >= 50 ? 'linear-gradient(90deg,#f59e0b,#fbbf24)' : g.pct > 0 ? 'linear-gradient(90deg,#ef4444,#f87171)' : '#e2e8f0';
+          var pctColor = g.pct >= 100 ? 'text-success' : g.pct >= 50 ? 'text-warning' : 'text-danger';
+          html += '<div class="grade-row">';
+          html += '<div class="grade-label">' + g.name + '</div>';
+          html += '<div class="grade-bar-wrap">';
+          html += '<div class="grade-bar-outer"><div class="grade-bar-inner" style="width:' + Math.max(g.pct, 4) + '%;background:' + barColor + '">' + g.recorded.length + '/' + g.total + '</div></div>';
+          html += '<div class="grade-subjects">';
+          var recordedSet = {};
+          g.recorded.forEach(function(s) { recordedSet[s] = true; });
+          g.recorded.forEach(function(s) {
+            html += '<span class="subj-badge recorded"><i class="bi bi-check-circle-fill me-1"></i>' + s + '</span>';
+          });
+          g.expected.forEach(function(s) {
+            if (!recordedSet[s]) {
+              html += '<span class="subj-badge missing">' + s + '</span>';
+            }
+          });
+          html += '</div></div>';
+          html += '<div class="grade-pct ' + pctColor + '">' + g.pct + '%</div>';
+          html += '</div>';
+        });
+        container.innerHTML = html;
+      }
+
       function loadProgressAndAlerts() {
         waitForGAS(() => {
           google.script.run.withSuccessHandler(data => {
@@ -819,6 +928,12 @@ function renderGradeChart(chartData) {
           }).withFailureHandler(() => {
             renderAlerts(null);
           }).getDashboardAlerts();
+
+          google.script.run.withSuccessHandler(data => {
+            renderGradeRecordingChart(data);
+          }).withFailureHandler(() => {
+            renderGradeRecordingChart(null);
+          }).getGradeRecordingChartData();
         });
       }
 

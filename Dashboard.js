@@ -646,7 +646,7 @@ function clearAcademicCache() { AcademicCacheManager.clearAll(); return "✅ ล
 
 function clearServerCache() {
   try {
-    CacheService.getScriptCache().removeAll(['dashboard_summary_v5', 'dashboard_summary_v3', 'academic_summary_all_v2', 'fast_student_stats_v1', 'all_chart_data_all_v1', 'dashboard_progress_v1', 'dashboard_alerts_v1']);
+    CacheService.getScriptCache().removeAll(['dashboard_summary_v5', 'dashboard_summary_v3', 'academic_summary_all_v2', 'fast_student_stats_v1', 'all_chart_data_all_v1', 'dashboard_progress_v1', 'dashboard_alerts_v1', 'grade_recording_chart_v1']);
     return "✅ ล้าง Server Cache เรียบร้อย";
   } catch (e) { return { error: true, message: e.message }; }
 }
@@ -849,6 +849,7 @@ function getDashboardAlerts() {
           });
         }
         
+        // (สถานะการบันทึกเกรดย้ายไปแสดงเป็นแผนภูมิแยก — ดู getGradeRecordingChartData)
         // แสดงสถานะการบันทึกเกรดแต่ละชั้น/วิชา
         var sortedGrades = Object.keys(gradeSubjectMap).sort(function(a, b) {
           var pa = a.match(/(\d+)/); var pb = b.match(/(\d+)/);
@@ -925,7 +926,112 @@ function getDashboardAlerts() {
 }
 
 // ============================================================
-// 🔍 DEBUG: ตรวจสอบปัญหา Attendance Dashboard
+// � GRADE RECORDING CHART DATA
+// ============================================================
+
+/**
+ * ดึงข้อมูลสถานะการบันทึกเกรดสำหรับแสดงเป็นแผนภูมิ
+ * @returns {Object} { grades: [{name, recorded:[], total, pct}], allSubjects:[], hasData }
+ */
+function getGradeRecordingChartData() {
+  try {
+    var cache = CacheService.getScriptCache();
+    var cacheKey = 'grade_recording_chart_v1';
+    var hit = cache.get(cacheKey);
+    if (hit) return JSON.parse(hit);
+
+    var ss = SS();
+    var allGrades = ['ป.1','ป.2','ป.3','ป.4','ป.5','ป.6'];
+
+    // 1. อ่านวิชาที่คาดหวังจากชีตรายวิชา
+    var expectedByGrade = {};
+    allGrades.forEach(function(g) { expectedByGrade[g] = []; });
+    try {
+      var subjSheet = ss.getSheetByName('รายวิชา');
+      if (subjSheet) {
+        var sd = subjSheet.getDataRange().getValues();
+        var sh = sd[0];
+        var nameCol = sh.findIndex(function(v) { return /ชื่อวิชา/i.test(v); });
+        var gradeCol = sh.findIndex(function(v) { return /^ชั้น$|ระดับชั้น/i.test(String(v || '').trim()); });
+        if (nameCol >= 0) {
+          for (var i = 1; i < sd.length; i++) {
+            var sn = String(sd[i][nameCol] || '').trim();
+            var sg = gradeCol >= 0 ? String(sd[i][gradeCol] || '').trim() : '';
+            if (sn && sg && expectedByGrade[sg]) {
+              if (expectedByGrade[sg].indexOf(sn) < 0) expectedByGrade[sg].push(sn);
+            }
+          }
+        }
+      }
+    } catch(e) { Logger.log('Chart subject lookup: ' + e.message); }
+
+    // 2. อ่าน SCORES_WAREHOUSE หาวิชาที่บันทึกแล้ว
+    var recordedByGrade = {};
+    allGrades.forEach(function(g) { recordedByGrade[g] = []; });
+    var allRecordedSubjects = [];
+
+    try {
+      var scoresSheet = S_getYearlySheet('SCORES_WAREHOUSE');
+      if (scoresSheet && scoresSheet.getLastRow() > 1) {
+        var sData = scoresSheet.getDataRange().getValues();
+        var sHeaders = sData[0];
+        var fgIdx = findHeaderIndex(sHeaders, ['final_grade','grade_final','เกรด','ผลการประเมิน','final']);
+        var clsIdx = findHeaderIndex(sHeaders, ['grade','ชั้น','ระดับชั้น']);
+        var subjIdx = findHeaderIndex(sHeaders, ['subject_name','subject','ชื่อวิชา']);
+
+        var gradeSubjSet = {};
+        for (var j = 1; j < sData.length; j++) {
+          var fg = fgIdx >= 0 ? Number(sData[j][fgIdx]) : -1;
+          if (fg <= 0) continue;
+          var cls = clsIdx >= 0 ? String(sData[j][clsIdx] || '').trim() : '';
+          var subj = subjIdx >= 0 ? String(sData[j][subjIdx] || '').trim() : '';
+          if (!cls || !subj) continue;
+          if (!gradeSubjSet[cls]) gradeSubjSet[cls] = {};
+          gradeSubjSet[cls][subj] = true;
+        }
+
+        allGrades.forEach(function(g) {
+          if (gradeSubjSet[g]) {
+            recordedByGrade[g] = Object.keys(gradeSubjSet[g]).sort();
+          }
+        });
+
+        // รวมวิชาทั้งหมดที่บันทึกแล้ว
+        var allSet = {};
+        Object.keys(gradeSubjSet).forEach(function(g) {
+          Object.keys(gradeSubjSet[g]).forEach(function(s) { allSet[s] = true; });
+        });
+        allRecordedSubjects = Object.keys(allSet).sort();
+      }
+    } catch(e) { Logger.log('Chart warehouse read: ' + e.message); }
+
+    // 3. สร้างข้อมูลแผนภูมิ
+    var grades = [];
+    allGrades.forEach(function(g) {
+      var expected = expectedByGrade[g].length > 0 ? expectedByGrade[g] : allRecordedSubjects;
+      var recorded = recordedByGrade[g];
+      var total = Math.max(expected.length, recorded.length, 1);
+      var pct = total > 0 ? Math.round(recorded.length / total * 100) : 0;
+      grades.push({
+        name: g,
+        recorded: recorded,
+        expected: expected,
+        total: total,
+        pct: pct
+      });
+    });
+
+    var result = { grades: grades, allSubjects: allRecordedSubjects, hasData: allRecordedSubjects.length > 0 };
+    cache.put(cacheKey, JSON.stringify(result), 300);
+    return result;
+  } catch(e) {
+    Logger.log('getGradeRecordingChartData error: ' + e.message);
+    return { grades: [], allSubjects: [], hasData: false };
+  }
+}
+
+// ============================================================
+// �� DEBUG: ตรวจสอบปัญหา Attendance Dashboard
 // ============================================================
 function debugAttendanceDashboard() {
   const result = [];
