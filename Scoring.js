@@ -1065,37 +1065,6 @@ function _syncSubjectToWarehouse_(sheetName, studentRows) {
 }
 
 /**
- * ✅ Helper: อ่านชีตคะแนนแล้ว sync ลง warehouse
- */
-function _rebuildOneSheet_(sheet) {
-  var sheetName = sheet.getName();
-  var data = sheet.getDataRange().getValues();
-  if (data.length < 5) return 0; // ชีตข้อมูลไม่ครบ
-
-  var sheetLayout = detectSheetLayout_(sheet);
-  var startRow = 5; // row 5 = index 4
-  var studentRows = [];
-
-  for (var i = startRow - 1; i < data.length; i++) {
-    var r = data[i];
-    var sid = String(r[1] || '').trim();
-    if (!sid) continue;
-    studentRows.push({
-      id: sid,
-      term1Total: Number(r[sheetLayout.term1.total]) || 0,
-      term2Total: Number(r[sheetLayout.term2.total]) || 0,
-      yearAvg:    Number(r[sheetLayout.yearAvgCol])  || 0,
-      yearGrade:  String(r[sheetLayout.yearGradeCol] || '')
-    });
-  }
-
-  if (studentRows.length > 0) {
-    _syncSubjectToWarehouse_(sheetName, studentRows);
-  }
-  return studentRows.length;
-}
-
-/**
  * ✅ Helper: หาชีตคะแนนทั้งหมดใน spreadsheet
  */
 function _findScoreSheets_(ss, filterGrade, filterClassNo) {
@@ -1106,7 +1075,6 @@ function _findScoreSheets_(ss, filterGrade, filterClassNo) {
   allSheets.forEach(function(sheet) {
     var name = sheet.getName();
     if (excludeSheets.some(function(ex) { return name === ex || name.startsWith(ex); })) return;
-    // ข้ามชีตเดือน (ภาษาไทย+ตัวเลข = ชื่อเดือน เช่น "มกราคม2568")
     if (/^[ก-๙]+\d{4}$/.test(name)) return;
 
     try {
@@ -1114,21 +1082,152 @@ function _findScoreSheets_(ss, filterGrade, filterClassNo) {
       var a2 = sheet.getRange(2, 1).getValue();
       if (a1 !== 'รหัสวิชา' || a2 !== 'ชื่อวิชา') return;
 
-      // แยกชั้น/ห้อง จากชื่อชีต เช่น "ภาษาไทย ป3-1"
       var m = name.match(/(.+)\s+([^-]+)-(\d+)$/);
       if (!m) return;
-      var sheetGrade = m[2].replace(/^(ป)(\d)/, '$1.$2'); // ป3 → ป.3
+      var sheetGrade = m[2].replace(/^(ป)(\d)/, '$1.$2');
       var sheetClass = m[3];
 
-      // กรองตามเงื่อนไข
       if (filterGrade && sheetGrade !== filterGrade) return;
       if (filterClassNo && sheetClass !== filterClassNo) return;
 
-      results.push({ sheet: sheet, grade: sheetGrade, classNo: sheetClass });
+      results.push({ sheet: sheet, name: name, subjectName: m[1].trim(), grade: sheetGrade, classNo: sheetClass });
     } catch (e) { /* skip */ }
   });
 
   return results;
+}
+
+/**
+ * ✅ BATCH Rebuild — อ่านข้อมูลทั้งหมดเข้า memory แล้วเขียนครั้งเดียว
+ * @param {Spreadsheet} ss
+ * @param {Array} scoreSheets - จาก _findScoreSheets_
+ * @param {string|null} filterGrade - ลบเฉพาะชั้นนี้ (null = ทั้งหมด)
+ * @param {string|null} filterClassNo - ลบเฉพาะห้องนี้ (null = ทั้งชั้น)
+ * @returns {{sheetCount:number, rowCount:number}}
+ */
+function _batchRebuild_(ss, scoreSheets, filterGrade, filterClassNo) {
+  var wh = (typeof S_getYearlySheet === 'function') ? S_getYearlySheet('SCORES_WAREHOUSE') : ss.getSheetByName('SCORES_WAREHOUSE');
+  if (!wh) throw new Error('ไม่พบชีต SCORES_WAREHOUSE');
+
+  var whData = wh.getDataRange().getValues();
+  var whHeaders = whData[0];
+  var numCols = whHeaders.length;
+  var iGrade = whHeaders.indexOf('grade');
+  var iClass = whHeaders.indexOf('class_no');
+
+  // --- Step 1: เก็บแถวเก่าที่ไม่เกี่ยวข้อง (keep rows) ---
+  var keepRows = [];
+  for (var ri = 1; ri < whData.length; ri++) {
+    var rowGrade = iGrade >= 0 ? String(whData[ri][iGrade] || '').trim() : '';
+    var rowClass = iClass >= 0 ? String(whData[ri][iClass] || '').trim() : '';
+    var shouldDelete = true;
+    if (filterGrade && rowGrade !== filterGrade) shouldDelete = false;
+    if (filterClassNo && rowClass !== filterClassNo) shouldDelete = false;
+    if (!shouldDelete) keepRows.push(whData[ri]);
+  }
+
+  // --- Step 2: อ่านชีตรายวิชาครั้งเดียว → สร้าง lookup map ---
+  var subjectLookup = {};
+  try {
+    var subjSheet = ss.getSheetByName('รายวิชา');
+    if (subjSheet) {
+      var sd = subjSheet.getDataRange().getValues();
+      var sh = sd[0];
+      var nameCol  = sh.findIndex(function(v) { return /ชื่อวิชา/i.test(v); });
+      var codeCol  = sh.findIndex(function(v) { return /รหัสวิชา/i.test(v); });
+      var typeCol  = sh.findIndex(function(v) { return /ประเภท/i.test(v); });
+      var hourCol  = sh.findIndex(function(v) { return /ชั่วโมง/i.test(v); });
+      var gradeCol = sh.findIndex(function(v) { return /^ชั้น$|ระดับชั้น/i.test(String(v || '').trim()); });
+      for (var si = 1; si < sd.length; si++) {
+        var sName = String(sd[si][nameCol] || '').trim();
+        var sGrade = gradeCol >= 0 ? String(sd[si][gradeCol] || '').trim() : '';
+        var key = sName + '|' + sGrade;
+        subjectLookup[key] = {
+          code: String(sd[si][codeCol] || '').trim(),
+          type: String(sd[si][typeCol] || '').trim(),
+          hours: Number(sd[si][hourCol]) || 0
+        };
+      }
+    }
+  } catch (e) { Logger.log('Batch rebuild subject lookup: ' + e.message); }
+
+  var settings = (typeof getCachedSettings_ === 'function') ? getCachedSettings_() : {};
+  var academicYear = settings['ปีการศึกษา'] || '';
+  var now = new Date();
+
+  // --- Step 3: อ่านทุกชีตคะแนน → สร้าง newRows ทั้งหมดใน memory ---
+  var newRows = [];
+  var sheetCount = 0;
+
+  scoreSheets.forEach(function(item) {
+    var data = item.sheet.getDataRange().getValues();
+    if (data.length < 5) return;
+
+    var layout = detectSheetLayout_(item.sheet);
+    var grade = item.grade;
+    var classNo = item.classNo;
+    var subjectName = item.subjectName;
+
+    // หา subject info จาก lookup
+    var subjInfo = subjectLookup[subjectName + '|' + grade] || subjectLookup[subjectName + '|'] || { code: '', type: '', hours: 0 };
+
+    var startRow = 5;
+    var hasData = false;
+    for (var i = startRow - 1; i < data.length; i++) {
+      var r = data[i];
+      var sid = String(r[1] || '').trim();
+      if (!sid) continue;
+
+      var term1Total = Number(r[layout.term1.total]) || 0;
+      var term2Total = Number(r[layout.term2.total]) || 0;
+      var yearAvg = Number(r[layout.yearAvgCol]) || 0;
+      var yearGrade = String(r[layout.yearGradeCol] || '');
+
+      if (yearAvg <= 0 && term1Total <= 0 && term2Total <= 0) {
+        var avg2 = (term1Total + term2Total) / 2;
+        if (avg2 > 0) yearAvg = avg2;
+      }
+      var finalGpa = yearGrade || ((typeof _scoreToGPA === 'function') ? _scoreToGPA(yearAvg).gpa : '');
+
+      var row = new Array(numCols).fill('');
+      function setW(col, val) { var ci = whHeaders.indexOf(col); if (ci >= 0) row[ci] = val; }
+      setW('student_id', sid);
+      setW('grade', grade);
+      setW('class_no', classNo);
+      setW('subject_code', subjInfo.code);
+      setW('subject_name', subjectName);
+      setW('subject_type', subjInfo.type);
+      setW('hours', subjInfo.hours);
+      setW('term1_total', term1Total);
+      setW('term2_total', term2Total);
+      setW('average', yearAvg);
+      setW('final_grade', finalGpa);
+      setW('sheet_name', item.name);
+      setW('academic_year', academicYear);
+      setW('updated_at', now);
+
+      newRows.push(row);
+      hasData = true;
+    }
+    if (hasData) sheetCount++;
+  });
+
+  // --- Step 4: เขียนทั้งหมดครั้งเดียว ---
+  var allRows = keepRows.concat(newRows);
+  // ลบข้อมูลเก่าทั้งหมด (เหลือ header)
+  if (wh.getLastRow() > 1) {
+    wh.deleteRows(2, wh.getLastRow() - 1);
+  }
+  // เขียน batch
+  if (allRows.length > 0) {
+    wh.getRange(2, 1, allRows.length, numCols).setValues(allRows);
+  }
+
+  if (typeof invalidateCacheAfterDataUpdate === 'function') {
+    invalidateCacheAfterDataUpdate('SCORES_WAREHOUSE');
+  }
+
+  return { sheetCount: sheetCount, rowCount: newRows.length };
 }
 
 /**
@@ -1140,25 +1239,8 @@ function rebuildScoresWarehouseForClass(grade, classNo, year) {
   if (scoreSheets.length === 0) {
     return 'ไม่พบชีตคะแนนสำหรับ ' + grade + '/' + classNo;
   }
-
-  // ลบข้อมูลเก่าของห้องนี้ออกจาก warehouse ก่อน
-  _clearWarehouseRows_(ss, grade, classNo);
-
-  var total = 0;
-  var lock = LockService.getScriptLock();
-  lock.waitLock(30000);
-  try {
-    scoreSheets.forEach(function(item) {
-      total += _rebuildOneSheet_(item.sheet);
-    });
-  } finally {
-    lock.releaseLock();
-  }
-
-  if (typeof invalidateCacheAfterDataUpdate === 'function') {
-    invalidateCacheAfterDataUpdate('SCORES_WAREHOUSE');
-  }
-  return 'Rebuild สำเร็จ: ' + grade + '/' + classNo + ' — ' + scoreSheets.length + ' วิชา, ' + total + ' รายการ';
+  var result = _batchRebuild_(ss, scoreSheets, grade, classNo);
+  return 'Rebuild สำเร็จ: ' + grade + '/' + classNo + ' — ' + result.sheetCount + ' วิชา, ' + result.rowCount + ' รายการ';
 }
 
 /**
@@ -1170,24 +1252,8 @@ function rebuildScoresWarehouseForGrade(grade, year) {
   if (scoreSheets.length === 0) {
     return 'ไม่พบชีตคะแนนสำหรับ ' + grade;
   }
-
-  _clearWarehouseRows_(ss, grade, null);
-
-  var total = 0;
-  var lock = LockService.getScriptLock();
-  lock.waitLock(30000);
-  try {
-    scoreSheets.forEach(function(item) {
-      total += _rebuildOneSheet_(item.sheet);
-    });
-  } finally {
-    lock.releaseLock();
-  }
-
-  if (typeof invalidateCacheAfterDataUpdate === 'function') {
-    invalidateCacheAfterDataUpdate('SCORES_WAREHOUSE');
-  }
-  return 'Rebuild สำเร็จ: ' + grade + ' — ' + scoreSheets.length + ' วิชา, ' + total + ' รายการ';
+  var result = _batchRebuild_(ss, scoreSheets, grade, null);
+  return 'Rebuild สำเร็จ: ' + grade + ' — ' + result.sheetCount + ' วิชา, ' + result.rowCount + ' รายการ';
 }
 
 /**
@@ -1199,58 +1265,8 @@ function rebuildScoresWarehouseAll(year) {
   if (scoreSheets.length === 0) {
     return 'ไม่พบชีตคะแนนใดๆ';
   }
-
-  // ลบข้อมูลทั้งหมด (เหลือ header)
-  var wh = (typeof S_getYearlySheet === 'function') ? S_getYearlySheet('SCORES_WAREHOUSE') : ss.getSheetByName('SCORES_WAREHOUSE');
-  if (wh && wh.getLastRow() > 1) {
-    wh.deleteRows(2, wh.getLastRow() - 1);
-  }
-
-  var total = 0;
-  var lock = LockService.getScriptLock();
-  lock.waitLock(60000);
-  try {
-    scoreSheets.forEach(function(item) {
-      total += _rebuildOneSheet_(item.sheet);
-    });
-  } finally {
-    lock.releaseLock();
-  }
-
-  if (typeof invalidateCacheAfterDataUpdate === 'function') {
-    invalidateCacheAfterDataUpdate('SCORES_WAREHOUSE');
-  }
-  return 'Rebuild สำเร็จ: ทั้งหมด ' + scoreSheets.length + ' วิชา, ' + total + ' รายการ';
-}
-
-/**
- * ✅ Helper: ลบแถว warehouse ตามเงื่อนไข grade/classNo
- */
-function _clearWarehouseRows_(ss, grade, classNo) {
-  var wh = (typeof S_getYearlySheet === 'function') ? S_getYearlySheet('SCORES_WAREHOUSE') : ss.getSheetByName('SCORES_WAREHOUSE');
-  if (!wh || wh.getLastRow() <= 1) return;
-
-  var data = wh.getDataRange().getValues();
-  var headers = data[0];
-  var iGrade = headers.indexOf('grade');
-  var iClass = headers.indexOf('class_no');
-  if (iGrade < 0) return;
-
-  // หาแถวที่ต้องลบ (ลบจากล่างขึ้นบน)
-  var rowsToDelete = [];
-  for (var i = 1; i < data.length; i++) {
-    var rowGrade = String(data[i][iGrade] || '').trim();
-    var rowClass = iClass >= 0 ? String(data[i][iClass] || '').trim() : '';
-    if (grade && rowGrade !== grade) continue;
-    if (classNo && rowClass !== classNo) continue;
-    rowsToDelete.push(i + 1); // 1-based row number
-  }
-
-  // ลบจากล่างขึ้นบน
-  rowsToDelete.sort(function(a, b) { return b - a; });
-  rowsToDelete.forEach(function(rowNum) {
-    wh.deleteRow(rowNum);
-  });
+  var result = _batchRebuild_(ss, scoreSheets, null, null);
+  return 'Rebuild สำเร็จ: ทั้งหมด ' + result.sheetCount + ' วิชา, ' + result.rowCount + ' รายการ';
 }
 
 /**
