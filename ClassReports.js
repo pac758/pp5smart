@@ -136,8 +136,11 @@ function getClassSubjectScoreSummary(grade, classNo, term) {
         var allSheets = ss.getSheets();
         for (var a = 0; a < allSheets.length; a++) {
           var sn = allSheets[a].getName();
+          if (sn.indexOf('BACKUP_') === 0) continue;
+          if (/_\d{4}$/.test(sn)) continue;
           if ((sn.indexOf(subj.name) !== -1 || (subj.code && sn.indexOf(subj.code) !== -1)) &&
-              sn.indexOf(classNo) !== -1) { scoreSheet = allSheets[a]; break; }
+              (sn.indexOf(gradeNoSuffix) !== -1 || sn.indexOf(grade) !== -1) &&
+              sn.indexOf('-' + classNo) !== -1) { scoreSheet = allSheets[a]; break; }
         }
       }
       if (!scoreSheet) { Logger.log('⚠️ ไม่พบชีตคะแนน: ' + subj.name); return; }
