@@ -2091,7 +2091,7 @@ window.ScoreEntrySystem = (function() {
         hasError = true;
       }
       
-      if (val > maxVal) {
+      if (maxVal > 0 && val > maxVal) {
         val = maxVal;
         hasError = true;
       }
