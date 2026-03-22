@@ -797,7 +797,7 @@ function renderGradeChart(chartData) {
         }
         let html = '';
         data.alerts.forEach(a => {
-          const iconClass = a.type === 'danger' ? 'text-danger' : a.type === 'warning' ? 'text-warning' : 'text-info';
+          const iconClass = a.type === 'danger' ? 'text-danger' : a.type === 'warning' ? 'text-warning' : a.type === 'success' ? 'text-success' : 'text-info';
           html += '<div class="alert-item">'
             + '<i class="bi ' + (a.icon || 'bi-exclamation-triangle-fill') + ' alert-icon ' + iconClass + '"></i>'
             + '<div>' + a.message + '</div>'

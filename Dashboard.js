@@ -809,30 +809,73 @@ function getDashboardAlerts() {
     const ss = SS();
     const alerts = [];
 
-    // 1. ตรวจสอบนักเรียนที่ได้เกรด 0
+    // 1. ตรวจสอบนักเรียนที่ได้เกรด 0 + สถานะการบันทึกเกรดแต่ละชั้น/วิชา
     try {
       const scoresSheet = S_getYearlySheet('SCORES_WAREHOUSE');
       if (scoresSheet && scoresSheet.getLastRow() > 1) {
         const sData = scoresSheet.getDataRange().getValues();
         const sHeaders = sData[0];
-        const gradeIdx = findHeaderIndex(sHeaders, ['final_grade','grade_final','เกรด','ผลการประเมิน','final']);
-        const nameIdx = findHeaderIndex(sHeaders, ['student_name','ชื่อ','ชื่อนักเรียน']);
+        const finalGradeIdx = findHeaderIndex(sHeaders, ['final_grade','grade_final','เกรด','ผลการประเมิน','final']);
+        const classIdx = findHeaderIndex(sHeaders, ['grade','ชั้น','ระดับชั้น']);
         const subjectIdx = findHeaderIndex(sHeaders, ['subject_name','subject','ชื่อวิชา']);
         
         let zeroGradeCount = 0;
         const zeroSubjects = new Set();
+        const gradeSubjectMap = {};
+        
         for (let i = 1; i < sData.length; i++) {
-          const grade = gradeIdx >= 0 ? Number(sData[i][gradeIdx]) : -1;
-          if (grade === 0) {
+          var fg = finalGradeIdx >= 0 ? Number(sData[i][finalGradeIdx]) : -1;
+          if (fg === 0) {
             zeroGradeCount++;
             if (subjectIdx >= 0) zeroSubjects.add(String(sData[i][subjectIdx]).trim());
           }
+          
+          // สะสมข้อมูลชั้น/วิชาที่บันทึกเกรดแล้ว
+          if (classIdx >= 0 && subjectIdx >= 0) {
+            var cls = String(sData[i][classIdx] || '').trim();
+            var subj = String(sData[i][subjectIdx] || '').trim();
+            if (cls && subj) {
+              if (!gradeSubjectMap[cls]) gradeSubjectMap[cls] = new Set();
+              gradeSubjectMap[cls].add(subj);
+            }
+          }
         }
+        
         if (zeroGradeCount > 0) {
           alerts.push({
             type: 'danger',
             icon: 'bi-exclamation-triangle-fill',
             message: 'พบนักเรียนได้เกรด 0 จำนวน <strong>' + zeroGradeCount + '</strong> รายการ ใน ' + zeroSubjects.size + ' วิชา'
+          });
+        }
+        
+        // แสดงสถานะการบันทึกเกรดแต่ละชั้น/วิชา
+        var sortedGrades = Object.keys(gradeSubjectMap).sort(function(a, b) {
+          var pa = a.match(/(\d+)/); var pb = b.match(/(\d+)/);
+          return (pa ? parseInt(pa[1]) : 999) - (pb ? parseInt(pb[1]) : 999);
+        });
+        
+        if (sortedGrades.length > 0) {
+          var totalSubjects = new Set();
+          sortedGrades.forEach(function(g) { gradeSubjectMap[g].forEach(function(s) { totalSubjects.add(s); }); });
+          
+          var msg = '<strong>สถานะการบันทึกเกรด</strong> (' + totalSubjects.size + ' วิชา, ' + sortedGrades.length + ' ชั้น)';
+          msg += '<div style="margin-top:8px;font-size:0.9em">';
+          sortedGrades.forEach(function(grade) {
+            var subjects = Array.from(gradeSubjectMap[grade]).sort();
+            msg += '<div style="margin-bottom:4px;padding:4px 8px;background:rgba(16,185,129,0.08);border-radius:6px">'
+              + '<i class="bi bi-check-circle-fill text-success me-1"></i>'
+              + '<strong>' + grade + '</strong> — '
+              + subjects.length + ' วิชา: '
+              + '<span style="color:#059669">' + subjects.join(', ') + '</span>'
+              + '</div>';
+          });
+          msg += '</div>';
+          
+          alerts.push({
+            type: 'success',
+            icon: 'bi-journal-check',
+            message: msg
           });
         }
       }
