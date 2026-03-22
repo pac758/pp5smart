@@ -926,24 +926,47 @@ function getDashboardAlerts() {
 }
 
 // ============================================================
-// � GRADE RECORDING CHART DATA
+// GRADE RECORDING CHART DATA
 // ============================================================
 
-/**
- * ดึงข้อมูลสถานะการบันทึกเกรดสำหรับแสดงเป็นแผนภูมิ
- * @returns {Object} { grades: [{name, recorded:[], total, pct}], allSubjects:[], hasData }
- */
 function getGradeRecordingChartData() {
   try {
     var cache = CacheService.getScriptCache();
-    var cacheKey = 'grade_recording_chart_v1';
+    var cacheKey = 'grade_recording_chart_v2';
     var hit = cache.get(cacheKey);
     if (hit) return JSON.parse(hit);
 
     var ss = SS();
     var allGrades = ['ป.1','ป.2','ป.3','ป.4','ป.5','ป.6'];
 
-    // 1. อ่านวิชาที่คาดหวังจากชีตรายวิชา
+    // วิชากิจกรรม — ไม่นับ
+    var activityKeywords = ['แนะแนว','ลูกเสือ','เนตรนารี','ชุมนุม','กิจกรรมเพื่อสังคม','กิจกรรมพัฒนาผู้เรียน',
+      'ยุวกาชาด','ชุมนุมวิทยาศาสตร์','ชุมนุมคณิตศาสตร์','ลูกเสือ-เนตรนารี'];
+    function isActivitySubject(name) {
+      var n = String(name || '').trim();
+      return activityKeywords.some(function(kw) { return n.indexOf(kw) >= 0; });
+    }
+
+    // 0. นับจำนวนนักเรียนต่อชั้น (จาก Students sheet)
+    var studentsPerGrade = {};
+    allGrades.forEach(function(g) { studentsPerGrade[g] = 0; });
+    try {
+      var studSheet = ss.getSheetByName('Students');
+      if (studSheet && studSheet.getLastRow() > 1) {
+        var stData = studSheet.getDataRange().getValues();
+        var stHeaders = stData[0];
+        var gCol = stHeaders.indexOf('grade');
+        if (gCol < 0) gCol = stHeaders.indexOf('ชั้น');
+        if (gCol >= 0) {
+          for (var s = 1; s < stData.length; s++) {
+            var g = String(stData[s][gCol] || '').trim();
+            if (studentsPerGrade.hasOwnProperty(g)) studentsPerGrade[g]++;
+          }
+        }
+      }
+    } catch(e) { Logger.log('Chart students count: ' + e.message); }
+
+    // 1. อ่านวิชาที่คาดหวังจากชีตรายวิชา (ไม่รวมกิจกรรม)
     var expectedByGrade = {};
     allGrades.forEach(function(g) { expectedByGrade[g] = []; });
     try {
@@ -957,7 +980,7 @@ function getGradeRecordingChartData() {
           for (var i = 1; i < sd.length; i++) {
             var sn = String(sd[i][nameCol] || '').trim();
             var sg = gradeCol >= 0 ? String(sd[i][gradeCol] || '').trim() : '';
-            if (sn && sg && expectedByGrade[sg]) {
+            if (sn && sg && expectedByGrade[sg] && !isActivitySubject(sn)) {
               if (expectedByGrade[sg].indexOf(sn) < 0) expectedByGrade[sg].push(sn);
             }
           }
@@ -965,7 +988,7 @@ function getGradeRecordingChartData() {
       }
     } catch(e) { Logger.log('Chart subject lookup: ' + e.message); }
 
-    // 2. อ่าน SCORES_WAREHOUSE หาวิชาที่บันทึกแล้ว
+    // 2. อ่าน SCORES_WAREHOUSE — นับจำนวนนักเรียนต่อชั้น/วิชา (เฉพาะเกรด > 0)
     var recordedByGrade = {};
     allGrades.forEach(function(g) { recordedByGrade[g] = []; });
     var allRecordedSubjects = [];
@@ -979,27 +1002,37 @@ function getGradeRecordingChartData() {
         var clsIdx = findHeaderIndex(sHeaders, ['grade','ชั้น','ระดับชั้น']);
         var subjIdx = findHeaderIndex(sHeaders, ['subject_name','subject','ชื่อวิชา']);
 
-        var gradeSubjSet = {};
+        // gradeSubjCount[grade][subject] = จำนวนนักเรียนที่มีเกรด > 0
+        var gradeSubjCount = {};
         for (var j = 1; j < sData.length; j++) {
           var fg = fgIdx >= 0 ? Number(sData[j][fgIdx]) : -1;
           if (fg <= 0) continue;
           var cls = clsIdx >= 0 ? String(sData[j][clsIdx] || '').trim() : '';
           var subj = subjIdx >= 0 ? String(sData[j][subjIdx] || '').trim() : '';
           if (!cls || !subj) continue;
-          if (!gradeSubjSet[cls]) gradeSubjSet[cls] = {};
-          gradeSubjSet[cls][subj] = true;
+          if (isActivitySubject(subj)) continue;
+          if (!gradeSubjCount[cls]) gradeSubjCount[cls] = {};
+          gradeSubjCount[cls][subj] = (gradeSubjCount[cls][subj] || 0) + 1;
         }
 
+        // ต้องมีนักเรียนอย่างน้อย 50% ของชั้นจึงจะนับว่า "บันทึกแล้ว"
         allGrades.forEach(function(g) {
-          if (gradeSubjSet[g]) {
-            recordedByGrade[g] = Object.keys(gradeSubjSet[g]).sort();
-          }
+          if (!gradeSubjCount[g]) return;
+          var totalStudents = studentsPerGrade[g] || 1;
+          var minRequired = Math.max(Math.ceil(totalStudents * 0.5), 2);
+          var recorded = [];
+          Object.keys(gradeSubjCount[g]).forEach(function(subj) {
+            if (gradeSubjCount[g][subj] >= minRequired) {
+              recorded.push(subj);
+            }
+          });
+          recordedByGrade[g] = recorded.sort();
         });
 
-        // รวมวิชาทั้งหมดที่บันทึกแล้ว
+        // รวมวิชาทั้งหมดที่บันทึกครบ (ไม่รวมกิจกรรม)
         var allSet = {};
-        Object.keys(gradeSubjSet).forEach(function(g) {
-          Object.keys(gradeSubjSet[g]).forEach(function(s) { allSet[s] = true; });
+        allGrades.forEach(function(g) {
+          recordedByGrade[g].forEach(function(s) { allSet[s] = true; });
         });
         allRecordedSubjects = Object.keys(allSet).sort();
       }
@@ -1009,29 +1042,37 @@ function getGradeRecordingChartData() {
     var grades = [];
     allGrades.forEach(function(g) {
       var expected = expectedByGrade[g].length > 0 ? expectedByGrade[g] : allRecordedSubjects;
+      // กรองกิจกรรมออกจาก expected ด้วย
+      expected = expected.filter(function(s) { return !isActivitySubject(s); });
       var recorded = recordedByGrade[g];
       var total = Math.max(expected.length, recorded.length, 1);
       var pct = total > 0 ? Math.round(recorded.length / total * 100) : 0;
       grades.push({
         name: g,
-        recorded: recorded,
-        expected: expected,
+        recordedCount: recorded.length,
         total: total,
         pct: pct
       });
     });
 
-    var result = { grades: grades, allSubjects: allRecordedSubjects, hasData: allRecordedSubjects.length > 0 };
+    var totalSubjects = 0;
+    var allExpected = {};
+    allGrades.forEach(function(g) {
+      expectedByGrade[g].forEach(function(s) { allExpected[s] = true; });
+    });
+    totalSubjects = Object.keys(allExpected).length || allRecordedSubjects.length;
+
+    var result = { grades: grades, totalSubjects: totalSubjects, hasData: allRecordedSubjects.length > 0 || totalSubjects > 0 };
     cache.put(cacheKey, JSON.stringify(result), 300);
     return result;
   } catch(e) {
     Logger.log('getGradeRecordingChartData error: ' + e.message);
-    return { grades: [], allSubjects: [], hasData: false };
+    return { grades: [], totalSubjects: 0, hasData: false };
   }
 }
 
 // ============================================================
-// �� DEBUG: ตรวจสอบปัญหา Attendance Dashboard
+// DEBUG: Attendance Dashboard
 // ============================================================
 function debugAttendanceDashboard() {
   const result = [];

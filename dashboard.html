@@ -881,34 +881,24 @@ function renderGradeChart(chartData) {
           return;
         }
         var totalRecorded = 0, totalExpected = 0;
-        data.grades.forEach(function(g) { totalRecorded += g.recorded.length; totalExpected += g.total; });
+        data.grades.forEach(function(g) { totalRecorded += (g.recordedCount || 0); totalExpected += g.total; });
         var overallPct = totalExpected > 0 ? Math.round(totalRecorded / totalExpected * 100) : 0;
 
         var html = '<div class="grade-summary-row">';
-        html += '<div class="grade-summary-item"><h4 class="text-primary">' + data.allSubjects.length + '</h4><small class="text-muted">วิชาทั้งหมด</small></div>';
+        html += '<div class="grade-summary-item"><h4 class="text-primary">' + (data.totalSubjects || 0) + '</h4><small class="text-muted">วิชาทั้งหมด</small></div>';
         html += '<div class="grade-summary-item"><h4 class="text-success">' + data.grades.filter(function(g){return g.pct>=100;}).length + '</h4><small class="text-muted">ชั้นครบแล้ว</small></div>';
         html += '<div class="grade-summary-item"><h4 class="' + (overallPct >= 100 ? 'text-success' : overallPct >= 50 ? 'text-warning' : 'text-danger') + '">' + overallPct + '%</h4><small class="text-muted">ภาพรวม</small></div>';
         html += '</div>';
 
         data.grades.forEach(function(g) {
+          var rc = g.recordedCount || 0;
           var barColor = g.pct >= 100 ? 'linear-gradient(90deg,#10b981,#34d399)' : g.pct >= 50 ? 'linear-gradient(90deg,#f59e0b,#fbbf24)' : g.pct > 0 ? 'linear-gradient(90deg,#ef4444,#f87171)' : '#e2e8f0';
           var pctColor = g.pct >= 100 ? 'text-success' : g.pct >= 50 ? 'text-warning' : 'text-danger';
           html += '<div class="grade-row">';
           html += '<div class="grade-label">' + g.name + '</div>';
           html += '<div class="grade-bar-wrap">';
-          html += '<div class="grade-bar-outer"><div class="grade-bar-inner" style="width:' + Math.max(g.pct, 4) + '%;background:' + barColor + '">' + g.recorded.length + '/' + g.total + '</div></div>';
-          html += '<div class="grade-subjects">';
-          var recordedSet = {};
-          g.recorded.forEach(function(s) { recordedSet[s] = true; });
-          g.recorded.forEach(function(s) {
-            html += '<span class="subj-badge recorded"><i class="bi bi-check-circle-fill me-1"></i>' + s + '</span>';
-          });
-          g.expected.forEach(function(s) {
-            if (!recordedSet[s]) {
-              html += '<span class="subj-badge missing">' + s + '</span>';
-            }
-          });
-          html += '</div></div>';
+          html += '<div class="grade-bar-outer"><div class="grade-bar-inner" style="width:' + Math.max(g.pct, 4) + '%;background:' + barColor + '">' + rc + '/' + g.total + '</div></div>';
+          html += '</div>';
           html += '<div class="grade-pct ' + pctColor + '">' + g.pct + '%</div>';
           html += '</div>';
         });
