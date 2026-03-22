@@ -852,7 +852,10 @@ function saveScoreSheetData(sheetName, term, studentScores, fullScores, fullFina
 
       var itemsSum = (Number(scores[0])||0)+(Number(scores[1])||0)+(Number(scores[2])||0)+(Number(scores[3])||0)
         +(Number(scores[4])||0)+(Number(scores[5])||0)+(Number(scores[6])||0)+(Number(scores[7])||0)+(Number(scores[8])||0);
-      var midTotal = fullScoresSum > 0 && itemsSum > 0 ? Math.round((itemsSum / fullScoresSum) * midMax) : 0;
+      var midTotal = 0;
+      if (itemsSum > 0) {
+        midTotal = (fullScoresSum === midMax) ? itemsSum : (fullScoresSum > 0 ? Math.round((itemsSum / fullScoresSum) * midMax) : 0);
+      }
       allData[dataRow][cols.midTotal] = midTotal;
 
       var total = midTotal + s10val;
@@ -3496,8 +3499,8 @@ function recalcAllScoreSheets() {
         // recalc midTotal: (rawSum / fullScoresSum) * midMax
         var rawSum = s1 + s2 + s3 + s4 + s5 + s6 + s7 + s8 + s9;
         var midTotal = 0;
-        if (fullScoresSum > 0 && rawSum > 0) {
-          midTotal = Math.round((rawSum / fullScoresSum) * midMax);
+        if (rawSum > 0) {
+          midTotal = (fullScoresSum === midMax) ? rawSum : (fullScoresSum > 0 ? Math.round((rawSum / fullScoresSum) * midMax) : 0);
         }
         sheet.getRange(r, cols.midTotal + 1).setValue(midTotal);
         

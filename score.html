@@ -567,6 +567,9 @@
     <button class="btn btn-outline-primary btn-sm" onclick="window.ScoreEntrySystem.clearAllScores('scoreEntryTerm2')">
       <i class="fas fa-eraser"></i> ล้างคะแนน
     </button>
+    <button class="btn btn-outline-info btn-sm" onclick="window.ScoreEntrySystem.copyTerm1ToTerm2()">
+      <i class="fas fa-copy"></i> คัดลอกจากภาค 1
+    </button>
     
     <button id="scoreEntryBtnSaveTerm2" class="btn btn-success" disabled>
       <i class="fas fa-save"></i> บันทึกภาคเรียนที่ 2
@@ -849,8 +852,8 @@
         const itemsSum = items.reduce((a, b) => a + b, 0);
 
         let mid = 0;
-        if (fullScoresSum > 0 && itemsSum > 0) {
-          mid = Math.round((itemsSum / fullScoresSum) * midMax);
+        if (itemsSum > 0) {
+          mid = (fullScoresSum === midMax) ? itemsSum : (fullScoresSum > 0 ? Math.round((itemsSum / fullScoresSum) * midMax) : 0);
         }
 
         const finalInput = row.querySelector('.score-entry-final-input');
@@ -1809,6 +1812,38 @@ return {
           updateStats();
           showStatus('ล้างคะแนนเรียบร้อยแล้ว', 'info', 'fas fa-info-circle');
         }
+      },
+
+      copyTerm1ToTerm2: function() {
+        if (!confirm('คัดลอกคะแนนทั้งหมดจากภาค 1 ไปภาค 2?\n(คะแนนภาค 2 เดิมจะถูกแทนที่)')) return;
+        const t1 = document.getElementById('scoreEntryTerm1Container');
+        const t2 = document.getElementById('scoreEntryTerm2Container');
+        if (!t1 || !t2) { alert('ไม่พบตารางคะแนน'); return; }
+        const t1Rows = t1.querySelectorAll('tbody tr');
+        const t2Rows = t2.querySelectorAll('tbody tr');
+        if (t1Rows.length === 0 || t2Rows.length === 0) { alert('ไม่พบข้อมูลนักเรียน'); return; }
+        let copied = 0;
+        t1Rows.forEach(function(t1Row, idx) {
+          const t2Row = t2Rows[idx];
+          if (!t2Row) return;
+          const t1Inputs = t1Row.querySelectorAll('.score-entry-input');
+          const t2Inputs = t2Row.querySelectorAll('.score-entry-input');
+          t1Inputs.forEach(function(inp, j) {
+            if (t2Inputs[j]) t2Inputs[j].value = inp.value;
+          });
+          const t1Final = t1Row.querySelector('.score-entry-final-input');
+          const t2Final = t2Row.querySelector('.score-entry-final-input');
+          if (t1Final && t2Final) t2Final.value = t1Final.value;
+          calcRowTotal(t2Row, false);
+          copied++;
+        });
+        var t1FullScores = t1.querySelectorAll('.score-entry-full-score');
+        var t2FullScores = t2.querySelectorAll('.score-entry-full-score');
+        t1FullScores.forEach(function(inp, j) {
+          if (t2FullScores[j]) t2FullScores[j].value = inp.value;
+        });
+        updateStats();
+        showStatus('✅ คัดลอกคะแนนจากภาค 1 → ภาค 2 สำเร็จ (' + copied + ' คน)', 'success', 'fas fa-check-circle');
       },
 
       updateControls: function() {
