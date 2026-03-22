@@ -346,10 +346,12 @@
       // --- 2. Render Settings (Logo) ---
       function renderSettings(settings) {
         if (!settings) return;
-        if (settings['ชื่อโรงเรียน']) document.getElementById('schoolName').textContent = settings['ชื่อโรงเรียน'];
+        var el = document.getElementById('schoolName');
+        if (settings['ชื่อโรงเรียน'] && el) el.textContent = settings['ชื่อโรงเรียน'];
         
         if (settings['logo']) {
           const img = document.getElementById('schoolLogo');
+          if (!img) return;
           const urls = [settings['logo'], settings['logoUrl_backup1'], settings['logoUrl_backup2']].filter(u => u);
           
           let i = 0;
@@ -368,10 +370,14 @@
         waitForGAS(() => {
           google.script.run.withSuccessHandler(data => {
             if (data && data.hasData) {
-              document.getElementById('academicAvgScore').textContent = data.overall.avgScore.toFixed(2);
-              document.getElementById('academicAvgGrade').textContent = data.overall.avgGrade.toFixed(2);
-              document.getElementById('academicPassRate').textContent = data.overall.passRate.toFixed(1) + '%';
-              document.getElementById('academicTotalStudents').textContent = data.overall.totalStudents;
+              var e1 = document.getElementById('academicAvgScore');
+              var e2 = document.getElementById('academicAvgGrade');
+              var e3 = document.getElementById('academicPassRate');
+              var e4 = document.getElementById('academicTotalStudents');
+              if (e1) e1.textContent = data.overall.avgScore.toFixed(2);
+              if (e2) e2.textContent = data.overall.avgGrade.toFixed(2);
+              if (e3) e3.textContent = data.overall.passRate.toFixed(1) + '%';
+              if (e4) e4.textContent = data.overall.totalStudents;
             } else {
               // Show empty state if needed
             }
@@ -384,13 +390,15 @@
           // Chart 1: Bar Chart
           google.script.run.withSuccessHandler(data => {
             renderGradeChart(data);
-            document.getElementById('academicLoading1').style.display = 'none';
+            var ld1 = document.getElementById('academicLoading1');
+            if (ld1) ld1.style.display = 'none';
           }).getGradeComparisonChartData();
 
           // Chart 2: Donut Chart
           google.script.run.withSuccessHandler(data => {
             renderDistChart(data);
-            document.getElementById('academicLoading2').style.display = 'none';
+            var ld2 = document.getElementById('academicLoading2');
+            if (ld2) ld2.style.display = 'none';
           }).getOverallGradeDistributionChartData();
         });
       }
