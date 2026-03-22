@@ -646,7 +646,7 @@ function clearAcademicCache() { AcademicCacheManager.clearAll(); return "✅ ล
 
 function clearServerCache() {
   try {
-    CacheService.getScriptCache().removeAll(['dashboard_summary_v5', 'dashboard_summary_v3', 'academic_summary_all_v2', 'fast_student_stats_v1', 'all_chart_data_all_v1', 'dashboard_progress_v1', 'dashboard_alerts_v1', 'grade_recording_chart_v1']);
+    CacheService.getScriptCache().removeAll(['dashboard_summary_v5', 'dashboard_summary_v3', 'academic_summary_all_v2', 'fast_student_stats_v1', 'all_chart_data_all_v1', 'dashboard_progress_v1', 'dashboard_alerts_v1', 'grade_recording_chart_v1', 'grade_recording_chart_v2']);
     return "✅ ล้าง Server Cache เรียบร้อย";
   } catch (e) { return { error: true, message: e.message }; }
 }
@@ -819,25 +819,40 @@ function getDashboardAlerts() {
         const classIdx = findHeaderIndex(sHeaders, ['grade','ชั้น','ระดับชั้น']);
         const subjectIdx = findHeaderIndex(sHeaders, ['subject_name','subject','ชื่อวิชา']);
         
+        // วิชากิจกรรม — ไม่นับ (เหมือน getGradeRecordingChartData)
+        var actKw = ['แนะแนว','ลูกเสือ','เนตรนารี','ชุมนุม','กิจกรรมเพื่อสังคม','กิจกรรมพัฒนาผู้เรียน','ยุวกาชาด','ลูกเสือ-เนตรนารี'];
+        function _isAct(n) { var t = String(n||'').trim(); return actKw.some(function(k){return t.indexOf(k)>=0;}); }
+
+        // นับนักเรียนต่อชั้น
+        var _studPerGrade = {};
+        try {
+          var _stSheet = ss.getSheetByName('Students');
+          if (_stSheet && _stSheet.getLastRow() > 1) {
+            var _stD = _stSheet.getDataRange().getValues();
+            var _gC = _stD[0].indexOf('grade'); if (_gC<0) _gC = _stD[0].indexOf('ชั้น');
+            if (_gC >= 0) { for (var si=1;si<_stD.length;si++) { var _sg=String(_stD[si][_gC]||'').trim(); _studPerGrade[_sg]=(_studPerGrade[_sg]||0)+1; } }
+          }
+        } catch(e2) {}
+
         let zeroGradeCount = 0;
         const zeroSubjects = new Set();
-        const gradeSubjectMap = {};
+        // gradeSubjCount[grade][subject] = จำนวนนักเรียน
+        var gradeSubjCount = {};
         
         for (let i = 1; i < sData.length; i++) {
           var fg = finalGradeIdx >= 0 ? Number(sData[i][finalGradeIdx]) : -1;
-          if (fg === 0) {
+          var _subj = subjectIdx >= 0 ? String(sData[i][subjectIdx] || '').trim() : '';
+          var _cls = classIdx >= 0 ? String(sData[i][classIdx] || '').trim() : '';
+
+          if (fg === 0 && !_isAct(_subj)) {
             zeroGradeCount++;
-            if (subjectIdx >= 0) zeroSubjects.add(String(sData[i][subjectIdx]).trim());
+            if (_subj) zeroSubjects.add(_subj);
           }
           
-          // สะสมข้อมูลชั้น/วิชาที่บันทึกเกรดแล้ว (เฉพาะที่มีเกรด > 0 เท่านั้น)
-          if (classIdx >= 0 && subjectIdx >= 0 && fg > 0) {
-            var cls = String(sData[i][classIdx] || '').trim();
-            var subj = String(sData[i][subjectIdx] || '').trim();
-            if (cls && subj) {
-              if (!gradeSubjectMap[cls]) gradeSubjectMap[cls] = new Set();
-              gradeSubjectMap[cls].add(subj);
-            }
+          // สะสมข้อมูลชั้น/วิชาที่บันทึกเกรดแล้ว (ไม่นับกิจกรรม)
+          if (classIdx >= 0 && subjectIdx >= 0 && fg > 0 && _cls && _subj && !_isAct(_subj)) {
+            if (!gradeSubjCount[_cls]) gradeSubjCount[_cls] = {};
+            gradeSubjCount[_cls][_subj] = (gradeSubjCount[_cls][_subj] || 0) + 1;
           }
         }
         
@@ -849,8 +864,19 @@ function getDashboardAlerts() {
           });
         }
         
-        // (สถานะการบันทึกเกรดย้ายไปแสดงเป็นแผนภูมิแยก — ดู getGradeRecordingChartData)
-        // แสดงสถานะการบันทึกเกรดแต่ละชั้น/วิชา
+        // กรองเฉพาะวิชาที่มีนักเรียน >= 50% ของชั้น
+        var gradeSubjectMap = {};
+        Object.keys(gradeSubjCount).forEach(function(g) {
+          var total = _studPerGrade[g] || 1;
+          var minReq = Math.max(Math.ceil(total * 0.5), 2);
+          gradeSubjectMap[g] = [];
+          Object.keys(gradeSubjCount[g]).forEach(function(s) {
+            if (gradeSubjCount[g][s] >= minReq) gradeSubjectMap[g].push(s);
+          });
+          if (gradeSubjectMap[g].length === 0) delete gradeSubjectMap[g];
+        });
+
+        // (สถานะการบันทึกเกรดแสดงเป็นแผนภูมิแยกด้วย — ดู getGradeRecordingChartData)
         var sortedGrades = Object.keys(gradeSubjectMap).sort(function(a, b) {
           var pa = a.match(/(\d+)/); var pb = b.match(/(\d+)/);
           return (pa ? parseInt(pa[1]) : 999) - (pb ? parseInt(pb[1]) : 999);
@@ -863,7 +889,7 @@ function getDashboardAlerts() {
           var msg = '<strong>สถานะการบันทึกเกรด</strong> (' + totalSubjects.size + ' วิชา, ' + sortedGrades.length + ' ชั้น)';
           msg += '<div style="margin-top:8px;font-size:0.9em">';
           sortedGrades.forEach(function(grade) {
-            var subjects = Array.from(gradeSubjectMap[grade]).sort();
+            var subjects = gradeSubjectMap[grade].sort();
             msg += '<div style="margin-bottom:4px;padding:4px 8px;background:rgba(16,185,129,0.08);border-radius:6px">'
               + '<i class="bi bi-check-circle-fill text-success me-1"></i>'
               + '<strong>' + grade + '</strong> — '
