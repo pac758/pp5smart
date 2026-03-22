@@ -830,8 +830,8 @@ function getDashboardAlerts() {
             if (subjectIdx >= 0) zeroSubjects.add(String(sData[i][subjectIdx]).trim());
           }
           
-          // สะสมข้อมูลชั้น/วิชาที่บันทึกเกรดแล้ว
-          if (classIdx >= 0 && subjectIdx >= 0) {
+          // สะสมข้อมูลชั้น/วิชาที่บันทึกเกรดแล้ว (เฉพาะที่มีเกรด > 0 เท่านั้น)
+          if (classIdx >= 0 && subjectIdx >= 0 && fg > 0) {
             var cls = String(sData[i][classIdx] || '').trim();
             var subj = String(sData[i][subjectIdx] || '').trim();
             if (cls && subj) {
