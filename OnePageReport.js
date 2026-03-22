@@ -320,6 +320,8 @@ function _opr_generateSingle(studentId, cache) {
   var subjects = studentScores
     .filter(function(r) {
       var code = String(r['subject_code'] || '').trim();
+      var sname = String(r['subject_name'] || '').trim();
+      if (sname.indexOf('BACKUP_') === 0 || code.indexOf('BACKUP_') === 0) return false;
       var tp = (sInfo[code] && sInfo[code].type) || String(r['subject_type'] || '').trim();
       return tp !== 'กิจกรรม';
     })
