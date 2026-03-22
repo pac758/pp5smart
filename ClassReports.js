@@ -156,19 +156,21 @@ function getClassSubjectScoreSummary(grade, classNo, term) {
 
         if (termNum === 0) {
           // ทั้งปี: ภาค1 total, ภาค2 total, เฉลี่ยปี, เกรดปี
+          var yg = row[layout.yearGradeCol];
           students[studentMap[sid]].scores[key] = {
             t1: Number(row[layout.term1.total]) || 0,
             t2: Number(row[layout.term2.total]) || 0,
             yearAvg: Number(row[layout.yearAvgCol]) || 0,
-            yearGrade: String(row[layout.yearGradeCol] || '')
+            yearGrade: (yg !== '' && yg != null) ? String(yg) : ''
           };
         } else {
           var tc = termNum === 2 ? layout.term2 : layout.term1;
+          var tg = row[tc.grade];
           students[studentMap[sid]].scores[key] = {
             mid: Number(row[tc.midTotal]) || 0,
             final: Number(row[tc.s10]) || 0,
             total: Number(row[tc.total]) || 0,
-            grade: String(row[tc.grade] || '')
+            grade: (tg !== '' && tg != null) ? String(tg) : ''
           };
         }
       }
