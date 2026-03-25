@@ -3,1119 +3,656 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบบันทึกความคิดเห็นครูที่ปรึกษา (Modern)</title>
-    
+    <title>ระบบบันทึกความคิดเห็นครูที่ปรึกษา</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --primary: #4f46e5; --primary-light: #818cf8; --primary-bg: #eef2ff;
+            --success: #10b981; --success-bg: #ecfdf5;
+            --warning: #f59e0b; --danger: #ef4444;
+            --g50: #f8fafc; --g100: #f1f5f9; --g200: #e2e8f0; --g300: #cbd5e1;
+            --g400: #94a3b8; --g500: #64748b; --g600: #475569; --g700: #334155;
+            --g800: #1e293b; --g900: #0f172a;
+            --radius: 12px;
+            --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
         }
-        
-        body {
-            font-family: 'Sarabun', sans-serif;
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%);
-            min-height: 100vh;
-            padding: 20px;
-            line-height: 1.6;
-        }
-        
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
-            overflow: hidden;
-            animation: slideUp 0.6s ease-out;
-        }
-        
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .header {
-            background: linear-gradient(135deg, #64748b 0%, #475569 100%);
-            color: white;
-            padding: 40px 30px;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .header h1 {
-            font-size: 32px;
-            margin-bottom: 12px;
-            position: relative;
-            z-index: 1;
-            font-weight: 700;
-        }
-        
-        .header p {
-            font-size: 18px;
-            opacity: 0.95;
-            position: relative;
-            z-index: 1;
-        }
-        
-        .form-container {
-            padding: 50px 40px;
-        }
-        
-        .form-row {
-            display: grid;
-            /* * [ปรับปรุง] ใช้ grid-template-columns แบบใหม่
-              * ที่รองรับมือถือได้ดีกว่า (ดีกว่า 1fr 1fr 1fr) 
-            */
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 25px;
-            margin-bottom: 30px;
-        }
-        
-        .form-group {
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .form-group.full-width {
-            grid-column: 1 / -1;
-        }
-        
-        label {
-            font-weight: 600;
-            color: #2c3e50;
-            margin-bottom: 10px;
-            font-size: 15px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        /* [ใหม่] เพิ่ม Icon หน้า Label */
-        label::before {
-            content: '●';
-            color: #64748b;
-            font-size: 12px;
-        }
-        
-        select, textarea {
-            padding: 16px 20px;
-            border: 2px solid #e8ecf0;
-            border-radius: 12px;
-            font-size: 16px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            background: white;
-            font-family: inherit;
-        }
-        
-        select:focus, textarea:focus {
-            outline: none;
-            border-color: #64748b;
-            box-shadow: 0 0 0 4px rgba(100, 116, 139, 0.1);
-            transform: translateY(-2px);
-        }
-        
-        select:hover, textarea:hover {
-            border-color: #c8d6e5;
-        }
-        
-        select:disabled {
-            background-color: #f8f9fa;
-            color: #6c757d;
-            cursor: not-allowed;
-            opacity: 0.7;
-        }
-        
-        textarea {
-            min-height: 140px;
-            resize: vertical;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Sarabun', sans-serif; background: var(--g100); color: var(--g800); min-height: 100vh; line-height: 1.6; }
 
-        /* [ใหม่] CSS สำหรับ Textarea แสดงผล (readonly) */
-        textarea[readonly] {
-            background-color: #f8f9fa;
-            color: #495057;
-            border-color: #e8ecf0;
-            cursor: text;
-        }
-        textarea[readonly]:focus {
-            transform: none;
-            box-shadow: 0 0 0 4px rgba(100, 116, 139, 0.1);
-            border-color: #64748b;
-        }
-        
-        .btn-group {
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            margin-top: 40px;
-            flex-wrap: wrap; /* [ใหม่] ทำให้ปุ่มตกบรรทัดได้บนมือถือ */
-        }
-        
-        button {
-            padding: 18px 35px;
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            min-width: 160px;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, #64748b 0%, #475569 100%);
-            color: white;
-            box-shadow: 0 4px 15px rgba(100, 116, 139, 0.3);
-        }
-        
-        .btn-secondary {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            color: #495057;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        }
-        
-        button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
-        }
-        
-        .btn-primary:hover {
-            box-shadow: 0 8px 25px rgba(100, 116, 139, 0.4);
-        }
-        
-        button:disabled {
-            background: #dee2e6;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-            opacity: 0.6;
-        }
-        
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 30px;
-            color: #6c757d;
-            font-size: 16px;
-            font-weight: 500;
-        }
-        
-        .success-message, .error-message {
-            padding: 20px;
-            border-radius: 12px;
-            margin: 25px 0;
-            display: none;
-            font-weight: 500;
-            animation: fadeIn 0.5s ease-out;
-        }
+        .tc-topbar { background: #fff; border-bottom: 1px solid var(--g200); padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .tc-topbar-left { display: flex; align-items: center; gap: 10px; }
+        .tc-topbar-left .icon-circle { width: 34px; height: 34px; background: var(--primary); border-radius: 9px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 16px; }
+        .tc-topbar-left h1 { font-size: 16px; font-weight: 700; color: var(--g800); }
+        .tc-progress-pill { display: flex; align-items: center; gap: 8px; background: var(--success-bg); color: var(--success); padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .tc-progress-pill .bar-bg { width: 70px; height: 5px; background: #d1fae5; border-radius: 3px; overflow: hidden; }
+        .tc-progress-pill .bar-fill { height: 100%; background: var(--success); border-radius: 3px; transition: width 0.3s; }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .success-message {
-            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-            color: #166534;
-            border-left: 5px solid #22c55e;
-        }
-        
-        .error-message {
-            background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);
-            color: #be123c;
-            border-left: 5px solid #f43f5e;
-        }
+        .tc-layout { display: grid; grid-template-columns: 320px 1fr; gap: 0; height: calc(100vh - 49px); }
 
-        /* 2. 🎨 [ปรับปรุง] นำ CSS จากโค้ดเก่ามาปรับให้เข้าธีมใหม่ */
-        
-        /* สไตล์สำหรับ Spinner (ใช้สีธีมใหม่) */
-        .spinner {
-            border: 3px solid #e8ecf0;
-            border-top: 3px solid #64748b; /* 👈 สีธีมใหม่ */
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 10px auto;
+        .tc-left { background: #fff; border-right: 1px solid var(--g200); display: flex; flex-direction: column; overflow: hidden; }
+        .tc-class-sel { padding: 14px 14px 10px; border-bottom: 1px solid var(--g200); }
+        .tc-class-sel label { font-size: 11px; font-weight: 600; color: var(--g500); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; display: block; }
+        .tc-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+        .tc-chip { padding: 5px 12px; border-radius: 7px; font-size: 12.5px; font-weight: 500; cursor: pointer; border: 1.5px solid var(--g200); background: #fff; color: var(--g600); transition: all 0.15s; font-family: inherit; }
+        .tc-chip:hover { border-color: var(--primary-light); color: var(--primary); }
+        .tc-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 2px 8px rgba(79,70,229,0.3); }
+        .tc-search { padding: 8px 14px; border-bottom: 1px solid var(--g200); }
+        .tc-search input { width: 100%; padding: 7px 10px 7px 32px; border: 1.5px solid var(--g200); border-radius: 7px; font-size: 13px; font-family: inherit; outline: none; background: var(--g50) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.868-3.834zm-5.44.856a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z'/%3E%3C/svg%3E") no-repeat 10px center; transition: border-color 0.15s; }
+        .tc-search input:focus { border-color: var(--primary-light); }
+        .tc-student-list { flex: 1; overflow-y: auto; padding: 6px; }
+        .tc-student-list::-webkit-scrollbar { width: 5px; }
+        .tc-student-list::-webkit-scrollbar-thumb { background: var(--g300); border-radius: 3px; }
+        .tc-scard { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 9px; cursor: pointer; transition: all 0.15s; }
+        .tc-scard:hover { background: var(--g50); }
+        .tc-scard.active { background: var(--primary-bg); box-shadow: inset 3px 0 0 var(--primary); }
+        .tc-avatar { width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0; }
+        .tc-avatar.male { background: #6366f1; }
+        .tc-avatar.female { background: #ec4899; }
+        .tc-scard-info { flex: 1; min-width: 0; }
+        .tc-scard-name { font-size: 13px; font-weight: 600; color: var(--g800); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tc-scard-meta { font-size: 11px; color: var(--g400); }
+        .tc-badge { font-size: 10px; padding: 2px 7px; border-radius: 5px; font-weight: 600; flex-shrink: 0; }
+        .tc-badge.saved { background: #ecfdf5; color: #059669; }
+        .tc-badge.pending { background: #fef3c7; color: #d97706; }
+        .tc-left-loading { text-align: center; padding: 30px; color: var(--g400); font-size: 14px; }
+
+        .tc-right { display: flex; flex-direction: column; overflow-y: auto; padding: 20px 28px; background: var(--g50); }
+        .tc-right-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--g400); text-align: center; gap: 12px; }
+        .tc-right-empty .empty-icon { font-size: 48px; opacity: 0.5; }
+        .tc-right-empty p { font-size: 15px; }
+
+        .tc-sheader { display: flex; align-items: center; gap: 14px; background: #fff; padding: 16px 20px; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 16px; }
+        .tc-sheader .av-lg { width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; color: #fff; }
+        .tc-sheader-info h2 { font-size: 18px; font-weight: 700; color: var(--g900); }
+        .tc-sheader-info p { font-size: 13px; color: var(--g500); margin-top: 1px; }
+        .tc-sheader-info .tag { display: inline-block; padding: 1px 9px; background: var(--primary-bg); color: var(--primary); border-radius: 5px; font-size: 11px; font-weight: 600; margin-top: 3px; }
+
+        .tc-cur-comment { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 18px; margin-bottom: 16px; border-left: 4px solid var(--g300); }
+        .tc-cur-comment.has { border-left-color: var(--success); }
+        .tc-cur-comment h3 { font-size: 12px; font-weight: 600; color: var(--g500); margin-bottom: 6px; }
+        .tc-cur-comment p { font-size: 14px; color: var(--g700); line-height: 1.7; white-space: pre-wrap; }
+        .tc-cur-comment .empty-text { color: var(--g400); font-style: italic; }
+
+        .tc-form-card { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 22px; margin-bottom: 16px; }
+        .tc-form-card h3 { font-size: 14px; font-weight: 700; color: var(--g800); margin-bottom: 14px; }
+        .tc-phrases { margin-bottom: 10px; }
+        .tc-phrases label { font-size: 11px; font-weight: 600; color: var(--g500); margin-bottom: 6px; display: block; }
+        .tc-ptags { display: flex; flex-wrap: wrap; gap: 5px; }
+        .tc-ptag { padding: 4px 10px; border-radius: 7px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1.5px solid var(--g200); background: #fff; color: var(--g600); transition: all 0.15s; font-family: inherit; }
+        .tc-ptag:hover { border-color: var(--primary-light); background: var(--primary-bg); color: var(--primary); }
+        .tc-ptag.pos { border-color: #bbf7d0; color: #15803d; background: #f0fdf4; }
+        .tc-ptag.pos:hover { background: #dcfce7; }
+        .tc-ptag.imp { border-color: #fed7aa; color: #c2410c; background: #fff7ed; }
+        .tc-ptag.imp:hover { background: #ffedd5; }
+        .tc-textarea { width: 100%; min-height: 120px; padding: 12px 14px; border: 1.5px solid var(--g200); border-radius: 9px; font-family: inherit; font-size: 14px; line-height: 1.7; color: var(--g800); resize: vertical; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+        .tc-textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
+        .tc-textarea:disabled { background: var(--g50); color: var(--g400); }
+        .tc-ta-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+        .tc-charcount { font-size: 11px; color: var(--g400); }
+        .tc-autosave { font-size: 11px; color: var(--success); display: none; }
+        .tc-actions { display: flex; gap: 8px; margin-top: 14px; }
+        .tc-btn { padding: 9px 20px; border-radius: 9px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; border: none; display: flex; align-items: center; gap: 6px; transition: all 0.15s; }
+        .tc-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+        .tc-btn-primary { background: var(--primary); color: #fff; box-shadow: 0 2px 8px rgba(79,70,229,0.3); }
+        .tc-btn-primary:hover:not(:disabled) { background: #4338ca; transform: translateY(-1px); }
+        .tc-btn-secondary { background: #fff; color: var(--g600); border: 1.5px solid var(--g200); }
+        .tc-btn-secondary:hover:not(:disabled) { background: var(--g50); }
+
+        .tc-nav { display: flex; justify-content: space-between; align-items: center; }
+        .tc-nav-btn { padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer; border: 1.5px solid var(--g200); background: #fff; color: var(--g600); transition: all 0.15s; }
+        .tc-nav-btn:hover { border-color: var(--primary-light); color: var(--primary); }
+        .tc-nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .tc-nav-pos { font-size: 12px; color: var(--g400); }
+
+        .tc-toast { position: fixed; bottom: 20px; right: 20px; padding: 10px 18px; border-radius: 9px; font-size: 13px; font-weight: 600; color: #fff; box-shadow: var(--shadow-lg); display: none; align-items: center; gap: 6px; z-index: 1000; animation: tcSlideUp 0.3s ease-out; font-family: 'Sarabun', sans-serif; }
+        .tc-toast.success { background: var(--success); }
+        .tc-toast.error { background: var(--danger); }
+        @keyframes tcSlideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+        .tc-spinner { border: 3px solid var(--g200); border-top: 3px solid var(--primary); border-radius: 50%; width: 24px; height: 24px; animation: tcSpin 0.8s linear infinite; margin: 0 auto; }
+        @keyframes tcSpin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 768px) {
+            .tc-layout { grid-template-columns: 1fr; height: auto; }
+            .tc-left { border-right: none; border-bottom: 1px solid var(--g200); max-height: 45vh; }
+            .tc-right { padding: 14px; }
+            .tc-sheader { padding: 12px 14px; }
+            .tc-form-card { padding: 14px; }
+            .tc-actions { flex-direction: column; }
+            .tc-btn { justify-content: center; }
+            .tc-topbar { padding: 8px 12px; }
+            .tc-topbar-left h1 { font-size: 14px; }
         }
-        
-        .stats-info {
-            background: #f1f5f9; /* 👈 สีธีมใหม่ */
-            padding: 15px;
-            border-radius: 12px;
-            margin: 20px 0 0 0;
-            text-align: center;
-            border: 2px solid #e2e8f0; /* 👈 สีธีมใหม่ */
-            color: #475569;
-            font-weight: 500;
-        }
-        
-        .keyboard-shortcuts {
-            background: #f8fafc;
-            padding: 10px 15px;
-            border-radius: 8px;
-            margin: 0 0 25px 0;
-            font-size: 13px;
-            color: #475569;
-            border: 1px solid #e2e8f0;
-        }
-        
-        /* --- 1. บล็อกสำหรับ Tablet (คัดลอกทับของเดิม) --- */
-    @media (max-width: 768px) {
-        body { padding: 15px; }
-        .container { border-radius: 15px; }
-        .header { padding: 30px 20px; }
-        .header h1 { font-size: 26px; }
-        .header p { font-size: 16px; }
-        .form-container { padding: 30px 25px; }
-        .form-row { gap: 20px; margin-bottom: 25px; }
-        .btn-group { flex-direction: column; align-items: stretch; gap: 15px; }
-        
-        /* ‼️ [เพิ่ม] ลดขนาดปุ่มและช่องกรอกสำหรับ Tablet */
-        button { width: 100%; padding: 16px 30px; } 
-        select, textarea { padding: 14px 16px; } 
-        textarea { min-height: 120px; } 
-    }
-    
-    /* --- 2. บล็อกสำหรับ Mobile Phone (คัดลอกทับของเดิม) --- */
-    @media (max-width: 480px) {
-        body { padding: 10px; }
-        .header { padding: 25px 20px; } /* 👈 [แก้ไข] ลด padding header */
-        .header h1 { font-size: 22px; }
-        .form-container { padding: 25px 15px; } /* 👈 [แก้ไข] ลด padding ข้าง */
-        label { margin-bottom: 8px; } /* 👈 [เพิ่ม] ลดระยะห่าง label */
-        
-        /* ‼️ [เพิ่ม] ลดขนาดปุ่มและช่องกรอกให้เล็กกระชับขึ้น */
-        button { padding: 14px 20px; } 
-        select, textarea { padding: 12px 14px; font-size: 16px; }
-        textarea[readonly] { min-height: 70px !important; } /* 👈 [เพิ่ม] ลดความสูงช่องแสดงผล */
-    }
+        @media (max-width: 480px) { .tc-topbar-left h1 { display: none; } }
     </style>
 </head>
 <body>
-    <main class="container">
-        <header class="header">
-            <h1>🏫 ระบบบันทึกความคิดเห็นครูที่ปรึกษา</h1>
-            <p>กรอกความคิดเห็นและข้อเสนอแนะสำหรับนักเรียนแต่ละคน</p>
-        </header>
-        
-        <div class="form-container">
-            <div class="keyboard-shortcuts">
-                <strong>⌨️ คีย์ลัด:</strong> Ctrl+S = บันทึก | Ctrl+R = รีเฟรชข้อมูล | Esc = ปิดข้อความแจ้งเตือน
-            </div>
-            
-            <div class="stats-info" id="statsInfo" style="display: none;">
-                📊 ความคิดเห็นที่บันทึกแล้ว: <span id="commentCount">0</span> คน
-            </div>
-            
-            <form id="commentForm">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="gradeSelect">ชั้นเรียน</label>
-                        <select id="gradeSelect" required>
-                            <option value="">เลือกชั้นเรียน</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="classSelect">ห้อง</label>
-                        <select id="classSelect" required disabled>
-                            <option value="">เลือกห้อง</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="studentSelect">นักเรียน</label>
-                        <select id="studentSelect" required disabled>
-                            <option value="">เลือกนักเรียน</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group full-width">
-                        <label for="studentInfoDisplay">ข้อมูลนักเรียน</label>
-                        <textarea id="studentInfoDisplay" placeholder="ข้อมูลนักเรียนจะแสดงที่นี่..." readonly style="min-height: 80px;"></textarea>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group full-width">
-                        <label for="currentCommentDisplay">ความคิดเห็นปัจจุบัน</label>
-                        <textarea id="currentCommentDisplay" placeholder="ความคิดเห็นปัจจุบันจะแสดงที่นี่..." readonly></textarea>
-                    </div>
-                </div>
 
-                <div class="student-info" id="studentInfo" style="display: none;">
-                    <span id="studentName"></span>
-                    <span id="studentGrade"></span>/<span id="studentClass"></span>
-                    <span id="studentId"></span>
-                    <div id="currentComment"></div>
-                </div>
-                
-                <div class="form-group full-width">
-                    <label for="commentText">ความคิดเห็นและข้อเสนอแนะ</label>
-                    <textarea 
-                        id="commentText" 
-                        placeholder="กรอกความคิดเห็นและข้อเสนอแนะสำหรับนักเรียนคนนี้... (ขั้นต่ำ 10 ตัวอักษร)"
-                        required
-                        minlength="10"
-                    ></textarea>
-                    <small id="charCount" style="color: #666; margin-top: 5px; text-align: right;">0 ตัวอักษร</small>
-                </div>
-                
-                <div class="success-message" id="successMessage" aria-live="polite">
-                    ✅ บันทึกความคิดเห็นเรียบร้อยแล้ว!
-                </div>
-                
-                <div class="error-message" id="errorMessage" aria-live="polite">
-                    ❌ เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง
-                </div>
-                
-                <div class="loading" id="loading" role="status">
-                    <div class="spinner"></div>
-                    <p>กำลังบันทึกข้อมูล...</p>
-                </div>
-                
-                <div class="btn-group">
-                    <button type="button" id="loadCommentBtn" class="btn-secondary" disabled>
-                        📖 ดูความคิดเห็นปัจจุบัน
-                    </button>
-                    <button type="submit" id="saveBtn" class="btn-primary" disabled>
-                        💾 บันทึกความคิดเห็น
-                    </button>
-                    <button type="button" id="clearBtn" class="btn-secondary">
-                        🗑️ ล้างฟอร์ม
-                    </button>
-                </div>
-            </form>
+<div class="tc-topbar">
+    <div class="tc-topbar-left">
+        <div class="icon-circle">📝</div>
+        <h1>บันทึกความคิดเห็นครูที่ปรึกษา</h1>
+    </div>
+    <div class="tc-progress-pill" id="tcProgress" style="display:none;">
+        <span id="tcProgressText">0/0</span>
+        <div class="bar-bg"><div class="bar-fill" id="tcProgressBar" style="width:0%"></div></div>
+        <span id="tcProgressPct">0%</span>
+    </div>
+</div>
+
+<div class="tc-layout">
+    <div class="tc-left">
+        <div class="tc-class-sel">
+            <label>ชั้นเรียน / ห้อง</label>
+            <div class="tc-chips" id="tcGradeChips">
+                <div class="tc-left-loading" id="tcGradeLoading"><div class="tc-spinner"></div><br>กำลังโหลดชั้นเรียน...</div>
+            </div>
+            <div class="tc-chips" id="tcClassChips" style="margin-top:6px;"></div>
         </div>
-    </main>
+        <div class="tc-search">
+            <input type="text" id="tcSearchInput" placeholder="ค้นหานักเรียน..." disabled>
+        </div>
+        <div class="tc-student-list" id="tcStudentList">
+            <div class="tc-left-loading">เลือกชั้นเรียนและห้องเพื่อแสดงรายชื่อ</div>
+        </div>
+    </div>
 
-    <script>
-        (function() {
-            'use strict';
-            
-            // Reset flag ทุกครั้งเพื่อให้ SPA re-init ได้ (DOM เป็นชุดใหม่ทุกครั้ง)
-            window.teacherCommentSystem = {
-                initialized: true,
-                version: '1.2-Modern'
-            };
-            
-            var grades = [];
-            var dataCache = {
-                grades: null,
-                classes: {},
-                students: {},
-                comments: {}
-            };
-            var isSubmitting = false;
-            var requestTimeouts = {};
-            var retryAttempts = 0;
-            var autoSaveTimer;
-            var MAX_RETRY = 3;
-            
-            function debounce(func, wait, key) {
-                if (requestTimeouts[key]) {
-                    clearTimeout(requestTimeouts[key]);
-                }
-                requestTimeouts[key] = setTimeout(function() {
-                    func();
-                    delete requestTimeouts[key];
-                }, wait);
+    <div class="tc-right" id="tcRightPanel">
+        <div class="tc-right-empty" id="tcEmptyState">
+            <div class="empty-icon">📋</div>
+            <p>เลือกนักเรียนจากรายชื่อด้านซ้าย<br>เพื่อเริ่มบันทึกความคิดเห็น</p>
+        </div>
+        <div id="tcFormArea" style="display:none;">
+            <div class="tc-sheader" id="tcStudentHeader">
+                <div class="av-lg" id="tcAvatarLg" style="background:#6366f1;"></div>
+                <div class="tc-sheader-info">
+                    <h2 id="tcStudentName"></h2>
+                    <p id="tcStudentMeta"></p>
+                    <span class="tag" id="tcStudentTag"></span>
+                </div>
+            </div>
+            <div class="tc-cur-comment" id="tcCurComment">
+                <h3>💬 ความคิดเห็นปัจจุบัน</h3>
+                <p id="tcCurCommentText" class="empty-text">ยังไม่มีความคิดเห็น</p>
+            </div>
+            <div class="tc-form-card">
+                <h3>✏️ เขียนความคิดเห็น</h3>
+                <div class="tc-phrases">
+                    <label>ข้อความสำเร็จรูป (กดเพื่อแทรก)</label>
+                    <div class="tc-ptags" id="tcPhraseTags">
+                        <button class="tc-ptag pos" data-text="นักเรียนมีความขยันหมั่นเพียร">ขยันหมั่นเพียร</button>
+                        <button class="tc-ptag pos" data-text="มีความรับผิดชอบดี">รับผิดชอบดี</button>
+                        <button class="tc-ptag pos" data-text="มีมนุษยสัมพันธ์ที่ดี เข้ากับเพื่อนได้ดี">เข้ากับเพื่อนดี</button>
+                        <button class="tc-ptag pos" data-text="ตั้งใจเรียน ส่งงานตรงเวลา">ตั้งใจเรียน</button>
+                        <button class="tc-ptag pos" data-text="มีความเป็นผู้นำ กล้าแสดงออก">มีความเป็นผู้นำ</button>
+                        <button class="tc-ptag imp" data-text="ควรพัฒนาด้านการอ่านและการเขียน">ควรพัฒนาการอ่านเขียน</button>
+                        <button class="tc-ptag imp" data-text="ควรตั้งใจเรียนให้มากขึ้น">ควรตั้งใจเรียนเพิ่ม</button>
+                        <button class="tc-ptag imp" data-text="ควรมาเรียนให้สม่ำเสมอ">ควรมาเรียนสม่ำเสมอ</button>
+                    </div>
+                </div>
+                <textarea class="tc-textarea" id="tcCommentText" placeholder="พิมพ์ความคิดเห็นที่นี่ หรือกดข้อความสำเร็จรูปด้านบน..." disabled></textarea>
+                <div class="tc-ta-footer">
+                    <span class="tc-charcount" id="tcCharCount">0 ตัวอักษร</span>
+                    <span class="tc-autosave" id="tcAutoSave">● Auto-save</span>
+                </div>
+                <div class="tc-actions">
+                    <button class="tc-btn tc-btn-primary" id="tcSaveBtn" disabled>💾 บันทึกความคิดเห็น</button>
+                    <button class="tc-btn tc-btn-secondary" id="tcClearBtn" disabled>🗑️ ล้าง</button>
+                </div>
+            </div>
+            <div class="tc-nav">
+                <button class="tc-nav-btn" id="tcPrevBtn" disabled>← คนก่อนหน้า</button>
+                <span class="tc-nav-pos" id="tcNavPos"></span>
+                <button class="tc-nav-btn" id="tcNextBtn" disabled>คนถัดไป →</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="tc-toast" id="tcToast"></div>
+
+<script>
+(function() {
+    'use strict';
+
+    var grades = [];
+    var currentGrade = '';
+    var currentClass = '';
+    var currentStudents = [];
+    var currentStudentIndex = -1;
+    var isSubmitting = false;
+    var autoSaveTimer = null;
+    var MAX_RETRY = 3;
+    var dataCache = { grades: null, classes: {}, students: {}, comments: {} };
+
+    function executeWithRetry(func, maxRetries) {
+        maxRetries = maxRetries || MAX_RETRY;
+        return new Promise(function(resolve, reject) {
+            function attempt(n) {
+                func().then(resolve).catch(function(err) {
+                    if (n < maxRetries) { setTimeout(function() { attempt(n + 1); }, 1000 * (n + 1)); }
+                    else { reject(err); }
+                });
             }
-            
-            function preventDoubleClick(buttonId, callback, timeout) {
-                timeout = timeout || 2000;
-                var button = document.getElementById(buttonId);
-                if (button.disabled) return false;
-                
-                button.disabled = true;
-                
-                var originalText = button.textContent;
-                // [ปรับปรุง] เปลี่ยน icon ให้เข้ากับปุ่มใหม่
-                var originalIcon = button.textContent.match(/📖|💾|🗑️/)?.[0] || '⏳';
-                button.textContent = '⏳ กำลังประมวลผล...';
-                
-                var result = callback();
-                
-                // [ปรับปรุง] คืนค่าข้อความเดิม
-                var resetBtn = function() {
-                    button.disabled = false;
-                    button.textContent = originalText;
-                };
+            attempt(0);
+        });
+    }
 
-                // หาก callback เป็น Promise (เช่น async) ให้รอ
-                if (result && typeof result.finally === 'function') {
-                    result.finally(function() {
-                        setTimeout(resetBtn, timeout - 1000); // หน่วงเวลาก่อนคืนค่า
-                    });
+    function showToast(msg, type) {
+        var t = document.getElementById('tcToast');
+        t.textContent = msg;
+        t.className = 'tc-toast ' + (type || 'success');
+        t.style.display = 'flex';
+        setTimeout(function() { t.style.display = 'none'; }, 3000);
+    }
+
+    function getInitials(name) {
+        if (!name) return '?';
+        var c = name.replace(/^(\u0e40\u0e14\u0e47\u0e01\u0e0a\u0e32\u0e22|\u0e40\u0e14\u0e47\u0e01\u0e2b\u0e0d\u0e34\u0e07|\u0e14\.\u0e0a\.|\u0e14\.\u0e0d\.|\u0e19\u0e32\u0e22|\u0e19\u0e32\u0e07\u0e2a\u0e32\u0e27|\u0e19\u0e32\u0e07)\.?\s*/, '');
+        return c.substring(0, 2);
+    }
+
+    function isMale(name) {
+        return /^(\u0e40\u0e14\u0e47\u0e01\u0e0a\u0e32\u0e22|\u0e14\.\u0e0a\.|\u0e19\u0e32\u0e22)/.test(name || '');
+    }
+
+    function initializeSystem() {
+        loadGrades();
+        setupEventListeners();
+    }
+
+    function loadGrades() {
+        var fn = function() {
+            return new Promise(function(resolve, reject) {
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                    google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getAvailableGrades();
                 } else {
-                    setTimeout(resetBtn, timeout);
+                    setTimeout(function() { resolve(['\u0e1b.1','\u0e1b.2','\u0e1b.3','\u0e1b.4','\u0e1b.5','\u0e1b.6']); }, 500);
                 }
-                
-                return result;
-            }
-            
-            function executeWithRetry(func, maxRetries) {
-                maxRetries = maxRetries || MAX_RETRY;
-                return new Promise(function(resolve, reject) {
-                    function attempt(retryCount) {
-                        func()
-                            .then(resolve)
-                            .catch(function(error) {
-                                if (retryCount < maxRetries) {
-                                    // console.log(' ลองใหม่ครั้งที่ ' + (retryCount + 1) + '/' + maxRetries);
-                                    setTimeout(function() { 
-                                        attempt(retryCount + 1); 
-                                    }, 1000 * (retryCount + 1));
-                                } else {
-                                    reject(error);
-                                }
-                            });
-                    }
-                    attempt(0);
-                });
-            }
-            
-            function showDropdownLoading(selectId, message) {
-                message = message || 'กำลังโหลด...';
-                var select = document.getElementById(selectId);
-                select.innerHTML = '<option value="">⏳ ' + message + '</option>';
-                select.disabled = true;
-            }
-            
-            function validateForm() {
-                var grade = document.getElementById('gradeSelect').value;
-                var classNo = document.getElementById('classSelect').value;
-                var studentId = document.getElementById('studentSelect').value;
-                var comment = document.getElementById('commentText').value.trim();
-                
-                var errors = [];
-                
-                if (!grade) errors.push('กรุณาเลือกชั้นเรียน');
-                if (!classNo) errors.push('กรุณาเลือกห้อง');
-                if (!studentId) errors.push('กรุณาเลือกนักเรียน');
-                if (!comment) errors.push('กรุณากรอกความคิดเห็น');
-                if (comment.length < 10) errors.push('ความคิดเห็นต้องมีอย่างน้อย 10 ตัวอักษร');
-                
-                if (errors.length > 0) {
-                    showError(errors.join('\n'));
-                    return false;
-                }
-                
-                return true;
-            }
-            
-            function loadCachedClasses(grade) {
-                if (dataCache.classes[grade]) {
-                    populateClasses(dataCache.classes[grade]);
-                    return true;
-                }
-                return false;
-            }
-            
-            function loadCachedStudents(grade, classNo) {
-                var key = grade + '-' + classNo;
-                if (dataCache.students[key]) {
-                    populateStudents(dataCache.students[key]);
-                    return true;
-                }
-                return false;
-            }
-            
-            function initializeSystem() {
-                loadGrades();
-                setupEventListeners();
-                setupAutoSave();
-                setupKeyboardShortcuts();
-                // console.log(' ระบบเริ่มต้นเรียบร้อย (Modern v1.2)');
-            }
-            
-            function setupEventListeners() {
-                document.getElementById('gradeSelect').addEventListener('change', function() {
-                    var grade = this.value;
-                    if (grade) {
-                        resetClassAndStudent();
-                        debounce(function() { loadClasses(grade); }, 300, 'loadClasses');
-                    } else {
-                        resetClassAndStudent();
-                    }
-                });
-                
-                document.getElementById('classSelect').addEventListener('change', function() {
-                    var grade = document.getElementById('gradeSelect').value;
-                    var classNo = this.value;
-                    if (grade && classNo) {
-                        resetStudent();
-                        debounce(function() { loadStudents(grade, classNo); }, 300, 'loadStudents');
-                    } else {
-                        resetStudent();
-                    }
-                });
-                
-                document.getElementById('studentSelect').addEventListener('change', function() {
-                    var studentId = this.value;
-                    if (studentId) {
-                        enableButtons();
-                        debounce(function() { loadExistingComment(studentId); }, 200, 'loadComment');
-                    } else {
-                        disableButtons();
-                        hideStudentInfo();
-                    }
-                });
-                
-                document.getElementById('commentForm').addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    if (!isSubmitting) {
-                        // [ปรับปรุง] เปลี่ยนการเรียก preventDoubleClick
-                        isSubmitting = true;
-                        var saveBtn = document.getElementById('saveBtn');
-                        var originalText = saveBtn.textContent;
-                        saveBtn.disabled = true;
-                        saveBtn.textContent = '⏳ กำลังบันทึก...';
+            });
+        };
+        executeWithRetry(fn).then(function(result) {
+            grades = result;
+            dataCache.grades = result;
+            renderGradeChips();
+        }).catch(function() {
+            document.getElementById('tcGradeLoading').innerHTML = '\u274c \u0e42\u0e2b\u0e25\u0e14\u0e0a\u0e31\u0e49\u0e19\u0e40\u0e23\u0e35\u0e22\u0e19\u0e44\u0e21\u0e48\u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08';
+        });
+    }
 
-                        saveComment().finally(function() {
-                            isSubmitting = false;
-                            saveBtn.disabled = false;
-                            saveBtn.textContent = originalText;
-                            enableForm();
-                        });
-                    }
-                });
-                
-                document.getElementById('loadCommentBtn').addEventListener('click', function() {
-                    var studentId = document.getElementById('studentSelect').value;
-                    if (studentId) {
-                        preventDoubleClick('loadCommentBtn', function() {
-                            loadExistingComment(studentId, true); // 👈 true = บังคับโหลดใหม่
-                        }, 1500);
-                    }
-                });
-                
-                document.getElementById('clearBtn').addEventListener('click', function() {
-                    if (confirm('คุณต้องการล้างข้อมูลทั้งหมดหรือไม่?')) {
-                        clearForm();
-                    }
-                });
-                
-                document.getElementById('commentText').addEventListener('input', function() {
-                    var charCount = this.value.length;
-                    var countEl = document.getElementById('charCount');
-                    countEl.textContent = charCount + ' ตัวอักษร';
-                    
-                    if (charCount < 10) {
-                        countEl.style.color = '#e74c3c';
-                    } else {
-                        countEl.style.color = '#27ae60';
-                    }
-                });
+    function renderGradeChips() {
+        var el = document.getElementById('tcGradeChips');
+        el.innerHTML = '';
+        grades.forEach(function(g) {
+            var b = document.createElement('button');
+            b.className = 'tc-chip';
+            b.textContent = g;
+            b.dataset.grade = g;
+            b.addEventListener('click', function() { selectGrade(g); });
+            el.appendChild(b);
+        });
+    }
+
+    function selectGrade(grade) {
+        currentGrade = grade;
+        currentClass = '';
+        currentStudents = [];
+        currentStudentIndex = -1;
+        document.querySelectorAll('#tcGradeChips .tc-chip').forEach(function(c) {
+            c.classList.toggle('active', c.dataset.grade === grade);
+        });
+        document.getElementById('tcClassChips').innerHTML = '';
+        showEmptyState();
+        loadClasses(grade);
+    }
+
+    function loadClasses(grade) {
+        if (dataCache.classes[grade]) { renderClassChips(dataCache.classes[grade]); return; }
+        document.getElementById('tcClassChips').innerHTML = '<span style="font-size:12px;color:var(--g400);">\u0e01\u0e33\u0e25\u0e31\u0e07\u0e42\u0e2b\u0e25\u0e14\u0e2b\u0e49\u0e2d\u0e07...</span>';
+        var fn = function() {
+            return new Promise(function(resolve, reject) {
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                    google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getAvailableClasses(grade);
+                } else {
+                    setTimeout(function() { resolve(['1','2']); }, 400);
+                }
+            });
+        };
+        executeWithRetry(fn, 2).then(function(result) {
+            dataCache.classes[grade] = result;
+            renderClassChips(result);
+        }).catch(function() {
+            document.getElementById('tcClassChips').innerHTML = '<span style="font-size:12px;color:var(--danger);">\u0e42\u0e2b\u0e25\u0e14\u0e2b\u0e49\u0e2d\u0e07\u0e44\u0e21\u0e48\u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08</span>';
+        });
+    }
+
+    function renderClassChips(data) {
+        var el = document.getElementById('tcClassChips');
+        el.innerHTML = '';
+        data.forEach(function(c) {
+            var b = document.createElement('button');
+            b.className = 'tc-chip';
+            b.textContent = '\u0e2b\u0e49\u0e2d\u0e07 ' + c;
+            b.dataset.classno = c;
+            b.addEventListener('click', function() { selectClass(c); });
+            el.appendChild(b);
+        });
+    }
+
+    function selectClass(classNo) {
+        currentClass = classNo;
+        currentStudents = [];
+        currentStudentIndex = -1;
+        document.querySelectorAll('#tcClassChips .tc-chip').forEach(function(c) {
+            c.classList.toggle('active', c.dataset.classno === classNo);
+        });
+        showEmptyState();
+        loadStudents(currentGrade, classNo);
+    }
+
+    function loadStudents(grade, classNo) {
+        var key = grade + '-' + classNo;
+        if (dataCache.students[key]) {
+            currentStudents = dataCache.students[key];
+            renderStudentList();
+            document.getElementById('tcSearchInput').disabled = false;
+            return;
+        }
+        document.getElementById('tcStudentList').innerHTML = '<div class="tc-left-loading"><div class="tc-spinner"></div><br>\u0e01\u0e33\u0e25\u0e31\u0e07\u0e42\u0e2b\u0e25\u0e14\u0e19\u0e31\u0e01\u0e40\u0e23\u0e35\u0e22\u0e19...</div>';
+        var fn = function() {
+            return new Promise(function(resolve, reject) {
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                    google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getStudentsByGradeClass(grade, classNo);
+                } else {
+                    setTimeout(function() {
+                        resolve([
+                            {id:'67001', fullName:'\u0e14.\u0e0a.\u0e01\u0e21\u0e25\u0e20\u0e1e \u0e2a\u0e38\u0e02\u0e2a\u0e27\u0e31\u0e2a\u0e14\u0e34\u0e4c', grade:grade, classNo:classNo},
+                            {id:'67002', fullName:'\u0e14.\u0e0d.\u0e01\u0e19\u0e01\u0e27\u0e23\u0e23\u0e13 \u0e1e\u0e34\u0e21\u0e1e\u0e4c\u0e17\u0e2d\u0e07', grade:grade, classNo:classNo},
+                            {id:'67003', fullName:'\u0e14.\u0e0a.\u0e08\u0e23\u0e31\u0e2a\u0e1e\u0e25 \u0e27\u0e07\u0e28\u0e4c\u0e1b\u0e23\u0e30\u0e40\u0e2a\u0e23\u0e34\u0e10', grade:grade, classNo:classNo}
+                        ]);
+                    }, 500);
+                }
+            });
+        };
+        executeWithRetry(fn, 2).then(function(result) {
+            if (result && Array.isArray(result)) {
+                result.sort(function(a, b) { return String(a.id||'').localeCompare(String(b.id||'')); });
             }
-            
-            function setupAutoSave() {
-                document.getElementById('commentText').addEventListener('input', function() {
-                    clearTimeout(autoSaveTimer);
-                    var self = this;
-                    autoSaveTimer = setTimeout(function() {
-                        var studentId = document.getElementById('studentSelect').value;
-                        var comment = self.value.trim();
-                        
-                        if (studentId && comment && comment.length >= 10) {
-                            saveCommentSilent(studentId, comment);
-                        }
-                    }, 5000);
-                });
-            }
-            
-            function setupKeyboardShortcuts() {
-                document.addEventListener('keydown', function(e) {
-                    if (e.ctrlKey && e.key === 's') {
-                        e.preventDefault();
-                        var saveBtn = document.getElementById('saveBtn');
-                        if (!saveBtn.disabled) {
-                            saveBtn.click();
-                        }
-                    }
-                    
-                    if (e.ctrlKey && e.key === 'r') {
-                        e.preventDefault();
-                        var loadBtn = document.getElementById('loadCommentBtn');
-                         if (!loadBtn.disabled) {
-                            loadBtn.click();
-                        }
-                    }
-                    
-                    if (e.key === 'Escape') {
-                        hideAlerts();
-                    }
-                });
-            }
-            
-            function loadGrades() {
-                showDropdownLoading('gradeSelect', 'กำลังโหลดชั้นเรียน...');
-                
-                var loadPromise = function() {
-                    return new Promise(function(resolve, reject) {
-                        if (typeof google !== 'undefined' && google.script && google.script.run) {
-                            google.script.run
-                                .withSuccessHandler(resolve)
-                                .withFailureHandler(reject)
-                                .getAvailableGrades();
-                        } else {
-                            // console.warn('Google Script ไม่พร้อมใช้งาน (โหมดทดสอบ)');
-                            setTimeout(function() {
-                                resolve(['ม.1', 'ม.2', 'ม.3', 'ม.4', 'ม.5', 'ม.6']);
-                            }, 1000);
-                        }
-                    });
-                };
-                
-                executeWithRetry(loadPromise)
-                    .then(function(result) {
-                        grades = result;
-                        dataCache.grades = result;
-                        populateGrades();
-                    })
-                    .catch(function(error) {
-                        showError('ไม่สามารถโหลดข้อมูลชั้นเรียนได้');
-                        console.error('Error loading grades:', error);
-                    });
-            }
-            
-            function loadClasses(grade) {
-                if (loadCachedClasses(grade)) { return; }
-                
-                showDropdownLoading('classSelect', 'กำลังโหลดห้อง...');
-                
-                var loadPromise = function() {
-                    return new Promise(function(resolve, reject) {
-                        if (typeof google !== 'undefined' && google.script && google.script.run) {
-                            google.script.run
-                                .withSuccessHandler(resolve)
-                                .withFailureHandler(reject)
-                                .getAvailableClasses(grade);
-                        } else {
-                            setTimeout(function() { resolve(['1', '2', '3']); }, 800);
-                        }
-                    });
-                };
-                
-                executeWithRetry(loadPromise, 2)
-                    .then(function(result) {
-                        dataCache.classes[grade] = result;
-                        populateClasses(result);
-                    })
-                    .catch(function(error) {
-                        document.getElementById('classSelect').innerHTML = '<option value="">❌ โหลดไม่สำเร็จ</option>';
-                        showError('ไม่สามารถโหลดข้อมูลห้องได้');
-                        console.error('Error loading classes:', error);
-                    });
-            }
-            
-            function loadStudents(grade, classNo) {
-                if (loadCachedStudents(grade, classNo)) { return; }
-                
-                showDropdownLoading('studentSelect', 'กำลังโหลดนักเรียน...');
-                
-                var loadPromise = function() {
-                    return new Promise(function(resolve, reject) {
-                        if (typeof google !== 'undefined' && google.script && google.script.run) {
-                            google.script.run
-                                .withSuccessHandler(resolve)
-                                .withFailureHandler(reject)
-                                .getStudentsByGradeClass(grade, classNo);
-                        } else {
-                            setTimeout(function() {
-                                resolve([
-                                    {id: '001', fullName: `นายทดสอบ ${grade}/${classNo}`, grade: grade, classNo: classNo},
-                                    {id: '002', fullName: `นางสาวทดสอบ ${grade}/${classNo}`, grade: grade, classNo: classNo}
-                                ]);
-                            }, 800);
-                        }
-                    });
-                };
-                
-                executeWithRetry(loadPromise, 2)
-                    .then(function(result) {
-                        if (result && Array.isArray(result)) {
-                            result.sort((a, b) => {
-                                const idA = a.id || '';
-                                const idB = b.id || '';
-                                return String(idA).localeCompare(String(idB));
-                            });
-                        }
-                        var key = grade + '-' + classNo;
-                        dataCache.students[key] = result;
-                        populateStudents(result);
-                    })
-                    .catch(function(error) {
-                        document.getElementById('studentSelect').innerHTML = '<option value="">❌ โหลดไม่สำเร็จ</option>';
-                        showError('ไม่สามารถโหลดข้อมูลนักเรียนได้');
-                        console.error('Error loading students:', error);
-                    });
-            }
-            
-            // [ปรับปรุง] เพิ่ม return Promise เพื่อให้ .finally() ทำงานได้
-            function saveComment() {
-                return new Promise(function(resolve, reject) {
-                    if (!validateForm()) {
-                        return reject(new Error('Form validation failed'));
-                    }
-                    
-                    var studentId = document.getElementById('studentSelect').value;
-                    var comment = document.getElementById('commentText').value.trim();
-                    
-                    showLoading();
-                    disableForm();
-                    
-                    var savePromise = function() {
-                        return new Promise(function(resolve, reject) {
-                            if (typeof google !== 'undefined' && google.script && google.script.run) {
-                                google.script.run
-                                    .withSuccessHandler(resolve)
-                                    .withFailureHandler(reject)
-                                    .saveCommentWithValidation(studentId, comment);
-                            } else {
-                                setTimeout(function() {
-                                    resolve({
-                                        success: true,
-                                        message: 'บันทึกสำเร็จ (โหมดทดสอบ)',
-                                        student: {
-                                            id: studentId,
-                                            fullName: 'นักเรียนทดสอบ',
-                                            grade: document.getElementById('gradeSelect').value,
-                                            classNo: document.getElementById('classSelect').value
-                                        }
-                                    });
-                                }, 1500);
-                            }
-                        });
-                    };
-                    
-                    executeWithRetry(savePromise)
-                        .then(function(result) {
-                            // console.log('✅ บันทึกสำเร็จ:', result);
-                            hideLoading();
-                            enableForm();
-                            
-                            if (result.success) {
-                                showSuccess(result.message);
-                                
-                                // 7. 🧠 [แก้ไข] อัปเดตข้อมูลไปยัง Textarea ใหม่
-                                showStudentInfo(result.student, comment);
-                                
-                                dataCache.comments[studentId] = {
-                                    success: true,
-                                    student: result.student,
-                                    comment: comment
-                                };
-                                
-                                updateStatsDisplay();
-                                retryAttempts = 0;
-                                resolve(result); // 👈 ส่งสัญญาณสำเร็จ
-                            } else {
-                                showError(result.error || 'ไม่สามารถบันทึกได้');
-                                reject(new Error(result.error)); // 👈 ส่งสัญญาณล้มเหลว
-                            }
+            dataCache.students[key] = result;
+            currentStudents = result;
+            renderStudentList();
+            document.getElementById('tcSearchInput').disabled = false;
+        }).catch(function() {
+            document.getElementById('tcStudentList').innerHTML = '<div class="tc-left-loading">\u274c \u0e42\u0e2b\u0e25\u0e14\u0e19\u0e31\u0e01\u0e40\u0e23\u0e35\u0e22\u0e19\u0e44\u0e21\u0e48\u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08</div>';
+        });
+    }
+
+    function renderStudentList(filter) {
+        var el = document.getElementById('tcStudentList');
+        el.innerHTML = '';
+        var list = currentStudents;
+        if (filter) {
+            var f = filter.toLowerCase();
+            list = currentStudents.filter(function(s) {
+                return (s.fullName||'').toLowerCase().indexOf(f) >= 0 || (s.id||'').indexOf(f) >= 0;
+            });
+        }
+        list.forEach(function(s) {
+            var idx = currentStudents.indexOf(s);
+            var saved = dataCache.comments[s.id] && dataCache.comments[s.id].comment;
+            var male = isMale(s.fullName);
+            var card = document.createElement('div');
+            card.className = 'tc-scard' + (idx === currentStudentIndex ? ' active' : '');
+            card.dataset.idx = idx;
+            card.innerHTML =
+                '<div class="tc-avatar ' + (male ? 'male' : 'female') + '">' + getInitials(s.fullName) + '</div>' +
+                '<div class="tc-scard-info"><div class="tc-scard-name">' + (s.fullName||'') + '</div>' +
+                '<div class="tc-scard-meta">\u0e23\u0e2b\u0e31\u0e2a ' + (s.id||'') + '</div></div>' +
+                '<span class="tc-badge ' + (saved ? 'saved' : 'pending') + '">' +
+                (saved ? '\u2713 \u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\u0e41\u0e25\u0e49\u0e27' : '\u0e23\u0e2d\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01') + '</span>';
+            card.addEventListener('click', function() { selectStudent(idx); });
+            el.appendChild(card);
+        });
+        updateProgress();
+    }
+
+    function selectStudent(idx) {
+        currentStudentIndex = idx;
+        var s = currentStudents[idx];
+        if (!s) return;
+        document.querySelectorAll('.tc-scard').forEach(function(c) {
+            c.classList.toggle('active', parseInt(c.dataset.idx) === idx);
+        });
+        document.getElementById('tcEmptyState').style.display = 'none';
+        document.getElementById('tcFormArea').style.display = 'block';
+        var male = isMale(s.fullName);
+        document.getElementById('tcAvatarLg').style.background = male ? '#6366f1' : '#ec4899';
+        document.getElementById('tcAvatarLg').textContent = getInitials(s.fullName);
+        document.getElementById('tcStudentName').textContent = s.fullName || '';
+        document.getElementById('tcStudentMeta').textContent = '\u0e23\u0e2b\u0e31\u0e2a ' + (s.id || '');
+        document.getElementById('tcStudentTag').textContent = (s.grade || currentGrade) + '/' + (s.classNo || currentClass);
+        document.getElementById('tcCommentText').disabled = false;
+        document.getElementById('tcSaveBtn').disabled = false;
+        document.getElementById('tcClearBtn').disabled = false;
+        document.getElementById('tcPrevBtn').disabled = idx <= 0;
+        document.getElementById('tcNextBtn').disabled = idx >= currentStudents.length - 1;
+        document.getElementById('tcNavPos').textContent = (idx + 1) + ' / ' + currentStudents.length;
+        loadExistingComment(s.id);
+    }
+
+    function loadExistingComment(studentId, forceRefresh) {
+        if (!forceRefresh && dataCache.comments[studentId]) {
+            displayComment(dataCache.comments[studentId]);
+            return;
+        }
+        document.getElementById('tcCommentText').value = '';
+        document.getElementById('tcCurCommentText').textContent = '\u0e01\u0e33\u0e25\u0e31\u0e07\u0e42\u0e2b\u0e25\u0e14...';
+        document.getElementById('tcCurCommentText').className = 'empty-text';
+        var fn = function() {
+            return new Promise(function(resolve, reject) {
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                    google.script.run
+                        .withSuccessHandler(function(data) {
+                            if (data.success) { dataCache.comments[studentId] = data; resolve(data); }
+                            else { reject(new Error(data.error)); }
                         })
-                        .catch(function(error) {
-                            console.error('❌ บันทึกไม่สำเร็จ:', error);
-                            hideLoading();
-                            enableForm();
-                            showError('ไม่สามารถบันทึกความคิดเห็นได้: ' + error.message);
-                            reject(error); // 👈 ส่งสัญญาณล้มเหลว
-                        });
-                });
-            }
-            
-            function saveCommentSilent(studentId, comment) {
-                var savePromise = function() {
-                    return new Promise(function(resolve, reject) {
-                        if (typeof google !== 'undefined' && google.script && google.script.run) {
-                            google.script.run
-                                .withSuccessHandler(resolve)
-                                .withFailureHandler(reject)
-                                .saveCommentWithValidation(studentId, comment);
-                        } else {
-                            setTimeout(function() {
-                                resolve({ success: true, message: 'Auto-save OK', student: {id: studentId} });
-                            }, 500);
-                        }
-                    });
-                };
-                
-                executeWithRetry(savePromise, 1)
-                    .then(function(result) {
-                        if (result.success) {
-                            dataCache.comments[studentId] = {
-                                success: true,
-                                student: result.student,
-                                comment: comment
-                            };
-                            
-                            // [ใหม่] สร้าง popup auto-save ที่สวยงาม
-                            var autoSaveMsg = document.createElement('div');
-                            autoSaveMsg.textContent = '💾 บันทึกอัตโนมัติ';
-                            autoSaveMsg.style.cssText = 
-                                'position: fixed; top: 20px; right: 20px; background: #475569; ' +
-                                'color: white; padding: 10px 15px; border-radius: 8px; ' +
-                                'z-index: 1000; font-size: 14px; box-shadow: 0 5px 15px rgba(0,0,0,0.2);';
-                            document.body.appendChild(autoSaveMsg);
-                            
-                            setTimeout(function() {
-                                if (autoSaveMsg.parentNode) {
-                                    autoSaveMsg.parentNode.removeChild(autoSaveMsg);
-                                }
-                            }, 2000);
-                        }
-                    })
-                    .catch(function(error) {
-                        // console.log('Auto-save failed:', error);
-                    });
-            }
-            
-            function loadExistingComment(studentId, forceRefresh = false) {
-                // ถ้าไม่บังคับโหลดใหม่ และมีใน cache ให้ใช้ cache
-                if (!forceRefresh && dataCache.comments[studentId]) {
-                    updateCommentDisplay(dataCache.comments[studentId]);
-                    return;
+                        .withFailureHandler(reject)
+                        .getStudentFullData(studentId);
+                } else {
+                    setTimeout(function() { resolve({ success: true, student: currentStudents[currentStudentIndex], comment: '' }); }, 300);
                 }
-                
-                showDropdownLoading('studentSelect', 'กำลังโหลดข้อมูล...');
-                
-                var loadPromise = function() {
-                    return new Promise(function(resolve, reject) {
-                        if (typeof google !== 'undefined' && google.script && google.script.run) {
-                            google.script.run
-                                .withSuccessHandler(function(data) {
-                                    if (data.success) {
-                                        dataCache.comments[studentId] = data;
-                                        resolve(data);
-                                    } else {
-                                        reject(new Error(data.error));
-                                    }
-                                })
-                                .withFailureHandler(reject)
-                                .getStudentFullData(studentId);
-                        } else {
-                            setTimeout(function() {
-                                var testData = {
-                                    success: true,
-                                    student: {
-                                        id: studentId,
-                                        fullName: 'นักเรียนทดสอบ',
-                                        grade: document.getElementById('gradeSelect').value,
-                                        classNo: document.getElementById('classSelect').value
-                                    },
-                                    comment: 'นี่คือความคิดเห็นทดสอบ (บังคับโหลดใหม่)'
-                                };
-                                dataCache.comments[studentId] = testData;
-                                resolve(testData);
-                            }, 800);
-                        }
-                    });
-                };
-                
-                executeWithRetry(loadPromise, 2)
-                    .then(function(data) {
-                        updateCommentDisplay(data);
-                    })
-                    .catch(function(error) {
-                        console.error('ไม่สามารถโหลดความคิดเห็นได้:', error);
-                        showStudentInfo(
-                            { id: studentId, fullName: 'ไม่สามารถโหลดข้อมูลได้', grade: '?', classNo: '?' }, 
-                            'ไม่สามารถโหลดความคิดเห็นได้'
-                        );
-                    })
-                    .finally(function() {
-                        // คืนค่า dropdown 
-                        populateStudents(dataCache.students[document.getElementById('gradeSelect').value + '-' + document.getElementById('classSelect').value]);
-                        document.getElementById('studentSelect').value = studentId;
-                    });
-            }
-            
-            function updateCommentDisplay(data) {
-                var comment = data.comment || '';
-                document.getElementById('commentText').value = comment;
-                // [ปรับปรุง] เรียกใช้ฟังก์ชันที่แก้ไขแล้ว
-                showStudentInfo(data.student, comment);
-                document.getElementById('charCount').textContent = comment.length + ' ตัวอักษร';
-            }
-            
-            // 7. 🧠 [แก้ไข] ฟังก์ชันนี้ถูกแก้ไข
-            function showStudentInfo(student, comment) {
-                var infoText = `ชื่อ: ${student.fullName}\n`;
-                infoText += `ชั้น: ${student.grade || '?'}/${student.classNo || '?'}\n`;
-                infoText += `รหัส: ${student.id}`;
-                
-                // [ใหม่] อัปเดตข้อมูลไปยัง Textarea
-                document.getElementById('studentInfoDisplay').value = infoText;
-                document.getElementById('currentCommentDisplay').value = comment || 'ยังไม่มีความคิดเห็น';
-            }
-            
-            function updateStatsDisplay() {
-                // นับเฉพาะ comment ที่มีข้อมูลจริงๆ
-                var commentCount = Object.values(dataCache.comments).filter(c => c.comment).length;
-                document.getElementById('commentCount').textContent = commentCount;
-                document.getElementById('statsInfo').style.display = commentCount > 0 ? 'block' : 'none';
-            }
-            
-            function populateGrades() {
-                var select = document.getElementById('gradeSelect');
-                select.innerHTML = '<option value="">เลือกชั้นเรียน</option>';
-                grades.forEach(function(grade) {
-                    var option = document.createElement('option');
-                    option.value = grade;
-                    option.textContent = 'ชั้น ' + grade;
-                    select.appendChild(option);
-                });
-                select.disabled = false; // [แก้ไข] เปิดใช้งานหลังโหลดเสร็จ
-            }
-            
-            function populateClasses(classData) {
-                var select = document.getElementById('classSelect');
-                select.innerHTML = '<option value="">เลือกห้อง</option>';
-                classData.forEach(function(classNo) {
-                    var option = document.createElement('option');
-                    option.value = classNo;
-                    option.textContent = 'ห้อง ' + classNo;
-                    select.appendChild(option);
-                });
-                select.disabled = false;
-            }
-            
-            function populateStudents(studentData) {
-                var select = document.getElementById('studentSelect');
-                var currentValue = select.value; // เก็บค่าที่เลือกไว้
-                select.innerHTML = '<option value="">เลือกนักเรียน</option>';
-                studentData.forEach(function(student) {
-                    var option = document.createElement('option');
-                    option.value = student.id;
-                    option.textContent = student.fullName;
-                    select.appendChild(option);
-                });
-                select.value = currentValue; // คืนค่าที่เลือกไว้
-                select.disabled = false;
-            }
-            
-            function resetClassAndStudent() {
-                document.getElementById('classSelect').innerHTML = '<option value="">เลือกห้อง</option>';
-                document.getElementById('classSelect').disabled = true;
-                resetStudent();
-            }
-            
-            function resetStudent() {
-                document.getElementById('studentSelect').innerHTML = '<option value="">เลือกนักเรียน</option>';
-                document.getElementById('studentSelect').disabled = true;
-                disableButtons();
-                hideStudentInfo(); // 👈 [แก้ไข] เรียกใช้ฟังก์ชันที่อัปเดตแล้ว
-                document.getElementById('commentText').value = '';
-                document.getElementById('charCount').textContent = '0 ตัวอักษร';
-                document.getElementById('charCount').style.color = '#666';
-            }
-            
-            function clearForm() {
-                document.getElementById('commentForm').reset();
-                resetClassAndStudent();
-                hideAlerts();
-            }
-            
-            function enableButtons() {
-                document.getElementById('loadCommentBtn').disabled = false;
-                document.getElementById('saveBtn').disabled = false;
-            }
-            
-            function disableButtons() {
-                document.getElementById('loadCommentBtn').disabled = true;
-                document.getElementById('saveBtn').disabled = true;
-            }
-            
-            function disableForm() {
-                document.getElementById('gradeSelect').disabled = true;
-                document.getElementById('classSelect').disabled = true;
-                document.getElementById('studentSelect').disabled = true;
-                document.getElementById('commentText').disabled = true;
-                disableButtons();
-            }
-            
-            function enableForm() {
-                document.getElementById('gradeSelect').disabled = false;
-                if (document.getElementById('gradeSelect').value) {
-                    document.getElementById('classSelect').disabled = false;
-                }
-                if (document.getElementById('classSelect').value) {
-                    document.getElementById('studentSelect').disabled = false;
-                }
-                document.getElementById('commentText').disabled = false;
-                if (document.getElementById('studentSelect').value) {
-                    enableButtons();
-                }
-            }
-            
-            function showLoading() {
-                document.getElementById('loading').style.display = 'block';
-            }
-            
-            function hideLoading() {
-                document.getElementById('loading').style.display = 'none';
-            }
-            
-            function showSuccess(message) {
-                hideAlerts();
-                var msg = document.getElementById('successMessage');
-                msg.textContent = '✅ ' + message;
-                msg.style.display = 'block';
-                setTimeout(function() { msg.style.display = 'none'; }, 3000);
-            }
-            
-            function showError(message) {
-                hideAlerts();
-                var msg = document.getElementById('errorMessage');
-                msg.textContent = '❌ ' + message;
-                msg.style.display = 'block';
-                setTimeout(function() { msg.style.display = 'none'; }, 8000);
-            }
-            
-            function hideAlerts() {
-                document.getElementById('successMessage').style.display = 'none';
-                document.getElementById('errorMessage').style.display = 'none';
-            }
-            
-            // 7. 🧠 [แก้ไข] ฟังก์ชันนี้ถูกแก้ไข
-            function hideStudentInfo() {
-                document.getElementById('studentInfoDisplay').value = '';
-                document.getElementById('currentCommentDisplay').value = '';
-            }
-            
-            window.onerror = function(msg, url, lineNo, columnNo, error) {
-                console.error('JavaScript Error:', { msg, url, lineNo, error });
-                if (msg.includes('google.script') || (error && error.message && error.message.includes("ScriptError"))) {
-                    showError('เซสชันหมดอายุหรือมีปัญหาการเชื่อมต่อ กรุณารีเฟรชหน้าเว็บ');
-                    var errorDiv = document.getElementById('errorMessage');
-                    if (errorDiv && !errorDiv.querySelector('.refresh-btn')) {
-                        var refreshBtn = document.createElement('button');
-                        refreshBtn.textContent = '🔄 รีเฟรชหน้า';
-                        refreshBtn.className = 'btn-secondary refresh-btn'; // ใช้ class จากดีไซน์ใหม่
-                        refreshBtn.style.marginTop = '15px';
-                        refreshBtn.style.width = '100%';
-                        refreshBtn.onclick = function() { window.location.reload(); };
-                        errorDiv.appendChild(refreshBtn);
+            });
+        };
+        executeWithRetry(fn, 2).then(function(data) {
+            displayComment(data);
+        }).catch(function() {
+            document.getElementById('tcCurCommentText').textContent = '\u0e44\u0e21\u0e48\u0e2a\u0e32\u0e21\u0e32\u0e23\u0e16\u0e42\u0e2b\u0e25\u0e14\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e44\u0e14\u0e49';
+        });
+    }
+
+    function displayComment(data) {
+        var comment = data.comment || '';
+        document.getElementById('tcCommentText').value = comment;
+        var curEl = document.getElementById('tcCurCommentText');
+        var curCard = document.getElementById('tcCurComment');
+        if (comment) {
+            curEl.textContent = comment;
+            curEl.className = '';
+            curCard.classList.add('has');
+        } else {
+            curEl.textContent = '\u0e22\u0e31\u0e07\u0e44\u0e21\u0e48\u0e21\u0e35\u0e04\u0e27\u0e32\u0e21\u0e04\u0e34\u0e14\u0e40\u0e2b\u0e47\u0e19';
+            curEl.className = 'empty-text';
+            curCard.classList.remove('has');
+        }
+        updateCharCount();
+    }
+
+    function saveComment() {
+        if (!currentStudents[currentStudentIndex]) return Promise.reject(new Error('No student'));
+        var studentId = currentStudents[currentStudentIndex].id;
+        var comment = document.getElementById('tcCommentText').value.trim();
+        if (!comment || comment.length < 10) {
+            showToast('\u0e04\u0e27\u0e32\u0e21\u0e04\u0e34\u0e14\u0e40\u0e2b\u0e47\u0e19\u0e15\u0e49\u0e2d\u0e07\u0e21\u0e35\u0e2d\u0e22\u0e48\u0e32\u0e07\u0e19\u0e49\u0e2d\u0e22 10 \u0e15\u0e31\u0e27\u0e2d\u0e31\u0e01\u0e29\u0e23', 'error');
+            return Promise.reject(new Error('Too short'));
+        }
+        return new Promise(function(resolve, reject) {
+            var saveFn = function() {
+                return new Promise(function(res, rej) {
+                    if (typeof google !== 'undefined' && google.script && google.script.run) {
+                        google.script.run.withSuccessHandler(res).withFailureHandler(rej).saveCommentWithValidation(studentId, comment);
+                    } else {
+                        setTimeout(function() { res({ success: true, message: '\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08', student: currentStudents[currentStudentIndex] }); }, 800);
                     }
-                }
-                return false;
+                });
             };
-            
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', initializeSystem);
-            } else {
-                initializeSystem();
+            executeWithRetry(saveFn).then(function(result) {
+                if (result.success) {
+                    dataCache.comments[studentId] = { success: true, student: result.student, comment: comment };
+                    showToast('\u2705 \u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\u0e40\u0e23\u0e35\u0e22\u0e1a\u0e23\u0e49\u0e2d\u0e22 \u2014 ' + (result.student ? result.student.fullName : ''), 'success');
+                    var curEl = document.getElementById('tcCurCommentText');
+                    curEl.textContent = comment;
+                    curEl.className = '';
+                    document.getElementById('tcCurComment').classList.add('has');
+                    renderStudentList(document.getElementById('tcSearchInput').value);
+                    resolve(result);
+                } else {
+                    showToast('\u274c ' + (result.error || '\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\u0e44\u0e21\u0e48\u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08'), 'error');
+                    reject(new Error(result.error));
+                }
+            }).catch(function(error) {
+                showToast('\u274c \u0e44\u0e21\u0e48\u0e2a\u0e32\u0e21\u0e32\u0e23\u0e16\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\u0e44\u0e14\u0e49', 'error');
+                reject(error);
+            });
+        });
+    }
+
+    function saveCommentSilent(studentId, comment) {
+        var fn = function() {
+            return new Promise(function(resolve, reject) {
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                    google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).saveCommentWithValidation(studentId, comment);
+                } else {
+                    setTimeout(function() { resolve({ success: true }); }, 300);
+                }
+            });
+        };
+        executeWithRetry(fn, 1).then(function(result) {
+            if (result.success) {
+                dataCache.comments[studentId] = { success: true, student: result.student || {id: studentId}, comment: comment };
+                var el = document.getElementById('tcAutoSave');
+                el.style.display = 'inline';
+                el.textContent = '\u2714 \u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\u0e2d\u0e31\u0e15\u0e42\u0e19\u0e21\u0e31\u0e15\u0e34\u0e41\u0e25\u0e49\u0e27';
+                setTimeout(function() { el.style.display = 'none'; }, 2000);
+                renderStudentList(document.getElementById('tcSearchInput').value);
             }
-            
-        })();
-    </script>
+        }).catch(function() {});
+    }
+
+    function showEmptyState() {
+        document.getElementById('tcEmptyState').style.display = 'flex';
+        document.getElementById('tcFormArea').style.display = 'none';
+        document.getElementById('tcStudentList').innerHTML = '<div class="tc-left-loading">\u0e01\u0e33\u0e25\u0e31\u0e07\u0e42\u0e2b\u0e25\u0e14...</div>';
+    }
+
+    function updateCharCount() {
+        var len = (document.getElementById('tcCommentText').value || '').length;
+        var el = document.getElementById('tcCharCount');
+        el.textContent = len + ' \u0e15\u0e31\u0e27\u0e2d\u0e31\u0e01\u0e29\u0e23';
+        el.style.color = len >= 10 ? 'var(--success)' : 'var(--danger)';
+    }
+
+    function updateProgress() {
+        var total = currentStudents.length;
+        if (total === 0) { document.getElementById('tcProgress').style.display = 'none'; return; }
+        var saved = 0;
+        currentStudents.forEach(function(s) { if (dataCache.comments[s.id] && dataCache.comments[s.id].comment) saved++; });
+        var pct = Math.round((saved / total) * 100);
+        document.getElementById('tcProgressText').textContent = saved + '/' + total;
+        document.getElementById('tcProgressBar').style.width = pct + '%';
+        document.getElementById('tcProgressPct').textContent = pct + '%';
+        document.getElementById('tcProgress').style.display = 'flex';
+    }
+
+    function setupEventListeners() {
+        document.getElementById('tcSearchInput').addEventListener('input', function() {
+            renderStudentList(this.value);
+        });
+
+        document.getElementById('tcPhraseTags').addEventListener('click', function(e) {
+            var btn = e.target.closest('.tc-ptag');
+            if (btn && btn.dataset.text) {
+                var ta = document.getElementById('tcCommentText');
+                var cur = ta.value;
+                ta.value = cur ? cur + ' ' + btn.dataset.text : btn.dataset.text;
+                ta.focus();
+                updateCharCount();
+            }
+        });
+
+        document.getElementById('tcCommentText').addEventListener('input', function() {
+            updateCharCount();
+            clearTimeout(autoSaveTimer);
+            var self = this;
+            autoSaveTimer = setTimeout(function() {
+                if (currentStudents[currentStudentIndex]) {
+                    var c = self.value.trim();
+                    if (c && c.length >= 10) { saveCommentSilent(currentStudents[currentStudentIndex].id, c); }
+                }
+            }, 5000);
+        });
+
+        document.getElementById('tcSaveBtn').addEventListener('click', function() {
+            if (isSubmitting) return;
+            isSubmitting = true;
+            var btn = this;
+            var orig = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '\u23f3 \u0e01\u0e33\u0e25\u0e31\u0e07\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01...';
+            saveComment().finally(function() {
+                isSubmitting = false;
+                btn.disabled = false;
+                btn.textContent = orig;
+            });
+        });
+
+        document.getElementById('tcClearBtn').addEventListener('click', function() {
+            document.getElementById('tcCommentText').value = '';
+            updateCharCount();
+            document.getElementById('tcCommentText').focus();
+        });
+
+        document.getElementById('tcPrevBtn').addEventListener('click', function() {
+            if (currentStudentIndex > 0) selectStudent(currentStudentIndex - 1);
+        });
+        document.getElementById('tcNextBtn').addEventListener('click', function() {
+            if (currentStudentIndex < currentStudents.length - 1) selectStudent(currentStudentIndex + 1);
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                var btn = document.getElementById('tcSaveBtn');
+                if (!btn.disabled) btn.click();
+            }
+        });
+    }
+
+    window.onerror = function(msg, url, lineNo, colNo, error) {
+        console.error('JS Error:', { msg: msg, url: url, lineNo: lineNo, error: error });
+        if (msg && (msg.indexOf('google.script') >= 0 || (error && error.message && error.message.indexOf('ScriptError') >= 0))) {
+            showToast('\u0e40\u0e0b\u0e2a\u0e0a\u0e31\u0e19\u0e2b\u0e21\u0e14\u0e2d\u0e32\u0e22\u0e38 \u0e01\u0e23\u0e38\u0e13\u0e32\u0e23\u0e35\u0e40\u0e1f\u0e23\u0e0a\u0e2b\u0e19\u0e49\u0e32\u0e40\u0e27\u0e47\u0e1a', 'error');
+        }
+        return false;
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeSystem);
+    } else {
+        initializeSystem();
+    }
+})();
+</script>
 </body>
 </html>
