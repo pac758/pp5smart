@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>🔄 Sync SchoolMIS</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+<style>
+  body, * { font-family: 'Sarabun', Tahoma, Verdana, sans-serif !important; }
+
+  .sync-page-wrapper {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 1rem;
+  }
+
+  .sync-page-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.25rem 1.5rem;
+    background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+    color: white;
+    border-radius: 16px 16px 0 0;
+    margin-bottom: 0;
+  }
+  .sync-page-header h2 {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .sync-page-body {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 0 0 16px 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  }
+
+  /* Tabs */
+  .sync-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 1.25rem;
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 10px;
+  }
+
+  .sync-tab {
+    padding: 10px 20px;
+    border: none;
+    background: #f3f4f6;
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .sync-tab:hover { background: #e5e7eb; }
+  .sync-tab.active {
+    background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+    color: white;
+  }
+
+  .sync-tab-content { display: none; }
+  .sync-tab-content.active { display: block; }
+
+  /* Options */
+  .sync-options {
+    background: #f8fafc;
+    padding: 1rem 1.25rem;
+    border-radius: 10px;
+    margin-bottom: 1.25rem;
+    border: 1px solid #e2e8f0;
+  }
+
+  .sync-form-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  .sync-form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.9rem;
+  }
+
+  .sync-form-group select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.3s;
+  }
+  .sync-form-group select:focus {
+    outline: none;
+    border-color: #8b5cf6;
+  }
+
+  /* Info Box */
+  .sync-info-box {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 15px;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+    font-size: 14px;
+  }
+  .sync-info-box i { margin-top: 2px; font-size: 16px; }
+  .sync-info-box p { margin: 0; }
+  .sync-info-box.info { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+  .sync-info-box.success { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+  .sync-info-box.warning { background: #fffbeb; color: #b45309; border: 1px solid #fcd34d; }
+
+  /* Upload Area */
+  .sync-upload-area {
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-bottom: 1rem;
+    background: #fafbfc;
+  }
+  .sync-upload-area:hover { border-color: #8b5cf6; background: #faf5ff; }
+  .sync-upload-area.drag-over { border-color: #8b5cf6; background: #f3e8ff; }
+  .sync-upload-area i { color: #8b5cf6; margin-bottom: 10px; font-size: 2.5rem; }
+  .sync-upload-area p { color: #6b7280; margin: 0; }
+
+  /* File Info */
+  .sync-file-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 15px;
+    background: #ecfdf5;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+    border: 1px solid #a7f3d0;
+  }
+  .sync-file-info i { color: #10b981; font-size: 20px; }
+  .sync-file-info span { flex: 1; font-weight: 500; color: #065f46; }
+  .sync-file-info .sync-remove-file {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #9ca3af;
+    padding: 5px;
+    font-size: 16px;
+  }
+  .sync-file-info .sync-remove-file:hover { color: #ef4444; }
+
+  /* Action Buttons */
+  .sync-action-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .sync-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s;
+  }
+  .sync-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .sync-btn-primary {
+    background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+    color: white;
+  }
+  .sync-btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+  }
+
+  .sync-btn-secondary {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+  }
+  .sync-btn-secondary:hover:not(:disabled) { background: #e5e7eb; }
+
+  .sync-btn-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+  }
+  .sync-btn-success:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  }
+
+  .sync-btn-warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+  }
+  .sync-btn-warning:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+  }
+
+  /* Preview Table */
+  .sync-preview-container {
+    max-height: 250px;
+    overflow: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    margin-top: 1rem;
+  }
+
+  .sync-preview-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .sync-preview-table th,
+  .sync-preview-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #f3f4f6;
+    text-align: left;
+  }
+  .sync-preview-table th {
+    background: #f8fafc;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    color: #374151;
+  }
+  .sync-preview-table tr:hover { background: #faf5ff; }
+
+  /* Compare Summary */
+  .sync-compare-summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 1.25rem 0;
+  }
+
+  .sync-summary-item {
+    text-align: center;
+    padding: 1.25rem 1rem;
+    border-radius: 12px;
+  }
+  .sync-summary-item.success { background: #ecfdf5; border: 1px solid #a7f3d0; }
+  .sync-summary-item.warning { background: #fffbeb; border: 1px solid #fcd34d; }
+  .sync-summary-item.danger { background: #fef2f2; border: 1px solid #fecaca; }
+
+  .sync-summary-item .count {
+    display: block;
+    font-size: 2rem;
+    font-weight: 700;
+  }
+  .sync-summary-item.success .count { color: #059669; }
+  .sync-summary-item.warning .count { color: #d97706; }
+  .sync-summary-item.danger .count { color: #dc2626; }
+
+  .sync-summary-item .label {
+    font-size: 13px;
+    color: #6b7280;
+    margin-top: 4px;
+  }
+
+  /* Status Message */
+  .sync-status-area { margin-top: 1rem; }
+  .sync-status-message {
+    padding: 12px 15px;
+    border-radius: 10px;
+    font-size: 14px;
+  }
+  .sync-status-message.success { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+  .sync-status-message.error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+  .sync-status-message.loading { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+
+  /* Export Preview */
+  .sync-export-preview {
+    background: #f8fafc;
+    padding: 2rem;
+    border-radius: 10px;
+    text-align: center;
+    color: #6b7280;
+    border: 1px dashed #d1d5db;
+  }
+  .sync-export-preview i {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    color: #8b5cf6;
+  }
+
+  /* Spinner */
+  .sync-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: syncSpin 0.75s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  @keyframes syncSpin { to { transform: rotate(360deg); } }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .sync-form-row { grid-template-columns: 1fr; }
+    .sync-tabs { flex-wrap: wrap; }
+    .sync-action-buttons { flex-direction: column; }
+    .sync-compare-summary { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="sync-page-wrapper">
+
+  <div class="sync-page-header">
+    <h2><i class="fas fa-exchange-alt"></i> Sync ข้อมูลกับ SchoolMIS</h2>
+  </div>
+
+  <div class="sync-page-body">
+    <!-- Tab Navigation -->
+    <div class="sync-tabs">
+      <button class="sync-tab active" onclick="switchSyncTab(event, 'import')">
+        <i class="fas fa-download"></i> นำเข้า (Import)
+      </button>
+      <button class="sync-tab" onclick="switchSyncTab(event, 'export')">
+        <i class="fas fa-upload"></i> ส่งออก (Export)
+      </button>
+      <button class="sync-tab" onclick="switchSyncTab(event, 'compare')">
+        <i class="fas fa-balance-scale"></i> เปรียบเทียบ
+      </button>
+    </div>
+
+    <!-- Common Options -->
+    <div class="sync-options">
+      <div class="sync-form-row">
+        <div class="sync-form-group">
+          <label><i class="fas fa-graduation-cap"></i> ชั้น/ห้อง:</label>
+          <select id="syncGradeSelect" onchange="onSyncGradeChange()">
+            <option value="">-- เลือกชั้น --</option>
+          </select>
+        </div>
+        <div class="sync-form-group">
+          <label><i class="fas fa-book"></i> วิชา:</label>
+          <select id="syncSheetSelect" onchange="onSyncSheetChange()">
+            <option value="">-- เลือกวิชา --</option>
+          </select>
+        </div>
+        <div class="sync-form-group" style="display:none;">
+          <select id="syncTermSelect">
+            <option value="term1" selected>ภาคเรียนที่ 1</option>
+            <option value="term2">ภาคเรียนที่ 2</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Import Tab Content -->
+    <div id="importTabContent" class="sync-tab-content active">
+      <div class="sync-info-box info">
+        <i class="fas fa-info-circle"></i>
+        <p>นำเข้าคะแนนจากไฟล์ CSV ที่ส่งออกจาก SchoolMIS เข้าสู่ระบบของคุณ</p>
+      </div>
+
+      <div class="sync-upload-area" id="csvUploadArea"
+           onclick="document.getElementById('csvFileInput').click()"
+           ondragover="event.preventDefault(); this.classList.add('drag-over')"
+           ondragleave="this.classList.remove('drag-over')"
+           ondrop="handleImportDrop(event)">
+        <i class="fas fa-file-csv"></i>
+        <p>ลากไฟล์ CSV มาวางที่นี่<br><small>หรือ คลิกเพื่อเลือกไฟล์</small></p>
+        <input type="file" id="csvFileInput" accept=".csv" style="display: none;" onchange="handleImportFileChange(this)">
+      </div>
+
+      <div id="uploadedFileInfo" class="sync-file-info" style="display: none;">
+        <i class="fas fa-file-csv"></i>
+        <span id="uploadedFileName"></span>
+        <button onclick="clearUploadedFile()" class="sync-remove-file">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="sync-action-buttons">
+        <button onclick="previewImport()" class="sync-btn sync-btn-secondary" id="previewImportBtn" disabled>
+          <i class="fas fa-eye"></i> ดูตัวอย่างข้อมูล
+        </button>
+        <button onclick="executeImport()" class="sync-btn sync-btn-success" id="executeImportBtn" disabled>
+          <i class="fas fa-download"></i> นำเข้าข้อมูล
+        </button>
+      </div>
+
+      <!-- Preview Area -->
+      <div id="importPreviewArea" style="display: none;">
+        <h5 style="margin: 1rem 0 0.5rem; font-weight: 600;"><i class="fas fa-table"></i> ตัวอย่างข้อมูลที่จะนำเข้า:</h5>
+        <div class="sync-preview-container">
+          <table id="importPreviewTable" class="sync-preview-table">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Export Tab Content -->
+    <div id="exportTabContent" class="sync-tab-content">
+      <div class="sync-info-box success">
+        <i class="fas fa-info-circle"></i>
+        <p>ส่งออกคะแนนจากระบบเป็นไฟล์ CSV สำหรับนำเข้า SchoolMIS</p>
+      </div>
+
+      <div class="sync-export-preview" id="exportPreview">
+        <i class="fas fa-users"></i>
+        <p>เลือกชีตคะแนนเพื่อดูข้อมูลและส่งออก</p>
+      </div>
+
+      <div class="sync-action-buttons">
+        <button onclick="previewExport()" class="sync-btn sync-btn-secondary" id="previewExportBtn" disabled>
+          <i class="fas fa-eye"></i> ดูตัวอย่าง
+        </button>
+        <button onclick="executeExport()" class="sync-btn sync-btn-primary" id="executeExportBtn" disabled>
+          <i class="fas fa-file-download"></i> ดาวน์โหลด (ภาคเดียว)
+        </button>
+        <button onclick="executeExportAverage()" class="sync-btn sync-btn-success" id="executeExportAvgBtn" disabled style="background:#10b981;">
+          <i class="fas fa-calculator"></i> ดาวน์โหลด เฉลี่ย 2 ภาค
+        </button>
+      </div>
+
+      <!-- Export Preview Area -->
+      <div id="exportPreviewArea" style="display: none;">
+        <h5 style="margin: 1rem 0 0.5rem; font-weight: 600;"><i class="fas fa-table"></i> ตัวอย่างข้อมูลที่จะส่งออก:</h5>
+        <div class="sync-preview-container">
+          <table id="exportPreviewTable" class="sync-preview-table">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Compare Tab Content -->
+    <div id="compareTabContent" class="sync-tab-content">
+      <div class="sync-info-box warning">
+        <i class="fas fa-info-circle"></i>
+        <p>เปรียบเทียบข้อมูลในระบบกับไฟล์ SchoolMIS เพื่อดูความแตกต่าง</p>
+      </div>
+
+      <div class="sync-upload-area" id="csvCompareUploadArea"
+           onclick="document.getElementById('csvCompareFileInput').click()"
+           ondragover="event.preventDefault(); this.classList.add('drag-over')"
+           ondragleave="this.classList.remove('drag-over')"
+           ondrop="handleCompareDrop(event)">
+        <i class="fas fa-file-csv"></i>
+        <p>ลากไฟล์ CSV จาก SchoolMIS มาวางที่นี่<br><small>เพื่อเปรียบเทียบกับข้อมูลในระบบ</small></p>
+        <input type="file" id="csvCompareFileInput" accept=".csv" style="display: none;" onchange="handleCompareFileChange(this)">
+      </div>
+
+      <div id="compareFileInfo" class="sync-file-info" style="display: none;">
+        <i class="fas fa-file-csv"></i>
+        <span id="compareFileName"></span>
+        <button onclick="clearCompareFile()" class="sync-remove-file">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="sync-action-buttons">
+        <button onclick="executeCompare()" class="sync-btn sync-btn-warning" id="executeCompareBtn" disabled>
+          <i class="fas fa-balance-scale"></i> เปรียบเทียบข้อมูล
+        </button>
+      </div>
+
+      <!-- Compare Results -->
+      <div id="compareResults" style="display: none;">
+        <div class="sync-compare-summary">
+          <div class="sync-summary-item success">
+            <span class="count" id="matchedCount">0</span>
+            <span class="label">ตรงกัน</span>
+          </div>
+          <div class="sync-summary-item warning">
+            <span class="count" id="differentCount">0</span>
+            <span class="label">ต่างกัน</span>
+          </div>
+          <div class="sync-summary-item danger">
+            <span class="count" id="notFoundCount">0</span>
+            <span class="label">ไม่พบในระบบ</span>
+          </div>
+        </div>
+
+        <div id="differencesList" style="display: none;">
+          <h5 style="margin: 0.5rem 0; font-weight: 600;"><i class="fas fa-exclamation-triangle"></i> รายการที่แตกต่าง:</h5>
+          <div class="sync-preview-container">
+            <table id="differencesTable" class="sync-preview-table">
+              <thead>
+                <tr>
+                  <th>รหัส</th>
+                  <th>ชื่อ</th>
+                  <th>ระบบ (กลาง/ปลาย/รวม)</th>
+                  <th>SchoolMIS (กลาง/ปลาย/รวม)</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status/Result Area -->
+    <div id="syncStatusArea" class="sync-status-area" style="display: none;">
+      <div class="sync-status-message" id="syncStatusMessage"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/**
+ * ===================================================================
+ * 🔄 SCHOOLMIS SYNC - JavaScript Functions
+ * ===================================================================
+ */
+
+var uploadedCsvContent = null;
+var compareCsvContent = null;
+var syncScoreSheetsList = [];
+
+/**
+ * สลับ Tab
+ */
+function switchSyncTab(event, tabName) {
+  document.querySelectorAll('.sync-tab').forEach(tab => tab.classList.remove('active'));
+  document.querySelectorAll('.sync-tab-content').forEach(content => content.classList.remove('active'));
+  event.target.closest('.sync-tab').classList.add('active');
+  document.getElementById(`${tabName}TabContent`).classList.add('active');
+  document.getElementById('syncStatusArea').style.display = 'none';
+}
+
+/**
+ * โหลดรายการชีตคะแนน (แยกตามชั้น/ห้อง)
+ */
+var allSyncSheets = [];
+
+function loadSyncScoreSheetsList() {
+  showSyncStatus('กำลังโหลดรายการชีต...', 'loading');
+
+  if (typeof google === 'undefined' || !google.script || !google.script.run) {
+    showSyncStatus('⚠️ ไม่สามารถเชื่อมต่อ Backend ได้ (ทดสอบในโหมด Demo)', 'warning');
+    hideSyncStatus();
+    return;
+  }
+
+  try {
+    google.script.run
+      .withSuccessHandler(function(data) {
+        var grades = (data && data.grades) || [];
+        allSyncSheets = (data && data.sheets) || [];
+        syncScoreSheetsList = allSyncSheets;
+
+        var gradeSelect = document.getElementById('syncGradeSelect');
+        gradeSelect.innerHTML = '<option value="">-- เลือกชั้น --</option>';
+
+        grades.forEach(function(g) {
+          var option = document.createElement('option');
+          option.value = g;
+          option.textContent = g;
+          gradeSelect.appendChild(option);
+        });
+
+        var sheetSelect = document.getElementById('syncSheetSelect');
+        sheetSelect.innerHTML = '<option value="">-- เลือกวิชา --</option>';
+
+        hideSyncStatus();
+      })
+      .withFailureHandler(function(error) {
+        showSyncStatus('ไม่สามารถโหลดรายการชีต: ' + (error.message || error), 'error');
+      })
+      .getScoreSheetsForSync();
+  } catch (e) {
+    console.error('Error loading sheets:', e);
+    showSyncStatus('เกิดข้อผิดพลาด: ' + e.message, 'error');
+  }
+}
+
+/**
+ * เมื่อเลือกชั้น/ห้องเปลี่ยน → กรองวิชา
+ */
+function onSyncGradeChange() {
+  var gradeClass = document.getElementById('syncGradeSelect').value;
+  var sheetSelect = document.getElementById('syncSheetSelect');
+  sheetSelect.innerHTML = '<option value="">-- เลือกวิชา --</option>';
+
+  if (!gradeClass) {
+    onSyncSheetChange();
+    return;
+  }
+
+  var filtered = allSyncSheets.filter(function(s) { return s.gradeClass === gradeClass; });
+
+  filtered.forEach(function(sheet) {
+    var option = document.createElement('option');
+    option.value = sheet.sheetName;
+    option.textContent = sheet.subjectName || sheet.sheetName;
+    sheetSelect.appendChild(option);
+  });
+
+  if (filtered.length === 1) {
+    sheetSelect.value = filtered[0].sheetName;
+  }
+
+  onSyncSheetChange();
+}
+
+/**
+ * เมื่อเลือกวิชาเปลี่ยน
+ */
+function onSyncSheetChange() {
+  var sheetName = document.getElementById('syncSheetSelect').value;
+
+  if (sheetName) {
+    var found = allSyncSheets.find(function(s) { return s.sheetName === sheetName; });
+    var displayName = found ? (found.subjectName || sheetName) : sheetName;
+    var gradeClass = document.getElementById('syncGradeSelect').value || '';
+
+    document.getElementById('exportPreview').innerHTML =
+      '<i class="fas fa-check-circle" style="color: #10b981;"></i>' +
+      '<p>พร้อมส่งออก: <strong>' + gradeClass + ' — ' + displayName + '</strong></p>';
+    document.getElementById('previewExportBtn').disabled = false;
+    document.getElementById('executeExportBtn').disabled = false;
+    document.getElementById('executeExportAvgBtn').disabled = false;
+  } else {
+    document.getElementById('exportPreview').innerHTML =
+      '<i class="fas fa-users"></i>' +
+      '<p>เลือกชั้นและวิชาเพื่อดูข้อมูลและส่งออก</p>';
+    document.getElementById('previewExportBtn').disabled = true;
+    document.getElementById('executeExportBtn').disabled = true;
+    document.getElementById('executeExportAvgBtn').disabled = true;
+  }
+}
+
+/**
+ * ตั้งค่า File Upload Areas
+ */
+function initSyncUploadAreas() {
+  setupSyncUploadArea('csvUploadArea', 'csvFileInput', handleImportFileSelect);
+  setupSyncUploadArea('csvCompareUploadArea', 'csvCompareFileInput', handleCompareFileSelect);
+}
+
+function setupSyncUploadArea(areaId, inputId, callback) {
+  const uploadArea = document.getElementById(areaId);
+  const fileInput = document.getElementById(inputId);
+  if (!uploadArea || !fileInput) return;
+
+  uploadArea.addEventListener('click', () => fileInput.click());
+  uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
+  uploadArea.addEventListener('dragleave', () => { uploadArea.classList.remove('drag-over'); });
+  uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadArea.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file && file.name.endsWith('.csv')) { callback(file); }
+    else { showSyncStatus('กรุณาเลือกไฟล์ .csv เท่านั้น', 'error'); }
+  });
+  fileInput.addEventListener('change', (e) => { const file = e.target.files[0]; if (file) callback(file); });
+}
+
+function handleImportFileChange(input) { const file = input.files[0]; if (file) handleImportFileSelect(file); }
+function handleCompareFileChange(input) { const file = input.files[0]; if (file) handleCompareFileSelect(file); }
+
+function handleImportDrop(event) {
+  event.preventDefault();
+  event.currentTarget.classList.remove('drag-over');
+  const file = event.dataTransfer.files[0];
+  if (file && file.name.toLowerCase().endsWith('.csv')) { handleImportFileSelect(file); }
+  else { showSyncStatus('กรุณาเลือกไฟล์ .csv เท่านั้น', 'error'); }
+}
+
+function handleCompareDrop(event) {
+  event.preventDefault();
+  event.currentTarget.classList.remove('drag-over');
+  const file = event.dataTransfer.files[0];
+  if (file && file.name.toLowerCase().endsWith('.csv')) { handleCompareFileSelect(file); }
+  else { showSyncStatus('กรุณาเลือกไฟล์ .csv เท่านั้น', 'error'); }
+}
+
+function handleImportFileSelect(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    uploadedCsvContent = e.target.result;
+    document.getElementById('csvUploadArea').style.display = 'none';
+    document.getElementById('uploadedFileInfo').style.display = 'flex';
+    document.getElementById('uploadedFileName').textContent = file.name;
+    document.getElementById('previewImportBtn').disabled = false;
+    document.getElementById('executeImportBtn').disabled = false;
+    showSyncStatus(`โหลดไฟล์ "${file.name}" สำเร็จ`, 'success');
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function handleCompareFileSelect(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    compareCsvContent = e.target.result;
+    document.getElementById('csvCompareUploadArea').style.display = 'none';
+    document.getElementById('compareFileInfo').style.display = 'flex';
+    document.getElementById('compareFileName').textContent = file.name;
+    document.getElementById('executeCompareBtn').disabled = false;
+    showSyncStatus(`โหลดไฟล์ "${file.name}" สำเร็จ พร้อมเปรียบเทียบ`, 'success');
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function clearUploadedFile() {
+  uploadedCsvContent = null;
+  document.getElementById('csvUploadArea').style.display = 'block';
+  document.getElementById('uploadedFileInfo').style.display = 'none';
+  document.getElementById('csvFileInput').value = '';
+  document.getElementById('previewImportBtn').disabled = true;
+  document.getElementById('executeImportBtn').disabled = true;
+  document.getElementById('importPreviewArea').style.display = 'none';
+  hideSyncStatus();
+}
+
+function clearCompareFile() {
+  compareCsvContent = null;
+  document.getElementById('csvCompareUploadArea').style.display = 'block';
+  document.getElementById('compareFileInfo').style.display = 'none';
+  document.getElementById('csvCompareFileInput').value = '';
+  document.getElementById('executeCompareBtn').disabled = true;
+  document.getElementById('compareResults').style.display = 'none';
+  hideSyncStatus();
+}
+
+/**
+ * ดูตัวอย่างข้อมูลที่จะนำเข้า
+ */
+function previewImport() {
+  if (!uploadedCsvContent) { showSyncStatus('กรุณาอัพโหลดไฟล์ CSV ก่อน', 'error'); return; }
+  try {
+    const lines = uploadedCsvContent.split(/\r?\n/);
+    const headers = parseSyncCSVLine(lines[0]);
+    const previewArea = document.getElementById('importPreviewArea');
+    const table = document.getElementById('importPreviewTable');
+
+    let headerHtml = '<tr>';
+    headers.slice(0, 8).forEach(h => { headerHtml += `<th>${escapeSyncHtml(h)}</th>`; });
+    if (headers.length > 8) headerHtml += '<th>...</th>';
+    headerHtml += '</tr>';
+    table.querySelector('thead').innerHTML = headerHtml;
+
+    let bodyHtml = '';
+    for (let i = 1; i <= Math.min(5, lines.length - 1); i++) {
+      if (!lines[i].trim()) continue;
+      const cols = parseSyncCSVLine(lines[i]);
+      bodyHtml += '<tr>';
+      cols.slice(0, 8).forEach(c => { bodyHtml += `<td>${escapeSyncHtml(c)}</td>`; });
+      if (cols.length > 8) bodyHtml += '<td>...</td>';
+      bodyHtml += '</tr>';
+    }
+    table.querySelector('tbody').innerHTML = bodyHtml;
+    previewArea.style.display = 'block';
+  } catch (error) {
+    showSyncStatus('ไม่สามารถอ่านไฟล์ CSV: ' + error.message, 'error');
+  }
+}
+
+/**
+ * ดำเนินการนำเข้า
+ */
+function executeImport() {
+  const sheetName = document.getElementById('syncSheetSelect').value;
+  const term = document.getElementById('syncTermSelect').value;
+  if (!sheetName) { showSyncStatus('กรุณาเลือกชีตคะแนน', 'error'); return; }
+  if (!uploadedCsvContent) { showSyncStatus('กรุณาอัพโหลดไฟล์ CSV', 'error'); return; }
+  if (typeof google === 'undefined' || !google.script || !google.script.run) { showSyncStatus('⚠️ ไม่สามารถเชื่อมต่อ Backend ได้', 'error'); return; }
+
+  showSyncStatus('กำลังนำเข้าข้อมูล...', 'loading');
+  const base64Content = btoa(unescape(encodeURIComponent(uploadedCsvContent)));
+
+  try {
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (result.success) {
+          let msg = result.message;
+          if (result.notFound && result.notFound.length > 0) {
+            msg += `<br><small>ไม่พบในระบบ: ${result.notFound.slice(0, 3).map(s => s.name).join(', ')}${result.notFound.length > 3 ? '...' : ''}</small>`;
+          }
+          showSyncStatus(msg, 'success');
+        } else {
+          showSyncStatus('เกิดข้อผิดพลาด: ' + result.error, 'error');
+        }
+      })
+      .withFailureHandler(function(error) {
+        showSyncStatus('เกิดข้อผิดพลาด: ' + (error.message || error), 'error');
+      })
+      .importSchoolMISFromUpload(base64Content, sheetName, term);
+  } catch (e) {
+    showSyncStatus('เกิดข้อผิดพลาด: ' + e.message, 'error');
+  }
+}
+
+/**
+ * ดูตัวอย่างข้อมูลที่จะส่งออก
+ */
+function previewExport() {
+  const sheetName = document.getElementById('syncSheetSelect').value;
+  if (!sheetName) { showSyncStatus('กรุณาเลือกชีตคะแนน', 'error'); return; }
+  if (typeof google === 'undefined' || !google.script || !google.script.run) { showSyncStatus('⚠️ ไม่สามารถเชื่อมต่อ Backend ได้', 'error'); return; }
+
+  showSyncStatus('กำลังโหลดข้อมูล...', 'loading');
+  try {
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (result.success) { displayExportPreview(result.csvContent); hideSyncStatus(); }
+        else { showSyncStatus('เกิดข้อผิดพลาด: ' + result.error, 'error'); }
+      })
+      .withFailureHandler(function(error) {
+        showSyncStatus('เกิดข้อผิดพลาด: ' + (error.message || error), 'error');
+      })
+      .exportToSchoolMIS_Average(sheetName, window._scoreSortMode || 'id');
+  } catch (e) {
+    showSyncStatus('เกิดข้อผิดพลาด: ' + e.message, 'error');
+  }
+}
+
+function displayExportPreview(csvContent) {
+  const lines = csvContent.split('\n');
+  const previewArea = document.getElementById('exportPreviewArea');
+  const table = document.getElementById('exportPreviewTable');
+
+  const headers = parseSyncCSVLine(lines[0]);
+  let headerHtml = '<tr>';
+  headers.slice(0, 8).forEach(h => { headerHtml += `<th>${escapeSyncHtml(h)}</th>`; });
+  if (headers.length > 8) headerHtml += '<th>...</th>';
+  headerHtml += '</tr>';
+  table.querySelector('thead').innerHTML = headerHtml;
+
+  let bodyHtml = '';
+  for (let i = 1; i <= Math.min(5, lines.length - 1); i++) {
+    if (!lines[i].trim()) continue;
+    const cols = parseSyncCSVLine(lines[i]);
+    bodyHtml += '<tr>';
+    cols.slice(0, 8).forEach(c => { bodyHtml += `<td>${escapeSyncHtml(c)}</td>`; });
+    if (cols.length > 8) bodyHtml += '<td>...</td>';
+    bodyHtml += '</tr>';
+  }
+  table.querySelector('tbody').innerHTML = bodyHtml;
+  previewArea.style.display = 'block';
+}
+
+/**
+ * ดำเนินการส่งออก
+ */
+function executeExport() {
+  const sheetName = document.getElementById('syncSheetSelect').value;
+  const term = document.getElementById('syncTermSelect').value;
+  if (!sheetName) { showSyncStatus('กรุณาเลือกชีตคะแนน', 'error'); return; }
+  if (typeof google === 'undefined' || !google.script || !google.script.run) { showSyncStatus('⚠️ ไม่สามารถเชื่อมต่อ Backend ได้', 'error'); return; }
+
+  showSyncStatus('กำลังสร้างไฟล์ CSV...', 'loading');
+  try {
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (result.success) {
+          try {
+            const binaryString = atob(result.base64);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) { bytes[i] = binaryString.charCodeAt(i); }
+            const blob = new Blob([bytes], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = result.fileName;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showSyncStatus(`✅ ดาวน์โหลดสำเร็จ: ${result.fileName} (${result.studentCount} คน)`, 'success');
+          } catch (e) { showSyncStatus('ไม่สามารถดาวน์โหลดไฟล์ได้: ' + e.message, 'error'); }
+        } else { showSyncStatus('เกิดข้อผิดพลาด: ' + result.error, 'error'); }
+      })
+      .withFailureHandler(function(error) {
+        showSyncStatus('เกิดข้อผิดพลาด: ' + (error.message || error), 'error');
+      })
+      .exportToSchoolMIS_Base64(sheetName, term, window._scoreSortMode || 'id');
+  } catch (e) {
+    showSyncStatus('เกิดข้อผิดพลาด: ' + e.message, 'error');
+  }
+}
+
+/**
+ * ดำเนินการส่งออกเฉลี่ย 2 ภาคเรียน
+ */
+function executeExportAverage() {
+  const sheetName = document.getElementById('syncSheetSelect').value;
+  if (!sheetName) { showSyncStatus('กรุณาเลือกชีตคะแนน', 'error'); return; }
+  if (typeof google === 'undefined' || !google.script || !google.script.run) { showSyncStatus('⚠️ ไม่สามารถเชื่อมต่อ Backend ได้', 'error'); return; }
+
+  showSyncStatus('กำลังคำนวณเฉลี่ย 2 ภาค และสร้างไฟล์ CSV...', 'loading');
+  try {
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (result.success) {
+          try {
+            const binaryString = atob(result.base64);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) { bytes[i] = binaryString.charCodeAt(i); }
+            const blob = new Blob([bytes], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = result.fileName;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showSyncStatus(`✅ ดาวน์โหลดเฉลี่ย 2 ภาคสำเร็จ: ${result.fileName} (${result.studentCount} คน)`, 'success');
+          } catch (e) { showSyncStatus('ไม่สามารถดาวน์โหลดไฟล์ได้: ' + e.message, 'error'); }
+        } else { showSyncStatus('เกิดข้อผิดพลาด: ' + result.error, 'error'); }
+      })
+      .withFailureHandler(function(error) {
+        showSyncStatus('เกิดข้อผิดพลาด: ' + (error.message || error), 'error');
+      })
+      .exportToSchoolMIS_Average_Base64(sheetName, window._scoreSortMode || 'id');
+  } catch (e) {
+    showSyncStatus('เกิดข้อผิดพลาด: ' + e.message, 'error');
+  }
+}
+
+/**
+ * ดำเนินการเปรียบเทียบ
+ */
+function executeCompare() {
+  const sheetName = document.getElementById('syncSheetSelect').value;
+  const term = document.getElementById('syncTermSelect').value;
+  if (!sheetName) { showSyncStatus('กรุณาเลือกชีตคะแนน', 'error'); return; }
+  if (!compareCsvContent) { showSyncStatus('กรุณาอัพโหลดไฟล์ CSV เพื่อเปรียบเทียบ', 'error'); return; }
+  if (typeof google === 'undefined' || !google.script || !google.script.run) { showSyncStatus('⚠️ ไม่สามารถเชื่อมต่อ Backend ได้', 'error'); return; }
+
+  showSyncStatus('กำลังเปรียบเทียบข้อมูล...', 'loading');
+  try {
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (result.summary) { displayCompareResults(result); hideSyncStatus(); }
+        else if (result.error) { showSyncStatus('เกิดข้อผิดพลาด: ' + result.error, 'error'); }
+      })
+      .withFailureHandler(function(error) {
+        showSyncStatus('เกิดข้อผิดพลาด: ' + (error.message || error), 'error');
+      })
+      .compareWithSchoolMIS(compareCsvContent, sheetName, term);
+  } catch (e) {
+    showSyncStatus('เกิดข้อผิดพลาด: ' + e.message, 'error');
+  }
+}
+
+function displayCompareResults(result) {
+  const resultsArea = document.getElementById('compareResults');
+  document.getElementById('matchedCount').textContent = result.summary.matched;
+  document.getElementById('differentCount').textContent = result.summary.different;
+  document.getElementById('notFoundCount').textContent = result.summary.notInSystem;
+  resultsArea.style.display = 'block';
+
+  if (result.differences && result.differences.length > 0) {
+    const diffList = document.getElementById('differencesList');
+    const tbody = document.querySelector('#differencesTable tbody');
+    let html = '';
+    result.differences.slice(0, 10).forEach(diff => {
+      html += `<tr>
+        <td>${escapeSyncHtml(diff.code)}</td>
+        <td>${escapeSyncHtml(diff.name)}</td>
+        <td>${diff.system.midterm}/${diff.system.final}/${diff.system.total} (${diff.system.grade})</td>
+        <td>${diff.schoolmis.midterm}/${diff.schoolmis.final}/${diff.schoolmis.total} (${diff.schoolmis.grade})</td>
+      </tr>`;
+    });
+    if (result.differences.length > 10) {
+      html += `<tr><td colspan="4" style="text-align:center; color:#6b7280;">และอีก ${result.differences.length - 10} รายการ...</td></tr>`;
+    }
+    tbody.innerHTML = html;
+    diffList.style.display = 'block';
+  } else {
+    document.getElementById('differencesList').style.display = 'none';
+  }
+}
+
+function showSyncStatus(message, type) {
+  const statusArea = document.getElementById('syncStatusArea');
+  const statusMsg = document.getElementById('syncStatusMessage');
+  let icon = '';
+  if (type === 'loading') icon = '<span class="sync-spinner"></span>';
+  else if (type === 'success') icon = '<i class="fas fa-check-circle"></i> ';
+  else if (type === 'error') icon = '<i class="fas fa-exclamation-circle"></i> ';
+  statusMsg.className = 'sync-status-message ' + type;
+  statusMsg.innerHTML = icon + message;
+  statusArea.style.display = 'block';
+  if (type === 'success') { setTimeout(hideSyncStatus, 4000); }
+}
+
+function hideSyncStatus() { document.getElementById('syncStatusArea').style.display = 'none'; }
+
+function resetSyncForm() {
+  clearUploadedFile();
+  clearCompareFile();
+  document.getElementById('exportPreviewArea').style.display = 'none';
+  document.getElementById('compareResults').style.display = 'none';
+  hideSyncStatus();
+}
+
+function parseSyncCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
+      else { inQuotes = !inQuotes; }
+    } else if (char === ',' && !inQuotes) { result.push(current.trim()); current = ''; }
+    else { current += char; }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+function escapeSyncHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text || '';
+  return div.innerHTML;
+}
+
+// Initialize
+setTimeout(function() {
+  initSyncUploadAreas();
+  loadSyncScoreSheetsList();
+}, 100);
+
+</script>
+</body>
+</html>
