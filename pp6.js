@@ -35,6 +35,21 @@ function _createCacheKey(prefix, ...args) {
 }
 
 /**
+ * ล้าง cache ทั้งหมดของ ปพ.6 (เรียกเมื่อข้อมูลนักเรียนเปลี่ยน)
+ */
+function clearPp6Cache() {
+  try {
+    var cache = CacheService.getScriptCache();
+    cache.removeAll(['students_master_', 'sheet_Students', 'sheet_SCORES_WAREHOUSE']);
+    Logger.log('✅ ล้าง cache ปพ.6 เรียบร้อย');
+    return 'ล้าง cache เรียบร้อย';
+  } catch(e) {
+    Logger.log('❌ clearPp6Cache error: ' + e.message);
+    return 'error: ' + e.message;
+  }
+}
+
+/**
  * ดึงข้อมูลจาก cache
  */
 function _getFromCache(key, defaultValue = null) {
@@ -198,7 +213,7 @@ function _readSheetToObjects(sheetName, useCache = true) {
     for (let i = 1; i < values.length; i++) {
       const row = {};
       headers.forEach((header, index) => {
-        row[header] = values[i][index] || '';
+        row[header] = (values[i][index] != null) ? values[i][index] : '';
       });
       data.push(row);
     }
@@ -831,18 +846,17 @@ function getStudentListForPp6(grade, classNo) {
       name: studentNameMap.get(id) || `นักเรียนรหัส ${id} (ไม่มีชื่อในทะเบียน)`
     }));
 
-    // --- 👇 แก้ไข/เพิ่มโค้ดเรียงลำดับให้ใช้ localeCompare มาตรฐาน ---
-    result.sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, {numeric: true}));
-    // --- 👆 สิ้นสุดโค้ดที่แก้ไข ---
+    // --- แก้ไข/เพิ่มโค้ดเรียงลำดับให้ใช้ localeCompare มาตรฐาน ---
+   result.sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, {numeric: true}));
+    // --- สิ้นสุดโค้ดที่แก้ไข ---
 
-    _setToCache(cacheKey, result, CACHE_EXPIRATION.LONG);
-    return result;
-  } catch (error) {
-    Logger.log('Error in getStudentListForPp6:', error.message);
-    throw new Error('ไม่สามารถดึงข้อมูลรายชื่อนักเรียนได้: ' + error.message);
+    _setToCache(cacheKey, result, CACHE_EXPIRATION.SHORT);
+    return result;
+  } catch (error) {
+    Logger.log('Error in getStudentListForPp6:', error.message);
+    throw new Error('ไม่สามารถดึงข้อมูลรายชื่อนักเรียนได้: ' + error.message);
   }
 }
-
 
 /**
  * ฟังก์ชันดึงชื่อครูประจำชั้นจากชีต HomeroomTeachers
@@ -1009,13 +1023,15 @@ function _pp6_buildDocPdf(data) {
   var SgW = [173, 172, 172];
 
   var tName = (data.homeroomTeacher && data.homeroomTeacher !== '...') ? data.homeroomTeacher : '';
+  var t2Name = (data.homeroomTeacher2 && data.homeroomTeacher2 !== '') ? data.homeroomTeacher2 : '';
   var nm1 = tName ? '(' + tName + ')' : '(.................................)';
+  var nm1t2 = t2Name ? '(' + t2Name + ')' : '(.................................)';
   var nm2 = data.principalName ? '(' + data.principalName + ')' : '(.................................)';
 
   var signData = [
-    ['ลงชื่อ..................................', nm1, 'ครูที่ปรึกษา'],
-    ['ลงชื่อ..................................', nm2, 'ผู้บริหารสถานศึกษา'],
-    ['ลงชื่อ..................................', '(.................................)', 'ผู้ปกครอง']
+    ['ลงชื่อ..................................', nm1, 'ครูประจำชั้นคนที่ 1'],
+    ['ลงชื่อ..................................', nm1t2, 'ครูประจำชั้นคนที่ 2'],
+    ['ลงชื่อ..................................', nm2, 'ผู้บริหารสถานศึกษา']
   ];
   var sr = sigT.appendTableRow();
   signData.forEach(function(lines, ci) {
@@ -1157,8 +1173,10 @@ function generatePp6PDFComplete(studentId, term = 'both', showRank = true) {
     const studentInfo = typeof getStudentInfo_ === 'function' ? getStudentInfo_(studentId) : null;
     const teacherGrade = studentInfo ? studentInfo.grade : grade;
     const teacherClassNo = studentInfo ? String(studentInfo.classNo) : String(classNo);
-    const homeroomTeacher = getHomeroomTeacher(teacherGrade, teacherClassNo);
-    Logger.log('🔍 PP6 teacher lookup: grade=' + teacherGrade + ', classNo=' + teacherClassNo + ', result=' + homeroomTeacher);
+    const _htPp6 = getHomeroomTeachers(teacherGrade, teacherClassNo);
+    const homeroomTeacher = _htPp6.teacher1;
+    const homeroomTeacher2 = _htPp6.teacher2;
+    Logger.log('🔍 PP6 teacher lookup: grade=' + teacherGrade + ', classNo=' + teacherClassNo + ', result=' + homeroomTeacher + (homeroomTeacher2 ? ', ' + homeroomTeacher2 : ''));
     const teacherComment = typeof getTeacherComment_ === 'function' ? getTeacherComment_(studentId) : '';
 
     const fileName = `ปพ6_${studentFullName || studentId}_${studentId}_${term}.pdf`;
@@ -1177,6 +1195,7 @@ function generatePp6PDFComplete(studentId, term = 'both', showRank = true) {
       assessments: assessments,
       principalName: settings['ชื่อผู้อำนวยการ'],
       homeroomTeacher: homeroomTeacher,
+      homeroomTeacher2: homeroomTeacher2,
       teacherComment: teacherComment,
       academicYear: settings['ปีการศึกษา'] || new Date().getFullYear() + 543,
       fileName: fileName,
@@ -1235,8 +1254,10 @@ function generatePp6PDFCompleteNoDrive(studentId, term = 'both', showRank = true
     const studentInfo = typeof getStudentInfo_ === 'function' ? getStudentInfo_(studentId) : null;
     const teacherGrade = studentInfo ? studentInfo.grade : grade;
     const teacherClassNo = studentInfo ? String(studentInfo.classNo) : String(classNo);
-    const homeroomTeacher = getHomeroomTeacher(teacherGrade, teacherClassNo);
-    Logger.log('🔍 PP6 NoDrive teacher lookup: grade=' + teacherGrade + ', classNo=' + teacherClassNo + ', result=' + homeroomTeacher);
+    const _htNd = getHomeroomTeachers(teacherGrade, teacherClassNo);
+    const homeroomTeacher = _htNd.teacher1;
+    const homeroomTeacher2 = _htNd.teacher2;
+    Logger.log('🔍 PP6 NoDrive teacher lookup: grade=' + teacherGrade + ', classNo=' + teacherClassNo + ', result=' + homeroomTeacher + (homeroomTeacher2 ? ', ' + homeroomTeacher2 : ''));
     const teacherComment = typeof getTeacherComment_ === 'function' ? getTeacherComment_(studentId) : '';
 
     const fileName = `ปพ6_${studentFullName || studentId}_${studentId}_${term}.pdf`;
@@ -1255,6 +1276,7 @@ function generatePp6PDFCompleteNoDrive(studentId, term = 'both', showRank = true
       assessments: assessments,
       principalName: settings['ชื่อผู้อำนวยการ'],
       homeroomTeacher: homeroomTeacher,
+      homeroomTeacher2: homeroomTeacher2,
       teacherComment: teacherComment,
       academicYear: settings['ปีการศึกษา'] || new Date().getFullYear() + 543,
       fileName: fileName,

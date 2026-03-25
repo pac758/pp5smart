@@ -269,9 +269,17 @@ function getClassAssessmentSummary(grade, classNo) {
 
     // ดึงผลประเมิน 3 ด้าน
     var readingData=[], charData=[], compData=[];
-    try { readingData = _readSheetToObjects('การประเมินอ่านคิดเขียน'); } catch(e){}
-    try { charData = _readSheetToObjects('การประเมินคุณลักษณะ'); } catch(e){}
-    try { compData = _readSheetToObjects('การประเมินสมรรถนะ'); } catch(e){}
+    try { readingData = _readSheetToObjects('การประเมินอ่านคิดเขียน'); } catch(e){ Logger.log('⚠️ readingData error: ' + e.message); }
+    try { charData = _readSheetToObjects('การประเมินคุณลักษณะ'); } catch(e){ Logger.log('⚠️ charData error: ' + e.message); }
+    try { compData = _readSheetToObjects('การประเมินสมรรถนะ'); } catch(e){ Logger.log('⚠️ compData error: ' + e.message); }
+    Logger.log('📊 Assessment data counts — reading: ' + readingData.length + ', char: ' + charData.length + ', comp: ' + compData.length);
+    if (compData.length > 0) {
+      var sampleRec = compData[0];
+      var sampleKeys = Object.keys(sampleRec).filter(function(k){ return k.indexOf('สื่อสาร_')===0 || k.indexOf('คิด_')===0 || k.indexOf('แก้ปัญหา_')===0 || k.indexOf('ทักษะชีวิต_')===0 || k.indexOf('เทคโนโลยี_')===0; });
+      Logger.log('📊 compData sample keys: ' + JSON.stringify(Object.keys(sampleRec)));
+      Logger.log('📊 compData score keys found: ' + sampleKeys.length + ' → ' + JSON.stringify(sampleKeys.slice(0,5)));
+      Logger.log('📊 compData sample studentId: ' + String(sampleRec['รหัสนักเรียน']||'(none)'));
+    }
 
     function findRec(arr, sid) {
       return arr.find(function(r){return String(r['รหัสนักเรียน']||'').trim()===sid;});
@@ -349,8 +357,8 @@ function exportClassSubjectScorePDF(grade, classNo, term) {
   var students = data.students;
   var isYear = data.mode === 'year';
 
-  var homeroomTeacher = '';
-  try { homeroomTeacher = getHomeroomTeacher(grade, classNo); } catch(e) {}
+  var homeroomTeacher = '', homeroomTeacher2 = '';
+  try { var _ht = getHomeroomTeachers(grade, classNo); homeroomTeacher = _ht.teacher1; homeroomTeacher2 = _ht.teacher2; } catch(e) {}
   var logoBase64 = _cr_getLogoBase64(settings);
 
   var termLabel = isYear ? 'ทั้งปี' : ('ภาคเรียนที่ ' + termNum);
@@ -382,7 +390,7 @@ function exportClassSubjectScorePDF(grade, classNo, term) {
     html += '<div class="title">สรุปคะแนน (' + termLabel + ')</div>';
     html += '<div class="info">ชั้น ' + data.gradeFullName + '/' + classNo
       + ' &nbsp;&nbsp; ปีการศึกษา ' + year
-      + ' &nbsp;&nbsp; ครูประจำชั้น ' + homeroomTeacher
+      + ' &nbsp;&nbsp; ครูประจำชั้น ' + homeroomTeacher + (homeroomTeacher2 ? ', ' + homeroomTeacher2 : '')
       + ' &nbsp;&nbsp; โรงเรียน' + schoolName + '</div>';
     html += '<div class="info" style="font-size:9pt;color:#555;">หน้า ' + (pageIdx+1) + '/' + subjectGroups.length + '</div>';
     html += '</div>';
@@ -450,8 +458,8 @@ function exportClassAssessmentSummaryPDF(grade, classNo) {
   var schoolName = settings['ชื่อโรงเรียน'] || settings.school_name || '';
   var year = settings['ปีการศึกษา'] || settings.academic_year || '';
 
-  var homeroomTeacher = '';
-  try { homeroomTeacher = getHomeroomTeacher(grade, classNo); } catch(e) {}
+  var homeroomTeacher = '', homeroomTeacher2 = '';
+  try { var _ht2 = getHomeroomTeachers(grade, classNo); homeroomTeacher = _ht2.teacher1; homeroomTeacher2 = _ht2.teacher2; } catch(e) {}
   var logoBase64 = _cr_getLogoBase64(settings);
 
   var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
