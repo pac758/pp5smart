@@ -1853,10 +1853,17 @@ function executePageScripts(container, page) {
   try {
     const scripts = [...container.querySelectorAll('script')];
     scripts.forEach(old => {
-      const s = document.createElement('script');
-      [...old.attributes].forEach(a => s.setAttribute(a.name, a.value));
-      s.appendChild(document.createTextNode(old.innerHTML));
-      old.parentNode.replaceChild(s, old);
+      try {
+        // Skip external CDN scripts that are already loaded (e.g. Bootstrap)
+        if (old.src && document.querySelector('script[src="' + old.getAttribute('src') + '"]') !== old) {
+          old.remove();
+          return;
+        }
+        const s = document.createElement('script');
+        [...old.attributes].forEach(a => s.setAttribute(a.name, a.value));
+        if (old.innerHTML.trim()) s.textContent = old.innerHTML;
+        old.parentNode.replaceChild(s, old);
+      } catch (se) { console.warn('⚠️ Script error in', page + ':', se.message); }
     });
     const fn = 'setup' + page.charAt(0).toUpperCase() + page.slice(1) + 'Page';
     if (typeof window[fn] === 'function') try { window[fn](); } catch (e) { if (DEV_MODE) console.error(e); }
