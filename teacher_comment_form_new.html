@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบบันทึกความคิดเห็นครูที่ปรึกษา</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4f46e5; --primary-light: #818cf8; --primary-bg: #eef2ff;
+            --success: #10b981; --success-bg: #ecfdf5;
+            --warning: #f59e0b; --danger: #ef4444;
+            --g50: #f8fafc; --g100: #f1f5f9; --g200: #e2e8f0; --g300: #cbd5e1;
+            --g400: #94a3b8; --g500: #64748b; --g600: #475569; --g700: #334155;
+            --g800: #1e293b; --g900: #0f172a;
+            --radius: 12px;
+            --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Sarabun', sans-serif; background: var(--g100); color: var(--g800); min-height: 100vh; line-height: 1.6; }
+
+        .tc-topbar { background: #fff; border-bottom: 1px solid var(--g200); padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .tc-topbar-left { display: flex; align-items: center; gap: 10px; }
+        .tc-topbar-left .icon-circle { width: 34px; height: 34px; background: var(--primary); border-radius: 9px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 16px; }
+        .tc-topbar-left h1 { font-size: 16px; font-weight: 700; color: var(--g800); }
+        .tc-progress-pill { display: flex; align-items: center; gap: 8px; background: var(--success-bg); color: var(--success); padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .tc-progress-pill .bar-bg { width: 70px; height: 5px; background: #d1fae5; border-radius: 3px; overflow: hidden; }
+        .tc-progress-pill .bar-fill { height: 100%; background: var(--success); border-radius: 3px; transition: width 0.3s; }
+
+        .tc-layout { display: grid; grid-template-columns: 320px 1fr; gap: 0; height: calc(100vh - 49px); }
+
+        .tc-left { background: #fff; border-right: 1px solid var(--g200); display: flex; flex-direction: column; overflow: hidden; }
+        .tc-class-sel { padding: 14px 14px 10px; border-bottom: 1px solid var(--g200); }
+        .tc-class-sel label { font-size: 11px; font-weight: 600; color: var(--g500); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; display: block; }
+        .tc-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+        .tc-chip { padding: 5px 12px; border-radius: 7px; font-size: 12.5px; font-weight: 500; cursor: pointer; border: 1.5px solid var(--g200); background: #fff; color: var(--g600); transition: all 0.15s; font-family: inherit; }
+        .tc-chip:hover { border-color: var(--primary-light); color: var(--primary); }
+        .tc-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 2px 8px rgba(79,70,229,0.3); }
+        .tc-search { padding: 8px 14px; border-bottom: 1px solid var(--g200); }
+        .tc-search input { width: 100%; padding: 7px 10px 7px 32px; border: 1.5px solid var(--g200); border-radius: 7px; font-size: 13px; font-family: inherit; outline: none; background: var(--g50) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.868-3.834zm-5.44.856a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z'/%3E%3C/svg%3E") no-repeat 10px center; transition: border-color 0.15s; }
+        .tc-search input:focus { border-color: var(--primary-light); }
+        .tc-student-list { flex: 1; overflow-y: auto; padding: 6px; }
+        .tc-student-list::-webkit-scrollbar { width: 5px; }
+        .tc-student-list::-webkit-scrollbar-thumb { background: var(--g300); border-radius: 3px; }
+        .tc-scard { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 9px; cursor: pointer; transition: all 0.15s; }
+        .tc-scard:hover { background: var(--g50); }
+        .tc-scard.active { background: var(--primary-bg); box-shadow: inset 3px 0 0 var(--primary); }
+        .tc-avatar { width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0; }
+        .tc-avatar.male { background: #6366f1; }
+        .tc-avatar.female { background: #ec4899; }
+        .tc-scard-info { flex: 1; min-width: 0; }
+        .tc-scard-name { font-size: 13px; font-weight: 600; color: var(--g800); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tc-scard-meta { font-size: 11px; color: var(--g400); }
+        .tc-badge { font-size: 10px; padding: 2px 7px; border-radius: 5px; font-weight: 600; flex-shrink: 0; }
+        .tc-badge.saved { background: #ecfdf5; color: #059669; }
+        .tc-badge.pending { background: #fef3c7; color: #d97706; }
+        .tc-left-loading { text-align: center; padding: 30px; color: var(--g400); font-size: 14px; }
+
+        .tc-right { display: flex; flex-direction: column; overflow-y: auto; padding: 20px 28px; background: var(--g50); }
+        .tc-right-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--g400); text-align: center; gap: 12px; }
+        .tc-right-empty .empty-icon { font-size: 48px; opacity: 0.5; }
+        .tc-right-empty p { font-size: 15px; }
+
+        .tc-sheader { display: flex; align-items: center; gap: 14px; background: #fff; padding: 16px 20px; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 16px; }
+        .tc-sheader .av-lg { width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; color: #fff; }
+        .tc-sheader-info h2 { font-size: 18px; font-weight: 700; color: var(--g900); }
+        .tc-sheader-info p { font-size: 13px; color: var(--g500); margin-top: 1px; }
+        .tc-sheader-info .tag { display: inline-block; padding: 1px 9px; background: var(--primary-bg); color: var(--primary); border-radius: 5px; font-size: 11px; font-weight: 600; margin-top: 3px; }
+
+        .tc-cur-comment { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 18px; margin-bottom: 16px; border-left: 4px solid var(--g300); }
+        .tc-cur-comment.has { border-left-color: var(--success); }
+        .tc-cur-comment h3 { font-size: 12px; font-weight: 600; color: var(--g500); margin-bottom: 6px; }
+        .tc-cur-comment p { font-size: 14px; color: var(--g700); line-height: 1.7; white-space: pre-wrap; }
+        .tc-cur-comment .empty-text { color: var(--g400); font-style: italic; }
+
+        .tc-form-card { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 22px; margin-bottom: 16px; }
+        .tc-form-card h3 { font-size: 14px; font-weight: 700; color: var(--g800); margin-bottom: 14px; }
+        .tc-phrases { margin-bottom: 10px; }
+        .tc-phrases label { font-size: 11px; font-weight: 600; color: var(--g500); margin-bottom: 6px; display: block; }
+        .tc-ptags { display: flex; flex-wrap: wrap; gap: 5px; }
+        .tc-ptag { padding: 4px 10px; border-radius: 7px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1.5px solid var(--g200); background: #fff; color: var(--g600); transition: all 0.15s; font-family: inherit; }
+        .tc-ptag:hover { border-color: var(--primary-light); background: var(--primary-bg); color: var(--primary); }
+        .tc-ptag.pos { border-color: #bbf7d0; color: #15803d; background: #f0fdf4; }
+        .tc-ptag.pos:hover { background: #dcfce7; }
+        .tc-ptag.imp { border-color: #fed7aa; color: #c2410c; background: #fff7ed; }
+        .tc-ptag.imp:hover { background: #ffedd5; }
+        .tc-textarea { width: 100%; min-height: 120px; padding: 12px 14px; border: 1.5px solid var(--g200); border-radius: 9px; font-family: inherit; font-size: 14px; line-height: 1.7; color: var(--g800); resize: vertical; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+        .tc-textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
+        .tc-textarea:disabled { background: var(--g50); color: var(--g400); }
+        .tc-ta-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+        .tc-charcount { font-size: 11px; color: var(--g400); }
+        .tc-autosave { font-size: 11px; color: var(--success); display: none; }
+        .tc-actions { display: flex; gap: 8px; margin-top: 14px; }
+        .tc-btn { padding: 9px 20px; border-radius: 9px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; border: none; display: flex; align-items: center; gap: 6px; transition: all 0.15s; }
+        .tc-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+        .tc-btn-primary { background: var(--primary); color: #fff; box-shadow: 0 2px 8px rgba(79,70,229,0.3); }
+        .tc-btn-primary:hover:not(:disabled) { background: #4338ca; transform: translateY(-1px); }
+        .tc-btn-secondary { background: #fff; color: var(--g600); border: 1.5px solid var(--g200); }
+        .tc-btn-secondary:hover:not(:disabled) { background: var(--g50); }
+
+        .tc-nav { display: flex; justify-content: space-between; align-items: center; }
+        .tc-nav-btn { padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer; border: 1.5px solid var(--g200); background: #fff; color: var(--g600); transition: all 0.15s; }
+        .tc-nav-btn:hover { border-color: var(--primary-light); color: var(--primary); }
+        .tc-nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .tc-nav-pos { font-size: 12px; color: var(--g400); }
+
+        .tc-toast { position: fixed; bottom: 20px; right: 20px; padding: 10px 18px; border-radius: 9px; font-size: 13px; font-weight: 600; color: #fff; box-shadow: var(--shadow-lg); display: none; align-items: center; gap: 6px; z-index: 1000; animation: tcSlideUp 0.3s ease-out; font-family: 'Sarabun', sans-serif; }
+        .tc-toast.success { background: var(--success); }
+        .tc-toast.error { background: var(--danger); }
+        @keyframes tcSlideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+        .tc-spinner { border: 3px solid var(--g200); border-top: 3px solid var(--primary); border-radius: 50%; width: 24px; height: 24px; animation: tcSpin 0.8s linear infinite; margin: 0 auto; }
+        @keyframes tcSpin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 768px) {
+            .tc-layout { grid-template-columns: 1fr; height: auto; }
+            .tc-left { border-right: none; border-bottom: 1px solid var(--g200); max-height: 45vh; }
+            .tc-right { padding: 14px; }
+            .tc-sheader { padding: 12px 14px; }
+            .tc-form-card { padding: 14px; }
+            .tc-actions { flex-direction: column; }
+            .tc-btn { justify-content: center; }
+            .tc-topbar { padding: 8px 12px; }
+            .tc-topbar-left h1 { font-size: 14px; }
+        }
+        @media (max-width: 480px) { .tc-topbar-left h1 { display: none; } }
+    </style>
+</head>
+<body>
+
+<div class="tc-topbar">
+    <div class="tc-topbar-left">
+        <div class="icon-circle">📝</div>
+        <h1>บันทึกความคิดเห็นครูที่ปรึกษา</h1>
+    </div>
+    <div class="tc-progress-pill" id="tcProgress" style="display:none;">
+        <span id="tcProgressText">0/0</span>
+        <div class="bar-bg"><div class="bar-fill" id="tcProgressBar" style="width:0%"></div></div>
+        <span id="tcProgressPct">0%</span>
+    </div>
+</div>
+
+<div class="tc-layout">
+    <div class="tc-left">
+        <div class="tc-class-sel">
+            <label>ชั้นเรียน / ห้อง</label>
+            <div class="tc-chips" id="tcGradeChips">
+                <div class="tc-left-loading" id="tcGradeLoading"><div class="tc-spinner"></div><br>กำลังโหลดชั้นเรียน...</div>
+            </div>
+            <div class="tc-chips" id="tcClassChips" style="margin-top:6px;"></div>
+        </div>
+        <div class="tc-search">
+            <input type="text" id="tcSearchInput" placeholder="ค้นหานักเรียน..." disabled>
+        </div>
+        <div class="tc-student-list" id="tcStudentList">
+            <div class="tc-left-loading">เลือกชั้นเรียนและห้องเพื่อแสดงรายชื่อ</div>
+        </div>
+    </div>
+
+    <div class="tc-right" id="tcRightPanel">
+        <div class="tc-right-empty" id="tcEmptyState">
+            <div class="empty-icon">📋</div>
+            <p>เลือกนักเรียนจากรายชื่อด้านซ้าย<br>เพื่อเริ่มบันทึกความคิดเห็น</p>
+        </div>
+        <div id="tcFormArea" style="display:none;">
+            <div class="tc-sheader" id="tcStudentHeader">
+                <div class="av-lg" id="tcAvatarLg" style="background:#6366f1;"></div>
+                <div class="tc-sheader-info">
+                    <h2 id="tcStudentName"></h2>
+                    <p id="tcStudentMeta"></p>
+                    <span class="tag" id="tcStudentTag"></span>
+                </div>
+            </div>
+            <div class="tc-cur-comment" id="tcCurComment">
+                <h3>💬 ความคิดเห็นปัจจุบัน</h3>
+                <p id="tcCurCommentText" class="empty-text">ยังไม่มีความคิดเห็น</p>
+            </div>
+            <div class="tc-form-card">
+                <h3>✏️ เขียนความคิดเห็น</h3>
+                <div class="tc-phrases">
+                    <label>ข้อความสำเร็จรูป (กดเพื่อแทรก)</label>
+                    <div class="tc-ptags" id="tcPhraseTags">
+                        <button class="tc-ptag pos" data-text="นักเรียนมีความขยันหมั่นเพียร">ขยันหมั่นเพียร</button>
+                        <button class="tc-ptag pos" data-text="มีความรับผิดชอบดี">รับผิดชอบดี</button>
+                        <button class="tc-ptag pos" data-text="มีมนุษยสัมพันธ์ที่ดี เข้ากับเพื่อนได้ดี">เข้ากับเพื่อนดี</button>
+                        <button class="tc-ptag pos" data-text="ตั้งใจเรียน ส่งงานตรงเวลา">ตั้งใจเรียน</button>
+                        <button class="tc-ptag pos" data-text="มีความเป็นผู้นำ กล้าแสดงออก">มีความเป็นผู้นำ</button>
+                        <button class="tc-ptag imp" data-text="ควรพัฒนาด้านการอ่านและการเขียน">ควรพัฒนาการอ่านเขียน</button>
+                        <button class="tc-ptag imp" data-text="ควรตั้งใจเรียนให้มากขึ้น">ควรตั้งใจเรียนเพิ่ม</button>
+                        <button class="tc-ptag imp" data-text="ควรมาเรียนให้สม่ำเสมอ">ควรมาเรียนสม่ำเสมอ</button>
+                    </div>
+                </div>
+                <textarea class="tc-textarea" id="tcCommentText" placeholder="พิมพ์ความคิดเห็นที่นี่ หรือกดข้อความสำเร็จรูปด้านบน..." disabled></textarea>
+                <div class="tc-ta-footer">
+                    <span class="tc-charcount" id="tcCharCount">0 ตัวอักษร</span>
+                    <span class="tc-autosave" id="tcAutoSave">● Auto-save</span>
+                </div>
+                <div class="tc-actions">
+                    <button class="tc-btn tc-btn-primary" id="tcSaveBtn" disabled>💾 บันทึกความคิดเห็น</button>
+                    <button class="tc-btn tc-btn-secondary" id="tcClearBtn" disabled>🗑️ ล้าง</button>
+                </div>
+            </div>
+            <div class="tc-nav">
+                <button class="tc-nav-btn" id="tcPrevBtn" disabled>← คนก่อนหน้า</button>
+                <span class="tc-nav-pos" id="tcNavPos"></span>
+                <button class="tc-nav-btn" id="tcNextBtn" disabled>คนถัดไป →</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="tc-toast" id="tcToast"></div>
+
+<script>
+(function() {
+    'use strict';
+
+    var grades = [];
+    var currentGrade = '';
+    var currentClass = '';
+    var currentStudents = [];
+    var currentStudentIndex = -1;
+    var isSubmitting = false;
+    var autoSaveTimer = null;
+    var MAX_RETRY = 3;
+    var dataCache = { grades: null, classes: {}, students: {}, comments: {} };
+
+    function executeWithRetry(func, maxRetries) {
+        maxRetries = maxRetries || MAX_RETRY;
+        return new Promise(function(resolve, reject) {
+            function attempt(n) {
+                func().then(resolve).catch(function(err) {
+                    if (n < maxRetries) { setTimeout(function() { attempt(n + 1); }, 1000 * (n + 1)); }
+                    else { reject(err); }
+                });
+            }
+            attempt(0);
+        });
+    }
+
+    function showToast(msg, type) {
+        var t = document.getElementById('tcToast');
+        t.textContent = msg;
+        t.className = 'tc-toast ' + (type || 'success');
+        t.style.display = 'flex';
+        setTimeout(function() { t.style.display = 'none'; }, 3000);
+    }
+
+    function getInitials(name) {
+        if (!name) return '?';
+        var c = name.replace(/^(\u0e40\u0e14\u0e47\u0e01\u0e0a\u0e32\u0e22|\u0e40\u0e14\u0e47\u0e01\u0e2b\u0e0d\u0e34\u0e07|\u0e14\.\u0e0a\.|\u0e14\.\u0e0d\.|\u0e19\u0e32\u0e22|\u0e19\u0e32\u0e07\u0e2a\u0e32\u0e27|\u0e19\u0e32\u0e07)\.?\s*/, '');
+        return c.substring(0, 2);
+    }
+
+    function isMale(name) {
+        return /^(\u0e40\u0e14\u0e47\u0e01\u0e0a\u0e32\u0e22|\u0e14\.\u0e0a\.|\u0e19\u0e32\u0e22)/.test(name || '');
+    }
+
+    function initializeSystem() {
+        loadGrades();
+        setupEventListeners();
+    }
+
+    function loadGrades() {
+        var fn = function() {
+            return new Promise(function(resolve, reject) {
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                    google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getAvailableGrades();
+                } else {
+                    setTimeout(function() { resolve(['\u0e1b.1','\u0e1b.2','\u0e1b.3','\u0e1b.4','\u0e1b.5','\u0e1b.6']); }, 500);
+                }
+            });
+        };
+        executeWithRetry(fn).then(function(result) {
+            grades = result;
+            dataCache.grades = result;
+            renderGradeChips();
+        }).catch(function() {
+            document.getElementById('tcGradeLoading').innerHTML = '\u274c \u0e42\u0e2b\u0e25\u0e14\u0e0a\u0e31\u0e49\u0e19\u0e40\u0e23\u0e35\u0e22\u0e19\u0e44\u0e21\u0e48\u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08';
+        });
+    }
+
+    function renderGradeChips() {
+        var el = document.getElementById('tcGradeChips');
+        el.innerHTML = '';
+        grades.forEach(function(g) {
+            var b = document.createElement('button');
+            b.className = 'tc-chip';
+            b.textContent = g;
+            b.dataset.grade = g;
+            b.addEventListener('click', function() { selectGrade(g); });
+            el.appendChild(b);
+        });
+    }
+
+    function selectGrade(grade) {
+        currentGrade = grade;
+        currentClass = '';
+        currentStudents = [];
+        currentStudentIndex = -1;
+        document.querySelectorAll('#tcGradeChips .tc-chip').forEach(function(c) {
+            c.classList.toggle('active', c.dataset.grade === grade);
+        });
+        document.getElementById('tcClassChips').innerHTML = '';
+        showEmptyState();
+        loadClasses(grade);
+    }
+
+    function loadClasses(grade) {
+        if (dataCache.classes[grade]) { renderClassChips(dataCache.classes[grade]); return; }
+        document.getElementById('tcClassChips').innerHTML = '<span style="font-size:12px;color:var(--g400);">\u0e01\u0e33\u0e25\u0e31\u0e07\u0e42\u0e2b\u0e25\u0e14\u0e2b\u0e49\u0e2d\u0e07...</span>';
+        var fn = function() {
+            return new Promise(function(resolve, reject) {
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                    google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getAvailableClasses(grade);
+                } else {
+                    setTimeout(function() { resolve(['1','2']); }, 400);
+                }
+            });
+        };
+        executeWithRetry(fn, 2).then(function(result) {
+            dataCache.classes[grade] = result;
+            renderClassChips(result);
+        }).catch(function() {
+            document.getElementById('tcClassChips').innerHTML = '<span style="font-size:12px;color:var(--danger);">\u0e42\u0e2b\u0e25\u0e14\u0e2b\u0e49\u0e2d\u0e07\u0e44\u0e21\u0e48\u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08</span>';
+        });
+    }
+
+    function renderClassChips(data) {
+        var el = document.getElementById('tcClassChips');
+        el.innerHTML = '';
+        data.forEach(function(c) {
+            var b = document.createElement('button');
+            b.className = 'tc-chip';
+            b.textContent = '\u0e2b\u0e49\u0e2d\u0e07 ' + c;
+            b.dataset.classno = c;
+            b.addEventListener('click', function() { selectClass(c); });
+            el.appendChild(b);
+        });
+    }
+
+    function selectClass(classNo) {
+        currentClass = classNo;
+        currentStudents = [];
+        currentStudentIndex = -1;
+        document.querySelectorAll('#tcClassChips .tc-chip').forEach(function(c) {
+            c.classList.toggle('active', c.dataset.classno === classNo);
+        });
+        showEmptyState();
+        loadStudents(currentGrade, classNo);
+    }
+
+    function loadStudents(grade, classNo) {
+        var key = grade + '-' + classNo;
+        if (dataCache.students[key]) {
+            currentStudents = dataCache.students[key];
+            renderStudentList();
+            document.getElementById('tcSearchInput').disabled = false;
+            return;
+        }
+        document.getElementById('tcStudentList').innerHTML = '<div class="tc-left-loading"><div class="tc-spinner"></div><br>\u0e01\u0e33\u0e25\u0e31\u0e07\u0e42\u0e2b\u0e25\u0e14\u0e19\u0e31\u0e01\u0e40\u0e23\u0e35\u0e22\u0e19...</div>';
+        var fn = function() {
+            return new Promise(function(resolve, reject) {
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                    google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getStudentsByGradeClass(grade, classNo);
+                } else {
+                    setTimeout(function() {
+                        resolve([
+                            {id:'67001', fullName:'\u0e14.\u0e0a.\u0e01\u0e21\u0e25\u0e20\u0e1e \u0e2a\u0e38\u0e02\u0e2a\u0e27\u0e31\u0e2a\u0e14\u0e34\u0e4c', grade:grade, classNo:classNo},
+                            {id:'67002', fullName:'\u0e14.\u0e0d.\u0e01\u0e19\u0e01\u0e27\u0e23\u0e23\u0e13 \u0e1e\u0e34\u0e21\u0e1e\u0e4c\u0e17\u0e2d\u0e07', grade:grade, classNo:classNo},
+                            {id:'67003', fullName:'\u0e14.\u0e0a.\u0e08\u0e23\u0e31\u0e2a\u0e1e\u0e25 \u0e27\u0e07\u0e28\u0e4c\u0e1b\u0e23\u0e30\u0e40\u0e2a\u0e23\u0e34\u0e10', grade:grade, classNo:classNo}
+                        ]);
+                    }, 500);
+                }
+            });
+        };
+        executeWithRetry(fn, 2).then(function(result) {
+            if (result && Array.isArray(result)) {
+                result.sort(function(a, b) { return String(a.id||'').localeCompare(String(b.id||'')); });
+            }
+            dataCache.students[key] = result;
+            currentStudents = result;
+            renderStudentList();
+            document.getElementById('tcSearchInput').disabled = false;
+        }).catch(function() {
+            document.getElementById('tcStudentList').innerHTML = '<div class="tc-left-loading">\u274c \u0e42\u0e2b\u0e25\u0e14\u0e19\u0e31\u0e01\u0e40\u0e23\u0e35\u0e22\u0e19\u0e44\u0e21\u0e48\u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08</div>';
+        });
+    }
+
+    function renderStudentList(filter) {
+        var el = document.getElementById('tcStudentList');
+        el.innerHTML = '';
+        var list = currentStudents;
+        if (filter) {
+            var f = filter.toLowerCase();
+            list = currentStudents.filter(function(s) {
+                return (s.fullName||'').toLowerCase().indexOf(f) >= 0 || (s.id||'').indexOf(f) >= 0;
+            });
+        }
+        list.forEach(function(s) {
+            var idx = currentStudents.indexOf(s);
+            var saved = dataCache.comments[s.id] && dataCache.comments[s.id].comment;
+            var male = isMale(s.fullName);
+            var card = document.createElement('div');
+            card.className = 'tc-scard' + (idx === currentStudentIndex ? ' active' : '');
+            card.dataset.idx = idx;
+            card.innerHTML =
+                '<div class="tc-avatar ' + (male ? 'male' : 'female') + '">' + getInitials(s.fullName) + '</div>' +
+                '<div class="tc-scard-info"><div class="tc-scard-name">' + (s.fullName||'') + '</div>' +
+                '<div class="tc-scard-meta">\u0e23\u0e2b\u0e31\u0e2a ' + (s.id||'') + '</div></div>' +
+                '<span class="tc-badge ' + (saved ? 'saved' : 'pending') + '">' +
+                (saved ? '\u2713 \u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\u0e41\u0e25\u0e49\u0e27' : '\u0e23\u0e2d\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01') + '</span>';
+            card.addEventListener('click', function() { selectStudent(idx); });
+            el.appendChild(card);
+        });
+        updateProgress();
+    }
+
+    function selectStudent(idx) {
+        currentStudentIndex = idx;
+        var s = currentStudents[idx];
+        if (!s) return;
+        document.querySelectorAll('.tc-scard').forEach(function(c) {
+            c.classList.toggle('active', parseInt(c.dataset.idx) === idx);
+        });
+        document.getElementById('tcEmptyState').style.display = 'none';
+        document.getElementById('tcFormArea').style.display = 'block';
+        var male = isMale(s.fullName);
+        document.getElementById('tcAvatarLg').style.background = male ? '#6366f1' : '#ec4899';
+        document.getElementById('tcAvatarLg').textContent = getInitials(s.fullName);
+        document.getElementById('tcStudentName').textContent = s.fullName || '';
+        document.getElementById('tcStudentMeta').textContent = '\u0e23\u0e2b\u0e31\u0e2a ' + (s.id || '');
+        document.getElementById('tcStudentTag').textContent = (s.grade || currentGrade) + '/' + (s.classNo || currentClass);
+        document.getElementById('tcCommentText').disabled = false;
+        document.getElementById('tcSaveBtn').disabled = false;
+        document.getElementById('tcClearBtn').disabled = false;
+        document.getElementById('tcPrevBtn').disabled = idx <= 0;
+        document.getElementById('tcNextBtn').disabled = idx >= currentStudents.length - 1;
+        document.getElementById('tcNavPos').textContent = (idx + 1) + ' / ' + currentStudents.length;
+        loadExistingComment(s.id);
+    }
+
+    function loadExistingComment(studentId, forceRefresh) {
+        if (!forceRefresh && dataCache.comments[studentId]) {
+            displayComment(dataCache.comments[studentId]);
+            return;
+        }
+        document.getElementById('tcCommentText').value = '';
+        document.getElementById('tcCurCommentText').textContent = '\u0e01\u0e33\u0e25\u0e31\u0e07\u0e42\u0e2b\u0e25\u0e14...';
+        document.getElementById('tcCurCommentText').className = 'empty-text';
+        var fn = function() {
+            return new Promise(function(resolve, reject) {
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                    google.script.run
+                        .withSuccessHandler(function(data) {
+                            if (data.success) { dataCache.comments[studentId] = data; resolve(data); }
+                            else { reject(new Error(data.error)); }
+                        })
+                        .withFailureHandler(reject)
+                        .getStudentFullData(studentId);
+                } else {
+                    setTimeout(function() { resolve({ success: true, student: currentStudents[currentStudentIndex], comment: '' }); }, 300);
+                }
+            });
+        };
+        executeWithRetry(fn, 2).then(function(data) {
+            displayComment(data);
+        }).catch(function() {
+            document.getElementById('tcCurCommentText').textContent = '\u0e44\u0e21\u0e48\u0e2a\u0e32\u0e21\u0e32\u0e23\u0e16\u0e42\u0e2b\u0e25\u0e14\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e44\u0e14\u0e49';
+        });
+    }
+
+    function displayComment(data) {
+        var comment = data.comment || '';
+        document.getElementById('tcCommentText').value = comment;
+        var curEl = document.getElementById('tcCurCommentText');
+        var curCard = document.getElementById('tcCurComment');
+        if (comment) {
+            curEl.textContent = comment;
+            curEl.className = '';
+            curCard.classList.add('has');
+        } else {
+            curEl.textContent = '\u0e22\u0e31\u0e07\u0e44\u0e21\u0e48\u0e21\u0e35\u0e04\u0e27\u0e32\u0e21\u0e04\u0e34\u0e14\u0e40\u0e2b\u0e47\u0e19';
+            curEl.className = 'empty-text';
+            curCard.classList.remove('has');
+        }
+        updateCharCount();
+    }
+
+    function saveComment() {
+        if (!currentStudents[currentStudentIndex]) return Promise.reject(new Error('No student'));
+        var studentId = currentStudents[currentStudentIndex].id;
+        var comment = document.getElementById('tcCommentText').value.trim();
+        if (!comment || comment.length < 10) {
+            showToast('\u0e04\u0e27\u0e32\u0e21\u0e04\u0e34\u0e14\u0e40\u0e2b\u0e47\u0e19\u0e15\u0e49\u0e2d\u0e07\u0e21\u0e35\u0e2d\u0e22\u0e48\u0e32\u0e07\u0e19\u0e49\u0e2d\u0e22 10 \u0e15\u0e31\u0e27\u0e2d\u0e31\u0e01\u0e29\u0e23', 'error');
+            return Promise.reject(new Error('Too short'));
+        }
+        return new Promise(function(resolve, reject) {
+            var saveFn = function() {
+                return new Promise(function(res, rej) {
+                    if (typeof google !== 'undefined' && google.script && google.script.run) {
+                        google.script.run.withSuccessHandler(res).withFailureHandler(rej).saveCommentWithValidation(studentId, comment);
+                    } else {
+                        setTimeout(function() { res({ success: true, message: '\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08', student: currentStudents[currentStudentIndex] }); }, 800);
+                    }
+                });
+            };
+            executeWithRetry(saveFn).then(function(result) {
+                if (result.success) {
+                    dataCache.comments[studentId] = { success: true, student: result.student, comment: comment };
+                    showToast('\u2705 \u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\u0e40\u0e23\u0e35\u0e22\u0e1a\u0e23\u0e49\u0e2d\u0e22 \u2014 ' + (result.student ? result.student.fullName : ''), 'success');
+                    var curEl = document.getElementById('tcCurCommentText');
+                    curEl.textContent = comment;
+                    curEl.className = '';
+                    document.getElementById('tcCurComment').classList.add('has');
+                    renderStudentList(document.getElementById('tcSearchInput').value);
+                    resolve(result);
+                } else {
+                    showToast('\u274c ' + (result.error || '\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\u0e44\u0e21\u0e48\u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08'), 'error');
+                    reject(new Error(result.error));
+                }
+            }).catch(function(error) {
+                showToast('\u274c \u0e44\u0e21\u0e48\u0e2a\u0e32\u0e21\u0e32\u0e23\u0e16\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\u0e44\u0e14\u0e49', 'error');
+                reject(error);
+            });
+        });
+    }
+
+    function saveCommentSilent(studentId, comment) {
+        var fn = function() {
+            return new Promise(function(resolve, reject) {
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                    google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).saveCommentWithValidation(studentId, comment);
+                } else {
+                    setTimeout(function() { resolve({ success: true }); }, 300);
+                }
+            });
+        };
+        executeWithRetry(fn, 1).then(function(result) {
+            if (result.success) {
+                dataCache.comments[studentId] = { success: true, student: result.student || {id: studentId}, comment: comment };
+                var el = document.getElementById('tcAutoSave');
+                el.style.display = 'inline';
+                el.textContent = '\u2714 \u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\u0e2d\u0e31\u0e15\u0e42\u0e19\u0e21\u0e31\u0e15\u0e34\u0e41\u0e25\u0e49\u0e27';
+                setTimeout(function() { el.style.display = 'none'; }, 2000);
+                renderStudentList(document.getElementById('tcSearchInput').value);
+            }
+        }).catch(function() {});
+    }
+
+    function showEmptyState() {
+        document.getElementById('tcEmptyState').style.display = 'flex';
+        document.getElementById('tcFormArea').style.display = 'none';
+        document.getElementById('tcStudentList').innerHTML = '<div class="tc-left-loading">\u0e01\u0e33\u0e25\u0e31\u0e07\u0e42\u0e2b\u0e25\u0e14...</div>';
+    }
+
+    function updateCharCount() {
+        var len = (document.getElementById('tcCommentText').value || '').length;
+        var el = document.getElementById('tcCharCount');
+        el.textContent = len + ' \u0e15\u0e31\u0e27\u0e2d\u0e31\u0e01\u0e29\u0e23';
+        el.style.color = len >= 10 ? 'var(--success)' : 'var(--danger)';
+    }
+
+    function updateProgress() {
+        var total = currentStudents.length;
+        if (total === 0) { document.getElementById('tcProgress').style.display = 'none'; return; }
+        var saved = 0;
+        currentStudents.forEach(function(s) { if (dataCache.comments[s.id] && dataCache.comments[s.id].comment) saved++; });
+        var pct = Math.round((saved / total) * 100);
+        document.getElementById('tcProgressText').textContent = saved + '/' + total;
+        document.getElementById('tcProgressBar').style.width = pct + '%';
+        document.getElementById('tcProgressPct').textContent = pct + '%';
+        document.getElementById('tcProgress').style.display = 'flex';
+    }
+
+    function setupEventListeners() {
+        document.getElementById('tcSearchInput').addEventListener('input', function() {
+            renderStudentList(this.value);
+        });
+
+        document.getElementById('tcPhraseTags').addEventListener('click', function(e) {
+            var btn = e.target.closest('.tc-ptag');
+            if (btn && btn.dataset.text) {
+                var ta = document.getElementById('tcCommentText');
+                var cur = ta.value;
+                ta.value = cur ? cur + ' ' + btn.dataset.text : btn.dataset.text;
+                ta.focus();
+                updateCharCount();
+            }
+        });
+
+        document.getElementById('tcCommentText').addEventListener('input', function() {
+            updateCharCount();
+            clearTimeout(autoSaveTimer);
+            var self = this;
+            autoSaveTimer = setTimeout(function() {
+                if (currentStudents[currentStudentIndex]) {
+                    var c = self.value.trim();
+                    if (c && c.length >= 10) { saveCommentSilent(currentStudents[currentStudentIndex].id, c); }
+                }
+            }, 5000);
+        });
+
+        document.getElementById('tcSaveBtn').addEventListener('click', function() {
+            if (isSubmitting) return;
+            isSubmitting = true;
+            var btn = this;
+            var orig = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '\u23f3 \u0e01\u0e33\u0e25\u0e31\u0e07\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01...';
+            saveComment().finally(function() {
+                isSubmitting = false;
+                btn.disabled = false;
+                btn.textContent = orig;
+            });
+        });
+
+        document.getElementById('tcClearBtn').addEventListener('click', function() {
+            document.getElementById('tcCommentText').value = '';
+            updateCharCount();
+            document.getElementById('tcCommentText').focus();
+        });
+
+        document.getElementById('tcPrevBtn').addEventListener('click', function() {
+            if (currentStudentIndex > 0) selectStudent(currentStudentIndex - 1);
+        });
+        document.getElementById('tcNextBtn').addEventListener('click', function() {
+            if (currentStudentIndex < currentStudents.length - 1) selectStudent(currentStudentIndex + 1);
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                var btn = document.getElementById('tcSaveBtn');
+                if (!btn.disabled) btn.click();
+            }
+        });
+    }
+
+    window.onerror = function(msg, url, lineNo, colNo, error) {
+        console.error('JS Error:', { msg: msg, url: url, lineNo: lineNo, error: error });
+        if (msg && (msg.indexOf('google.script') >= 0 || (error && error.message && error.message.indexOf('ScriptError') >= 0))) {
+            showToast('\u0e40\u0e0b\u0e2a\u0e0a\u0e31\u0e19\u0e2b\u0e21\u0e14\u0e2d\u0e32\u0e22\u0e38 \u0e01\u0e23\u0e38\u0e13\u0e32\u0e23\u0e35\u0e40\u0e1f\u0e23\u0e0a\u0e2b\u0e19\u0e49\u0e32\u0e40\u0e27\u0e47\u0e1a', 'error');
+        }
+        return false;
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeSystem);
+    } else {
+        initializeSystem();
+    }
+})();
+</script>
+</body>
+</html>

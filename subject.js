@@ -526,13 +526,9 @@ function generateSubjectScorePDFFixed(subjectName, subjectCode, grade, classNo, 
     blob.setName(fileName);
 
     // บันทึกไฟล์
-    const folderId = settings.pdfSaveFolderId || DriveApp.getRootFolder().getId();
-    const folder = DriveApp.getFolderById(folderId);
-    const file = folder.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
+    const url = _saveBlobGetUrl_(blob, null, settings.pdfSaveFolderId || null);
     Logger.log(`✅ สร้างไฟล์ PDF: ${fileName}`);
-    return file.getUrl();
+    return url;
     
   } catch (error) {
     Logger.log('❌ Error in generateSubjectScorePDFFixed:', error);

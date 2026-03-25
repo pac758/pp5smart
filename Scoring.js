@@ -868,7 +868,7 @@ function saveScoreSheetData(sheetName, term, studentScores, fullScores, fullFina
       const thisTotal  = total;
       let average = 0, finalGradeVal = '';
       if (thisTotal > 0 && otherTotal > 0) {
-        average = Math.round((thisTotal + otherTotal) / 2);
+        average = Math.ceil((thisTotal + otherTotal) / 2);
         finalGradeVal = calculateFinalGrade(average);
       } else if (thisTotal > 0 || otherTotal > 0) {
         average = thisTotal > 0 ? thisTotal : otherTotal;
@@ -1896,24 +1896,9 @@ function convertAndSavePDF(htmlContent, fileInfo) {
     
     // บันทึกไฟล์
     const settings = getSystemSettings();
-    let folder;
-    
-    try {
-      if (settings.pdfSaveFolderId) {
-        folder = DriveApp.getFolderById(settings.pdfSaveFolderId);
-      } else {
-        folder = DriveApp.getRootFolder();
-      }
-    } catch (e) {
-      Logger.log('ไม่สามารถใช้โฟลเดอร์ที่กำหนดได้ ใช้โฟลเดอร์ราก');
-      folder = DriveApp.getRootFolder();
-    }
-    
-    const file = folder.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    
+    const url = _saveBlobGetUrl_(blob, null, settings.pdfSaveFolderId || null);
     Logger.log(`✅ บันทึกไฟล์ PDF: ${fileName}`);
-    return file.getUrl();
+    return url;
     
   } catch (error) {
     Logger.log('❌ convertAndSavePDF error:', error);

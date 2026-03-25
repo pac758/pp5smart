@@ -88,11 +88,9 @@ function exportPp5CoverPDF(grade, classNo) {
     const blob = Utilities.newBlob(html, 'text/html', `${fileName}.html`).getAs('application/pdf');
     blob.setName(`${fileName}.pdf`);
     
-    const file = DriveApp.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    
-    Logger.log(`✅ สร้าง PDF สำเร็จ: ${file.getUrl()}`);
-    return file.getUrl();
+    const coverUrl = _saveBlobGetUrl_(blob);
+    Logger.log(`✅ สร้าง PDF สำเร็จ: ${coverUrl}`);
+    return coverUrl;
     
   } catch (error) {
     Logger.log(`❌ เกิดข้อผิดพลาดในฟังก์ชัน exportPp5CoverPDF: ${error.message}`);

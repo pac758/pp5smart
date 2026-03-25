@@ -1661,7 +1661,7 @@ function renderMonthlyAttendanceTable(data, grade, classNo, yearDisplay) {
     data.months.forEach(month => {
     html += `<th class="text-center">${month.shortName}</th>`;
     });
-    html += `<th rowspan="3" class="text-center align-middle bg-light">รวมวันมา/ร้อยละ</th>`;
+    html += `<th rowspan="2" class="text-center align-middle bg-light">รวมวันมา/ร้อยละ</th>`;
     html += `</tr><tr>`;
     
     // แถวย่อยแสดงปี
@@ -1671,12 +1671,17 @@ function renderMonthlyAttendanceTable(data, grade, classNo, yearDisplay) {
     html += `</tr><tr>`;
     
     // แถวย่อยแสดงจำนวนวันเรียนจริง
+    let totalSchoolDays = 0;
     data.months.forEach(month => {
     const sd = month.schoolDays || 0;
-    html += `<th class="text-center" style="font-size: 0.7rem; padding: 2px;">
-      ${sd > 0 ? '<span class="badge bg-success bg-opacity-75">' + sd + ' วัน</span>' : '<span class="text-muted">-</span>'}
+    totalSchoolDays += sd;
+    html += `<th class="text-center" style="padding: 4px 2px;">
+      ${sd > 0 ? '<span class="badge bg-success" style="font-size: 0.85rem; padding: 5px 8px; border-radius: 8px; min-width: 50px; display: inline-block;">' + sd + ' วัน</span>' : '<span class="text-muted">-</span>'}
     </th>`;
     });
+    html += `<th class="text-center align-middle" style="padding: 4px 2px;">
+      <span class="badge bg-primary" style="font-size: 0.85rem; padding: 5px 8px; border-radius: 8px;">${totalSchoolDays} วัน</span>
+    </th>`;
     html += `</tr></thead><tbody>`;
     
     // ข้อมูลนักเรียน
@@ -1700,7 +1705,7 @@ function renderMonthlyAttendanceTable(data, grade, classNo, yearDisplay) {
                           percentage >= 70 ? 'text-warning' : 'text-danger';
     
     html += `<td class="text-center">
-      <div class="${percentageClass} fw-bold">${totalDays} วัน</div>
+      <div class="${percentageClass} fw-bold" style="font-size: 1rem;">${totalDays}/${student.totalDays} วัน</div>
       <div class="${percentageClass}" style="font-size: 0.9rem;">(${percentage}%)</div>
     </td>`;
     html += `</tr>`;

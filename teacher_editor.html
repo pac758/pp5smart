@@ -198,7 +198,8 @@
                     <tr>
                         <th>ระดับชั้น</th>
                         <th>ห้อง</th>
-                        <th>ชื่อครูประจำชั้น</th>
+                        <th>ครูประจำชั้นคนที่ 1</th>
+                        <th>ครูประจำชั้นคนที่ 2</th>
                         <th class="text-end">จัดการ</th>
                     </tr>
                 </thead>
@@ -213,7 +214,11 @@
                     <td>${item.classNo}</td>
                     <td>
                         <span class="teacher-name-display">${item.teacherName || '<span class="text-muted">-- ว่าง --</span>'}</span>
-                        <input type="text" class="form-control d-none" value="${item.teacherName || ''}">
+                        <input type="text" class="form-control d-none teacher1-input" value="${item.teacherName || ''}">
+                    </td>
+                    <td>
+                        <span class="teacher2-name-display">${item.teacher2Name || '<span class="text-muted">-- ว่าง --</span>'}</span>
+                        <input type="text" class="form-control d-none teacher2-input" value="${item.teacher2Name || ''}">
                     </td>
                     <td class="text-end">
                         <button class="btn btn-sm btn-outline-primary btn-edit">แก้ไข</button>
@@ -231,7 +236,9 @@
     // 3. ฟังก์ชันสลับโหมดแสดงผล/แก้ไข
     function toggleEditMode(rowElement, isEditing) {
         rowElement.querySelector('.teacher-name-display').classList.toggle('d-none', isEditing);
-        rowElement.querySelector('input').classList.toggle('d-none', !isEditing);
+        rowElement.querySelector('.teacher1-input').classList.toggle('d-none', !isEditing);
+        rowElement.querySelector('.teacher2-name-display').classList.toggle('d-none', isEditing);
+        rowElement.querySelector('.teacher2-input').classList.toggle('d-none', !isEditing);
         rowElement.querySelector('.btn-edit').classList.toggle('d-none', isEditing);
         rowElement.querySelector('.btn-save').classList.toggle('d-none', !isEditing);
         rowElement.querySelector('.btn-cancel').classList.toggle('d-none', !isEditing);
@@ -242,7 +249,8 @@
         const teacherInfo = {
             grade: rowElement.dataset.grade,
             classNo: rowElement.dataset.classNo,
-            teacherName: rowElement.querySelector('input').value.trim()
+            teacherName: rowElement.querySelector('.teacher1-input').value.trim(),
+            teacher2Name: rowElement.querySelector('.teacher2-input').value.trim()
         };
         
         const saveBtn = rowElement.querySelector('.btn-save');
@@ -252,6 +260,7 @@
         google.script.run
             .withSuccessHandler(message => {
                 rowElement.querySelector('.teacher-name-display').innerHTML = teacherInfo.teacherName || '<span class="text-muted">-- ว่าง --</span>';
+                rowElement.querySelector('.teacher2-name-display').innerHTML = teacherInfo.teacher2Name || '<span class="text-muted">-- ว่าง --</span>';
                 toggleEditMode(rowElement, false);
                 saveBtn.innerHTML = 'บันทึก';
                 saveBtn.disabled = false;
@@ -289,7 +298,9 @@
         } else if (target.classList.contains('btn-cancel')) {
             // Reset input value to original display value before cancelling
             const originalName = row.querySelector('.teacher-name-display').textContent;
-            row.querySelector('input').value = (originalName === '-- ว่าง --') ? '' : originalName;
+            row.querySelector('.teacher1-input').value = (originalName === '-- ว่าง --') ? '' : originalName;
+            const originalName2 = row.querySelector('.teacher2-name-display').textContent;
+            row.querySelector('.teacher2-input').value = (originalName2 === '-- ว่าง --') ? '' : originalName2;
             toggleEditMode(row, false);
         }
     });

@@ -171,6 +171,12 @@ function debugSetupStatus() {
   Logger.log('SCRIPT_ID match: ' + (props['SCRIPT_ID'] === currentId));
   Logger.log('isSetupComplete_: ' + isSetupComplete_());
   Logger.log('All properties: ' + JSON.stringify(props));
+
+  // ⬇️ ใช้ service ทุกตัวเพื่อ trigger OAuth authorization ครบทุก scope
+  try { DriveApp.getRootFolder().getName(); Logger.log('✅ DriveApp: OK'); } catch(e) { Logger.log('❌ DriveApp: ' + e.message); }
+  try { SpreadsheetApp.getActive(); Logger.log('✅ SpreadsheetApp: OK'); } catch(e) { Logger.log('❌ SpreadsheetApp: ' + e.message); }
+  try { DocumentApp.getActiveDocument(); Logger.log('✅ DocumentApp: OK'); } catch(e) { Logger.log('⚠️ DocumentApp: ' + e.message + ' (ปกติถ้าไม่ได้เปิด Doc)'); }
+  Logger.log('=== ✅ Authorization ครบทุก scope ===');
 }
 
 // Sheet names ที่ต้องสร้างใน Spreadsheet ใหม่

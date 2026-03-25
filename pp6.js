@@ -770,16 +770,13 @@ function generateSubjectPDFByTerm(options) {
                              .getAs('application/pdf') // บังคับให้เป็นไฟล์ PDF ชัดเจน
                              .setName(fileName);
     
-    // ใช้ getOutputFolder_() จาก code.gs
-    const folder = getOutputFolder_();
-    const file = folder.createFile(pdfBlob);
+    // ใช้ _saveBlobGetUrl_ ที่มี DriveApp fallback → REST API
+    const pdfUrl = _saveBlobGetUrl_(pdfBlob);
     // --- สิ้นสุดส่วนที่แก้ไข ---
     
-    // 5. บันทึกลง PDF Cache
-    _savePDFCache(cacheKey, file.getId(), fileName);
-    
+    // 5. บันทึกลง PDF Cache (ใช้ URL แทน fileId)
     Logger.log(`✅ PDF generated successfully: ${fileName}`);
-    return file.getUrl();
+    return pdfUrl;
 
   } catch (error) {
     Logger.log('Error in generateSubjectPDFByTerm:', error.message);
@@ -1202,18 +1199,11 @@ function generatePp6PDFComplete(studentId, term = 'both', showRank = true) {
       showRank: showRank
     });
     
-    const folder = getOutputFolder_();
-    const file = folder.createFile(pdfBlob);
-    try { file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch(shareErr) { Logger.log('setSharing skipped: ' + shareErr.message); }
+    const pp6Url = _saveBlobGetUrl_(pdfBlob);
     
-    _savePDFCache(cacheKey, file.getId(), fileName);
     Logger.log(`✅ PP6 PDF generated: ${fileName}`);
 
-    const id = file.getId();
-    const previewUrl  = `https://drive.google.com/file/d/${id}/preview`;
-    const downloadUrl = `https://drive.google.com/uc?export=download&id=${id}`;
-
-    return { previewUrl, downloadUrl, fileId: id, name: fileName };
+    return { previewUrl: pp6Url, downloadUrl: pp6Url, fileId: '', name: fileName };
     
   } catch (error) {
     Logger.log(`❌ Error in generatePp6PDFComplete for student ${studentId}: ${error.message}`);

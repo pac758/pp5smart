@@ -12,16 +12,22 @@ function saveSingleTeacher(teacherInfo) {
     const grade = teacherInfo.grade;
     const classNo = teacherInfo.classNo;
     const teacherName = teacherInfo.teacherName;
+    const teacher2Name = teacherInfo.teacher2Name || '';
 
     // ตรวจสอบข้อมูลเบื้องต้น
     if (!grade || !classNo || !teacherName) {
-      throw new Error("กรุณากรอกข้อมูลให้ครบทั้ง 3 ช่อง");
+      throw new Error("กรุณากรอกข้อมูลให้ครบ (ระดับชั้น, ห้อง, ชื่อครูคนที่ 1)");
     }
 
     const ss = SS();
     const sheet = ss.getSheetByName("HomeroomTeachers");
     if (!sheet) {
       throw new Error("ไม่พบชีต 'HomeroomTeachers'");
+    }
+
+    // ตรวจสอบ/เพิ่ม header คอลัมน์ที่ 4 ถ้ายังไม่มี
+    if (sheet.getLastColumn() < 4) {
+      sheet.getRange(1, 4).setValue('ครูประจำชั้น 2');
     }
 
     // --- ส่วนตรรกะการบันทึก ---
@@ -33,8 +39,9 @@ function saveSingleTeacher(teacherInfo) {
     // 2. ตรวจสอบว่ามีข้อมูลของชั้น/ห้องนี้อยู่แล้วหรือไม่
     for (let i = 0; i < data.length; i++) {
       if (data[i][0] == grade && data[i][1] == classNo) {
-        // ถ้ามี ให้อัปเดตชื่อครู
-        sheet.getRange(i + 2, 3).setValue(teacherName); // +2 เพราะเราดึง header ออกและแถวเริ่มที่ 1
+        // ถ้ามี ให้อัปเดตชื่อครูทั้ง 2 คน
+        sheet.getRange(i + 2, 3).setValue(teacherName);
+        sheet.getRange(i + 2, 4).setValue(teacher2Name);
         recordUpdated = true;
         break;
       }
@@ -42,10 +49,12 @@ function saveSingleTeacher(teacherInfo) {
 
     // 3. ถ้ายังไม่มีข้อมูลของชั้น/ห้องนี้ ให้เพิ่มแถวใหม่
     if (!recordUpdated) {
-      sheet.appendRow([grade, classNo, teacherName]);
+      sheet.appendRow([grade, classNo, teacherName, teacher2Name]);
     }
     
-    return `✅ บันทึกข้อมูลสำเร็จ: ชั้น ${grade} ห้อง ${classNo} คือครู ${teacherName}`;
+    var msg = `✅ บันทึกข้อมูลสำเร็จ: ชั้น ${grade} ห้อง ${classNo} ครู ${teacherName}`;
+    if (teacher2Name) msg += `, ${teacher2Name}`;
+    return msg;
 
   } catch (e) {
     Logger.log("Error in saveSingleTeacher: " + e.message);
@@ -65,7 +74,7 @@ function getTeacherListForEditor() {
   const teacherMap = new Map();
   teacherData.forEach(row => {
     const key = `${row[0]}-${row[1]}`; // "Grade-ClassNo"
-    teacherMap.set(key, row[2]);
+    teacherMap.set(key, {teacher1: String(row[2] || ''), teacher2: String(row[3] || '')});
   });
 
   // 2. ดึงโครงสร้างชั้นเรียนและห้องทั้งหมด
@@ -100,10 +109,12 @@ function getTeacherListForEditor() {
     const sortedClasses = Array.from(classMap.get(grade)).sort();
     sortedClasses.forEach(classNo => {
       const key = `${grade}-${classNo}`;
+      var t = teacherMap.get(key) || {teacher1: '', teacher2: ''};
       result.push({
         grade: grade,
         classNo: classNo,
-        teacherName: teacherMap.get(key) || "" // ถ้าไม่มีให้เป็นค่าว่าง
+        teacherName: t.teacher1 || '',
+        teacher2Name: t.teacher2 || ''
       });
     });
   });

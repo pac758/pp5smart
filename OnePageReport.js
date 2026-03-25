@@ -350,7 +350,9 @@ function _opr_generateSingle(studentId, cache) {
 
   var gpa = _opr_getGPAByTerm_(sid, student.grade, student.classNo, cache, whClass, term);
 
-  var teacher = getHomeroomTeacher(student.grade, String(student.classNo));
+  var teachers = getHomeroomTeachers(student.grade, String(student.classNo));
+  var teacher = teachers.teacher1;
+  var teacher2 = teachers.teacher2;
 
   var validAvg = subjects.filter(function(s){return s.avg>0;}).map(function(s){return s.avg;});
   var avgAll = validAvg.length > 0 ? validAvg.reduce(function(a,b){return a+b;},0)/validAvg.length : 0;
@@ -538,7 +540,8 @@ function _opr_generateSingle(studentId, cache) {
     var tName = (teacher && teacher !== '...') ? teacher : '';
     var SW = [173, 172, 172];
     var nm1 = tName ? '(' + tName + ')' : '(.................................)';
-    var nm2 = '(.................................)';
+    var t2Name = (teacher2 && teacher2 !== '') ? teacher2 : '';
+    var nm2 = t2Name ? '(' + t2Name + ')' : '(.................................)';
     var acHead = (settings && settings['ชื่อหัวหน้างานวิชาการ']) ? settings['ชื่อหัวหน้างานวิชาการ'] : '';
     var nmAc = acHead ? '(' + acHead + ')' : '(.................................)';
 
@@ -691,27 +694,21 @@ function _opr_generateSingle(studentId, cache) {
     } catch (me) { Logger.log('Merge: ' + me.message); }
 
     // แปลง PDF (with step tracking)
-    var _pdfStep = 'getFileById';
+    var _pdfStep = 'getAs_pdf';
+    var oprUrl;
     try {
-      var docFile = DriveApp.getFileById(docId);
-      _pdfStep = 'getAs_pdf';
-      var pdfBlob = docFile.getAs('application/pdf');
-      _pdfStep = 'getCachedFolder';
-      var folder = getCachedFolder_(settings);
-      _pdfStep = 'createFile';
-      var pdfFile = folder.createFile(pdfBlob);
-      _pdfStep = 'setName';
-      pdfFile.setName('รายงานหน้าเดียว_' + termTag + '_' + student.id + '_' + student.name + '.pdf');
-      _pdfStep = 'setSharing';
-      try { pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch(shareErr) { Logger.log('setSharing skipped (domain restriction): ' + shareErr.message); }
+      var pdfBlob = _getFileBlobCompat_(docId).getAs('application/pdf');
+      pdfBlob.setName('รายงานหน้าเดียว_' + termTag + '_' + student.id + '_' + student.name + '.pdf');
+      _pdfStep = 'saveBlobGetUrl';
+      oprUrl = _saveBlobGetUrl_(pdfBlob, null, settings.pdfSaveFolderId || null);
       _pdfStep = 'setTrashed';
-      docFile.setTrashed(true);
+      try { DriveApp.getFileById(docId).setTrashed(true); } catch(_) {}
     } catch (pdfErr) {
       throw new Error('[PDF step: ' + _pdfStep + '] ' + pdfErr.message);
     }
 
-    Logger.log('สร้างรายงานหน้าเดียวสำเร็จ: ' + pdfFile.getUrl());
-    return pdfFile.getUrl();
+    Logger.log('สร้างรายงานหน้าเดียวสำเร็จ: ' + oprUrl);
+    return oprUrl;
 }
 
 /**

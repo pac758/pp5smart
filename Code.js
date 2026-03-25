@@ -294,12 +294,134 @@ function getOutputFolder_() {
 
     Logger.log('Error getting output folder: ' + e.message);
 
-    return DriveApp.getRootFolder();
+    try { return DriveApp.getRootFolder(); } catch (_) { return null; }
 
   }
 
 }
 
+// ============================================================
+// 🔧 SHARED: Save blob to Drive with REST API fallback
+// DriveApp ใช้ไม่ได้ใน Web App (ANYONE_ANONYMOUS) → fallback REST API
+// ============================================================
+
+/**
+ * บันทึก blob ลง Drive แล้วคืน URL ที่เปิดได้
+ * @param {Blob} blob - ไฟล์ที่จะบันทึก
+ * @param {string} [folderName] - ชื่อโฟลเดอร์ (สร้างอัตโนมัติถ้าไม่มี)
+ * @param {string} [folderId] - folder ID (ถ้ามี จะใช้แทน folderName)
+ * @returns {string} URL ของไฟล์
+ */
+function _saveBlobGetUrl_(blob, folderName, folderId) {
+  // ── ลอง DriveApp ก่อน ──
+  try {
+    var folder;
+    if (folderId) {
+      folder = DriveApp.getFolderById(folderId);
+    } else if (folderName) {
+      var folders = DriveApp.getFoldersByName(folderName);
+      folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
+    } else {
+      folder = DriveApp.getRootFolder();
+    }
+    var file = folder.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    return file.getUrl();
+  } catch (driveErr) {
+    Logger.log('DriveApp fallback → REST API: ' + driveErr.message);
+  }
+
+  // ── Fallback: Drive REST API ──
+  var token = ScriptApp.getOAuthToken();
+  var bytes = blob.getBytes();
+  var mime  = blob.getContentType() || 'application/pdf';
+  var name  = blob.getName() || 'export.pdf';
+
+  // 1) Upload
+  var upRes = UrlFetchApp.fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=media&fields=id,name,webViewLink',
+    { method: 'post', contentType: mime, headers: { Authorization: 'Bearer ' + token }, payload: bytes, muteHttpExceptions: true }
+  );
+  if (upRes.getResponseCode() !== 200) {
+    throw new Error('Drive API upload failed (' + upRes.getResponseCode() + '): ' + upRes.getContentText());
+  }
+  var uploaded = JSON.parse(upRes.getContentText());
+  var fileId = uploaded.id;
+
+  // 2) Rename + move to folder
+  var patchBody = { name: name };
+  if (folderId) {
+    patchBody.addParents = folderId;
+  } else if (folderName) {
+    var fid = _getOrCreateFolderIdRest_(folderName, token);
+    if (fid) patchBody.addParents = fid;
+  }
+  UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + fileId, {
+    method: 'patch', contentType: 'application/json',
+    headers: { Authorization: 'Bearer ' + token },
+    payload: JSON.stringify(patchBody), muteHttpExceptions: true
+  });
+
+  // 3) Share public
+  try {
+    UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '/permissions', {
+      method: 'post', contentType: 'application/json',
+      headers: { Authorization: 'Bearer ' + token },
+      payload: JSON.stringify({ role: 'reader', type: 'anyone' }), muteHttpExceptions: true
+    });
+  } catch (_) {}
+
+  return 'https://drive.google.com/file/d/' + fileId + '/view';
+}
+
+/**
+ * หา folder ID จากชื่อ หรือสร้างใหม่ (REST API)
+ */
+function _getOrCreateFolderIdRest_(folderName, token) {
+  try {
+    // ค้นหาโฟลเดอร์
+    var qRes = UrlFetchApp.fetch(
+      'https://www.googleapis.com/drive/v3/files?q=' +
+        encodeURIComponent("name='" + folderName + "' and mimeType='application/vnd.google-apps.folder' and trashed=false") +
+        '&fields=files(id)&pageSize=1',
+      { headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true }
+    );
+    if (qRes.getResponseCode() === 200) {
+      var files = JSON.parse(qRes.getContentText()).files;
+      if (files && files.length > 0) return files[0].id;
+    }
+    // สร้างโฟลเดอร์ใหม่
+    var cRes = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files', {
+      method: 'post', contentType: 'application/json',
+      headers: { Authorization: 'Bearer ' + token },
+      payload: JSON.stringify({ name: folderName, mimeType: 'application/vnd.google-apps.folder' }),
+      muteHttpExceptions: true
+    });
+    if (cRes.getResponseCode() === 200) return JSON.parse(cRes.getContentText()).id;
+  } catch (e) {
+    Logger.log('_getOrCreateFolderIdRest_ error: ' + e.message);
+  }
+  return null;
+}
+
+/**
+ * ดึง blob จากไฟล์ใน Drive ด้วย REST API fallback
+ * @param {string} fileId
+ * @returns {Blob}
+ */
+function _getFileBlobCompat_(fileId) {
+  try {
+    return DriveApp.getFileById(fileId).getBlob();
+  } catch (driveErr) {
+    Logger.log('_getFileBlobCompat_ fallback REST: ' + driveErr.message);
+    var token = ScriptApp.getOAuthToken();
+    var res = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media', {
+      headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true
+    });
+    if (res.getResponseCode() !== 200) throw new Error('Cannot fetch file ' + fileId);
+    return res.getBlob();
+  }
+}
 
 
 // ============================================================

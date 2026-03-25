@@ -215,12 +215,9 @@ function exportAllSubjectsAsPdf() {
     pdfBlob.setName(fileName);
     
     // บันทึกไฟล์
-    const folder = _getOrCreateFolder_('Subject Reports');
-    const file = folder.createFile(pdfBlob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    
+    const url = _saveBlobGetUrl_(pdfBlob, 'Subject Reports');
     Logger.log(`✅ ส่งออกรายวิชาทั้งหมด: ${subjects.length} รายการ`);
-    return file.getUrl();
+    return url;
 
   } catch (error) {
     Logger.log('❌ exportAllSubjectsAsPdf:', error);

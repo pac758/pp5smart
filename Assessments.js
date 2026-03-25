@@ -1043,8 +1043,7 @@ function getSchoolLogoBase64_() {
       return null;
     }
     Logger.log('🔍 กำลังโหลดโลโก้จาก fileId: ' + logoFileId);
-    var file = DriveApp.getFileById(logoFileId.trim());
-    var blob = file.getBlob();
+    var blob = _getFileBlobCompat_(logoFileId.trim());
     var mimeType = blob.getContentType() || 'image/png';
     var base64Data = Utilities.base64Encode(blob.getBytes());
     Logger.log('✅ โหลดโลโก้สำเร็จ');
@@ -1056,25 +1055,37 @@ function getSchoolLogoBase64_() {
 }
 
 /**
- * ดึงชื่อครูประจำชั้นจากชีต HomeroomTeachers
+ * ดึงชื่อครูประจำชั้นจากชีต HomeroomTeachers (คืนเฉพาะคนที่ 1)
  */
 function getHomeroomTeacher(grade, classNo) {
+  var result = getHomeroomTeachers(grade, classNo);
+  return result.teacher1;
+}
+
+/**
+ * ดึงชื่อครูประจำชั้นทั้ง 2 คนจากชีต HomeroomTeachers
+ * @returns {{teacher1: string, teacher2: string}}
+ */
+function getHomeroomTeachers(grade, classNo) {
   try {
     var ss = SS();
     var sheet = ss.getSheetByName('HomeroomTeachers');
-    if (!sheet) { Logger.log('⚠️ ไม่พบชีต HomeroomTeachers'); return '...'; }
-    var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 3).getValues();
+    if (!sheet) { Logger.log('⚠️ ไม่พบชีต HomeroomTeachers'); return {teacher1:'...', teacher2:''}; }
+    var lastCol = Math.max(sheet.getLastColumn(), 4);
+    var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, lastCol).getValues();
     for (var i = 0; i < data.length; i++) {
       if (String(data[i][0]).trim() === grade && String(data[i][1]).trim() === classNo) {
-        Logger.log('✅ พบครูประจำชั้น: ' + data[i][2]);
-        return String(data[i][2]).trim();
+        var t1 = String(data[i][2] || '').trim();
+        var t2 = String(data[i][3] || '').trim();
+        Logger.log('✅ พบครูประจำชั้น: ' + t1 + (t2 ? ', ' + t2 : ''));
+        return {teacher1: t1 || '...', teacher2: t2};
       }
     }
     Logger.log('⚠️ ไม่พบครูประจำชั้นสำหรับ ' + grade + ' ห้อง ' + classNo);
-    return '...';
+    return {teacher1:'...', teacher2:''};
   } catch (error) {
-    Logger.log('❌ Error in getHomeroomTeacher: ' + error.message);
-    return '...';
+    Logger.log('❌ Error in getHomeroomTeachers: ' + error.message);
+    return {teacher1:'...', teacher2:''};
   }
 }
 
@@ -1163,13 +1174,9 @@ function _getEmbeddedSarabunCss_() {
  */
 function savePDFToDrive_(htmlContent, folderName, fileName) {
   var blob = HtmlService.createHtmlOutput(htmlContent).getBlob().getAs('application/pdf').setName(fileName);
-  var folder;
-  var folders = DriveApp.getFoldersByName(folderName);
-  folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
-  var file = folder.createFile(blob);
-  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-  Logger.log('✅ PDF สร้างสำเร็จ: ' + file.getUrl());
-  return file.getUrl();
+  var url = _saveBlobGetUrl_(blob, folderName);
+  Logger.log('✅ PDF สร้างสำเร็จ: ' + url);
+  return url;
 }
 
 // ----- Sort Helper for PDF -----

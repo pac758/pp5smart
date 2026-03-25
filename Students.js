@@ -1243,16 +1243,9 @@ function exportStudentListPDF(grade, classNo) {
       .setName(`รายชื่อนักเรียน_${grade || 'ทุกชั้น'}_ห้อง${classNo || 'ทุกห้อง'}.pdf`)
       .getAs('application/pdf');
 
-    const folderName = "AttendancePDFs";
-    let folder;
-    const folders = DriveApp.getFoldersByName(folderName);
-    folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
-    
-    const file = folder.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
-    Logger.log(`✅ Student List PDF created: ${file.getUrl()}`);
-    return file.getUrl();
+    const url = _saveBlobGetUrl_(blob, "AttendancePDFs");
+    Logger.log(`✅ Student List PDF created: ${url}`);
+    return url;
 
   } catch (error) {
     Logger.log(`❌ Error in exportStudentListPDF: ${error.message}`);
@@ -1350,8 +1343,7 @@ function createStudentListHTMLForPDF(students, grade, classNo) {
 function getLogoAsBase64_(fileId) {
   try {
     if (!fileId) return '';
-    const file = DriveApp.getFileById(fileId);
-    const blob = file.getBlob();
+    const blob = _getFileBlobCompat_(fileId);
     const contentType = blob.getContentType();
     const base64Data = Utilities.base64Encode(blob.getBytes());
     return `data:${contentType};base64,${base64Data}`;
@@ -1436,13 +1428,7 @@ function exportStudentRegistryPDF(grade, classNo) {
       .setName(`ทะเบียนประวัตินักเรียน_${grade || 'ทุกชั้น'}_ห้อง${classNo || 'ทุกห้อง'}.pdf`)
       .getAs('application/pdf');
 
-    const folderName = "AttendancePDFs";
-    const folders = DriveApp.getFoldersByName(folderName);
-    const folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
-    
-    const file = folder.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    return file.getUrl();
+    return _saveBlobGetUrl_(blob, "AttendancePDFs");
 
   } catch (error) {
     Logger.log(`❌ Error in exportStudentRegistryPDF: ${error.message}`);

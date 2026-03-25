@@ -49,7 +49,7 @@ function generateStudentListPDF(grade, classNo, gender) {
     try {
       var logoFileId = settings['logoFileId'];
       if (logoFileId) {
-        var logoBlob = DriveApp.getFileById(logoFileId).getBlob();
+        var logoBlob = _getFileBlobCompat_(logoFileId);
         // คำนวณตำแหน่งกึ่งกลาง: ความกว้างรวม ~688px, โลโก้ 45px → offset ~322px
         var img = tmpSheet.insertImage(logoBlob, 1, 1, 322, 3);
         img.setWidth(45).setHeight(45);
@@ -313,8 +313,7 @@ function getLogoAsBase64() {
     var settings = S_getGlobalSettings();
     var logoFileId = settings['logoFileId'];
     if (!logoFileId) { return ''; }
-    var file = DriveApp.getFileById(logoFileId);
-    var blob = file.getBlob();
+    var blob = _getFileBlobCompat_(logoFileId);
     var base64 = Utilities.base64Encode(blob.getBytes());
     return 'data:' + blob.getContentType() + ';base64,' + base64;
   } catch (error) {
@@ -395,27 +394,9 @@ function createFileName(grade, classNo, gender, academicYear, semester) {
  */
 function savePDFAndGetUrl(pdfBlob, fileName, settings) {
   try {
-    let folder;
-    
-    if (settings['pdfSaveFolderId']) {
-      try {
-        folder = DriveApp.getFolderById(settings['pdfSaveFolderId']);
-      } catch (error) {
-        Logger.log('ไม่สามารถเข้าถึงโฟลเดอร์ที่กำหนด ใช้โฟลเดอร์ราก');
-        folder = DriveApp.getRootFolder();
-      }
-    } else {
-      folder = DriveApp.getRootFolder();
-    }
-    
-    const file = folder.createFile(pdfBlob.setName(fileName));
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    
-    Logger.log(`บันทึกไฟล์: ${fileName} ใน ${folder.getName()}`);
-    
-    // ✅ แก้ตรงนี้ — เปลี่ยนจาก file.getUrl() เป็น URL ตรง
-    return `https://drive.google.com/uc?export=download&id=${file.getId()}`;
-    
+    pdfBlob.setName(fileName);
+    var folderId = settings && settings['pdfSaveFolderId'] ? settings['pdfSaveFolderId'] : null;
+    return _saveBlobGetUrl_(pdfBlob, null, folderId);
   } catch (error) {
     Logger.log('savePDFAndGetUrl error:', error);
     throw new Error(`ไม่สามารถบันทึกไฟล์ PDF ได้: ${error.message}`);
@@ -504,12 +485,7 @@ function generateSubjectScorePDF(subjectName, subjectCode, grade, classNo, term 
                            .getAs('application/pdf')
                            .setName(fileName);
 
-    const folderId = settings.pdfSaveFolderId || DriveApp.getRootFolder().getId();
-    const folder   = DriveApp.getFolderById(folderId);
-    const file     = folder.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
-    return file.getUrl();
+    return _saveBlobGetUrl_(blob, null, settings.pdfSaveFolderId || null);
   } catch (error) {
     Logger.log('Error in generateSubjectScorePDF:', error);
     throw new Error(`Generate PDF ล้มเหลว: ${error && error.message ? error.message : error}`);
@@ -547,103 +523,51 @@ function exportAttendancePDF(grade, classNo, year, month) {
       data, settings
     );
 
-    const blob = Utilities.newBlob(htmlContent, 'text/html').getAs('application/pdf');
-    const fileName = `เวลาเรียน_${grade}_${classNo}_${monthNames[month]}${year+543}.pdf`;
-    blob.setName(fileName);
-    
-    const folderId = settings.pdfSaveFolderId || DriveApp.getRootFolder().getId();
-    const folder = DriveApp.getFolderById(folderId);
-    const file = folder.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    
-    return file.getUrl();
+    const blob = Utilities.newBlob(htmlContent, 'text/html').getAs('application/pdf');
+    const fileName = `เวลาเรียน_${grade}_${classNo}_${monthNames[month]}${year+543}.pdf`;
+    blob.setName(fileName);
+    
+    return _saveBlobGetUrl_(blob, null, settings.pdfSaveFolderId || null);
 
-  } catch(e) {
-    Logger.log("เกิดข้อผิดพลาดใน exportAttendancePDF: " + e.message);
-    throw new Error(e.message);
-  }
+  } catch(e) {
+    Logger.log("เกิดข้อผิดพลาดใน exportAttendancePDF: " + e.message);
+    throw new Error(e.message);
+  }
 }
 
-
 /**
- * ⚙️ [ฟังก์ชันเสริม] สร้างโค้ด HTML สำหรับ PDF
+ * สร้างไฟล์ PDF ข้อมูลผู้ปกครองของนักเรียนตามชั้นเรียนและห้องที่เลือก
+ * (ฉบับสมบูรณ์ล่าสุด: ใช้ Folder ID จากการตั้งค่ากลาง, ปรับปรุง Layout)
+ * @param {string} grade ระดับชั้น เช่น "ป.1"
+ * @param {string} classNo หมายเลขห้อง เช่น "1"
+ * @returns {string} URL ของไฟล์ PDF ที่สร้างขึ้น
  */
-function buildAttendancePdfHtml(title, data, settings) {
-  const students = data.students;
-  const days = data.days;
-
-  let tableRows = '';
-  students.forEach((s, i) => {
-    let dayCells = '';
-    days.forEach(d => {
-      dayCells += `<td>${s.statusMap[d.label] || ''}</td>`;
-    });
-    tableRows += `<tr><td>${i + 1}</td><td class="name">${s.name}</td>${dayCells}</tr>`;
-  });
-
-  let tableHeader = `<tr><th rowspan="2">ที่</th><th rowspan="2" class="name">ชื่อ - สกุล</th>
-    ${days.map(d => `<th>${d.label}</th>`).join('')}
-    </tr><tr>
-    ${days.map(d => `<th>${d.dow}</th>`).join('')}
-    </tr>`;
-
-  return `
-    <!DOCTYPE html><html lang="th"><head><meta charset="UTF-8">
-    <style>
-      body { font-family: 'Sarabun', sans-serif; font-size: 10pt; }
-      .header { text-align: center; margin-bottom: 15px; }
-      .logo { max-height: 80px; }
-      h3 { font-size: 14pt; margin: 5px 0; }
-      h4 { font-size: 14pt; margin: 5px 0; font-weight: bold; }
-      table { width: 100%; border-collapse: collapse; }
-      th, td { border: 1px solid #333; padding: 2px; text-align: center; }
-      th { background-color: #f2f2f2; }
-      td.name { text-align: left; }
-    </style></head><body>
-      <div class="header">
-        ${settings.logoDataUrl ? `<img src="${settings.logoDataUrl}" class="logo">` : ''}
-        <h3>${settings.schoolName || ''}</h3>
-        <h4>${title}</h4>
-      </div>
-      <table><thead>${tableHeader}</thead><tbody>${tableRows}</tbody></table>
-    </body></html>`;
-}
-
-/**สร้าง pdf ข้อมูลนักเรียน........................................................................................... */
-
-/**
- * สร้างไฟล์ PDF ข้อมูลผู้ปกครองของนักเรียนตามชั้นเรียนและห้องที่เลือก
- * (ฉบับสมบูรณ์ล่าสุด: ใช้ Folder ID จากการตั้งค่ากลาง, ปรับปรุง Layout)
- * @param {string} grade ระดับชั้น เช่น "ป.1"
- * @param {string} classNo หมายเลขห้อง เช่น "1"
- * @returns {string} URL ของไฟล์ PDF ที่สร้างขึ้น
- */
 function generateParentInfoPDF(grade, classNo) {
-  if (!grade || !classNo) throw new Error("กรุณาระบุชั้นและห้องให้ครบถ้วน");
+  if (!grade || !classNo) throw new Error("กรุณาระบุชั้นและห้องให้ครบถ้วน");
 
-  const settings = S_getGlobalSettings(false);
-  const ss = (getSpreadsheetId_())
-    ? SS()
-    : SS();
-  const studentSheet = ss.getSheetByName("Students") || ss.getSheetByName("นักเรียน");
-  if (!studentSheet) throw new Error("ไม่พบชีต 'Students/นักเรียน'");
-  
-  const studentData = studentSheet.getDataRange().getValues();
-  const header = studentData[0];
+  const settings = S_getGlobalSettings(false);
+  const ss = (getSpreadsheetId_())
+    ? SS()
+    : SS();
+  const studentSheet = ss.getSheetByName("Students") || ss.getSheetByName("นักเรียน");
+  if (!studentSheet) throw new Error("ไม่พบชีต 'Students/นักเรียน'");
+  
+  const studentData = studentSheet.getDataRange().getValues();
+  const header = studentData[0];
   // --- ส่วนของการหา index ของคอลัมน์ (เหมือนเดิม) ---
-  const idCol = header.indexOf("student_id"); // *** เพิ่ม Index รหัสนักเรียน ***
-  const titleCol = header.indexOf("title"),
-        firstNameCol = header.indexOf("firstname"),
-        lastNameCol = header.indexOf("lastname"),
-        gradeCol = header.indexOf("grade"),
-        classCol = header.indexOf("class_no"),
-        fatherNameCol = header.indexOf("father_name"),
-        fatherLNameCol = header.indexOf("father_lastname"),
-        fatherOccCol = header.indexOf("father_occupation"),
-        motherNameCol = header.indexOf("mother_name"),
-        motherLNameCol = header.indexOf("mother_lastname"),
-        motherOccCol = header.indexOf("mother_occupation"),
-        addressCol = header.indexOf("address");
+  const idCol = header.indexOf("student_id"); // *** เพิ่ม Index รหัสนักเรียน ***
+  const titleCol = header.indexOf("title"),
+        firstNameCol = header.indexOf("firstname"),
+        lastNameCol = header.indexOf("lastname"),
+        gradeCol = header.indexOf("grade"),
+        classCol = header.indexOf("class_no"),
+        fatherNameCol = header.indexOf("father_name"),
+        fatherLNameCol = header.indexOf("father_lastname"),
+        fatherOccCol = header.indexOf("father_occupation"),
+        motherNameCol = header.indexOf("mother_name"),
+        motherLNameCol = header.indexOf("mother_lastname"),
+        motherOccCol = header.indexOf("mother_occupation"),
+        addressCol = header.indexOf("address");
 
   const missing = [];
   if (gradeCol === -1) missing.push('grade');
@@ -656,10 +580,10 @@ function generateParentInfoPDF(grade, classNo) {
     throw new Error(`หัวตารางชีต Students ไม่ถูกต้อง (missing: ${missing.join(', ')})`);
   }
 
-  const filteredStudents = studentData.slice(1).filter(row => row[gradeCol] === grade && String(row[classCol]) === String(classNo));
-  if (filteredStudents.length === 0) throw new Error(`ไม่พบข้อมูลนักเรียนในชั้น ${grade} ห้อง ${classNo}`);
+  const filteredStudents = studentData.slice(1).filter(row => row[gradeCol] === grade && String(row[classCol]) === String(classNo));
+  if (filteredStudents.length === 0) throw new Error(`ไม่พบข้อมูลนักเรียนในชั้น ${grade} ห้อง ${classNo}`);
 
-  // --- 👇 เพิ่มโค้ดเรียงลำดับนักเรียนตามรหัส (student_id) ตรงนี้ ---
+  // --- 
   if (idCol !== -1) { // ตรวจสอบว่าพบคอลัมน์รหัสนักเรียนหรือไม่
     filteredStudents.sort((a, b) => {
         const idA = a[idCol] || '';
@@ -667,42 +591,32 @@ function generateParentInfoPDF(grade, classNo) {
         return String(idA).localeCompare(String(idB), undefined, { numeric: true });
     });
   }
-  // --- 👆 สิ้นสุดโค้ดที่เพิ่ม ---
+  // --- 
 
-  const tableRows = filteredStudents.map((row, index) => {
-    const studentName = `${row[titleCol] || ""} ${row[firstNameCol] || ""} ${row[lastNameCol] || ""}`.trim();
-    const fatherFullName = `${row[fatherNameCol] || ""} ${row[fatherLNameCol] || ""}`.trim();
-    const fatherOccupation = row[fatherOccCol] || "";
-    const motherFullName = `${row[motherNameCol] || ""} ${row[motherLNameCol] || ""}`.trim();
-    const motherOccupation = row[motherOccCol] || "";
-    const addressString = row[addressCol] || "";
-    const parsedAddr = parseAddress(addressString);
-    return `<tr><td>${index + 1}</td><td class="left">${studentName}</td><td class="left">${fatherFullName}</td><td>${fatherOccupation}</td><td class="left">${motherFullName}</td><td>${motherOccupation}</td><td>${parsedAddr.house}</td><td>${parsedAddr.moo}</td><td>${parsedAddr.subdistrict}</td><td>${parsedAddr.district}</td><td>${parsedAddr.province}</td></tr>`;
-  });
-  
-  const gradeFullName = convertGradeToFullName(grade);
-  const schoolName = String(settings['ชื่อโรงเรียน'] || settings.schoolName || '').trim() || 'โรงเรียน';
-  const academicYear = String(settings['ปีการศึกษา'] || settings.academicYear || '').trim();
-  const title = `ข้อมูลผู้ปกครองและที่อยู่ปัจจุบัน ชั้น${gradeFullName} ห้อง ${classNo}`;
-  const subTitle = academicYear ? `${schoolName} | ปีการศึกษา ${academicYear}` : schoolName;
-  let html = `<html><head><meta charset="UTF-8"><style>body{font-family:'Sarabun',sans-serif}.header{text-align:center;font-weight:700;font-size:14pt;margin-bottom:4px}.sub-header{text-align:center;font-size:10pt;margin-bottom:12px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #000;padding:2px;text-align:center;vertical-align:middle;word-wrap:break-word}th{font-weight:700;background-color:#f2f2f2;font-size:10pt}td{font-size:7.5pt}td.left{text-align:left}.col-no{width:3%}.col-student-name{width:18%}.col-parent-name{width:16%}.col-job{width:5%}.col-addr-house{width:8%}.col-addr-moo{width:4%}.col-addr-sub{width:8%}.col-addr-dist{width:8%}.col-addr-prov{width:10%}</style></head><body><div class="header">${title}</div><div class="sub-header">${subTitle}</div><table><thead><tr><th rowspan="2" class="col-no">เลขที่</th><th rowspan="2" class="col-student-name">ชื่อ - สกุล นักเรียน</th><th colspan="2">บิดา</th><th colspan="2">มารดา</th><th colspan="5">ที่อยู่ปัจจุบัน</th></tr><tr><th class="col-parent-name">ชื่อ-สกุล บิดา</th><th class="col-job">อาชีพ</th><th class="col-parent-name">ชื่อ-สกุล มารดา</th><th class="col-job">อาชีพ</th><th class="col-addr-house">บ้านเลขที่</th><th class="col-addr-moo">หมู่ที่</th><th class="col-addr-sub">ตำบล</th><th class="col-addr-dist">อำเภอ</th><th class="col-addr-prov">จังหวัด</th></tr></thead><tbody>${tableRows.join("")}</tbody></table></body></html>`;
-  
-  const blob = Utilities.newBlob(html, 'text/html').getAs('application/pdf');
-  const fileName = `ข้อมูลผู้ปกครอง_${grade.replace(/\./g, "")}_ห้อง${classNo}.pdf`;
-  blob.setName(fileName);
+  const tableRows = filteredStudents.map((row, index) => {
+    const studentName = `${row[titleCol] || ""} ${row[firstNameCol] || ""} ${row[lastNameCol] || ""}`.trim();
+    const fatherFullName = `${row[fatherNameCol] || ""} ${row[fatherLNameCol] || ""}`.trim();
+    const fatherOccupation = row[fatherOccCol] || "";
+    const motherFullName = `${row[motherNameCol] || ""} ${row[motherLNameCol] || ""}`.trim();
+    const motherOccupation = row[motherOccCol] || "";
+    const addressString = row[addressCol] || "";
+    const parsedAddr = parseAddress(addressString);
+    return `<tr><td>${index + 1}</td><td class="left">${studentName}</td><td class="left">${fatherFullName}</td><td>${fatherOccupation}</td><td class="left">${motherFullName}</td><td>${motherOccupation}</td><td>${parsedAddr.house}</td><td>${parsedAddr.moo}</td><td>${parsedAddr.subdistrict}</td><td>${parsedAddr.district}</td><td>${parsedAddr.province}</td></tr>`;
+  });
 
-  const folderId = settings.pdfSaveFolderId;
-  if (!folderId) throw new Error("ยังไม่ได้ตั้งค่า 'pdfSaveFolderId' ในชีต global_settings");
-  let folder;
-  try {
-    folder = DriveApp.getFolderById(folderId);
-  } catch (e) {
-    throw new Error("ไม่พบโฟลเดอร์ Google Drive หรือคุณไม่มีสิทธิ์เข้าถึง กรุณาตรวจสอบ Folder ID: " + folderId);
-  }
-  
-  const file = folder.createFile(blob);
-  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-  return file.getUrl();
+  const gradeFullName = convertGradeToFullName(grade);
+  const schoolName = String(settings['ชื่อโรงเรียน'] || settings.schoolName || '').trim() || 'โรงเรียน';
+  const academicYear = String(settings['ปีการศึกษา'] || settings.academicYear || '').trim();
+  const title = `ข้อมูลผู้ปกครองและที่อยู่ปัจจุบัน ชั้น${gradeFullName} ห้อง ${classNo}`;
+  const subTitle = academicYear ? `${schoolName} | ปีการศึกษา ${academicYear}` : schoolName;
+  let html = `<html><head><meta charset="UTF-8"><style>body{font-family:'Sarabun',sans-serif}.header{text-align:center;font-weight:700;font-size:14pt;margin-bottom:4px}.sub-header{text-align:center;font-size:10pt;margin-bottom:12px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #000;padding:2px;text-align:center;vertical-align:middle;word-wrap:break-word}th{font-weight:700;background-color:#f2f2f2;font-size:10pt}td{font-size:7.5pt}td.left{text-align:left}.col-no{width:3%}.col-student-name{width:18%}.col-parent-name{width:16%}.col-job{width:5%}.col-addr-house{width:8%}.col-addr-moo{width:4%}.col-addr-sub{width:8%}.col-addr-dist{width:8%}.col-addr-prov{width:10%}</style></head><body><div class="header">${title}</div><div class="sub-header">${subTitle}</div><table><thead><tr><th rowspan="2" class="col-no">เลขที่</th><th rowspan="2" class="col-student-name">ชื่อ - สกุล นักเรียน</th><th colspan="2">บิดา</th><th colspan="2">มารดา</th><th colspan="5">ที่อยู่ปัจจุบัน</th></tr><tr><th class="col-parent-name">ชื่อ-สกุล บิดา</th><th class="col-job">อาชีพ</th><th class="col-parent-name">ชื่อ-สกุล มารดา</th><th class="col-job">อาชีพ</th><th class="col-addr-house">บ้านเลขที่</th><th class="col-addr-moo">หมู่ที่</th><th class="col-addr-sub">ตำบล</th><th class="col-addr-dist">อำเภอ</th><th class="col-addr-prov">จังหวัด</th></tr></thead><tbody>${tableRows.join("")}</tbody></table></body></html>`;
+  
+  const blob = Utilities.newBlob(html, 'text/html').getAs('application/pdf');
+  const fileName = `ข้อมูลผู้ปกครอง_${grade.replace(/\./g, "")}_ห้อง${classNo}.pdf`;
+  blob.setName(fileName);
+
+  const folderId = settings.pdfSaveFolderId;
+  return _saveBlobGetUrl_(blob, null, folderId || null);
 }
 
 
@@ -1278,25 +1192,24 @@ xlsxBlob.setName(fileName);
 xlsxBlob.setContentType('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 
 // บันทึกไฟล์
-let folder;
-if (settings['pdfSaveFolderId']) {
+var excelUrl = _saveBlobGetUrl_(xlsxBlob, null, settings['pdfSaveFolderId'] || null);
+
+// ลบ temp spreadsheet
+try {
+  DriveApp.getFileById(tempFileId).setTrashed(true);
+} catch (_trashErr) {
   try {
-    folder = DriveApp.getFolderById(settings['pdfSaveFolderId']);
-  } catch (e) {
-    folder = DriveApp.getRootFolder();
-  }
-} else {
-  folder = DriveApp.getRootFolder();
+    var _tk = ScriptApp.getOAuthToken();
+    UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + tempFileId, {
+      method: 'patch', contentType: 'application/json',
+      headers: { Authorization: 'Bearer ' + _tk },
+      payload: JSON.stringify({ trashed: true }), muteHttpExceptions: true
+    });
+  } catch (_) {}
 }
 
-const file = folder.createFile(xlsxBlob);
-file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-DriveApp.getFileById(tempFileId).setTrashed(true);
-
 Logger.log(`สร้าง Excel สำเร็จ: ${fileName}`);
-
-// ✅ URL ดาวน์โหลดตรง
-return `https://drive.google.com/uc?export=download&id=${file.getId()}`;
+return excelUrl;
 
   } catch (error) {
     Logger.log('generateStudentListExcel error:', error);
