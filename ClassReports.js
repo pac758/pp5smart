@@ -296,14 +296,35 @@ function getClassAssessmentSummary(grade, classNo) {
       if (!rec) return '-';
       return String(rec['ผลการประเมิน']||'').trim() || '-';
     }
+    var _compDebugDone = false;
     function getComp(sid) {
       var rec = findRec(compData, sid);
+      if (!_compDebugDone) {
+        _compDebugDone = true;
+        Logger.log('DEBUG getComp sid="' + sid + '" type=' + typeof sid);
+        if (compData.length > 0) {
+          var firstId = String(compData[0]['\u0e23\u0e2b\u0e31\u0e2a\u0e19\u0e31\u0e01\u0e40\u0e23\u0e35\u0e22\u0e19']||'');
+          Logger.log('DEBUG compData[0].id="' + firstId + '" type=' + typeof compData[0]['\u0e23\u0e2b\u0e31\u0e2a\u0e19\u0e31\u0e01\u0e40\u0e23\u0e35\u0e22\u0e19']);
+          Logger.log('DEBUG match: "' + firstId.trim() + '"==="' + sid + '" -> ' + (firstId.trim() === sid));
+        }
+        if (rec) {
+          var sk = Object.keys(rec).filter(function(k){ return k.indexOf('\u0e2a\u0e37\u0e48\u0e2d\u0e2a\u0e32\u0e23_')===0; });
+          var vals = sk.map(function(k){ return k + '=' + JSON.stringify(rec[k]); });
+          Logger.log('DEBUG rec FOUND scores: ' + vals.join(', '));
+          var allNums = Object.keys(rec).filter(function(k){ return k.indexOf('\u0e2a\u0e37\u0e48\u0e2d\u0e2a\u0e32\u0e23_')===0||k.indexOf('\u0e04\u0e34\u0e14_')===0||k.indexOf('\u0e41\u0e01\u0e49\u0e1b\u0e31\u0e0d\u0e2b\u0e32_')===0||k.indexOf('\u0e17\u0e31\u0e01\u0e29\u0e30\u0e0a\u0e35\u0e27\u0e34\u0e15_')===0||k.indexOf('\u0e40\u0e17\u0e04\u0e42\u0e19\u0e42\u0e25\u0e22\u0e35_')===0; }).map(function(k){return parseFloat(rec[k]);});
+          Logger.log('DEBUG parsed nums: ' + JSON.stringify(allNums));
+          Logger.log('DEBUG filtered (>0): ' + JSON.stringify(allNums.filter(function(n){return !isNaN(n)&&n>0;})));
+        } else {
+          Logger.log('DEBUG rec NOT FOUND');
+          var ids = compData.slice(0,5).map(function(r){return String(r['\u0e23\u0e2b\u0e31\u0e2a\u0e19\u0e31\u0e01\u0e40\u0e23\u0e35\u0e22\u0e19']||'');});
+          Logger.log('DEBUG first5 compIds: ' + JSON.stringify(ids));
+        }
+      }
       if (!rec) return '-';
-      // คำนวณจากคะแนนย่อย 25 ข้อ (5 ด้าน × 5 ข้อ)
       var scoreKeys = Object.keys(rec).filter(function(k) {
-        return k.indexOf('สื่อสาร_')===0 || k.indexOf('คิด_')===0 ||
-               k.indexOf('แก้ปัญหา_')===0 || k.indexOf('ทักษะชีวิต_')===0 ||
-               k.indexOf('เทคโนโลยี_')===0;
+        return k.indexOf('\u0e2a\u0e37\u0e48\u0e2d\u0e2a\u0e32\u0e23_')===0 || k.indexOf('\u0e04\u0e34\u0e14_')===0 ||
+               k.indexOf('\u0e41\u0e01\u0e49\u0e1b\u0e31\u0e0d\u0e2b\u0e32_')===0 || k.indexOf('\u0e17\u0e31\u0e01\u0e29\u0e30\u0e0a\u0e35\u0e27\u0e34\u0e15_')===0 ||
+               k.indexOf('\u0e40\u0e17\u0e04\u0e42\u0e19\u0e42\u0e25\u0e22\u0e35_')===0;
       });
       if (scoreKeys.length === 0) return '-';
       var nums = scoreKeys.map(function(k){return parseFloat(rec[k]);}).filter(function(n){return !isNaN(n) && n > 0;});
