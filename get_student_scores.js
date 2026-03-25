@@ -1022,10 +1022,34 @@ function getParentStudentScores(studentId) {
       Logger.log('⚠️ getParentStudentScores activity sheet: ' + actErr.message);
     }
 
-    // เรียงลำดับ: วิชาปกติก่อน, กิจกรรมทีหลัง, เรียงตามรหัสวิชา
+    // เรียงลำดับ: วิชาปกติตามมาตรฐาน, กิจกรรมทีหลัง
+    var academicOrder = [
+      'ภาษาไทย', 'คณิตศาสตร์',
+      'วิทยาศาสตร์และเทคโนโลยี', 'วิทยาศาสตร์',
+      'สังคมศึกษา ศาสนา และวัฒนธรรม', 'สังคมศึกษา',
+      'ประวัติศาสตร์',
+      'สุขศึกษาและพลศึกษา', 'สุขศึกษา', 'พลศึกษา',
+      'ศิลปะ',
+      'การงานอาชีพ', 'การงาน',
+      'ภาษาอังกฤษ',
+      'หน้าที่พลเมือง',
+      'การป้องกันตนเองและประเทศชาติ', 'การป้องกัน'
+    ];
+    var getAcademicPriority = function(name) {
+      var n = String(name || '').trim();
+      for (var i = 0; i < academicOrder.length; i++) {
+        if (n.indexOf(academicOrder[i]) !== -1) return i;
+      }
+      return 999;
+    };
     scores.sort(function(a, b) {
       if (a.isActivity !== b.isActivity) return a.isActivity ? 1 : -1;
       if (a.isSummary !== b.isSummary) return a.isSummary ? 1 : -1;
+      if (!a.isActivity && !b.isActivity) {
+        var pa = getAcademicPriority(a.name);
+        var pb = getAcademicPriority(b.name);
+        if (pa !== pb) return pa - pb;
+      }
       return (a.subjectCode || '').localeCompare(b.subjectCode || '');
     });
 
