@@ -400,14 +400,10 @@
         (function() {
             'use strict';
             
-            if (window.teacherCommentSystem) {
-                // console.log('🔄 ระบบถูก initialize แล้ว กำลังรีเซ็ต...');
-                return;
-            }
-            
+            // Reset flag ทุกครั้งเพื่อให้ SPA re-init ได้ (DOM เป็นชุดใหม่ทุกครั้ง)
             window.teacherCommentSystem = {
                 initialized: true,
-                version: '1.2-Modern' // 👈 อัปเดตเวอร์ชัน
+                version: '1.2-Modern'
             };
             
             var grades = [];
@@ -473,7 +469,7 @@
                             .then(resolve)
                             .catch(function(error) {
                                 if (retryCount < maxRetries) {
-                                    // console.log('🔄 ลองใหม่ครั้งที่ ' + (retryCount + 1) + '/' + maxRetries);
+                                    // console.log(' ลองใหม่ครั้งที่ ' + (retryCount + 1) + '/' + maxRetries);
                                     setTimeout(function() { 
                                         attempt(retryCount + 1); 
                                     }, 1000 * (retryCount + 1));
@@ -537,7 +533,7 @@
                 setupEventListeners();
                 setupAutoSave();
                 setupKeyboardShortcuts();
-                // console.log('✅ ระบบเริ่มต้นเรียบร้อย (Modern v1.2)');
+                // console.log(' ระบบเริ่มต้นเรียบร้อย (Modern v1.2)');
             }
             
             function setupEventListeners() {
@@ -587,6 +583,7 @@
                             isSubmitting = false;
                             saveBtn.disabled = false;
                             saveBtn.textContent = originalText;
+                            enableForm();
                         });
                     }
                 });
