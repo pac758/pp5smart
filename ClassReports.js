@@ -267,19 +267,11 @@ function getClassAssessmentSummary(grade, classNo) {
     var classGPAs = classStudents.map(function(st){return{id:st.studentId,gpa:calcSummary(st.studentId).gpa};});
     classGPAs.sort(function(a,b){return b.gpa-a.gpa;});
 
-    // ดึงผลประเมิน 3 ด้าน
+    // ดึงผลประเมิน 3 ด้าน (bypass cache เพื่อให้ได้ข้อมูลล่าสุดเสมอ)
     var readingData=[], charData=[], compData=[];
-    try { readingData = _readSheetToObjects('การประเมินอ่านคิดเขียน'); } catch(e){ Logger.log('⚠️ readingData error: ' + e.message); }
-    try { charData = _readSheetToObjects('การประเมินคุณลักษณะ'); } catch(e){ Logger.log('⚠️ charData error: ' + e.message); }
-    try { compData = _readSheetToObjects('การประเมินสมรรถนะ'); } catch(e){ Logger.log('⚠️ compData error: ' + e.message); }
-    Logger.log('📊 Assessment data counts — reading: ' + readingData.length + ', char: ' + charData.length + ', comp: ' + compData.length);
-    if (compData.length > 0) {
-      var sampleRec = compData[0];
-      var sampleKeys = Object.keys(sampleRec).filter(function(k){ return k.indexOf('สื่อสาร_')===0 || k.indexOf('คิด_')===0 || k.indexOf('แก้ปัญหา_')===0 || k.indexOf('ทักษะชีวิต_')===0 || k.indexOf('เทคโนโลยี_')===0; });
-      Logger.log('📊 compData sample keys: ' + JSON.stringify(Object.keys(sampleRec)));
-      Logger.log('📊 compData score keys found: ' + sampleKeys.length + ' → ' + JSON.stringify(sampleKeys.slice(0,5)));
-      Logger.log('📊 compData sample studentId: ' + String(sampleRec['รหัสนักเรียน']||'(none)'));
-    }
+    try { readingData = _readSheetToObjects('การประเมินอ่านคิดเขียน', false); } catch(e){}
+    try { charData = _readSheetToObjects('การประเมินคุณลักษณะ', false); } catch(e){}
+    try { compData = _readSheetToObjects('การประเมินสมรรถนะ', false); } catch(e){}
 
     function findRec(arr, sid) {
       return arr.find(function(r){return String(r['รหัสนักเรียน']||'').trim()===sid;});
