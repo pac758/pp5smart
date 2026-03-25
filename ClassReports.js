@@ -296,44 +296,30 @@ function getClassAssessmentSummary(grade, classNo) {
       if (!rec) return '-';
       return String(rec['ผลการประเมิน']||'').trim() || '-';
     }
-    var _compDebugDone = false;
     function getComp(sid) {
       var rec = findRec(compData, sid);
-      if (!_compDebugDone) {
-        _compDebugDone = true;
-        Logger.log('DEBUG getComp sid="' + sid + '" type=' + typeof sid);
-        if (compData.length > 0) {
-          var firstId = String(compData[0]['\u0e23\u0e2b\u0e31\u0e2a\u0e19\u0e31\u0e01\u0e40\u0e23\u0e35\u0e22\u0e19']||'');
-          Logger.log('DEBUG compData[0].id="' + firstId + '" type=' + typeof compData[0]['\u0e23\u0e2b\u0e31\u0e2a\u0e19\u0e31\u0e01\u0e40\u0e23\u0e35\u0e22\u0e19']);
-          Logger.log('DEBUG match: "' + firstId.trim() + '"==="' + sid + '" -> ' + (firstId.trim() === sid));
-        }
-        if (rec) {
-          var sk = Object.keys(rec).filter(function(k){ return k.indexOf('\u0e2a\u0e37\u0e48\u0e2d\u0e2a\u0e32\u0e23_')===0; });
-          var vals = sk.map(function(k){ return k + '=' + JSON.stringify(rec[k]); });
-          Logger.log('DEBUG rec FOUND scores: ' + vals.join(', '));
-          var allNums = Object.keys(rec).filter(function(k){ return k.indexOf('\u0e2a\u0e37\u0e48\u0e2d\u0e2a\u0e32\u0e23_')===0||k.indexOf('\u0e04\u0e34\u0e14_')===0||k.indexOf('\u0e41\u0e01\u0e49\u0e1b\u0e31\u0e0d\u0e2b\u0e32_')===0||k.indexOf('\u0e17\u0e31\u0e01\u0e29\u0e30\u0e0a\u0e35\u0e27\u0e34\u0e15_')===0||k.indexOf('\u0e40\u0e17\u0e04\u0e42\u0e19\u0e42\u0e25\u0e22\u0e35_')===0; }).map(function(k){return parseFloat(rec[k]);});
-          Logger.log('DEBUG parsed nums: ' + JSON.stringify(allNums));
-          Logger.log('DEBUG filtered (>0): ' + JSON.stringify(allNums.filter(function(n){return !isNaN(n)&&n>0;})));
-        } else {
-          Logger.log('DEBUG rec NOT FOUND');
-          var ids = compData.slice(0,5).map(function(r){return String(r['\u0e23\u0e2b\u0e31\u0e2a\u0e19\u0e31\u0e01\u0e40\u0e23\u0e35\u0e22\u0e19']||'');});
-          Logger.log('DEBUG first5 compIds: ' + JSON.stringify(ids));
-        }
-      }
       if (!rec) return '-';
-      var scoreKeys = Object.keys(rec).filter(function(k) {
+      // Try prefixed columns first (new format: สื่อสาร_*, คิด_*, etc.)
+      var prefixedKeys = Object.keys(rec).filter(function(k) {
         return k.indexOf('\u0e2a\u0e37\u0e48\u0e2d\u0e2a\u0e32\u0e23_')===0 || k.indexOf('\u0e04\u0e34\u0e14_')===0 ||
                k.indexOf('\u0e41\u0e01\u0e49\u0e1b\u0e31\u0e0d\u0e2b\u0e32_')===0 || k.indexOf('\u0e17\u0e31\u0e01\u0e29\u0e30\u0e0a\u0e35\u0e27\u0e34\u0e15_')===0 ||
                k.indexOf('\u0e40\u0e17\u0e04\u0e42\u0e19\u0e42\u0e25\u0e22\u0e35_')===0;
       });
-      if (scoreKeys.length === 0) return '-';
-      var nums = scoreKeys.map(function(k){return parseFloat(rec[k]);}).filter(function(n){return !isNaN(n) && n > 0;});
+      var nums = prefixedKeys.map(function(k){return parseFloat(rec[k]);}).filter(function(n){return !isNaN(n) && n > 0;});
+      // Fallback: try ALL columns except metadata (old format: unprefixed columns)
+      if (nums.length === 0) {
+        var skipKeys = {'\u0e23\u0e2b\u0e31\u0e2a\u0e19\u0e31\u0e01\u0e40\u0e23\u0e35\u0e22\u0e19':1,'\u0e0a\u0e37\u0e48\u0e2d-\u0e19\u0e32\u0e21\u0e2a\u0e01\u0e38\u0e25':1,'\u0e0a\u0e31\u0e49\u0e19':1,'\u0e2b\u0e49\u0e2d\u0e07':1,'\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01':1,'\u0e1c\u0e39\u0e49\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01':1};
+        var prefixedSet = {};
+        prefixedKeys.forEach(function(k){ prefixedSet[k]=1; });
+        var fallbackKeys = Object.keys(rec).filter(function(k){ return k && !skipKeys[k] && !prefixedSet[k]; });
+        nums = fallbackKeys.map(function(k){return parseFloat(rec[k]);}).filter(function(n){return !isNaN(n) && n > 0;});
+      }
       if (nums.length === 0) return '-';
       var avg = nums.reduce(function(a,b){return a+b;},0) / nums.length;
-      if (avg >= 2.5) return 'ดีเยี่ยม';
-      if (avg >= 2.0) return 'ดี';
-      if (avg >= 1.0) return 'ผ่าน';
-      return 'ปรับปรุง';
+      if (avg >= 2.5) return '\u0e14\u0e35\u0e40\u0e22\u0e35\u0e48\u0e22\u0e21';
+      if (avg >= 2.0) return '\u0e14\u0e35';
+      if (avg >= 1.0) return '\u0e1c\u0e48\u0e32\u0e19';
+      return '\u0e1b\u0e23\u0e31\u0e1a\u0e1b\u0e23\u0e38\u0e07';
     }
 
     var results = classStudents.map(function(st) {
