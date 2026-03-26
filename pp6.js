@@ -461,6 +461,7 @@ function getStudentAssessments(studentId) {
           แนะแนว: activityRecord['กิจกรรมแนะแนว'] || 'ผ่าน',
           ลูกเสือ: activityRecord['ลูกเสือ_เนตรนารี'] || 'ผ่าน',
           ชุมนุม: activityRecord['ชุมนุม'] || 'ผ่าน',
+          ชื่อชุมนุม: activityRecord['ชื่อชุมนุม'] || '',
           สาธารณะ: activityRecord['เพื่อสังคมและสาธารณประโยชน์'] || 'ผ่าน'
         };
       }
@@ -688,7 +689,11 @@ function getStudentAllSubjectScores(studentId, term = 'both') {
         subjectResult.isActivity = true;
         subjectResult.grade = getActivityResult(subjectName);
         subjectResult.score = null; // กิจกรรมไม่มีคะแนน
-        Logger.log('[PP6 Activity] name="' + subjectName + '" grade="' + subjectResult.grade + '"');
+        // ถ้าเป็นวิชาชุมนุมและมีชื่อชุมนุมรายคน → ใช้ชื่อนั้นแทน
+        if (String(subjectName || '').includes('ชุมนุม') && assessments.activities.ชื่อชุมนุม) {
+          subjectResult.name = assessments.activities.ชื่อชุมนุม;
+        }
+        Logger.log('[PP6 Activity] name="' + subjectResult.name + '" grade="' + subjectResult.grade + '"');
       } else {
         // หาคะแนนจากรหัสวิชาก่อน
         let savedScore = scoreMap.get(subjectCode);

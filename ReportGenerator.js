@@ -1129,7 +1129,11 @@ function getStudentScores_(id, year, assessmentsCache) {
 
           else if (n.includes('ลูกเสือ') || n.includes('เนตรนารี')) actGrade = activityMap['ลูกเสือ_เนตรนารี'] || activityMap['ลูกเสือ/เนตรนารี'] || 'ผ่าน';
 
-          else if (n.includes('ชุมนุม')) actGrade = activityMap['ชุมนุม'] || 'ผ่าน';
+          else if (n.includes('ชุมนุม')) {
+            actGrade = activityMap['ชุมนุม'] || 'ผ่าน';
+            // ถ้ามีชื่อชุมนุมรายคน → ใช้แทนชื่อจากรายวิชา
+            if (activityMap['ชื่อชุมนุม']) s.name = activityMap['ชื่อชุมนุม'];
+          }
 
           else if (n.includes('สังคม') || n.includes('สาธารณ')) actGrade = activityMap['เพื่อสังคมและสาธารณประโยชน์'] || activityMap['เพื่อสังคม'] || 'ผ่าน';
 
