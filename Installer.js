@@ -315,6 +315,28 @@ function repairExistingInstallation() {
     }
   }
   
+  // 8. ตรวจ/แก้ ความเห็นครู header (yearly sheet)
+  var commentSheetNames = boundSs.getSheets().map(function(s) { return s.getName(); })
+    .filter(function(n) { return n === 'ความเห็นครู' || n.indexOf('ความเห็นครู_') === 0; });
+  commentSheetNames.forEach(function(csName) {
+    var cs = boundSs.getSheetByName(csName);
+    if (cs && cs.getLastColumn() > 0) {
+      var csHeaders = cs.getRange(1, 1, 1, cs.getLastColumn()).getValues()[0]
+        .map(function(h) { return String(h || '').trim(); });
+      var fixed = false;
+      // แก้คอลัมน์ 2: ชื่อ-นามสกุล → ชื่อนักเรียน
+      var col2Idx = csHeaders.indexOf('ชื่อ-นามสกุล');
+      if (col2Idx >= 0) { cs.getRange(1, col2Idx + 1).setValue('ชื่อนักเรียน'); fixed = true; }
+      // แก้คอลัมน์สุดท้าย: ผู้บันทึก → วันที่อัปเดต
+      var oldLastIdx = csHeaders.indexOf('ผู้บันทึก');
+      if (oldLastIdx >= 0 && csHeaders.indexOf('วันที่อัปเดต') < 0) {
+        cs.getRange(1, oldLastIdx + 1).setValue('วันที่อัปเดต'); fixed = true;
+      }
+      if (fixed) Logger.log('✅ แก้ header ชีต "' + csName + '"');
+      else Logger.log('✅ ชีต "' + csName + '" header ถูกต้อง');
+    }
+  });
+  
   Logger.log('');
   Logger.log('=== ✅ REPAIR เสร็จสมบูรณ์ ===');
   if (needsRepair) {
@@ -666,7 +688,7 @@ function setupSheetHeaders_(sheet, sheetName, formData) {
       'วันที่บันทึก','ผู้บันทึก'
     ]],
     'AttendanceLog': [['timestamp','date','grade','class','updated_count','user_email','details']],
-    'ความเห็นครู': [['รหัสนักเรียน','ชื่อ-นามสกุล','ชั้น','ห้อง','ความเห็นครู','วันที่บันทึก','ผู้บันทึก']]
+    'ความเห็นครู': [['รหัสนักเรียน','ชื่อนักเรียน','ชั้น','ห้อง','ความเห็นครู','วันที่บันทึก','วันที่อัปเดต']]
   };
 
   // ใช้ baseName เป็น key (ไม่ใช่ชื่อชีตจริงที่อาจมี suffix ปี)
