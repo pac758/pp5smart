@@ -109,6 +109,7 @@
                       <th class="col-activity">แนะแนว</th>
                       <th class="col-activity">ลูกเสือ/เนตรนารี</th>
                       <th class="col-activity">ชุมนุม</th>
+                      <th style="min-width:120px">ชื่อชุมนุม</th>
                       <th class="col-activity">เพื่อสังคม</th>
                       <th class="col-activity">รวมกิจกรรม</th>
                     </tr>
@@ -293,6 +294,14 @@
                 <option value="ไม่ผ่าน" ${activities.club === 'ไม่ผ่าน' ? 'selected' : ''}>ไม่ผ่าน</option>
               </select>
             </td>
+            <td>
+              <input type="text" class="form-control form-control-sm"
+                     data-student="${student.studentId}"
+                     data-activity="clubName"
+                     value="${activities.clubName || ''}"
+                     placeholder="ชื่อชุมนุม"
+                     onchange="ActivityAssessment.updateActivityScore('${student.studentId}', 'clubName', this.value)">
+            </td>
             <td class="text-center">
               <select class="form-select form-select-sm" 
                       data-student="${student.studentId}" 
@@ -420,6 +429,7 @@
               guidance: activities.guidance || 'ผ่าน',
               scout: activities.scout || 'ผ่าน',
               club: activities.club || 'ผ่าน',
+              clubName: activities.clubName || '',
               social: activities.social || 'ผ่าน',
               overall: activities.overall || 'ผ่าน'
             }

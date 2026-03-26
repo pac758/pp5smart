@@ -53,7 +53,7 @@ const TRAIT_HEADERS = [
 const ACTIVITY_SHEET = 'การประเมินกิจกรรมพัฒนาผู้เรียน';
 const ACTIVITY_HEADERS = [
   'รหัสนักเรียน', 'ชื่อ-นามสกุล', 'ชั้น', 'ห้อง',
-  'กิจกรรมแนะแนว', 'ลูกเสือ_เนตรนารี', 'ชุมนุม',
+  'กิจกรรมแนะแนว', 'ลูกเสือ_เนตรนารี', 'ชุมนุม', 'ชื่อชุมนุม',
   'เพื่อสังคมและสาธารณประโยชน์', 'รวมกิจกรรม',
   'วันที่บันทึก', 'ผู้บันทึก'
 ];
@@ -651,18 +651,25 @@ function getStudentsForActivity(grade, classNo) {
   var sheet = S_getYearlySheet(ACTIVITY_SHEET);
   var map = new Map();
   if (sheet && sheet.getLastRow() > 1) {
-    var ad = sheet.getRange(2, 1, sheet.getLastRow() - 1, 11).getValues();
+    var lastCol = sheet.getLastColumn();
+    var ad = sheet.getRange(2, 1, sheet.getLastRow() - 1, lastCol).getValues();
+    var hdr = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(String);
+    var iClubName = hdr.indexOf('ชื่อชุมนุม');
+    var iSocial = hdr.indexOf('เพื่อสังคมและสาธารณประโยชน์');
+    var iOverall = hdr.indexOf('รวมกิจกรรม');
     ad.filter(function(r) { return String(r[2]) === grade && String(r[3]) === classNo; })
       .forEach(function(r) {
         map.set(String(r[0]).trim(), {
           guidance: r[4] || 'ผ่าน', scout: r[5] || 'ผ่าน', club: r[6] || 'ผ่าน',
-          social: r[7] || 'ผ่าน', overall: r[8] || 'ผ่าน'
+          clubName: iClubName >= 0 ? String(r[iClubName] || '') : '',
+          social: iSocial >= 0 ? (r[iSocial] || 'ผ่าน') : (r[7] || 'ผ่าน'),
+          overall: iOverall >= 0 ? (r[iOverall] || 'ผ่าน') : (r[8] || 'ผ่าน')
         });
       });
   }
 
   return students.map(function(s) {
-    var ext = map.get(s.id) || { guidance: 'ผ่าน', scout: 'ผ่าน', club: 'ผ่าน', social: 'ผ่าน', overall: 'ผ่าน' };
+    var ext = map.get(s.id) || { guidance: 'ผ่าน', scout: 'ผ่าน', club: 'ผ่าน', clubName: '', social: 'ผ่าน', overall: 'ผ่าน' };
     return { studentId: s.id, name: s.name, grade: s.grade, classNo: s.classNo, activities: ext };
   });
 }
@@ -891,7 +898,8 @@ function saveActivityAssessmentBatch(payload) {
       return {
         key: rec.studentId,
         rowData: [rec.studentId, rec.name, rec.grade, rec.classNo,
-                  act.guidance, act.scout, act.club, act.social, act.overall,
+                  act.guidance, act.scout, act.club, act.clubName || '',
+                  act.social, act.overall,
                   now, who]
       };
     });
@@ -1359,6 +1367,7 @@ function createActivityAssessmentHTML_(students, grade, classNo, year, school, d
     var guidance = act.guidance || '-';
     var scout = act.scout || '-';
     var club = act.club || '-';
+    var clubName = act.clubName || '';
     var social = act.social || '-';
     var overall = act.overall || '-';
     if (overall === 'ผ่าน') passAllCount++;
@@ -1368,6 +1377,7 @@ function createActivityAssessmentHTML_(students, grade, classNo, year, school, d
       + '<td class="center">' + guidance + '</td>'
       + '<td class="center">' + scout + '</td>'
       + '<td class="center">' + club + '</td>'
+      + '<td class="left name-cell">' + clubName + '</td>'
       + '<td class="center">' + social + '</td>'
       + '<td class="center"' + (overall === 'ไม่ผ่าน' ? ' style="color:#dc3545"' : '') + '>' + overall + '</td></tr>';
   });
@@ -1379,7 +1389,7 @@ function createActivityAssessmentHTML_(students, grade, classNo, year, school, d
     + '</style></head><body>'
     + '<div class="header">' + logoHtml + '<div class="title">รายงานการประเมินกิจกรรมพัฒนาผู้เรียน</div><div class="subtitle">' + school + '</div></div>'
     + '<div class="info-box">ชั้นประถมศึกษาปีที่ ' + grade.replace('ป.', '') + ' ห้อง ' + classNo + ' &nbsp;&nbsp; ปีการศึกษา ' + year + '</div>'
-    + '<table><thead><tr><th style="width:4%">ที่</th><th style="width:28%">ชื่อ - นามสกุล</th><th style="width:11%">แนะแนว</th><th style="width:13%">ลูกเสือ/เนตรนารี</th><th style="width:11%">ชุมนุม</th><th style="width:12%">เพื่อสังคมฯ</th><th style="width:10%">สรุปผล</th></tr></thead><tbody>' + rows + '</tbody></table>'
+    + '<table><thead><tr><th style="width:4%">ที่</th><th style="width:22%">ชื่อ - นามสกุล</th><th style="width:9%">แนะแนว</th><th style="width:11%">ลูกเสือ/เนตรนารี</th><th style="width:9%">ชุมนุม</th><th style="width:14%">ชื่อชุมนุม</th><th style="width:10%">เพื่อสังคมฯ</th><th style="width:10%">สรุปผล</th></tr></thead><tbody>' + rows + '</tbody></table>'
     + '<div class="legend-inline"><strong>เกณฑ์:</strong> &nbsp;<strong>ผ่าน</strong> = เข้าร่วมกิจกรรมครบตามเกณฑ์ &nbsp;&nbsp;|&nbsp;&nbsp;<span style="color:#dc3545"><strong>ไม่ผ่าน</strong></span> = เข้าร่วมกิจกรรมไม่ครบตามเกณฑ์</div>'
     + '<div class="summary-inline"><strong>สรุปผลการประเมิน:</strong> &nbsp;&nbsp;ผ่าน <span style="font-weight:700;font-size:12pt">' + passAllCount + '</span> คน &nbsp;&nbsp;|&nbsp;&nbsp;ไม่ผ่าน <span style="font-weight:700;font-size:12pt;color:#dc3545">' + notPassCount + '</span> คน &nbsp;&nbsp;|&nbsp;&nbsp;รวมทั้งหมด <span style="font-weight:700;font-size:12pt">' + students.length + '</span> คน</div>'
     + '<div class="footer"><table><tr><td><div class="sign-line">ลงชื่อ...............................................ครูประจำชั้น</div><div class="sign-line">(' + (teacherName || '..........................................') + ')</div><div class="sign-line">ตำแหน่ง ครู &nbsp;&nbsp; วันที่........./........./..........</div></td>'
