@@ -291,6 +291,30 @@ function repairExistingInstallation() {
     Logger.log('⚠️ ไม่พบชีตรายวิชา');
   }
   
+  // 7. ตรวจ/แก้ Students header ให้ครบถ้วน
+  var studentSheet = boundSs.getSheetByName('Students');
+  if (studentSheet) {
+    var fullHeaders = ['student_id','id_card','title','firstname','lastname','grade','class_no','gender',
+      'birthdate','photo_url','academic_year','weight','height','blood_type','religion',
+      'father_name','father_lastname','father_occupation','mother_name','mother_lastname','mother_occupation',
+      'address','created_date','status'];
+    var currentHeaders = studentSheet.getRange(1, 1, 1, studentSheet.getLastColumn()).getValues()[0]
+      .map(function(h) { return String(h || '').trim(); });
+    var missingCols = [];
+    fullHeaders.forEach(function(h) {
+      if (currentHeaders.indexOf(h) < 0) missingCols.push(h);
+    });
+    if (missingCols.length > 0) {
+      var startCol = currentHeaders.length + 1;
+      missingCols.forEach(function(colName, idx) {
+        studentSheet.getRange(1, startCol + idx).setValue(colName);
+      });
+      Logger.log('✅ เพิ่ม ' + missingCols.length + ' คอลัมน์ใน Students: ' + missingCols.join(', '));
+    } else {
+      Logger.log('✅ Students header ครบ ' + currentHeaders.length + ' คอลัมน์');
+    }
+  }
+  
   Logger.log('');
   Logger.log('=== ✅ REPAIR เสร็จสมบูรณ์ ===');
   if (needsRepair) {
@@ -623,7 +647,7 @@ function setupSheets_(ss, formData, usedExisting) {
 function setupSheetHeaders_(sheet, sheetName, formData) {
   const headerMap = {
     'Users': [['username','password','role','firstName','lastName','email','className','active','createdAt']],
-    'Students': [['student_id','id_card','title','firstname','lastname','grade','class_no','gender','created_date','status']],
+    'Students': [['student_id','id_card','title','firstname','lastname','grade','class_no','gender','birthdate','photo_url','academic_year','weight','height','blood_type','religion','father_name','father_lastname','father_occupation','mother_name','mother_lastname','mother_occupation','address','created_date','status']],
     'รายวิชา': [['ชั้น','รหัสวิชา','ชื่อวิชา','ชั่วโมง/ปี','ประเภทวิชา','ครูผู้สอน','คะแนนระหว่างปี','คะแนนปลายปี']],
     'Holidays': [['date','description','type']],
     'global_settings': [['key','value','updatedAt']],

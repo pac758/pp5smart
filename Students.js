@@ -586,13 +586,11 @@ function createStudentsSheet(ss) {
     // สร้าง header
     const headers = [
       'student_id', 'id_card', 'title', 'firstname', 'lastname', 
-      'grade', 'class_no', 'gender', 'created_date', 'status'
-    ];
-    
-    // สร้าง header ภาษาไทย (แถวที่ 2 สำหรับอ้างอิง)
-    const thaiHeaders = [
-      'รหัสนักเรียน', 'เลขบัตรประชาชน', 'คำนำหน้า', 'ชื่อ', 'นามสกุล',
-      'ชั้น', 'ห้อง', 'เพศ', 'วันที่สร้าง', 'สถานะ'
+      'grade', 'class_no', 'gender', 'birthdate', 'photo_url',
+      'academic_year', 'weight', 'height', 'blood_type', 'religion',
+      'father_name', 'father_lastname', 'father_occupation',
+      'mother_name', 'mother_lastname', 'mother_occupation',
+      'address', 'created_date', 'status'
     ];
     
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
@@ -613,17 +611,24 @@ function createStudentsSheet(ss) {
     sheet.setColumnWidth(6, 80);  // grade
     sheet.setColumnWidth(7, 60);  // class_no
     sheet.setColumnWidth(8, 80);  // gender
-    sheet.setColumnWidth(9, 120); // created_date
-    sheet.setColumnWidth(10, 100); // status
+    sheet.setColumnWidth(9, 110); // birthdate
+    sheet.setColumnWidth(10, 120); // photo_url
+    sheet.setColumnWidth(11, 100); // academic_year
+    sheet.setColumnWidth(12, 80);  // weight
+    sheet.setColumnWidth(13, 80);  // height
+    sheet.setColumnWidth(14, 80);  // blood_type
+    sheet.setColumnWidth(15, 100); // religion
+    sheet.setColumnWidth(16, 140); // father_name
+    sheet.setColumnWidth(17, 140); // father_lastname
+    sheet.setColumnWidth(18, 130); // father_occupation
+    sheet.setColumnWidth(19, 140); // mother_name
+    sheet.setColumnWidth(20, 140); // mother_lastname
+    sheet.setColumnWidth(21, 130); // mother_occupation
+    sheet.setColumnWidth(22, 200); // address
+    sheet.setColumnWidth(23, 120); // created_date
+    sheet.setColumnWidth(24, 100); // status
     
-    // เพิ่มข้อมูลตัวอย่าง
-    const sampleData = [
-      ['2024001', '1234567890123', 'เด็กชาย', 'สมชาย', 'ใจดี', 'ป.1', '1', 'ชาย', new Date(), 'active'],
-      ['2024002', '1234567890124', 'เด็กหญิง', 'สมหญิง', 'ใจงาม', 'ป.1', '1', 'หญิง', new Date(), 'active'],
-      ['2024003', '1234567890125', 'เด็กชาย', 'สมศักดิ์', 'ใจสู้', 'ป.1', '2', 'ชาย', new Date(), 'active']
-    ];
-    
-    sheet.getRange(2, 1, sampleData.length, sampleData[0].length).setValues(sampleData);
+    // ไม่เพิ่มข้อมูลตัวอย่าง — ชีตเริ่มต้นว่าง พร้อมให้เพิ่มนักเรียนจริง
     
     Logger.log('Created Students sheet with sample data');
     return sheet;
