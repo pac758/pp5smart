@@ -179,6 +179,127 @@ function debugSetupStatus() {
   Logger.log('=== ✅ Authorization ครบทุก scope ===');
 }
 
+/**
+ * 🔧 REPAIR: แก้ไขโรงเรียนที่ติดตั้งไปแล้วด้วยโค้ดเก่า
+ * รันจาก GAS Editor → ดู Execution log
+ * 
+ * สิ่งที่แก้ไข:
+ * 1. SPREADSHEET_ID → ชี้ไปที่ Bound Spreadsheet (ไม่ใช่ Spreadsheet เปล่าที่สร้างขึ้นผิด)
+ * 2. SCRIPT_ID → อัปเดตให้ตรงกับ Script ปัจจุบัน
+ * 3. ตรวจสอบ HomeroomTeachers header
+ */
+function repairExistingInstallation() {
+  var props = PropertiesService.getScriptProperties();
+  var currentScriptId = ScriptApp.getScriptId();
+  var oldSsId = props.getProperty('SPREADSHEET_ID');
+  
+  Logger.log('=== 🔧 REPAIR EXISTING INSTALLATION ===');
+  Logger.log('Current Script ID: ' + currentScriptId);
+  Logger.log('Current SPREADSHEET_ID: ' + (oldSsId || '(ไม่มี)'));
+  
+  // 1. ตรวจหา Bound Spreadsheet
+  var boundSs = null;
+  try {
+    boundSs = SpreadsheetApp.getActiveSpreadsheet();
+    if (boundSs) Logger.log('✅ พบ Bound Spreadsheet ผ่าน getActiveSpreadsheet: ' + boundSs.getId());
+  } catch(_e) {}
+  
+  if (!boundSs) {
+    try {
+      var token = ScriptApp.getOAuthToken();
+      var resp = UrlFetchApp.fetch(
+        'https://script.googleapis.com/v1/projects/' + currentScriptId,
+        { headers: { 'Authorization': 'Bearer ' + token }, muteHttpExceptions: true }
+      );
+      if (resp.getResponseCode() === 200) {
+        var projData = JSON.parse(resp.getContentText());
+        if (projData.parentId) {
+          boundSs = SpreadsheetApp.openById(projData.parentId);
+          Logger.log('✅ พบ Bound Spreadsheet ผ่าน Script API: ' + projData.parentId);
+        }
+      }
+    } catch(_e2) {
+      Logger.log('⚠️ Script API failed: ' + _e2.message);
+    }
+  }
+  
+  if (!boundSs) {
+    Logger.log('❌ ไม่พบ Bound Spreadsheet — ไม่สามารถแก้ไขอัตโนมัติได้');
+    Logger.log('💡 ลอง: รันฟังก์ชัน manualRepairSpreadsheetId("SPREADSHEET_ID_ใหม่") แทน');
+    return;
+  }
+  
+  var correctId = boundSs.getId();
+  var needsRepair = (oldSsId !== correctId);
+  
+  // 2. แก้ SPREADSHEET_ID
+  if (needsRepair) {
+    Logger.log('🔄 แก้ไข SPREADSHEET_ID:');
+    Logger.log('   เดิม: ' + oldSsId + ' (ผิด — Spreadsheet เปล่าที่สร้างขึ้นตอนติดตั้ง)');
+    Logger.log('   ใหม่: ' + correctId + ' (ถูก — Bound Spreadsheet ที่มีข้อมูลรายวิชา)');
+    props.setProperty('SPREADSHEET_ID', correctId);
+  } else {
+    Logger.log('✅ SPREADSHEET_ID ถูกต้องแล้ว: ' + correctId);
+  }
+  
+  // 3. แก้ SCRIPT_ID
+  props.setProperty('SCRIPT_ID', currentScriptId);
+  Logger.log('✅ SCRIPT_ID อัปเดต: ' + currentScriptId);
+  
+  // 4. ตรวจ/แก้ HomeroomTeachers header
+  var htSheet = boundSs.getSheetByName('HomeroomTeachers');
+  if (htSheet) {
+    if (htSheet.getLastColumn() < 4) {
+      htSheet.getRange(1, 4).setValue('ครูประจำชั้น 2');
+      Logger.log('✅ เพิ่ม header "ครูประจำชั้น 2" ใน HomeroomTeachers');
+    } else {
+      Logger.log('✅ HomeroomTeachers header ครบแล้ว');
+    }
+  } else {
+    // สร้าง HomeroomTeachers ถ้ายังไม่มี
+    htSheet = boundSs.insertSheet('HomeroomTeachers');
+    htSheet.getRange(1, 1, 1, 4).setValues([['grade', 'classNo', 'teacherName', 'ครูประจำชั้น 2']]);
+    htSheet.getRange(1, 1, 1, 4).setBackground('#4a5568').setFontColor('#ffffff').setFontWeight('bold');
+    htSheet.setFrozenRows(1);
+    Logger.log('✅ สร้างชีต HomeroomTeachers ใหม่');
+  }
+  
+  // 5. ตรวจ global_settings มี installed_script_id ถูกต้อง
+  var gsSheet = boundSs.getSheetByName('global_settings');
+  if (gsSheet) {
+    var gsData = gsSheet.getDataRange().getValues();
+    var foundMarker = false;
+    for (var i = 0; i < gsData.length; i++) {
+      if (gsData[i][0] === 'installed_script_id') {
+        gsSheet.getRange(i + 1, 2).setValue(currentScriptId);
+        foundMarker = true;
+        break;
+      }
+    }
+    if (!foundMarker) {
+      gsSheet.appendRow(['installed_script_id', currentScriptId, new Date().toISOString()]);
+    }
+    Logger.log('✅ global_settings.installed_script_id อัปเดต');
+  }
+  
+  // 6. ตรวจชีตรายวิชา
+  var subjectSheet = boundSs.getSheetByName('รายวิชา');
+  if (subjectSheet) {
+    var subjectRows = subjectSheet.getLastRow() - 1;
+    Logger.log('✅ ชีตรายวิชามี ' + subjectRows + ' รายวิชา');
+  } else {
+    Logger.log('⚠️ ไม่พบชีตรายวิชา');
+  }
+  
+  Logger.log('');
+  Logger.log('=== ✅ REPAIR เสร็จสมบูรณ์ ===');
+  if (needsRepair) {
+    Logger.log('🎉 แก้ไข SPREADSHEET_ID สำเร็จ — ข้อมูลรายวิชาควรกลับมาแสดงแล้ว');
+    Logger.log('💡 ลองรีเฟรช Web App แล้วตรวจสอบข้อมูลรายวิชาและครูประจำชั้น');
+  }
+  Logger.log('isSetupComplete_: ' + isSetupComplete_());
+}
+
 // Sheet names ที่ต้องสร้างใน Spreadsheet ใหม่
 // ชีตถาวร (ไม่ขึ้นกับปี)
 const PERMANENT_SHEETS = [
