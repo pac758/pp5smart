@@ -592,11 +592,16 @@ function importSubjectsFromCSV(csvBase64) {
  * �🔧 ฟังก์ชันสำหรับสร้างโฟลเดอร์ (ถ้ายังไม่มีในไฟล์อื่น)
  */
 function _getOrCreateFolder_(folderName) {
-  const folders = DriveApp.getFoldersByName(folderName);
-  if (folders.hasNext()) {
-    return folders.next();
-  } else {
-    return DriveApp.createFolder(folderName);
+  try {
+    const folders = DriveApp.getFoldersByName(folderName);
+    if (folders.hasNext()) {
+      return folders.next();
+    } else {
+      return DriveApp.createFolder(folderName);
+    }
+  } catch (e) {
+    Logger.log('_getOrCreateFolder_ DriveApp fallback: ' + e.message);
+    return null;
   }
 }
 

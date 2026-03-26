@@ -52,8 +52,7 @@ function generatePDFFromSameSheetTemplate(templateType, grade, classNo, students
     // เพิ่มโลโก้
     if (logoFileId && logoFileId.trim() !== '') {
       try {
-        const logoFile = DriveApp.getFileById(logoFileId.trim());
-        const logoBlob = logoFile.getBlob();
+        const logoBlob = _getFileBlobCompat_(logoFileId.trim());
         const logoImage = body.appendImage(logoBlob);
         logoImage.setWidth(80).setHeight(80);
         
@@ -218,10 +217,7 @@ function createReadThinkWriteTemplate(spreadsheet) {
     if (logoFileId && logoFileId.toString().trim() !== '') {
       Logger.log('✅ กำลังดึงโลโก้...');
       
-      const logoFile = DriveApp.getFileById(logoFileId.toString().trim());
-      Logger.log('📁 ชื่อไฟล์: ' + logoFile.getName());
-      
-      const logoBlob = logoFile.getBlob();
+      const logoBlob = _getFileBlobCompat_(logoFileId.toString().trim());
       Logger.log('🖼️ ขนาด Blob: ' + logoBlob.getBytes().length);
       
       // แทรกรูปที่คอลัมน์ G (7) แถวที่ 1

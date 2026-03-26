@@ -388,7 +388,7 @@ function _opr_generateSingle(studentId, cache) {
       try {
         var lp = body.appendParagraph('');
         lp.setAlignment(CENTER);
-        var img = lp.appendInlineImage(DriveApp.getFileById(sd.logoId).getBlob());
+        var img = lp.appendInlineImage(_getFileBlobCompat_(sd.logoId));
         img.setHeight(45); img.setWidth(45);
         lp.setSpacingAfter(0).setSpacingBefore(0);
       } catch(e) { Logger.log('Logo: '+e.message); }
@@ -702,7 +702,9 @@ function _opr_generateSingle(studentId, cache) {
       _pdfStep = 'saveBlobGetUrl';
       oprUrl = _saveBlobGetUrl_(pdfBlob, null, settings.pdfSaveFolderId || null);
       _pdfStep = 'setTrashed';
-      try { DriveApp.getFileById(docId).setTrashed(true); } catch(_) {}
+      try { DriveApp.getFileById(docId).setTrashed(true); } catch(_) {
+        try { var _tk=ScriptApp.getOAuthToken(); UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/'+docId,{method:'patch',contentType:'application/json',headers:{Authorization:'Bearer '+_tk},payload:JSON.stringify({trashed:true}),muteHttpExceptions:true}); } catch(_e) {}
+      }
     } catch (pdfErr) {
       throw new Error('[PDF step: ' + _pdfStep + '] ' + pdfErr.message);
     }

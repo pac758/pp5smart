@@ -68,47 +68,57 @@ function saveSingleTeacher(teacherInfo) {
 function getTeacherListForEditor() {
   const ss = SS();
   
-  // 1. ดึงข้อมูลครูที่บันทึกไว้
+  // 1. ดึงข้อมูลครูที่บันทึกไว้ใน HomeroomTeachers
   const teacherSheet = ss.getSheetByName("HomeroomTeachers");
   const teacherData = teacherSheet ? teacherSheet.getDataRange().getValues().slice(1) : [];
   const teacherMap = new Map();
-  teacherData.forEach(row => {
-    const key = `${row[0]}-${row[1]}`; // "Grade-ClassNo"
+  teacherData.forEach(function(row) {
+    var g = String(row[0] || '').trim();
+    var c = String(row[1] || '').trim();
+    if (!g || !c) return;
+    const key = g + '-' + c;
     teacherMap.set(key, {teacher1: String(row[2] || ''), teacher2: String(row[3] || '')});
   });
 
-  // 2. ดึงโครงสร้างชั้นเรียนและห้องทั้งหมด
-  const studentSheet = ss.getSheetByName("Students");
-  if (!studentSheet) throw new Error("ไม่พบชีต Students");
-  const allStudentData = studentSheet.getDataRange().getValues();
-  const sHeaders = allStudentData[0];
-  var gradeIdx = sHeaders.indexOf('grade');
-  var classIdx = sHeaders.indexOf('class_no');
-  if (gradeIdx < 0) { for (var h = 0; h < sHeaders.length; h++) { if (/grade|ชั้น/i.test(String(sHeaders[h]))) { gradeIdx = h; break; } } }
-  if (classIdx < 0) { for (var h = 0; h < sHeaders.length; h++) { if (/class_no|class|ห้อง/i.test(String(sHeaders[h]))) { classIdx = h; break; } } }
-  if (gradeIdx < 0) gradeIdx = 5;
-  if (classIdx < 0) classIdx = 6;
-  const studentData = allStudentData.slice(1);
+  // 2. ดึงโครงสร้างชั้นเรียนจาก Students (ถ้ามี)
   const classMap = new Map();
-  studentData.forEach(row => {
-    const grade = String(row[gradeIdx] || "").trim();
-    const classNo = String(row[classIdx] || "").trim();
-    if (grade && classNo) {
-      if (!classMap.has(grade)) {
-        classMap.set(grade, new Set());
+  var studentSheet = ss.getSheetByName("Students");
+  if (studentSheet && studentSheet.getLastRow() > 1) {
+    var allStudentData = studentSheet.getDataRange().getValues();
+    var sHeaders = allStudentData[0];
+    var gradeIdx = sHeaders.indexOf('grade');
+    var classIdx = sHeaders.indexOf('class_no');
+    if (gradeIdx < 0) { for (var h = 0; h < sHeaders.length; h++) { if (/grade|ชั้น/i.test(String(sHeaders[h]))) { gradeIdx = h; break; } } }
+    if (classIdx < 0) { for (var h = 0; h < sHeaders.length; h++) { if (/class_no|class|ห้อง/i.test(String(sHeaders[h]))) { classIdx = h; break; } } }
+    if (gradeIdx < 0) gradeIdx = 5;
+    if (classIdx < 0) classIdx = 6;
+    allStudentData.slice(1).forEach(function(row) {
+      var grade = String(row[gradeIdx] || "").trim();
+      var classNo = String(row[classIdx] || "").trim();
+      if (grade && classNo) {
+        if (!classMap.has(grade)) classMap.set(grade, new Set());
+        classMap.get(grade).add(classNo);
       }
-      classMap.get(grade).add(classNo);
-    }
+    });
+  }
+
+  // 3. รวมชั้นเรียนจาก HomeroomTeachers เข้ามาด้วย (กรณี Students ว่าง หรือมีชั้นเรียนที่เพิ่มเองใน HomeroomTeachers)
+  teacherMap.forEach(function(_val, key) {
+    var parts = key.split('-');
+    var grade = parts[0];
+    var classNo = parts.slice(1).join('-');
+    if (!classMap.has(grade)) classMap.set(grade, new Set());
+    classMap.get(grade).add(classNo);
   });
 
-  // 3. ประกอบร่างข้อมูลทั้งหมด
+  // 4. ประกอบร่างข้อมูลทั้งหมด
   const result = [];
   const sortedGrades = Array.from(classMap.keys()).sort();
 
-  sortedGrades.forEach(grade => {
+  sortedGrades.forEach(function(grade) {
     const sortedClasses = Array.from(classMap.get(grade)).sort();
-    sortedClasses.forEach(classNo => {
-      const key = `${grade}-${classNo}`;
+    sortedClasses.forEach(function(classNo) {
+      const key = grade + '-' + classNo;
       var t = teacherMap.get(key) || {teacher1: '', teacher2: ''};
       result.push({
         grade: grade,

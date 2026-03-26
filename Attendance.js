@@ -4278,8 +4278,7 @@ function createRealChecklistHTML(tableData, grade, classNo, monthName, yearBE, a
     const logoFileId = settings['logoFileId'];
     if (logoFileId) {
       try {
-        const file = DriveApp.getFileById(logoFileId);
-        const blob = file.getBlob();
+        const blob = _getFileBlobCompat_(logoFileId);
         const mime = blob.getContentType() || 'image/png';
         const b64 = Utilities.base64Encode(blob.getBytes());
         logoBase64 = `data:${mime};base64,${b64}`;
@@ -4794,7 +4793,7 @@ function exportAttendanceChecklistPDF(grade, classNo, year, month) {
         sheet.getRange(currentRow, 1, 1, numCols).merge();
         sheet.setRowHeight(currentRow, 60);
         const logoCell = sheet.getRange(currentRow, 1);
-        const logoBlob = DriveApp.getFileById(logoFileId).getBlob();
+        const logoBlob = _getFileBlobCompat_(logoFileId);
         const logo = sheet.insertImage(logoBlob, 1, currentRow);
         
         const col1Width = 35;
@@ -5036,7 +5035,9 @@ function exportAttendanceChecklistPDF(grade, classNo, year, month) {
     const pdfUrl = _saveBlobGetUrl_(pdfBlob);
     
     // ลบ Spreadsheet ชั่วคราว
-    try { DriveApp.getFileById(ssId).setTrashed(true); } catch(_) {}
+    try { DriveApp.getFileById(ssId).setTrashed(true); } catch(_) {
+      try { var _tk=ScriptApp.getOAuthToken(); UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/'+ssId,{method:'patch',contentType:'application/json',headers:{Authorization:'Bearer '+_tk},payload:JSON.stringify({trashed:true}),muteHttpExceptions:true}); } catch(_e) {}
+    }
     
     Logger.log(`✅ PDF สร้างเสร็จ: ${pdfUrl}`);
     return pdfUrl;
@@ -5044,7 +5045,9 @@ function exportAttendanceChecklistPDF(grade, classNo, year, month) {
   } catch (error) {
     Logger.log(`❌ Error:`, error.message);
     if (tempSpreadsheet) {
-      try { DriveApp.getFileById(tempSpreadsheet.getId()).setTrashed(true); } catch (e) {}
+      try { DriveApp.getFileById(tempSpreadsheet.getId()).setTrashed(true); } catch (_e2) {
+        try { var _tk2=ScriptApp.getOAuthToken(); UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/'+tempSpreadsheet.getId(),{method:'patch',contentType:'application/json',headers:{Authorization:'Bearer '+_tk2},payload:JSON.stringify({trashed:true}),muteHttpExceptions:true}); } catch(_) {}
+      }
     }
     throw new Error(`ไม่สามารถสร้าง PDF ได้: ${error.message}`);
   }
@@ -5101,7 +5104,7 @@ function createChecklistPDFBlob(grade, classNo, year, month) {
         sheet.getRange(currentRow, 1, 1, numCols).merge();
         sheet.setRowHeight(currentRow, 60);
         const logoCell = sheet.getRange(currentRow, 1);
-        const logoBlob = DriveApp.getFileById(logoFileId).getBlob();
+        const logoBlob = _getFileBlobCompat_(logoFileId);
         const logo = sheet.insertImage(logoBlob, 1, currentRow);
         
         const col1Width = 35;
@@ -5291,13 +5294,17 @@ function createChecklistPDFBlob(grade, classNo, year, month) {
     
     const pdfBlob = response.getBlob();
     
-    DriveApp.getFileById(ssId).setTrashed(true);
+    try { DriveApp.getFileById(ssId).setTrashed(true); } catch(_) {
+      try { UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/'+ssId,{method:'patch',contentType:'application/json',headers:{Authorization:'Bearer '+token},payload:JSON.stringify({trashed:true}),muteHttpExceptions:true}); } catch(_e) {}
+    }
     
     return pdfBlob;
     
   } catch (error) {
     if (tempSpreadsheet) {
-      try { DriveApp.getFileById(tempSpreadsheet.getId()).setTrashed(true); } catch (e) {}
+      try { DriveApp.getFileById(tempSpreadsheet.getId()).setTrashed(true); } catch (_e2) {
+        try { var _tk3=ScriptApp.getOAuthToken(); UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/'+tempSpreadsheet.getId(),{method:'patch',contentType:'application/json',headers:{Authorization:'Bearer '+_tk3},payload:JSON.stringify({trashed:true}),muteHttpExceptions:true}); } catch(_) {}
+      }
     }
     Logger.log(`❌ Error:`, error.message);
     return null;

@@ -241,6 +241,14 @@ function _ensureDrivePermissionForPdf_() {
     DriveApp.getRootFolder().getName();
     return true;
   } catch (e) {
+    // Fallback: ลองผ่าน REST API
+    try {
+      var token = ScriptApp.getOAuthToken();
+      var res = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files?pageSize=1&fields=files(id)', {
+        headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true
+      });
+      if (res.getResponseCode() === 200) return true;
+    } catch (_) {}
     throw new Error(
       'ระบบยังไม่ได้รับอนุญาตให้เข้าถึง Google Drive สำหรับการสร้าง PDF\n' +
       'วิธีแก้:\n' +
@@ -324,9 +332,7 @@ function generatePp6Pdf(studentId, showRank) {
 
       try {
 
-        const logoFile = DriveApp.getFileById(schoolData.logoFileId);
-
-        const logoBlob = logoFile.getBlob();
+        const logoBlob = _getFileBlobCompat_(schoolData.logoFileId);
 
         const logoPara = body.appendParagraph('');
 
@@ -771,9 +777,13 @@ function getCachedFolder_(settings) {
 
   }
 
-  const folders = DriveApp.getFoldersByName(folderName);
-
-  CACHED_FOLDER = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
+  try {
+    const folders = DriveApp.getFoldersByName(folderName);
+    CACHED_FOLDER = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
+  } catch (e) {
+    Logger.log('getCachedFolder_ DriveApp fallback: ' + e.message);
+    CACHED_FOLDER = null;
+  }
 
   return CACHED_FOLDER;
 

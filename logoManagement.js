@@ -166,14 +166,18 @@ function _ensureSystemAssetsFolder_() {
     }
 
     // หาโฟลเดอร์ SystemAssets ในราก
-    const it = DriveApp.getFoldersByName('SystemAssets');
-    if (it.hasNext()) return it.next();
-
-    // สร้างใหม่
-    const folder = DriveApp.createFolder('SystemAssets');
-    return folder;
+    try {
+      const it = DriveApp.getFoldersByName('SystemAssets');
+      if (it.hasNext()) return it.next();
+      // สร้างใหม่
+      return DriveApp.createFolder('SystemAssets');
+    } catch (e2) {
+      Logger.log('DriveApp folder fallback: ' + e2.message);
+      return null;
+    }
   } catch (e) {
-    throw new Error('_ensureSystemAssetsFolder_ error: ' + e.message);
+    Logger.log('_ensureSystemAssetsFolder_ error: ' + e.message);
+    return null;
   }
 }
 /**
@@ -189,15 +193,25 @@ function fixLogoSharing() {
       return '⚠️ ไม่พบไอดีโลโก้ในระบบ กรุณาตั้งค่าโลโก้ก่อน';
     }
     
-    // ดึงไฟล์จาก Drive
-    const file = DriveApp.getFileById(fileId.trim());
-    
-    // ตรวจสอบสถานะปัจจุบัน
-    const currentAccess = file.getSharingAccess();
-    Logger.log('🔐 Sharing Access ปัจจุบัน: ' + currentAccess);
-    
-    // ตั้งค่าให้เป็น Public (Anyone with the link can VIEW)
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    // ดึงไฟล์จาก Drive + ตั้งค่าแชร์
+    var fileName = '';
+    try {
+      const file = DriveApp.getFileById(fileId.trim());
+      fileName = file.getName();
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (_) {
+      // REST API fallback
+      var _tk = ScriptApp.getOAuthToken();
+      UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + fileId.trim() + '/permissions', {
+        method: 'post', contentType: 'application/json',
+        headers: { Authorization: 'Bearer ' + _tk },
+        payload: JSON.stringify({ role: 'reader', type: 'anyone' }), muteHttpExceptions: true
+      });
+      var _meta = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + fileId.trim() + '?fields=name', {
+        headers: { Authorization: 'Bearer ' + _tk }, muteHttpExceptions: true
+      });
+      if (_meta.getResponseCode() === 200) fileName = JSON.parse(_meta.getContentText()).name || '';
+    }
 
     try { clearSettingsCache(); } catch (_e) {}
     
@@ -205,8 +219,7 @@ function fixLogoSharing() {
     Logger.log('🔗 URL: https://drive.google.com/uc?export=view&id=' + fileId);
     
     return '✅ ตั้งค่าแชร์โลโก้เป็น Public สำเร็จแล้ว!\n' +
-           'ชื่อไฟล์: ' + file.getName() + '\n' +
-           'ขนาดไฟล์: ' + Math.round(file.getSize() / 1024) + ' KB';
+           'ชื่อไฟล์: ' + (fileName || fileId);
     
   } catch (e) {
     Logger.log('❌ fixLogoSharing error: ' + e.message);

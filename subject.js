@@ -59,7 +59,7 @@ function _getFolderByIdSafe_(id) {
     if (!id) return null;
     return DriveApp.getFolderById(id);
   } catch (e) {
-    Logger.log('⚠️ ใช้ pdfSaveFolderId ไม่ได้, จะสร้าง/ใช้โฟลเดอร์ชื่อ:', REPORTS_FOLDER_NAME);
+    Logger.log('⚠️ ใช้ pdfSaveFolderId ไม่ได้ (DriveApp): ' + e.message);
     return null;
   }
 }

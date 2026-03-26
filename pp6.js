@@ -300,12 +300,12 @@ function _checkPDFCache(cacheKey) {
       
       // ตรวจสอบว่าไฟล์ยังอยู่ใน Drive หรือไม่
       try {
-        const file = DriveApp.getFileById(pdfInfo.fileId);
-        if (file) {
+        var _cacheBlob = _getFileBlobCompat_(pdfInfo.fileId);
+        if (_cacheBlob) {
           Logger.log(`📄 PDF Cache HIT: ${cacheKey}`);
           return {
             exists: true,
-            url: file.getUrl(),
+            url: 'https://drive.google.com/file/d/' + pdfInfo.fileId + '/view',
             fileName: pdfInfo.fileName,
             createdAt: pdfInfo.createdAt
           };
@@ -800,8 +800,7 @@ function generateSubjectPDFByTerm(options) {
 function _getLogoDataUrl(fileId) {
   if (!fileId) return null;
   try {
-    const file = DriveApp.getFileById(fileId);
-    const blob = file.getBlob();
+    const blob = _getFileBlobCompat_(fileId);
     const contentType = blob.getContentType();
     const base64Data = Utilities.base64Encode(blob.getBytes());
     return `data:${contentType};base64,${base64Data}`;
@@ -909,7 +908,7 @@ function _pp6_buildDocPdf(data) {
     try {
       var lp = body.appendParagraph('');
       lp.setAlignment(CENTER);
-      var img = lp.appendInlineImage(DriveApp.getFileById(data.logoFileId).getBlob());
+      var img = lp.appendInlineImage(_getFileBlobCompat_(data.logoFileId));
       img.setHeight(35); img.setWidth(35);
       lp.setSpacingAfter(0).setSpacingBefore(0);
     } catch(e) { Logger.log('PP6 Logo: ' + e.message); }
@@ -1052,10 +1051,11 @@ function _pp6_buildDocPdf(data) {
   // === Export PDF ===
   doc.saveAndClose();
   var docId = doc.getId();
-  var docFile = DriveApp.getFileById(docId);
-  var pdfBlob = docFile.getAs('application/pdf');
+  var pdfBlob = _getFileBlobCompat_(docId).getAs('application/pdf');
   pdfBlob.setName(data.fileName);
-  docFile.setTrashed(true);
+  try { DriveApp.getFileById(docId).setTrashed(true); } catch (_) {
+    try { var _tk=ScriptApp.getOAuthToken(); UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/'+docId,{method:'patch',contentType:'application/json',headers:{Authorization:'Bearer '+_tk},payload:JSON.stringify({trashed:true}),muteHttpExceptions:true}); } catch(_e) {}
+  }
 
   return pdfBlob;
 }
@@ -1115,14 +1115,24 @@ function testPp6PdfRegression() {
 function generatePp6PDFComplete(studentId, term = 'both', showRank = true) {
   try {
     try { DriveApp.getRootFolder().getName(); } catch (e) {
-      throw new Error(
-        'ระบบยังไม่ได้รับอนุญาตให้เข้าถึง Google Drive สำหรับการสร้าง PDF\n' +
-        'วิธีแก้:\n' +
-        '1) เปิดโปรเจกต์ Apps Script ด้วยบัญชีเจ้าของ (Deploying account)\n' +
-        '2) Run ฟังก์ชัน testDrivePermission() 1 ครั้งเพื่อ authorize\n' +
-        '3) Deploy > Manage deployments > Edit > New version > Deploy\n' +
-        'หมายเหตุ: ถ้า Deploy ตั้งค่า Execute as = User accessing ให้เปลี่ยนเป็น Me'
-      );
+      // Fallback: ลองผ่าน REST API
+      try {
+        var _tkChk = ScriptApp.getOAuthToken();
+        var _rChk = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files?pageSize=1&fields=files(id)', {
+          headers: { Authorization: 'Bearer ' + _tkChk }, muteHttpExceptions: true
+        });
+        if (_rChk.getResponseCode() === 200) { /* OK */ }
+        else { throw new Error('REST check failed'); }
+      } catch (_re) {
+        throw new Error(
+          'ระบบยังไม่ได้รับอนุญาตให้เข้าถึง Google Drive สำหรับการสร้าง PDF\n' +
+          'วิธีแก้:\n' +
+          '1) เปิดโปรเจกต์ Apps Script ด้วยบัญชีเจ้าของ (Deploying account)\n' +
+          '2) Run ฟังก์ชัน testDrivePermission() 1 ครั้งเพื่อ authorize\n' +
+          '3) Deploy > Manage deployments > Edit > New version > Deploy\n' +
+          'หมายเหตุ: ถ้า Deploy ตั้งค่า Execute as = User accessing ให้เปลี่ยนเป็น Me'
+        );
+      }
     }
 
     const pdfHash = _createPDFHash('pp6_final_v3', studentId, term);

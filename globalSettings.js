@@ -57,7 +57,7 @@ function _createDefaultGlobalSettingsSheet_(spreadsheet) {
  
 function getLogoDataUrl(fileId) {
   if (!fileId) throw new Error('missing fileId');
-  const blob = DriveApp.getFileById(fileId).getBlob();
+  const blob = _getFileBlobCompat_(fileId);
   const mime = blob.getContentType() || 'image/png';
   const b64  = Utilities.base64Encode(blob.getBytes());
   return `data:${mime};base64,${b64}`;
@@ -66,10 +66,14 @@ function getLogoDataUrl(fileId) {
 function getPublicLogoUrl_(fileId) {
   if (!fileId) return '';
   try {
-    var file = DriveApp.getFileById(fileId);
-    var access = file.getSharingAccess();
-    if (access !== DriveApp.Access.ANYONE_WITH_LINK && access !== DriveApp.Access.ANYONE) {
-      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    try {
+      var file = DriveApp.getFileById(fileId);
+      var access = file.getSharingAccess();
+      if (access !== DriveApp.Access.ANYONE_WITH_LINK && access !== DriveApp.Access.ANYONE) {
+        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      }
+    } catch (_) {
+      // DriveApp unavailable in web app - sharing already set during upload
     }
     return 'https://lh3.googleusercontent.com/d/' + fileId;
   } catch (e) {

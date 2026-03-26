@@ -285,11 +285,48 @@ function setupNewSchool(formData) {
       }
       ss = SpreadsheetApp.openById(match[1]);
       usedExisting = true;
-      Logger.log('✅ ใช้ Spreadsheet ที่มีอยู่: ' + ss.getId());
+      Logger.log('✅ ใช้ Spreadsheet จาก URL: ' + ss.getId());
     } else {
-      // Standalone Mode: สร้างใหม่
-      ss = createSchoolSpreadsheet_(formData);
-      Logger.log('✅ สร้าง Spreadsheet ใหม่: ' + ss.getId());
+      // ✅ Auto-detect: ตรวจสอบว่าเป็น Bound Script หรือไม่
+      // เมื่อผู้ใช้คัดลอก Template ไป script จะผูกกับ Spreadsheet สำเนา
+      // ต้องใช้ Spreadsheet สำเนานั้น ไม่ใช่สร้างใหม่
+      var boundSs = null;
+      try {
+        boundSs = SpreadsheetApp.getActiveSpreadsheet();
+      } catch(_e) {
+        Logger.log('⚠️ getActiveSpreadsheet failed: ' + _e.message);
+      }
+      
+      if (!boundSs) {
+        // Fallback: ลองดึง container spreadsheet ผ่าน Script API
+        try {
+          var token = ScriptApp.getOAuthToken();
+          var scriptId = ScriptApp.getScriptId();
+          var resp = UrlFetchApp.fetch(
+            'https://script.googleapis.com/v1/projects/' + scriptId,
+            { headers: { 'Authorization': 'Bearer ' + token }, muteHttpExceptions: true }
+          );
+          if (resp.getResponseCode() === 200) {
+            var projData = JSON.parse(resp.getContentText());
+            if (projData.parentId) {
+              boundSs = SpreadsheetApp.openById(projData.parentId);
+              Logger.log('✅ ตรวจพบ Bound Spreadsheet ผ่าน Script API: ' + projData.parentId);
+            }
+          }
+        } catch(_e2) {
+          Logger.log('⚠️ Script API fallback failed: ' + _e2.message);
+        }
+      }
+      
+      if (boundSs) {
+        ss = boundSs;
+        usedExisting = true;
+        Logger.log('✅ ใช้ Bound Spreadsheet อัตโนมัติ: ' + ss.getId());
+      } else {
+        // Standalone Mode: สร้างใหม่ (กรณีไม่ใช่ bound script)
+        ss = createSchoolSpreadsheet_(formData);
+        Logger.log('✅ สร้าง Spreadsheet ใหม่: ' + ss.getId());
+      }
     }
 
     // 2. ล้างข้อมูลโรงเรียนเดิม (เฉพาะ Spreadsheet ที่คัดลอกมา)
@@ -299,7 +336,7 @@ function setupNewSchool(formData) {
     }
 
     // 3. สร้าง Sheet (ข้ามถ้ามีอยู่แล้ว)
-    setupSheets_(ss, formData);
+    setupSheets_(ss, formData, usedExisting);
     Logger.log('✅ สร้าง/ตรวจสอบ Sheets แล้ว');
 
     // 4. บันทึก Settings ลง global_settings sheet
@@ -411,7 +448,7 @@ function createSchoolSpreadsheet_(formData) {
   return ss;
 }
 
-function setupSheets_(ss, formData) {
+function setupSheets_(ss, formData, usedExisting) {
   // ลบ Sheet1 เดิม (default)
   var defaultSheet = ss.getSheetByName('Sheet1') || ss.getSheetByName('แผ่น1');
   var academicYear = String(formData.academicYear || '');
@@ -419,10 +456,19 @@ function setupSheets_(ss, formData) {
   // 1. สร้างชีตถาวร
   PERMANENT_SHEETS.forEach(function(name) {
     var sheet = ss.getSheetByName(name);
+    var isNew = false;
     if (!sheet) {
       sheet = ss.insertSheet(name);
+      isNew = true;
     }
-    setupSheetHeaders_(sheet, name, formData);
+    
+    // ถ้าเป็นชีตใหม่ หรือ ไม่ได้ใช้ Spreadsheet เดิม (Standalone) ให้เขียนหัวตาราง
+    // ถ้าใช้ Spreadsheet เดิม (usedExisting) และมีชีตอยู่แล้ว ห้ามเขียนหัวตารางทับ เพราะจะล้างข้อมูลเดิม
+    if (isNew || !usedExisting) {
+      setupSheetHeaders_(sheet, name, formData);
+    } else {
+      Logger.log('ℹ️ ข้ามการเขียน Header ทับ: ' + name + ' (รักษาข้อมูลเดิม)');
+    }
   });
 
   // 2. สร้างชีตรายปี — ใช้ชื่อ baseName_ปี (Plan B)
@@ -434,10 +480,17 @@ function setupSheets_(ss, formData) {
   yearlyBases.forEach(function(baseName) {
     var sheetName = academicYear ? baseName + '_' + academicYear : baseName;
     var sheet = ss.getSheetByName(sheetName);
+    var isNew = false;
     if (!sheet) {
       sheet = ss.insertSheet(sheetName);
+      isNew = true;
     }
-    setupSheetHeaders_(sheet, baseName, formData);
+    
+    if (isNew || !usedExisting) {
+      setupSheetHeaders_(sheet, baseName, formData);
+    } else {
+      Logger.log('ℹ️ ข้ามการเขียน Header ทับ (รายปี): ' + sheetName);
+    }
   });
 
   // ลบ default sheet
@@ -454,7 +507,7 @@ function setupSheetHeaders_(sheet, sheetName, formData) {
     'Holidays': [['date','description','type']],
     'global_settings': [['key','value','updatedAt']],
     'SCORES_WAREHOUSE': [['student_id','grade','class_no','subject_code','subject_name','subject_type','hours','term1_total','term2_total','average','final_grade','sheet_name','academic_year','updated_at']],
-    'HomeroomTeachers': [['grade','classNo','teacherName']],
+    'HomeroomTeachers': [['grade','classNo','teacherName','ครูประจำชั้น 2']],
     'การประเมินอ่านคิดเขียน': [['รหัสนักเรียน','ชื่อ-นามสกุล','ชั้น','ห้อง','ภาษาไทย','คณิตศาสตร์','วิทยาศาสตร์','สังคมศึกษา','สุขศึกษา','ศิลปะ','การงาน','ภาษาอังกฤษ','สรุปผลการประเมิน','วันที่บันทึก','ผู้บันทึก']],
     'การประเมินคุณลักษณะ': [['รหัสนักเรียน','ชื่อ-นามสกุล','ชั้น','ห้อง','รักชาติ_ศาสน์_กษัตริย์','ซื่อสัตย์สุจริต','มีวินัย','ใฝ่เรียนรู้','อยู่อย่างพอเพียง','มุ่งมั่นในการทำงาน','รักความเป็นไทย','มีจิตสาธารณะ','คะแนนรวม','คะแนนเฉลี่ย','ผลการประเมิน','วันที่บันทึก','ผู้บันทึก']],
     'การประเมินกิจกรรมพัฒนาผู้เรียน': [['รหัสนักเรียน','ชื่อ-นามสกุล','ชั้น','ห้อง','กิจกรรมแนะแนว','ลูกเสือ_เนตรนารี','ชุมนุม','เพื่อสังคมและสาธารณประโยชน์','รวมกิจกรรม','วันที่บันทึก','ผู้บันทึก']],
@@ -622,6 +675,7 @@ function cleanupCopiedSpreadsheet_(ss) {
   var allSheets = ss.getSheets();
 
   // === WHITELIST: ชีตที่เก็บไว้ (ล้างข้อมูล เก็บ header) ===
+  // หมายเหตุ: HomeroomTeachers จะถูกล้างข้อมูลเพื่อให้โรงเรียนใหม่กรอกเอง
   var keepNames = new Set(PERMANENT_SHEETS);  // global_settings, Users, Students, รายวิชา, Holidays, HomeroomTeachers
   var yearlyBases = (typeof S_YEARLY_SHEETS !== 'undefined') ? S_YEARLY_SHEETS : [
     'SCORES_WAREHOUSE', 'การประเมินอ่านคิดเขียน', 'การประเมินคุณลักษณะ',
@@ -629,6 +683,14 @@ function cleanupCopiedSpreadsheet_(ss) {
     'AttendanceLog', 'ความเห็นครู'
   ];
   yearlyBases.forEach(function(b) { keepNames.add(b); });
+
+  // ❌ ลบ 'HomeroomTeachers' ออกจาก keepNames ชั่วคราว เพื่อไม่ให้โดน deleteRows(2, ...) 
+  // หากต้องการให้ข้อมูลครูประจำชั้นติดไปด้วย (แต่โดยปกติเราจะล้างเพื่อให้โรงเรียนใหม่กรอกเอง)
+  // อย่างไรก็ตาม ปัญหาตอนนี้คือ "ดูไม่ได้" ซึ่งอาจเกิดจากข้อมูลถูกล้างจนเกลี้ยง
+  
+  // ✅ เพิ่มชีตที่จำเป็นสำหรับ template (เพื่อความปลอดภัย)
+  var extraSheets = ['template', 'Template', 'ตัวอย่าง', 'example'];
+  extraSheets.forEach(function(b) { keepNames.add(b); });
 
   var sheetsToClean = [];
   var sheetsToDelete = [];
@@ -638,6 +700,11 @@ function cleanupCopiedSpreadsheet_(ss) {
 
     // ตรงชื่อ permanent/yearly → เก็บ (ล้างข้อมูล)
     if (keepNames.has(name)) {
+      // ยกเว้น รายวิชา ถ้าไม่อยากให้โดนล้างข้อมูลแถว 2 เป็นต้นไป (ให้ข้อมูลติดไปด้วย)
+      if (name === 'รายวิชา') {
+        Logger.log('ℹ️ ข้ามการล้างข้อมูลแถว: ' + name + ' (เพื่อให้ข้อมูลติดไปด้วย)');
+        return;
+      }
       sheetsToClean.push(sheet);
       return;
     }
@@ -1141,6 +1208,92 @@ function resetSetup() {
 // ============================================================
 
 /**
+ * ✅ ตั้งค่าแชร์ไฟล์เป็น "Anyone with the link" — มี REST API fallback
+ */
+function _ensureFileSharedPublic_(fileId, permission) {
+  permission = permission || 'writer';  // 'reader' or 'writer'
+  var ok = false;
+
+  // 1) ลอง DriveApp ก่อน
+  try {
+    var perm = permission === 'writer' ? DriveApp.Permission.EDIT : DriveApp.Permission.VIEW;
+    DriveApp.getFileById(fileId).setSharing(DriveApp.Access.ANYONE_WITH_LINK, perm);
+    ok = true;
+    Logger.log('✅ setSharing (DriveApp) สำเร็จ: ' + fileId);
+  } catch (e1) {
+    Logger.log('⚠️ DriveApp.setSharing failed: ' + e1.message + ' → trying REST API');
+  }
+
+  // 2) Fallback: REST API
+  if (!ok) {
+    try {
+      var token = ScriptApp.getOAuthToken();
+      var role = permission === 'writer' ? 'writer' : 'reader';
+      var resp = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '/permissions', {
+        method: 'post',
+        contentType: 'application/json',
+        headers: { Authorization: 'Bearer ' + token },
+        payload: JSON.stringify({ role: role, type: 'anyone' }),
+        muteHttpExceptions: true
+      });
+      var code = resp.getResponseCode();
+      if (code >= 200 && code < 300) {
+        ok = true;
+        Logger.log('✅ setSharing (REST API) สำเร็จ: ' + fileId);
+      } else {
+        Logger.log('❌ REST API setSharing failed: ' + code + ' ' + resp.getContentText());
+      }
+    } catch (e2) {
+      Logger.log('❌ REST API setSharing error: ' + e2.message);
+    }
+  }
+
+  return ok;
+}
+
+/**
+ * ✅ ตรวจสอบและสร้างชีตที่ขาดหายใน Template Spreadsheet
+ * เรียกทุกครั้งก่อนส่งออก เพื่อให้ template มีชีตครบทุกอัน
+ */
+function ensureTemplateSheets_(templateId) {
+  var tss = SpreadsheetApp.openById(templateId);
+  var existingNames = tss.getSheets().map(function(s) { return s.getName(); });
+
+  // ชีตทั้งหมดที่ต้องมี (ใช้ชื่อ base ไม่มี suffix ปี)
+  var allRequired = PERMANENT_SHEETS.concat(
+    (typeof S_YEARLY_SHEETS !== 'undefined') ? S_YEARLY_SHEETS : [
+      'SCORES_WAREHOUSE', 'การประเมินอ่านคิดเขียน', 'การประเมินคุณลักษณะ',
+      'การประเมินกิจกรรมพัฒนาผู้เรียน', 'การประเมินสมรรถนะ',
+      'AttendanceLog', 'ความเห็นครู'
+    ]
+  );
+
+  var created = [];
+  allRequired.forEach(function(name) {
+    if (existingNames.indexOf(name) === -1) {
+      var sheet = tss.insertSheet(name);
+      setupSheetHeaders_(sheet, name, {});
+      created.push(name);
+      Logger.log('📋 สร้างชีต: ' + name);
+    }
+  });
+
+  // ลบ Sheet1/แผ่น1 default ถ้ามี (และมีชีตอื่นอย่างน้อย 1)
+  if (tss.getSheets().length > 1) {
+    try {
+      var def = tss.getSheetByName('Sheet1') || tss.getSheetByName('แผ่น1') || tss.getSheetByName('ชีต1');
+      if (def) tss.deleteSheet(def);
+    } catch(_e) {}
+  }
+
+  if (created.length > 0) {
+    Logger.log('✅ ensureTemplateSheets_: สร้าง ' + created.length + ' ชีต: ' + created.join(', '));
+  } else {
+    Logger.log('✅ ensureTemplateSheets_: ชีตครบแล้ว');
+  }
+}
+
+/**
  * ส่งออกระบบให้โรงเรียนอื่น
  * สร้าง Template Spreadsheet + ลิงก์ Make a Copy
  * @returns {Object} { success, copyUrl, steps }
@@ -1155,67 +1308,53 @@ function exportProjectAsZip(token) {
     var ssId = getSpreadsheetId_();
     var props = PropertiesService.getScriptProperties();
 
-    // ---- หา template ID จาก ScriptProperties หรือใช้ค่าเริ่มต้น (ไม่เรียก DriveApp) ----
-    var HARDCODED_TEMPLATE_ID = '1KDhoNNzAqwvbNcbpMFVa5xXgo081Xc8W4U6ieaKAsqg';
-    var templateId = String(props.getProperty('EXPORT_TEMPLATE_READY_ID') || '').trim()
-                  || String(props.getProperty('PENDING_EXPORT_TEMPLATE_ID') || '').trim()
-                  || HARDCODED_TEMPLATE_ID;
+    // ---- ✅ ใช้ Template ที่มี Bound Script เสมอ (ไม่ใช้ export template เก่าที่ไม่มีโค้ด) ----
+    var BOUND_TEMPLATE_ID = '1AcdypFst0F4pr7bjaMH1WwuTyohekV8BeO36MWZOWJE';
+    var templateId = BOUND_TEMPLATE_ID;
 
-    if (templateId) {
-      // มี template อยู่แล้ว — ใช้ซ้ำได้เลย (ไม่ต้อง verify ด้วย DriveApp)
-      var copyUrl = 'https://docs.google.com/spreadsheets/d/' + templateId + '/copy';
-
-      // ถ้ายังไม่เคย mark ready → mark ให้เลย
-      if (!String(props.getProperty('EXPORT_TEMPLATE_READY_ID') || '').trim()) {
-        try { props.setProperty('EXPORT_TEMPLATE_READY_ID', templateId); } catch(_e) {}
-      }
-
-      return {
-        success: true,
-        copyUrl: copyUrl,
-        activeSpreadsheetId: ssId,
-        templateId: templateId,
-        warning: '',
-        sanitized: true,
-        excludedData: ['ข้อมูลนักเรียน', 'ผู้ใช้', 'คะแนน', 'เช็คชื่อ', 'ชีตคะแนนรายวิชา'],
-        schoolName: schoolName,
-        steps: [
-          'ขั้นที่ 1: ส่งลิงก์ให้โรงเรียนอื่น → กดลิงก์ → กด "ทำสำเนา" → ได้ Spreadsheet + โค้ดทั้งหมด',
-          'ขั้นที่ 2: เปิดสำเนา → ส่วนขยาย → Apps Script → รัน debugSetupStatus (อนุญาตสิทธิ์) → Deploy → New deployment → Web app → Execute as: Me, Who: Anyone → Deploy',
-          'ขั้นที่ 3: เปิด Web App URL → ระบบจะแสดงหน้าติดตั้ง → กรอกข้อมูลโรงเรียน → เสร็จ!'
-        ],
-        _codeVersion: 'v202_stable_template',
-        message: 'สร้างลิงก์ส่งออกสำเร็จ (ข้อมูลสะอาด + Script พร้อม)'
-      };
-    }
-
-    // ---- ยังไม่มี template → สร้าง clean copy ใหม่ (ต้องใช้ DriveApp) ----
-    var newTemplateId = createExportTemplateForOtherSchools_(ssId, schoolName);
-
-    try { props.setProperty('PENDING_EXPORT_TEMPLATE_ID', newTemplateId); } catch(_e) {}
+    // อัปเดต ScriptProperties ให้ชี้ไป template ที่ถูกต้อง (ล้างค่าเก่าที่ไม่มี script)
     try {
-      DriveApp.getFileById(newTemplateId).setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.EDIT);
+      props.setProperty('EXPORT_TEMPLATE_READY_ID', templateId);
+      // ลบ key เก่าที่อาจชี้ไป template ผิด
+      props.deleteProperty('PENDING_EXPORT_TEMPLATE_ID');
     } catch(_e) {}
 
-    var copyUrl = 'https://docs.google.com/spreadsheets/d/' + newTemplateId + '/copy';
+    // ✅ ตรวจสอบ + สร้างชีตที่ขาดหายใน template ก่อน
+    try {
+      ensureTemplateSheets_(templateId);
+      Logger.log('✅ ensureTemplateSheets_ สำเร็จ');
+    } catch(_e) {
+      Logger.log('⚠️ ensureTemplateSheets_ error: ' + _e.message);
+    }
+
+    // Sync รายวิชาไป template (ไม่รวมชื่อครู) ก่อนส่งออก
+    try {
+      var syncResult = syncSubjectsToTemplate(templateId);
+      Logger.log('📋 syncSubjects: ' + (syncResult.success ? syncResult.message : syncResult.error));
+    } catch(_e) {
+      Logger.log('⚠️ sync data skipped: ' + _e.message);
+    }
+
+    // ตั้งค่า sharing ทุกครั้ง
+    var sharingOk = _ensureFileSharedPublic_(templateId, 'reader');
+    var copyUrl = 'https://docs.google.com/spreadsheets/d/' + templateId + '/edit';
+
     return {
       success: true,
       copyUrl: copyUrl,
       activeSpreadsheetId: ssId,
-      templateId: newTemplateId,
-      needsScriptSetup: true,
-      warning: '⚠️ Template ใหม่สร้างแล้ว — ต้องผูก Script อีก 1 ครั้ง',
+      templateId: templateId,
+      warning: sharingOk ? '' : '⚠️ ไม่สามารถตั้งค่าแชร์อัตโนมัติได้ — กรุณาเปิด Google Sheet แล้วแชร์เป็น "ทุกคนที่มีลิงก์" ด้วยตนเอง',
       sanitized: true,
       excludedData: ['ข้อมูลนักเรียน', 'ผู้ใช้', 'คะแนน', 'เช็คชื่อ', 'ชีตคะแนนรายวิชา'],
       schoolName: schoolName,
       steps: [
-        'ขั้นที่ 0 (ทำครั้งเดียว): เปิด Template → ส่วนขยาย → Apps Script → สร้างโครงการ → แจ้ง Script ID ให้ผู้พัฒนา push โค้ด',
-        'ขั้นที่ 1: ส่งลิงก์ให้โรงเรียนอื่น → กดลิงก์ → กด "ทำสำเนา" → ได้ Spreadsheet + โค้ดทั้งหมด',
+        'ขั้นที่ 1: ส่งลิงก์ให้โรงเรียนอื่น → เปิดไฟล์ต้นแบบ → เมนูไฟล์ > ทำสำเนา → ได้ Spreadsheet + โค้ดทั้งหมด',
         'ขั้นที่ 2: เปิดสำเนา → ส่วนขยาย → Apps Script → รัน debugSetupStatus (อนุญาตสิทธิ์) → Deploy → New deployment → Web app → Execute as: Me, Who: Anyone → Deploy',
         'ขั้นที่ 3: เปิด Web App URL → ระบบจะแสดงหน้าติดตั้ง → กรอกข้อมูลโรงเรียน → เสร็จ!'
       ],
-      _codeVersion: 'v202_stable_template',
-      message: 'สร้าง Template สำเร็จ — ต้องผูก Script อีก 1 ครั้ง'
+      _codeVersion: 'v203_bound_template',
+      message: 'สร้างลิงก์ส่งออกสำเร็จ (ให้เปิดไฟล์ต้นแบบแล้วกด เมนูไฟล์ > ทำสำเนา เพื่อให้โค้ดติดไปด้วย)'
     };
 
   } catch (e) {
@@ -1281,7 +1420,8 @@ function createExportTemplateForOtherSchools_(activeSpreadsheetId, schoolName) {
   } catch(_e) {}
 
   var copiedFile = targetFolder ? sourceFile.makeCopy(exportName, targetFolder) : sourceFile.makeCopy(exportName);
-  copiedFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.EDIT);
+  // ✅ Fix: ใช้ helper ที่มี REST API fallback
+  _ensureFileSharedPublic_(copiedFile.getId(), 'writer');
 
   var ss = SpreadsheetApp.openById(copiedFile.getId());
   sanitizeExportTemplateSpreadsheet_(ss);
@@ -1336,7 +1476,7 @@ function blankTeacherInSubjects_(sheet) {
  * (ลบชื่อครูผู้สอนออก เพื่ออำนวยความสะดวกแก่โรงเรียนใหม่)
  * @returns {Object} { success, message, subjectCount }
  */
-function syncSubjectsToTemplate() {
+function syncSubjectsToTemplate(templateId) {
   try {
     // 1. อ่านรายวิชาจากโรงเรียนปัจจุบัน
     var ss = SS();
@@ -1353,10 +1493,7 @@ function syncSubjectsToTemplate() {
     }
 
     // 2. เปิด Template Spreadsheet
-    var props = PropertiesService.getScriptProperties();
-    var templateId = props.getProperty('TEMPLATE_SPREADSHEET_ID')
-      || '1AcdypFst0F4pr7bjaMH1WwuTyohekV8BeO36MWZOWJE';
-    if (!templateId) throw new Error('ไม่พบ TEMPLATE_SPREADSHEET_ID — กรุณาตั้งค่าใน Script Properties');
+    templateId = String(templateId || '').trim() || '1AcdypFst0F4pr7bjaMH1WwuTyohekV8BeO36MWZOWJE';
 
     var templateSS = SpreadsheetApp.openById(templateId);
     var templateSheet = templateSS.getSheetByName('รายวิชา');
@@ -1379,6 +1516,9 @@ function syncSubjectsToTemplate() {
 
     // 5. เขียนลง Template
     templateSheet.getRange(1, 1, outputData.length, outputData[0].length).setValues(outputData);
+    
+    // บังคับ flush เพื่อให้ข้อมูลลงไฟล์จริงๆ ก่อนจบฟังก์ชัน
+    SpreadsheetApp.flush();
 
     // 6. จัดรูปแบบ header
     templateSheet.getRange(1, 1, 1, headers.length)
@@ -1397,6 +1537,48 @@ function syncSubjectsToTemplate() {
 
   } catch (e) {
     Logger.log('❌ syncSubjectsToTemplate error: ' + e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+/**
+ * คัดลอกรายชื่อครูประจำชั้นไปใส่ Template Spreadsheet
+ * @param {string} templateId 
+ * @returns {Object} { success, message, count }
+ */
+function syncHomeroomTeachersToTemplate(templateId) {
+  try {
+    var ss = SS();
+    var htSheet = ss.getSheetByName('HomeroomTeachers');
+    if (!htSheet) return { success: false, error: 'ไม่พบชีต HomeroomTeachers ใน Master' };
+
+    var data = htSheet.getDataRange().getValues();
+    if (data.length < 2) return { success: true, message: 'ไม่มีข้อมูลครูประจำชั้นให้ Sync', count: 0 };
+
+    templateId = String(templateId || '').trim() || '1AcdypFst0F4pr7bjaMH1WwuTyohekV8BeO36MWZOWJE';
+    var templateSS = SpreadsheetApp.openById(templateId);
+    var templateHTSheet = templateSS.getSheetByName('HomeroomTeachers');
+    if (!templateHTSheet) {
+      templateHTSheet = templateSS.insertSheet('HomeroomTeachers');
+    }
+
+    templateHTSheet.clearContents();
+    templateHTSheet.clearFormats();
+
+    templateHTSheet.getRange(1, 1, data.length, data[0].length).setValues(data);
+    
+    // Format header
+    templateHTSheet.getRange(1, 1, 1, data[0].length)
+      .setBackground('#4a5568')
+      .setFontColor('#ffffff')
+      .setFontWeight('bold');
+    templateHTSheet.setFrozenRows(1);
+
+    SpreadsheetApp.flush();
+
+    return { success: true, message: 'Sync ครูประจำชั้นสำเร็จ', count: data.length - 1 };
+  } catch (e) {
+    Logger.log('❌ syncHomeroomTeachersToTemplate error: ' + e.message);
     return { success: false, error: e.message };
   }
 }

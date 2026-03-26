@@ -313,7 +313,9 @@ function getOutputFolder_() {
  * @returns {string} URL ของไฟล์
  */
 function _saveBlobGetUrl_(blob, folderName, folderId) {
-  // ── ลอง DriveApp ก่อน ──
+  var driveErrMsg = '';
+
+  // ── 1. ลอง DriveApp ก่อน ──
   try {
     var folder;
     if (folderId) {
@@ -326,52 +328,79 @@ function _saveBlobGetUrl_(blob, folderName, folderId) {
     }
     var file = folder.createFile(blob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    Logger.log('✅ _saveBlobGetUrl_ DriveApp สำเร็จ: ' + file.getUrl());
     return file.getUrl();
   } catch (driveErr) {
-    Logger.log('DriveApp fallback → REST API: ' + driveErr.message);
+    driveErrMsg = driveErr.message || String(driveErr);
+    Logger.log('⚠️ DriveApp ล้มเหลว → ใช้ REST API แทน: ' + driveErrMsg);
   }
 
-  // ── Fallback: Drive REST API ──
-  var token = ScriptApp.getOAuthToken();
-  var bytes = blob.getBytes();
-  var mime  = blob.getContentType() || 'application/pdf';
-  var name  = blob.getName() || 'export.pdf';
-
-  // 1) Upload
-  var upRes = UrlFetchApp.fetch(
-    'https://www.googleapis.com/upload/drive/v3/files?uploadType=media&fields=id,name,webViewLink',
-    { method: 'post', contentType: mime, headers: { Authorization: 'Bearer ' + token }, payload: bytes, muteHttpExceptions: true }
-  );
-  if (upRes.getResponseCode() !== 200) {
-    throw new Error('Drive API upload failed (' + upRes.getResponseCode() + '): ' + upRes.getContentText());
-  }
-  var uploaded = JSON.parse(upRes.getContentText());
-  var fileId = uploaded.id;
-
-  // 2) Rename + move to folder
-  var patchBody = { name: name };
-  if (folderId) {
-    patchBody.addParents = folderId;
-  } else if (folderName) {
-    var fid = _getOrCreateFolderIdRest_(folderName, token);
-    if (fid) patchBody.addParents = fid;
-  }
-  UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + fileId, {
-    method: 'patch', contentType: 'application/json',
-    headers: { Authorization: 'Bearer ' + token },
-    payload: JSON.stringify(patchBody), muteHttpExceptions: true
-  });
-
-  // 3) Share public
+  // ── 2. Fallback: Drive REST API ──
   try {
-    UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '/permissions', {
-      method: 'post', contentType: 'application/json',
-      headers: { Authorization: 'Bearer ' + token },
-      payload: JSON.stringify({ role: 'reader', type: 'anyone' }), muteHttpExceptions: true
-    });
-  } catch (_) {}
+    var token = ScriptApp.getOAuthToken();
+    if (!token) {
+      throw new Error('ไม่สามารถดึง OAuth token ได้');
+    }
+    Logger.log('🔑 OAuth token ได้แล้ว (length=' + token.length + ')');
 
-  return 'https://drive.google.com/file/d/' + fileId + '/view';
+    var bytes = blob.getBytes();
+    var mime  = blob.getContentType() || 'application/pdf';
+    var name  = blob.getName() || 'export.pdf';
+    Logger.log('📦 Blob: name=' + name + ', mime=' + mime + ', size=' + bytes.length);
+
+    // 2a) Upload
+    var upRes = UrlFetchApp.fetch(
+      'https://www.googleapis.com/upload/drive/v3/files?uploadType=media&fields=id,name,webViewLink',
+      { method: 'post', contentType: mime, headers: { Authorization: 'Bearer ' + token }, payload: bytes, muteHttpExceptions: true }
+    );
+    var upCode = upRes.getResponseCode();
+    Logger.log('📤 Upload response code: ' + upCode);
+    if (upCode !== 200) {
+      throw new Error('REST API upload failed (' + upCode + '): ' + upRes.getContentText().substring(0, 300));
+    }
+    var uploaded = JSON.parse(upRes.getContentText());
+    var fileId = uploaded.id;
+    Logger.log('✅ Upload สำเร็จ fileId=' + fileId);
+
+    // 2b) Rename + move to folder
+    var patchBody = { name: name };
+    if (folderId) {
+      patchBody.addParents = folderId;
+    } else if (folderName) {
+      try {
+        var fid = _getOrCreateFolderIdRest_(folderName, token);
+        if (fid) patchBody.addParents = fid;
+      } catch (folderErr) {
+        Logger.log('⚠️ สร้างโฟลเดอร์ไม่ได้ (ไม่เป็นไร ไฟล์จะอยู่ root): ' + folderErr.message);
+      }
+    }
+    UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + fileId, {
+      method: 'patch', contentType: 'application/json',
+      headers: { Authorization: 'Bearer ' + token },
+      payload: JSON.stringify(patchBody), muteHttpExceptions: true
+    });
+
+    // 2c) Share public
+    try {
+      UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '/permissions', {
+        method: 'post', contentType: 'application/json',
+        headers: { Authorization: 'Bearer ' + token },
+        payload: JSON.stringify({ role: 'reader', type: 'anyone' }), muteHttpExceptions: true
+      });
+    } catch (_) {}
+
+    var resultUrl = 'https://drive.google.com/file/d/' + fileId + '/view';
+    Logger.log('✅ _saveBlobGetUrl_ REST API สำเร็จ: ' + resultUrl);
+    return resultUrl;
+
+  } catch (restErr) {
+    var restErrMsg = restErr.message || String(restErr);
+    Logger.log('❌ REST API ก็ล้มเหลว: ' + restErrMsg);
+    throw new Error('ไม่สามารถบันทึกไฟล์ลง Drive ได้\n' +
+      'DriveApp: ' + driveErrMsg + '\n' +
+      'REST API: ' + restErrMsg + '\n' +
+      'กรุณาตรวจสอบสิทธิ์ใน Apps Script Editor → Run ฟังก์ชัน testDriveAccess → อนุญาตสิทธิ์');
+  }
 }
 
 /**
@@ -423,6 +452,21 @@ function _getFileBlobCompat_(fileId) {
   }
 }
 
+
+// 🧪 ทดสอบสิทธิ์ Drive — รันจาก Editor เพื่อ authorize
+function testDriveAccess() {
+  try {
+    var rootName = DriveApp.getRootFolder().getName();
+    Logger.log('✅ DriveApp OK — Root: ' + rootName);
+  } catch (e) { Logger.log('❌ DriveApp: ' + e.message); }
+  try {
+    var token = ScriptApp.getOAuthToken();
+    Logger.log('✅ Token OK (len=' + token.length + ')');
+    var res = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/about?fields=user',
+      { headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true });
+    Logger.log('✅ REST API: ' + res.getResponseCode() + ' ' + res.getContentText().substring(0, 200));
+  } catch (e) { Logger.log('❌ REST: ' + e.message); }
+}
 
 // ============================================================
 
