@@ -348,55 +348,88 @@
         initializeTeacherEditor();
     });
 
-    // 6. จัดการ Modal เพิ่มชั้นเรียน
-    let addClassModal;
-    document.addEventListener('DOMContentLoaded', function() {
-        if (typeof bootstrap !== 'undefined') {
-            addClassModal = new bootstrap.Modal(document.getElementById('addClassModal'));
+    // 6. จัดการ Modal เพิ่มชั้นเรียน (ไม่ใช้ DOMContentLoaded เพราะหน้านี้โหลดผ่าน SPA innerHTML injection)
+    let addClassModal = null;
+    (function initAddClassModal() {
+        try {
+            if (typeof bootstrap !== 'undefined') {
+                addClassModal = new bootstrap.Modal(document.getElementById('addClassModal'));
+            }
+        } catch(_e) {}
+        
+        var addBtn = document.getElementById('addNewClassBtn');
+        if (addBtn) {
+            addBtn.addEventListener('click', function() {
+                document.getElementById('addClassForm').reset();
+                if (addClassModal) {
+                    addClassModal.show();
+                } else {
+                    // Fallback: แสดง/ซ่อน modal ด้วย CSS ถ้าไม่มี Bootstrap JS
+                    var modalEl = document.getElementById('addClassModal');
+                    modalEl.style.display = 'block';
+                    modalEl.classList.add('show');
+                    modalEl.style.backgroundColor = 'rgba(0,0,0,0.5)';
+                }
+            });
+        }
+
+        var saveBtn = document.getElementById('saveNewClassBtn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', function() {
+                var grade = document.getElementById('newGrade').value.trim();
+                var classNo = document.getElementById('newClassNo').value.trim();
+                var teacher1 = document.getElementById('newTeacher1').value.trim();
+                var teacher2 = document.getElementById('newTeacher2').value.trim();
+
+                if (!grade || !classNo || !teacher1) {
+                    alert('กรุณากรอกข้อมูลให้ครบ (ระดับชั้น, ห้อง, ครูคนที่ 1)');
+                    return;
+                }
+
+                var btn = this;
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> กำลังบันทึก...';
+
+                google.script.run
+                    .withSuccessHandler(function(msg) {
+                        btn.disabled = false;
+                        btn.innerHTML = 'บันทึกข้อมูล';
+                        if (addClassModal) addClassModal.hide();
+                        else {
+                            var modalEl = document.getElementById('addClassModal');
+                            modalEl.style.display = 'none';
+                            modalEl.classList.remove('show');
+                        }
+                        showStatus(msg, 'success');
+                        initializeTeacherEditor();
+                    })
+                    .withFailureHandler(function(err) {
+                        btn.disabled = false;
+                        btn.innerHTML = 'บันทึกข้อมูล';
+                        showStatus('เกิดข้อผิดพลาด: ' + err.message, 'danger');
+                    })
+                    .saveSingleTeacher({
+                        grade: grade,
+                        classNo: classNo,
+                        teacherName: teacher1,
+                        teacher2Name: teacher2
+                    });
+            });
         }
         
-        document.getElementById('addNewClassBtn').addEventListener('click', function() {
-            document.getElementById('addClassForm').reset();
-            if (addClassModal) addClassModal.show();
-            else alert('กรุณารอระบบโหลดสักครู่ หรือรีเฟรชหน้าเว็บ');
+        // ปุ่มปิด modal (dismiss)
+        var closeButtons = document.querySelectorAll('[data-bs-dismiss="modal"]');
+        closeButtons.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                if (addClassModal) addClassModal.hide();
+                else {
+                    var modalEl = document.getElementById('addClassModal');
+                    modalEl.style.display = 'none';
+                    modalEl.classList.remove('show');
+                }
+            });
         });
-
-        document.getElementById('saveNewClassBtn').addEventListener('click', function() {
-            const grade = document.getElementById('newGrade').value.trim();
-            const classNo = document.getElementById('newClassNo').value.trim();
-            const teacher1 = document.getElementById('newTeacher1').value.trim();
-            const teacher2 = document.getElementById('newTeacher2').value.trim();
-
-            if (!grade || !classNo || !teacher1) {
-                alert('กรุณากรอกข้อมูลให้ครบ (ระดับชั้น, ห้อง, ครูคนที่ 1)');
-                return;
-            }
-
-            const btn = this;
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> กำลังบันทึก...';
-
-            google.script.run
-                .withSuccessHandler(function(msg) {
-                    btn.disabled = false;
-                    btn.innerHTML = 'บันทึกข้อมูล';
-                    if (addClassModal) addClassModal.hide();
-                    showStatus(msg, 'success');
-                    initializeTeacherEditor();
-                })
-                .withFailureHandler(function(err) {
-                    btn.disabled = false;
-                    btn.innerHTML = 'บันทึกข้อมูล';
-                    showStatus('เกิดข้อผิดพลาด: ' + err.message, 'danger');
-                })
-                .saveSingleTeacher({
-                    grade: grade,
-                    classNo: classNo,
-                    teacherName: teacher1,
-                    teacher2Name: teacher2
-                });
-        });
-    });
+    })();
 
     // เริ่มต้นทำงานเมื่อหน้าเว็บถูกโหลดเข้ามา
     initializeTeacherEditor();
