@@ -110,6 +110,71 @@ function getAvailableClasses_DEBUG(grade) {
   }
 }
 
+function searchStudentsForDelete(searchType, searchValue, limit) {
+  try {
+    var q = String(searchValue || '').trim();
+    if (!q) return [];
+
+    var ss = SS();
+    var sheet = ss.getSheetByName('Students');
+    if (!sheet) return [];
+
+    var data = sheet.getDataRange().getValues();
+    if (!data || data.length < 2) return [];
+
+    var headers = data[0] || [];
+    var col = {};
+    headers.forEach(function(h, i) { col[String(h || '').trim()] = i; });
+
+    var idxId = col['student_id'];
+    var idxTitle = col['title'];
+    var idxFn = col['firstname'];
+    var idxLn = col['lastname'];
+    var idxGrade = col['grade'];
+    var idxClass = col['class_no'];
+    var idxCard = col['id_card'];
+
+    if (idxId == null) return [];
+
+    var qLower = q.toLowerCase();
+    var results = [];
+    var max = Math.max(1, Math.min(parseInt(limit, 10) || 20, 100));
+
+    for (var r = 1; r < data.length; r++) {
+      var row = data[r];
+      var sid = String(row[idxId] || '').trim();
+      if (!sid) continue;
+
+      var title = idxTitle != null ? String(row[idxTitle] || '').trim() : '';
+      var fn = idxFn != null ? String(row[idxFn] || '').trim() : '';
+      var ln = idxLn != null ? String(row[idxLn] || '').trim() : '';
+      var fullName = (title + fn + ' ' + ln).trim();
+      var grade = idxGrade != null ? String(row[idxGrade] || '').trim() : '';
+      var classNo = idxClass != null ? String(row[idxClass] || '').trim() : '';
+      var idCard = idxCard != null ? String(row[idxCard] || '').trim() : '';
+
+      var ok = false;
+      if (searchType === 'student_id') ok = sid === q;
+      else if (searchType === 'id_card') ok = idCard === q;
+      else if (searchType === 'name') ok = fullName.toLowerCase().indexOf(qLower) !== -1;
+      else {
+        var hay = (sid + ' ' + fullName + ' ' + idCard + ' ' + grade + '/' + classNo).toLowerCase();
+        ok = hay.indexOf(qLower) !== -1;
+      }
+
+      if (ok) {
+        results.push({ id: sid, name: fullName, grade: grade, classNo: classNo });
+        if (results.length >= max) break;
+      }
+    }
+
+    return results;
+  } catch (e) {
+    Logger.log('searchStudentsForDelete error: ' + e.message);
+    return [];
+  }
+}
+
 function saveStudentData(data) {
   try {
     data = data || {};
@@ -489,11 +554,14 @@ function getStudentById(data, headers, searchType, searchValue) {
  */
 function deleteStudent(deleteData) {
   try {
-    // ตรวจสอบรหัสผ่านผู้ดูแลระบบ
-    const ADMIN_PASSWORD = 'admin123'; 
-    if (deleteData.adminPassword !== ADMIN_PASSWORD) {
-      return { success: false, message: 'รหัสผ่านผู้ดูแลระบบไม่ถูกต้อง' };
-    }
+    var session = (typeof getLoginSession === 'function') ? getLoginSession() : null;
+    var role = String((session && session.role) || '').toLowerCase();
+    if (role !== 'admin') return { success: false, message: 'ไม่มีสิทธิ์ลบข้อมูลนักเรียน (ต้องเป็นผู้ดูแลระบบ)' };
+
+    var studentId = '';
+    if (typeof deleteData === 'string' || typeof deleteData === 'number') studentId = String(deleteData).trim();
+    else if (deleteData && typeof deleteData === 'object') studentId = String(deleteData.studentId || '').trim();
+    if (!studentId) return { success: false, message: 'ไม่พบรหัสนักเรียนที่ต้องการลบ' };
     
     const ss = SS();
     const sheet = ss.getSheetByName("Students");
@@ -501,7 +569,7 @@ function deleteStudent(deleteData) {
 
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
-    const student = getStudentById(data, headers, 'student_id', deleteData.studentId);
+    const student = getStudentById(data, headers, 'student_id', studentId);
 
     if (!student) {
       return { success: false, message: 'ไม่พบข้อมูลนักเรียนที่ต้องการลบ' };
