@@ -12,7 +12,7 @@
         </div>
 
         <div class="card shadow-sm mb-4">
-            <div class="card-header fw-bold">🔍 ค้นหานักเรียนที่ต้องการลบ</div>
+            <div class="card-header fw-bold"> ค้นหานักเรียนที่ต้องการลบ</div>
             <div class="card-body">
                 <div class="row g-3 align-items-end">
                     <div class="col-md-4">
@@ -34,6 +34,45 @@
             </div>
         </div>
 
+        <div class="card shadow-sm mb-4">
+            <div class="card-header fw-bold"> เลือกชั้น/ห้องเพื่อเลือกนักเรียน</div>
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label for="deleteGrade" class="form-label">ระดับชั้น:</label>
+                        <select id="deleteGrade" class="form-select">
+                            <option value="">-- เลือกชั้น --</option>
+                            <option value="ป.1">ป.1</option>
+                            <option value="ป.2">ป.2</option>
+                            <option value="ป.3">ป.3</option>
+                            <option value="ป.4">ป.4</option>
+                            <option value="ป.5">ป.5</option>
+                            <option value="ป.6">ป.6</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="deleteClass" class="form-label">ห้อง:</label>
+                        <select id="deleteClass" class="form-select" disabled>
+                            <option value="">-- เลือกห้อง --</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="deleteStudentSelect" class="form-label">นักเรียน:</label>
+                        <select id="deleteStudentSelect" class="form-select" disabled>
+                            <option value="">-- เลือกนักเรียน --</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row g-3 mt-1">
+                    <div class="col-md-4"></div>
+                    <div class="col-md-4"></div>
+                    <div class="col-md-4 text-end">
+                        <button id="chooseStudentBtn" class="btn btn-outline-danger" disabled>เลือกเพื่อลบ</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div id="resultContainer"></div>
         
         <div id="status" class="mt-3"></div>
@@ -50,6 +89,11 @@
             const elResultContainer = document.getElementById('resultContainer');
             const elSearchType = document.getElementById('searchType');
             const elStatus = document.getElementById('status');
+
+            const elDeleteGrade = document.getElementById('deleteGrade');
+            const elDeleteClass = document.getElementById('deleteClass');
+            const elDeleteStudentSelect = document.getElementById('deleteStudentSelect');
+            const elChooseStudentBtn = document.getElementById('chooseStudentBtn');
 
             function showStatus(message, type = 'info') {
                 if (!message) {
@@ -168,10 +212,78 @@
                 }
             }
 
+            function resetDeleteSelectors() {
+                elDeleteClass.innerHTML = '<option value="">-- เลือกห้อง --</option>';
+                elDeleteStudentSelect.innerHTML = '<option value="">-- เลือกนักเรียน --</option>';
+                elDeleteClass.disabled = true;
+                elDeleteStudentSelect.disabled = true;
+                elChooseStudentBtn.disabled = true;
+            }
+
+            function loadClassesForGrade() {
+                const grade = elDeleteGrade.value;
+                resetDeleteSelectors();
+                if (!grade) return;
+                showStatus('กำลังโหลดห้อง...', 'info');
+                google.script.run
+                    .withSuccessHandler(function(classes) {
+                        showStatus('');
+                        const list = classes || [];
+                        elDeleteClass.disabled = false;
+                        elDeleteClass.innerHTML = '<option value="">-- เลือกห้อง --</option>' +
+                            list.map(c => `<option value="${String(c)}">${String(c)}</option>`).join('');
+                    })
+                    .withFailureHandler(handleError)
+                    .getAvailableClassesForDelete(grade);
+            }
+
+            function loadStudentsForClass() {
+                const grade = elDeleteGrade.value;
+                const classNo = elDeleteClass.value;
+                elDeleteStudentSelect.innerHTML = '<option value="">-- เลือกนักเรียน --</option>';
+                elDeleteStudentSelect.disabled = true;
+                elChooseStudentBtn.disabled = true;
+                if (!grade || !classNo) return;
+
+                showStatus('กำลังโหลดรายชื่อนักเรียน...', 'info');
+                google.script.run
+                    .withSuccessHandler(function(students) {
+                        showStatus('');
+                        const list = students || [];
+                        elDeleteStudentSelect.disabled = false;
+                        elDeleteStudentSelect.innerHTML = '<option value="">-- เลือกนักเรียน --</option>' +
+                            list.map(s => {
+                                const label = `${s.id} - ${s.name}`;
+                                const payload = encodeURIComponent(JSON.stringify(s));
+                                return `<option value="${payload}">${label}</option>`;
+                            }).join('');
+                    })
+                    .withFailureHandler(handleError)
+                    .getStudentsForDeleteByClass(grade, classNo, 120);
+            }
+
+            function chooseStudentFromSelectors() {
+                const raw = elDeleteStudentSelect.value;
+                if (!raw) return;
+                try {
+                    const student = JSON.parse(decodeURIComponent(raw));
+                    renderConfirmCard(student);
+                } catch (e) {
+                    showStatus('ข้อมูลนักเรียนไม่ถูกต้อง', 'danger');
+                }
+            }
+
             elSearchBtn.addEventListener('click', searchStudent);
             elSearchValue.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') searchStudent();
             });
+
+            elDeleteGrade.addEventListener('change', loadClassesForGrade);
+            elDeleteClass.addEventListener('change', loadStudentsForClass);
+            elDeleteStudentSelect.addEventListener('change', function() {
+                elChooseStudentBtn.disabled = !elDeleteStudentSelect.value;
+            });
+            elChooseStudentBtn.addEventListener('click', chooseStudentFromSelectors);
         })();
     </script>
 </body>

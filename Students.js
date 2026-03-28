@@ -110,6 +110,44 @@ function getAvailableClasses_DEBUG(grade) {
   }
 }
 
+function getAvailableClassesForDelete(grade) {
+  try {
+    if (typeof getAvailableClasses === 'function') {
+      return getAvailableClasses(grade);
+    }
+    return getAvailableClasses_DEBUG(grade);
+  } catch (e) {
+    Logger.log('getAvailableClassesForDelete error: ' + e.message);
+    return [];
+  }
+}
+
+function getStudentsForDeleteByClass(grade, classNo, limit) {
+  try {
+    var g = String(grade || '').trim();
+    var c = String(classNo || '').trim();
+    if (!g || !c) return [];
+
+    var students = getStudentsByClass(g, c) || [];
+    var max = Math.max(1, Math.min(parseInt(limit, 10) || 60, 200));
+
+    var mapped = students.map(function(s) {
+      var name = (String(s.title || '').trim() + String(s.firstname || '').trim() + ' ' + String(s.lastname || '').trim()).trim();
+      return { id: String(s.id || '').trim(), name: name, grade: String(s.grade || '').trim(), classNo: String(s.classNo || '').trim() };
+    }).filter(function(s) { return !!s.id; });
+
+    mapped.sort(function(a, b) {
+      return String(a.id).localeCompare(String(b.id), undefined, { numeric: true });
+    });
+
+    if (mapped.length > max) mapped = mapped.slice(0, max);
+    return mapped;
+  } catch (e) {
+    Logger.log('getStudentsForDeleteByClass error: ' + e.message);
+    return [];
+  }
+}
+
 function searchStudentsForDelete(searchType, searchValue, limit) {
   try {
     var q = String(searchValue || '').trim();
