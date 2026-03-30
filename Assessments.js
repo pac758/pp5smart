@@ -386,8 +386,7 @@ function ensureRTWSheetAndHeaders_() {
   if (!sheet) sheet = ss.getSheetByName(RTW_SHEET);
 
   if (!sheet) {
-    var sheetName = (typeof S_sheetName === 'function') ? S_sheetName(RTW_SHEET) : RTW_SHEET;
-    sheet = ss.insertSheet(sheetName);
+    sheet = ss.insertSheet(RTW_SHEET);
     sheet.getRange(1, 1, 1, RTW_HEADERS.length).setValues([RTW_HEADERS]);
     var headerRange = sheet.getRange(1, 1, 1, RTW_HEADERS.length);
     headerRange.setBackground('#ffc107');
@@ -454,8 +453,7 @@ function ensureCharSheetAndHeaders_() {
   try { if (typeof S_getYearlySheet === 'function') sheet = S_getYearlySheet(CHARACTER_SHEET); } catch(_) {}
   if (!sheet) sheet = ss.getSheetByName(CHARACTER_SHEET);
   if (!sheet) {
-    var sheetName = (typeof S_sheetName === 'function') ? S_sheetName(CHARACTER_SHEET) : CHARACTER_SHEET;
-    sheet = ss.insertSheet(sheetName);
+    sheet = ss.insertSheet(CHARACTER_SHEET);
     sheet.getRange(1, 1, 1, CHARACTER_HEADERS.length).setValues([CHARACTER_HEADERS]);
     return { sheet: sheet, idx: charHeaderIndex_(sheet) };
   }
@@ -505,8 +503,7 @@ function ensureCompetencySheetAndHeaders_() {
   if (!sheet) sheet = ss.getSheetByName(COMPETENCY_SHEET);
 
   if (!sheet) {
-    var sheetName = (typeof S_sheetName === 'function') ? S_sheetName(COMPETENCY_SHEET) : COMPETENCY_SHEET;
-    sheet = ss.insertSheet(sheetName);
+    sheet = ss.insertSheet(COMPETENCY_SHEET);
     sheet.getRange(1, 1, 1, COMPETENCY_HEADERS.length).setValues([COMPETENCY_HEADERS]);
     return sheet;
   }
@@ -886,8 +883,7 @@ function saveActivityAssessmentBatch(payload) {
   return withLock_('activity_' + grade + '_' + classNo, function() {
     var sheet = S_getYearlySheet(ACTIVITY_SHEET);
     if (!sheet) {
-      var sheetName = (typeof S_sheetName === 'function') ? S_sheetName(ACTIVITY_SHEET) : ACTIVITY_SHEET;
-      sheet = ss.insertSheet(sheetName);
+      sheet = ss.insertSheet(ACTIVITY_SHEET);
       sheet.appendRow(ACTIVITY_HEADERS);
     }
     var now = new Date();
