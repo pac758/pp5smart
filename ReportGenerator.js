@@ -88,11 +88,11 @@ let CACHED_COMMENT_TIME = 0;
 
 // ============================================================
 
-function getAllStudentDataOptimized() {
+function getAllStudentDataOptimized(year) {
 
   const ss = SS();
 
-  const sheet = ss.getSheetByName('Students');
+  const sheet = (year && typeof S_getSharedSheet === 'function') ? S_getSharedSheet('Students', year) : ss.getSheetByName('Students');
 
   
 
@@ -791,13 +791,19 @@ function getCachedFolder_(settings) {
 
 
 
-function getCachedSheetData_(sheetName) {
+function getCachedSheetData_(sheetName, year) {
 
   const now = Date.now();
+  var currentYear = (typeof S_getAcademicYear === 'function') ? String(S_getAcademicYear()) : '';
+  var isOldYear = year && String(year) !== currentYear;
 
   switch (sheetName) {
 
     case 'Students':
+      if (isOldYear) {
+        var snapSheet = (typeof S_getSharedSheet === 'function') ? S_getSharedSheet('Students', year) : SS().getSheetByName('Students');
+        return snapSheet ? snapSheet.getDataRange().getValues() : [];
+      }
 
       if (CACHED_STUDENTS_DATA && (now - CACHED_STUDENTS_TIME) < CACHE_DURATION) return CACHED_STUDENTS_DATA;
 
@@ -808,6 +814,11 @@ function getCachedSheetData_(sheetName) {
       return CACHED_STUDENTS_DATA;
 
     case 'SCORES_WAREHOUSE':
+
+      if (isOldYear) {
+        var whOld = S_getYearlySheet('SCORES_WAREHOUSE', year);
+        return whOld ? whOld.getDataRange().getValues() : [];
+      }
 
       if (CACHED_WAREHOUSE_DATA && (now - CACHED_WAREHOUSE_TIME) < CACHE_DURATION) return CACHED_WAREHOUSE_DATA;
 
@@ -821,6 +832,11 @@ function getCachedSheetData_(sheetName) {
 
     case 'ความเห็นครู':
 
+      if (isOldYear) {
+        var cmOld = S_getYearlySheet('ความเห็นครู', year);
+        return cmOld ? cmOld.getDataRange().getValues() : null;
+      }
+
       if (CACHED_COMMENT_DATA && (now - CACHED_COMMENT_TIME) < CACHE_DURATION) return CACHED_COMMENT_DATA;
 
       const sh = S_getYearlySheet('ความเห็นครู');
@@ -830,6 +846,18 @@ function getCachedSheetData_(sheetName) {
       CACHED_COMMENT_TIME = now;
 
       return CACHED_COMMENT_DATA;
+
+    case 'รายวิชา':
+      if (isOldYear) {
+        var subjOld = (typeof S_getSharedSheet === 'function') ? S_getSharedSheet('รายวิชา', year) : SS().getSheetByName('รายวิชา');
+        return subjOld ? subjOld.getDataRange().getValues() : null;
+      }
+      if (!CACHED_SUBJECT_DATA || (now - CACHED_SUBJECT_TIME) >= CACHE_DURATION) {
+        var subjSheet = SS().getSheetByName('รายวิชา');
+        CACHED_SUBJECT_DATA = subjSheet ? subjSheet.getDataRange().getValues() : null;
+        CACHED_SUBJECT_TIME = now;
+      }
+      return CACHED_SUBJECT_DATA;
 
     default:
 
@@ -841,9 +869,9 @@ function getCachedSheetData_(sheetName) {
 
 
 
-function getStudentInfo_(id) {
+function getStudentInfo_(id, year) {
 
-  const data = getCachedSheetData_('Students');
+  const data = getCachedSheetData_('Students', year);
 
   
 
@@ -877,7 +905,7 @@ function getStudentInfo_(id) {
 
 function getStudentScores_(id, year, assessmentsCache) {
 
-  const data = getCachedSheetData_('SCORES_WAREHOUSE');
+  const data = getCachedSheetData_('SCORES_WAREHOUSE', year);
 
   if (!data || data.length === 0) return [];
 
@@ -907,7 +935,7 @@ function getStudentScores_(id, year, assessmentsCache) {
 
   
 
-  // สร้าง map ชั่วโมง + ประเภทวิชา จากชีต "รายวิชา" (cached)
+  // สร้าง map ชั่วโมง + ประเภทวิชา จากชีต "รายวิชา" (cached / year-aware)
 
   const hoursMap = {};
 
@@ -915,21 +943,11 @@ function getStudentScores_(id, year, assessmentsCache) {
 
   try {
 
-    const now = Date.now();
+    const subjectDataForYear = getCachedSheetData_('รายวิชา', year);
 
-    if (!CACHED_SUBJECT_DATA || (now - CACHED_SUBJECT_TIME) >= CACHE_DURATION) {
+    if (subjectDataForYear) {
 
-      const subjectSheet = SS().getSheetByName('รายวิชา');
-
-      CACHED_SUBJECT_DATA = subjectSheet ? subjectSheet.getDataRange().getValues() : null;
-
-      CACHED_SUBJECT_TIME = now;
-
-    }
-
-    if (CACHED_SUBJECT_DATA) {
-
-      const subjectData = CACHED_SUBJECT_DATA;
+      const subjectData = subjectDataForYear;
 
       const sHeaders = subjectData[0];
 
@@ -1041,7 +1059,7 @@ function getStudentScores_(id, year, assessmentsCache) {
 
     try {
 
-      actSheet = S_getYearlySheet('การประเมินกิจกรรมพัฒนาผู้เรียน');
+      actSheet = S_getYearlySheet('การประเมินกิจกรรมพัฒนาผู้เรียน', year);
 
     } catch (e1) {
 

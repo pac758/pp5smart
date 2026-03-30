@@ -185,20 +185,26 @@ function _scoreToGPA(score) {
 /**
  * อ่านข้อมูลจากชีตเป็น Array of Objects (พร้อม Cache)
  */
-function _readSheetToObjects(sheetName, useCache = true) {
-  const cacheKey = _createCacheKey('sheet', sheetName);
+function _readSheetToObjects(sheetName, useCache = true, year) {
+  var currentYear = (typeof S_getAcademicYear === 'function') ? String(S_getAcademicYear()) : '';
+  var isOldYear = year && String(year) !== currentYear;
+  const cacheKey = _createCacheKey('sheet', sheetName + (isOldYear ? '_' + year : ''));
   
-  if (useCache) {
+  if (useCache && !isOldYear) {
     const cachedData = _getFromCache(cacheKey);
     if (cachedData) return cachedData;
   }
   
   try {
     const ss = _openSpreadsheet();
-    // ถ้าเป็นชีตรายปี ให้ใช้ S_getYearlySheet (resolve ชื่อ + fallback อัตโนมัติ)
     var sheet;
-    if (typeof S_YEARLY_SHEETS !== 'undefined' && S_YEARLY_SHEETS.indexOf(sheetName) !== -1) {
-      sheet = S_getYearlySheet(sheetName);
+    // ถ้าเป็นชีตที่ใช้ร่วม (Students/รายวิชา/HomeroomTeachers) + ขอปีเก่า → ใช้ snapshot
+    var isShared = (typeof S_SHARED_SHEETS !== 'undefined') && S_SHARED_SHEETS.indexOf(sheetName) !== -1;
+    if (isOldYear && isShared && typeof S_getSharedSheet === 'function') {
+      sheet = S_getSharedSheet(sheetName, year);
+    } else if (typeof S_YEARLY_SHEETS !== 'undefined' && S_YEARLY_SHEETS.indexOf(sheetName) !== -1) {
+      // ถ้าเป็นชีตรายปี ให้ใช้ S_getYearlySheet (resolve ชื่อ + fallback อัตโนมัติ)
+      sheet = S_getYearlySheet(sheetName, isOldYear ? year : undefined);
     } else {
       sheet = ss.getSheetByName(sheetName);
     }
@@ -1117,7 +1123,7 @@ function testPp6PdfRegression() {
 /**
  * ฟังก์ชันสร้าง PDF รายงานรายบุคคล (ปพ.6) - ใช้ Google Docs (ฟอนต์ Sarabun)
  */
-function generatePp6PDFComplete(studentId, term = 'both', showRank = true) {
+function generatePp6PDFComplete(studentId, term = 'both', showRank = true, year) {
   try {
     try { DriveApp.getRootFolder().getName(); } catch (e) {
       // Fallback: ลองผ่าน REST API
@@ -1151,7 +1157,7 @@ function generatePp6PDFComplete(studentId, term = 'both', showRank = true) {
       throw new Error('ไม่พบการตั้งค่าโรงเรียน');
     }
 
-    const allStudentsData = _readSheetToObjects('Students');
+    const allStudentsData = _readSheetToObjects('Students', true, year);
     const studentMasterData = allStudentsData.find(row => String(row.student_id).trim() === String(studentId).trim());
     
     if (!studentMasterData) {
@@ -1160,7 +1166,7 @@ function generatePp6PDFComplete(studentId, term = 'both', showRank = true) {
 
     const studentFullName = `${studentMasterData.title || ''}${studentMasterData.firstname || ''} ${studentMasterData.lastname || ''}`.trim();
 
-    const warehouse = _readSheetToObjects('SCORES_WAREHOUSE');
+    const warehouse = _readSheetToObjects('SCORES_WAREHOUSE', true, year);
     const studentScoreData = warehouse.find(row => String(row['student_id']).trim() === String(studentId).trim());
     if (!studentScoreData) {
       throw new Error(`ไม่พบข้อมูลคะแนนของนักเรียนรหัส ${studentId} ใน SCORES_WAREHOUSE`);
@@ -1182,7 +1188,7 @@ function generatePp6PDFComplete(studentId, term = 'both', showRank = true) {
     const assessments = getStudentAssessments(studentId);
 
     // ✅ ใช้ getStudentInfo_ เหมือนรายงานหน้าเดียว เพื่อให้ grade/classNo format ตรงกับ HomeroomTeachers
-    const studentInfo = typeof getStudentInfo_ === 'function' ? getStudentInfo_(studentId) : null;
+    const studentInfo = typeof getStudentInfo_ === 'function' ? getStudentInfo_(studentId, year) : null;
     const teacherGrade = studentInfo ? studentInfo.grade : grade;
     const teacherClassNo = studentInfo ? String(studentInfo.classNo) : String(classNo);
     const _htPp6 = getHomeroomTeachers(teacherGrade, teacherClassNo);

@@ -361,6 +361,10 @@
       <div class="step-header">
         <div class="step-num">1</div>
         <div class="step-title">เลือกชั้นเรียน</div>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
+          <label for="yearSelector" style="font-size:.8rem;color:#666;white-space:nowrap;">ปีการศึกษา:</label>
+          <select id="yearSelector" style="padding:4px 8px;border:1px solid #ddd;border-radius:6px;font-size:.85rem;background:#fff;"></select>
+        </div>
       </div>
       <div class="step-body">
         <div id="quickChips" class="chips-row"></div>
@@ -459,11 +463,12 @@
     studentSearch: document.getElementById('studentSearch'),
     fabBar: document.getElementById('fabBar'),
     fabCount: document.getElementById('fabCount'),
-    fabDeselect: document.getElementById('fabDeselect')
+    fabDeselect: document.getElementById('fabDeselect'),
+    yearSelector: document.getElementById('yearSelector')
   };
 
   var allSelected = false;
-  var dataCache = { allStudents: null, currentGrade: null, currentClass: null };
+  var dataCache = { allStudents: null, currentGrade: null, currentClass: null, selectedYear: '' };
   var batchQueue = [], batchTotal = 0, batchSuccess = 0, batchFail = 0, lastSuccessUrl = '';
 
   // --- Helper ---
@@ -574,18 +579,56 @@
     updateSelectedCount();
   });
 
+  // --- Year Selector ---
+  function loadAvailableYears() {
+    google.script.run
+      .withSuccessHandler(function(years) {
+        el.yearSelector.innerHTML = '';
+        if (!years || years.length === 0) years = [];
+        years.forEach(function(y) {
+          var opt = document.createElement('option');
+          opt.value = y;
+          opt.textContent = y;
+          el.yearSelector.appendChild(opt);
+        });
+        // เลือกปีล่าสุด (ค่าสุดท้าย)
+        if (years.length > 0) {
+          el.yearSelector.value = years[years.length - 1];
+          dataCache.selectedYear = years[years.length - 1];
+        }
+        loadStudentData();
+      })
+      .withFailureHandler(function() { loadStudentData(); })
+      .S_getAvailableYears();
+  }
+
+  el.yearSelector.addEventListener('change', function() {
+    dataCache.selectedYear = this.value;
+    dataCache.allStudents = null;
+    el.studentListBody.innerHTML = '<div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i><span>กำลังโหลด...</span></div>';
+    el.quickChips.innerHTML = '';
+    loadStudentData();
+  });
+
   // --- Core Logic ---
-  function loadAllData() {
-    showStatus('<i class="fa-solid fa-spinner fa-spin"></i> กำลังโหลดข้อมูล...', 'info');
+  function loadStudentData() {
+    var year = dataCache.selectedYear || undefined;
+    showStatus('<i class="fa-solid fa-spinner fa-spin"></i> กำลังโหลดข้อมูล' + (year ? ' (ปี ' + year + ')' : '') + '...', 'info');
     google.script.run
       .withSuccessHandler(function(data) {
         dataCache.allStudents = data;
         buildQuickChips();
         el.studentSearch.disabled = false;
-        showStatus('<i class="fa-solid fa-circle-check"></i> พร้อมใช้งาน', 'success');
+        var yearLabel = year ? ' (ปี ' + year + ')' : '';
+        showStatus('<i class="fa-solid fa-circle-check"></i> พร้อมใช้งาน' + yearLabel, 'success');
       })
       .withFailureHandler(function(err) { showStatus('<i class="fa-solid fa-circle-xmark"></i> โหลดข้อมูลล้มเหลว: ' + err.message, 'danger'); })
-      .getAllStudentDataOptimized();
+      .getAllStudentDataOptimized(year);
+  }
+
+  function loadAllData() {
+    showStatus('<i class="fa-solid fa-spinner fa-spin"></i> กำลังโหลดข้อมูล...', 'info');
+    loadAvailableYears();
   }
 
   function renderStudentList(students) {
@@ -718,7 +761,7 @@
         updateProgress();
         processNext();
       })
-      .generateStudentReportPdfUnified(current.id, { term: 'both', showRank: el.showRankToggle.checked });
+      .generateStudentReportPdfUnified(current.id, { term: 'both', showRank: el.showRankToggle.checked, year: dataCache.selectedYear || undefined });
   }
 
   function updateProgress() {
