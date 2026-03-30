@@ -630,6 +630,18 @@ if (typeof window.SettingsEditor === 'undefined') {
                         lines.push('&nbsp;&nbsp;• ' + g + ': ' + gc[g] + ' คน' + actionText);
                     });
                     lines.push('<hr class="my-1">');
+                    if (result.sharedToSnapshot && result.sharedToSnapshot.length > 0) {
+                        lines.push('<strong>📸 Snapshot ชีตที่ใช้ร่วม (เก็บข้อมูลปีเก่าไว้ 100%):</strong>');
+                        result.sharedToSnapshot.forEach(function(d) {
+                            if (d.alreadySnapshot) {
+                                lines.push('&nbsp;&nbsp;• ' + d.to + ' — <span class="text-muted">มีอยู่แล้ว</span>');
+                            } else if (d.exists) {
+                                lines.push('&nbsp;&nbsp;• ' + d.from + ' → ' + d.to + ' (' + d.rows + ' แถว)');
+                            } else {
+                                lines.push('&nbsp;&nbsp;• <span class="text-warning">' + d.from + ' — ไม่พบชีต</span>');
+                            }
+                        });
+                    }
                     lines.push('<strong>📝 ชีตที่จะ Rename (เก็บข้อมูลเดิมไว้):</strong>');
                     (result.sheetsToRename || []).forEach(function(d) {
                         if (!d.alreadyRenamed) {
@@ -673,7 +685,7 @@ if (typeof window.SettingsEditor === 'undefined') {
                 self.setSwitchStatus('กรุณาระบุปีการศึกษาใหม่', 'warning');
                 return;
             }
-            if (!confirm('⚠️ ยืนยันเปลี่ยนปีการศึกษาเป็น ' + newYear + '?\n\nระบบจะ:\n1. สำรอง Spreadsheet ทั้งไฟล์ (backup)\n2. เปลี่ยนชื่อชีตข้อมูลเดิม → เติม _ปีเก่า\n3. สร้างชีตว่างสำหรับปีใหม่\n4. เปลี่ยนชื่อชีตคะแนนรายวิชา → เติม _ปีเก่า\n5. จำหน่ายนักเรียนจบชั้น (ป.6 และ ม.3)\n6. เลื่อนชั้นนักเรียนที่ยัง active (อ.1→อ.2 ... ม.2→ม.3)\n7. อัปเดตปีการศึกษา\n\n✅ ข้อมูลเดิมทั้งหมดจะยังอยู่ (แค่เปลี่ยนชื่อชีต)')) {
+            if (!confirm('⚠️ ยืนยันเปลี่ยนปีการศึกษาเป็น ' + newYear + '?\n\nระบบจะ:\n1. สำรอง Spreadsheet ทั้งไฟล์ (backup)\n2. 📸 Snapshot ชีตร่วม (Students, รายวิชา, HomeroomTeachers) → เก็บข้อมูลปีเก่าไว้ 100%\n3. เปลี่ยนชื่อชีตข้อมูลเดิม → เติม _ปีเก่า\n4. สร้างชีตว่างสำหรับปีใหม่\n5. เปลี่ยนชื่อชีตคะแนนรายวิชา → เติม _ปีเก่า\n6. จำหน่ายนักเรียนจบชั้น (ป.6 และ ม.3)\n7. เลื่อนชั้นนักเรียนที่ยัง active (อ.1→อ.2 ... ม.2→ม.3)\n8. อัปเดตปีการศึกษา\n\n✅ ข้อมูลเดิมทั้งหมดจะยังอยู่ 100% (snapshot + เปลี่ยนชื่อชีต)')) {
                 return;
             }
 

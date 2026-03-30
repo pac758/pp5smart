@@ -532,6 +532,25 @@ function S_getSharedSheet(baseName, year) {
 }
 
 /**
+ * ดึงรายการปีการศึกษาที่มีข้อมูลในระบบ (จากชีต snapshot + ชีตรายปี)
+ * @returns {string[]} เช่น ['2567', '2568', '2569']
+ */
+function S_getAvailableYears() {
+  var ss = SS();
+  var years = {};
+  var currentYear = S_getAcademicYear();
+  years[String(currentYear)] = true;
+
+  ss.getSheets().forEach(function(sheet) {
+    var name = sheet.getName();
+    var match = name.match(/_(\d{4})$/);
+    if (match) years[match[1]] = true;
+  });
+
+  return Object.keys(years).sort();
+}
+
+/**
  * สร้างชื่อชีตสำหรับปีที่ระบุ
  * เช่น S_sheetName('SCORES_WAREHOUSE', '2568') → 'SCORES_WAREHOUSE_2568'
  *      S_sheetName('SCORES_WAREHOUSE')         → ใช้ปีปัจจุบันจาก global_settings
