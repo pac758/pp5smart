@@ -59,7 +59,7 @@ function _getFolderByIdSafe_(id) {
     if (!id) return null;
     return DriveApp.getFolderById(id);
   } catch (e) {
-    Logger.log('⚠️ ใช้ pdfSaveFolderId ไม่ได้, จะสร้าง/ใช้โฟลเดอร์ชื่อ:', REPORTS_FOLDER_NAME);
+    Logger.log('⚠️ ใช้ pdfSaveFolderId ไม่ได้ (DriveApp): ' + e.message);
     return null;
   }
 }
@@ -526,13 +526,9 @@ function generateSubjectScorePDFFixed(subjectName, subjectCode, grade, classNo, 
     blob.setName(fileName);
 
     // บันทึกไฟล์
-    const folderId = settings.pdfSaveFolderId || DriveApp.getRootFolder().getId();
-    const folder = DriveApp.getFolderById(folderId);
-    const file = folder.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
+    const url = _saveBlobGetUrl_(blob, null, settings.pdfSaveFolderId || null);
     Logger.log(`✅ สร้างไฟล์ PDF: ${fileName}`);
-    return file.getUrl();
+    return url;
     
   } catch (error) {
     Logger.log('❌ Error in generateSubjectScorePDFFixed:', error);

@@ -189,11 +189,9 @@ function exportPp5FullBook(grade, classNo) {
     var blob = Utilities.newBlob(fullHtml, 'text/html', fileName + '.html').getAs('application/pdf');
     blob.setName(fileName + '.pdf');
 
-    var file = DriveApp.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
-    Logger.log('✅ สร้าง ปพ.5 รวมเล่มสำเร็จ: ' + file.getUrl());
-    return file.getUrl();
+    var pp5Url = _saveBlobGetUrl_(blob);
+    Logger.log('✅ สร้าง ปพ.5 รวมเล่มสำเร็จ: ' + pp5Url);
+    return pp5Url;
 
   } catch (error) {
     Logger.log('❌ exportPp5FullBook error: ' + error.message);

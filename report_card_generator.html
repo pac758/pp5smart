@@ -6,478 +6,675 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>พิมพ์รายงาน ปพ.6 • PP5 Smart</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
+    *{box-sizing:border-box}
     :root{
-      --primary: #6366f1;
-      --primary-2: #8b5cf6;
-      --primary-3: #22c55e;
-      --text: #0f172a;
-      --muted: #64748b;
-      --border: rgba(15, 23, 42, 0.10);
-      --surface: rgba(255,255,255,.92);
-      --shadow-sm: 0 1px 3px rgba(15,23,42,.08);
-      --shadow-md: 0 10px 30px rgba(15,23,42,.10);
-      --radius: 18px;
-      --radius-sm: 14px;
+      --primary:#6366f1; --primary-2:#818cf8; --primary-3:#a78bfa;
+      --accent:#10b981; --accent-light:rgba(16,185,129,.08);
+      --boy:#3b82f6; --girl:#ec4899;
+      --danger:#ef4444; --warning:#f59e0b;
+      --text:#1e293b; --text-2:#475569; --text-3:#94a3b8;
+      --bg:#f1f5f9; --surface:#fff; --surface-2:#f8fafc;
+      --border:rgba(15,23,42,.08); --border-2:rgba(15,23,42,.12);
+      --shadow-xs:0 1px 2px rgba(0,0,0,.04);
+      --shadow-sm:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+      --shadow-md:0 4px 6px -1px rgba(0,0,0,.06),0 2px 4px rgba(0,0,0,.04);
+      --shadow-lg:0 10px 15px -3px rgba(0,0,0,.07),0 4px 6px rgba(0,0,0,.04);
+      --shadow-xl:0 20px 25px -5px rgba(0,0,0,.08),0 8px 10px rgba(0,0,0,.04);
+      --r-xs:8px; --r-sm:12px; --r-md:16px; --r-lg:20px; --r-xl:24px;
+    }
+    html,body{height:100%;margin:0}
+    body{
+      font-family:"Noto Sans Thai",system-ui,-apple-system,"Segoe UI",sans-serif;
+      color:var(--text); background:var(--bg);
+      -webkit-font-smoothing:antialiased;
+      padding-bottom:0;
+    }
+    body.has-fab{padding-bottom:64px}
+
+    .page-wrap{max-width:680px;margin:0 auto;padding:20px 16px 30px}
+
+    /* ── Header ── */
+    .page-header{
+      display:flex;align-items:center;gap:14px;
+      margin-bottom:20px;padding:0 2px;
+    }
+    .header-icon{
+      width:48px;height:48px;border-radius:var(--r-sm);
+      display:flex;align-items:center;justify-content:center;
+      background:linear-gradient(135deg,var(--primary),var(--primary-3));
+      color:#fff;font-size:1.25rem;flex-shrink:0;
+      box-shadow:0 4px 12px rgba(99,102,241,.25);
+    }
+    .header-text h1{margin:0;font-size:1.2rem;font-weight:700;color:var(--text);letter-spacing:-.3px}
+    .header-text p{margin:2px 0 0;font-size:.82rem;color:var(--text-3);font-weight:400}
+
+    /* ── Cards ── */
+    .step-card{
+      background:var(--surface);border:1px solid var(--border);
+      border-radius:var(--r-lg);box-shadow:var(--shadow-sm);
+      margin-bottom:14px;overflow:hidden;
+      transition:box-shadow .2s;
+    }
+    .step-card:hover{box-shadow:var(--shadow-md)}
+    .step-header{
+      display:flex;align-items:center;gap:10px;
+      padding:14px 18px;border-bottom:1px solid var(--border);
+      background:var(--surface-2);
+    }
+    .step-num{
+      width:26px;height:26px;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;
+      font-size:.75rem;font-weight:700;color:#fff;flex-shrink:0;
+      background:linear-gradient(135deg,var(--primary),var(--primary-2));
+    }
+    .step-title{font-size:.9rem;font-weight:600;color:var(--text)}
+    .step-body{padding:16px 18px}
+
+    /* ── Quick-select chips ── */
+    .chips-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+    .chip{
+      display:inline-flex;align-items:center;gap:4px;
+      padding:7px 14px;border-radius:999px;
+      font-size:.8rem;font-weight:600;cursor:pointer;
+      border:1.5px solid var(--border-2);color:var(--text-2);
+      background:var(--surface);transition:all .15s;
+      user-select:none;white-space:nowrap;
+    }
+    .chip:hover{border-color:var(--primary);color:var(--primary);background:rgba(99,102,241,.04)}
+    .chip.active{
+      border-color:var(--primary);color:#fff;
+      background:linear-gradient(135deg,var(--primary),var(--primary-2));
+      box-shadow:0 2px 8px rgba(99,102,241,.25);
     }
 
-    html, body { height: 100%; }
-    body {
-      font-family: "Noto Sans Thai", system-ui, -apple-system, "Segoe UI", sans-serif;
-      color: var(--text);
-      background:
-        radial-gradient(1200px 700px at 10% -10%, rgba(99,102,241,.22), transparent 60%),
-        radial-gradient(900px 500px at 90% 0%, rgba(139,92,246,.20), transparent 55%),
-        radial-gradient(900px 600px at 50% 110%, rgba(34,197,94,.14), transparent 55%),
-        #f8fafc;
+    .teacher-info-box{
+      display:none;align-items:center;gap:10px;
+      padding:10px 14px;border-radius:var(--r-sm);
+      background:linear-gradient(135deg,rgba(99,102,241,.06),rgba(167,139,250,.06));
+      border:1px solid rgba(99,102,241,.15);
+      margin-top:14px;
+    }
+    .teacher-info-box .ti-icon{
+      width:32px;height:32px;border-radius:var(--r-xs);
+      display:flex;align-items:center;justify-content:center;
+      background:rgba(99,102,241,.1);color:var(--primary);font-size:.9rem;flex-shrink:0;
+    }
+    .teacher-info-box .ti-text{font-size:.85rem;color:var(--text-2)}
+    .teacher-info-box .ti-text strong{color:var(--text);font-weight:600}
+
+    /* ── Search + Toolbar ── */
+    .search-toolbar{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+    .search-box{position:relative;flex:1}
+    .search-box input{
+      width:100%;padding:9px 14px 9px 36px;border-radius:var(--r-sm);
+      border:1.5px solid var(--border-2);font-size:.85rem;color:var(--text);
+      background:var(--surface);transition:border-color .15s;
+    }
+    .search-box input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+    .search-box input::placeholder{color:var(--text-3)}
+    .search-box .search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-3);font-size:.85rem;pointer-events:none}
+
+    .tool-btn{
+      display:flex;align-items:center;justify-content:center;gap:5px;
+      padding:9px 14px;border-radius:var(--r-sm);border:1.5px solid var(--border-2);
+      background:var(--surface);color:var(--text-2);font-size:.8rem;font-weight:600;
+      cursor:pointer;transition:all .15s;white-space:nowrap;user-select:none;
+    }
+    .tool-btn:hover{border-color:var(--primary);color:var(--primary);background:rgba(99,102,241,.04)}
+    .tool-btn.active{border-color:var(--primary);color:var(--primary);background:rgba(99,102,241,.06)}
+    .tool-btn i{font-size:.78rem}
+
+    /* ── Student Grid ── */
+    .student-grid{
+      display:grid;grid-template-columns:1fr;gap:6px;
+      max-height:400px;overflow-y:auto;
+      padding:2px;
+    }
+    .student-grid::-webkit-scrollbar{width:5px}
+    .student-grid::-webkit-scrollbar-thumb{background:rgba(100,116,139,.18);border-radius:999px}
+    .student-grid::-webkit-scrollbar-thumb:hover{background:rgba(100,116,139,.3)}
+
+    .student-card{
+      display:flex;align-items:center;gap:12px;
+      padding:10px 14px;border-radius:var(--r-sm);
+      border:1.5px solid var(--border);
+      background:var(--surface);cursor:pointer;
+      transition:all .15s;position:relative;
+      user-select:none;
+    }
+    .student-card:hover{border-color:rgba(99,102,241,.25);background:rgba(99,102,241,.02)}
+    .student-card.is-checked{
+      border-color:var(--primary);
+      background:rgba(99,102,241,.04);
+    }
+    .student-card.is-checked .sc-check{
+      opacity:1;transform:scale(1);
+    }
+    .student-card input[type="checkbox"]{display:none}
+
+    .sc-avatar{
+      width:38px;height:38px;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;
+      font-size:.82rem;font-weight:700;flex-shrink:0;
+      color:#fff;position:relative;
+    }
+    .sc-avatar.boy{background:linear-gradient(135deg,#60a5fa,#3b82f6)}
+    .sc-avatar.girl{background:linear-gradient(135deg,#f472b6,#ec4899)}
+
+    .sc-check{
+      position:absolute;bottom:-2px;right:-2px;
+      width:18px;height:18px;border-radius:50%;
+      background:var(--primary);color:#fff;
+      display:flex;align-items:center;justify-content:center;
+      font-size:.6rem;border:2px solid var(--surface);
+      opacity:0;transform:scale(.5);
+      transition:all .15s;
     }
 
-    .container { max-width: 1040px; }
+    .sc-info{flex:1;min-width:0}
+    .sc-name{font-size:.88rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .sc-id{font-size:.72rem;color:var(--text-3);font-weight:500}
 
-    .page-header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 16px;
-      margin-bottom: 14px;
-      padding: 18px 18px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background: linear-gradient(135deg, rgba(255,255,255,.96), rgba(255,255,255,.78));
-      box-shadow: var(--shadow-sm);
-      backdrop-filter: blur(10px);
+    .sc-num{
+      font-size:.72rem;font-weight:700;color:var(--text-3);
+      width:24px;height:24px;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;
+      background:rgba(15,23,42,.04);flex-shrink:0;
     }
-    .page-title {
-      margin: 0;
-      font-weight: 700;
-      letter-spacing: -0.2px;
-      color: #1f2a44;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 1.25rem;
-    }
-    .page-title i {
-      width: 38px;
-      height: 38px;
-      border-radius: 12px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      color: #fff;
-      background: linear-gradient(135deg, var(--primary), var(--primary-2));
-      box-shadow: 0 10px 25px rgba(99,102,241,.22);
-    }
-    .page-subtitle { margin: 6px 0 0; color: var(--muted); font-size: .92rem; }
-
-    .surface-card {
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background: var(--surface);
-      box-shadow: var(--shadow-md);
-    }
-    .surface-card .card-body { padding: 18px; }
-
-    .form-label { color: #1f2a44; }
-    .form-select, .form-control {
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      box-shadow: none;
-    }
-    .form-select:focus, .form-control:focus {
-      border-color: rgba(99,102,241,.45);
-      box-shadow: 0 0 0 .25rem rgba(99,102,241,.14);
+    .student-card.is-checked .sc-num{
+      background:rgba(99,102,241,.1);color:var(--primary);
     }
 
-    .student-list-container {
-      max-height: 300px;
-      overflow-y: auto;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      background: rgba(255,255,255,.92);
-      box-shadow: var(--shadow-sm);
+    .empty-state{
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      padding:48px 20px;color:var(--text-3);gap:10px;
     }
-    .student-item {
-      border-bottom: 1px solid rgba(15,23,42,.06);
-      padding: 10px 12px;
-      cursor: pointer;
-      transition: background 0.18s, transform 0.12s, border-color 0.18s;
-    }
-    .student-item:last-child { border-bottom: none; }
-    .student-item:hover { background-color: rgba(99,102,241,.06); }
-    .student-item.is-checked {
-      background: linear-gradient(135deg, rgba(99,102,241,.10), rgba(34,197,94,.06));
-      border-bottom-color: rgba(99,102,241,.12);
-    }
-    .student-item input[type="checkbox"] { cursor: pointer; transform: scale(1.15); margin-right: 10px; }
-    .student-item span { color: #0f172a; font-weight: 500; }
-    
-    .list-controls {
-      position: sticky;
-      top: 0;
-      background: rgba(248,250,252,.86);
-      padding: 10px 10px;
-      border-bottom: 1px solid rgba(15,23,42,.08);
-      z-index: 10;
-      backdrop-filter: blur(10px);
-    }
+    .empty-state i{font-size:2.5rem;opacity:.3}
+    .empty-state span{font-size:.85rem}
 
-    .progress-container { margin-top: 20px; display: none; }
-    #generateBtn.loading .spinner-border { display: inline-block; }
-    .spinner-border { display: none; }
+    /* ── Floating Action Bar ── */
+    .fab-bar{
+      position:fixed;bottom:16px;right:16px;
+      transform:translateY(calc(100% + 40px));
+      transition:transform .3s cubic-bezier(.4,0,.2,1);
+      z-index:100;pointer-events:none;
+    }
+    .fab-bar.visible{transform:translateY(0)}
+    .fab-inner{
+      padding:8px 12px;
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:var(--r-lg);
+      box-shadow:var(--shadow-xl);
+      display:flex;align-items:center;gap:8px;
+      pointer-events:auto;
+    }
+    .fab-count{
+      display:inline-flex;align-items:center;justify-content:center;
+      min-width:24px;height:24px;padding:0 7px;border-radius:999px;
+      background:linear-gradient(135deg,var(--primary),var(--primary-2));
+      color:#fff;font-size:.78rem;font-weight:700;flex-shrink:0;
+    }
+    .fab-sep{width:1px;height:20px;background:var(--border-2);flex-shrink:0}
+    .fab-deselect{
+      padding:4px 8px;border-radius:var(--r-xs);border:none;
+      background:none;color:var(--text-3);
+      font-size:.72rem;font-weight:600;cursor:pointer;
+      transition:all .12s;flex-shrink:0;
+    }
+    .fab-deselect:hover{color:var(--danger)}
+    .fab-toggle{
+      display:flex;align-items:center;
+      flex-shrink:0;
+    }
+    .toggle-switch{position:relative;width:40px;height:22px;flex-shrink:0}
+    .toggle-switch input{opacity:0;width:0;height:0}
+    .toggle-switch .slider{
+      position:absolute;inset:0;border-radius:999px;cursor:pointer;
+      background:rgba(15,23,42,.15);transition:background .2s;
+    }
+    .toggle-switch .slider::before{
+      content:'';position:absolute;width:16px;height:16px;
+      left:3px;top:3px;border-radius:50%;background:#fff;
+      box-shadow:var(--shadow-xs);transition:transform .2s;
+    }
+    .toggle-switch input:checked+.slider{background:var(--primary)}
+    .toggle-switch input:checked+.slider::before{transform:translateX(18px)}
 
-    /* สไตล์สำหรับลิงก์ผลลัพธ์ */
-    .result-item {
-        transition: background-color 0.2s;
+    #generateBtn{
+      padding:8px 14px;border:0;border-radius:var(--r-sm);flex-shrink:0;
+      font-size:.9rem;font-weight:700;color:#fff;cursor:pointer;
+      background:linear-gradient(135deg,var(--primary),var(--primary-2));
+      box-shadow:0 4px 14px rgba(99,102,241,.3);
+      transition:transform .1s,box-shadow .2s;
+      display:flex;align-items:center;justify-content:center;gap:8px;
     }
-    .result-item:hover {
-        background-color: #f8f9fa;
-    }
-    .teacher-info-box {
-      background: linear-gradient(135deg, rgba(99,102,241,.10), rgba(139,92,246,.08));
-      border: 1px solid rgba(99,102,241,.22);
-      border-radius: var(--radius-sm);
-      padding: 12px 14px;
-      margin-bottom: 12px;
-      font-size: 0.95rem;
-      color: #334155;
-      display: flex;
-      align-items: center;
-    }
-    .teacher-info-box i {
-      font-size: 1.1rem;
-      color: var(--primary);
-    }
+    #generateBtn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px rgba(99,102,241,.35)}
+    #generateBtn:active:not(:disabled){transform:translateY(0)}
+    #generateBtn:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+    #generateBtn.loading .spinner-border{display:inline-block}
+    .spinner-border{display:none}
 
-    #selectedCount {
-      border-radius: 999px;
-      padding: 8px 10px;
-      font-weight: 600;
-      background: rgba(15,23,42,.06) !important;
-      color: #334155 !important;
+    /* ── Progress Card ── */
+    .progress-card{
+      display:none;
+      background:var(--surface);border:1px solid var(--border);
+      border-radius:var(--r-lg);box-shadow:var(--shadow-sm);
+      margin-bottom:14px;overflow:hidden;
     }
+    .progress-card-header{
+      display:flex;align-items:center;gap:10px;
+      padding:14px 18px;border-bottom:1px solid var(--border);
+      background:var(--surface-2);
+    }
+    .progress-card-header .pch-icon{
+      width:26px;height:26px;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;
+      font-size:.7rem;color:#fff;flex-shrink:0;
+      background:linear-gradient(135deg,var(--accent),#059669);
+    }
+    .progress-card-header .pch-title{font-size:.9rem;font-weight:600;color:var(--text)}
+    .progress-card-body{padding:16px 18px}
 
-    #generateBtn {
-      border: 0;
-      border-radius: 14px;
-      padding: 12px 14px;
-      font-weight: 700;
-      background: linear-gradient(135deg, var(--primary), var(--primary-2));
-      box-shadow: 0 14px 30px rgba(99,102,241,.22);
-      transition: transform .12s, box-shadow .18s, filter .18s;
+    .progress-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+    .progress-header .ph-text{font-size:.82rem;font-weight:500;color:var(--text-2)}
+    .progress-header .ph-pct{font-size:.82rem;font-weight:700;color:var(--primary)}
+    .progress-track{
+      width:100%;height:8px;border-radius:999px;
+      background:rgba(99,102,241,.1);overflow:hidden;
     }
-    #generateBtn:hover { transform: translateY(-1px); filter: saturate(1.06); }
-    #generateBtn:active { transform: translateY(0); }
-    #generateBtn:disabled {
-      background: linear-gradient(135deg, rgba(148,163,184,.85), rgba(203,213,225,.85));
-      box-shadow: none;
-      opacity: .9;
+    .progress-fill{
+      height:100%;border-radius:999px;width:0%;
+      background:linear-gradient(90deg,var(--primary),var(--accent));
+      transition:width .3s ease;
     }
+    .progress-fill.animated{animation:progress-pulse 1.5s ease-in-out infinite}
+    @keyframes progress-pulse{0%,100%{opacity:1}50%{opacity:.7}}
 
-    .progress {
-      border-radius: 999px;
-      overflow: hidden;
-      height: 14px !important;
-      background: rgba(15,23,42,.06);
+    .result-list{
+      margin-top:12px;border-radius:var(--r-sm);
+      border:1px solid var(--border);overflow:hidden;
+      max-height:300px;overflow-y:auto;background:var(--surface);
     }
-    .progress-bar { border-radius: 999px; }
+    .result-list::-webkit-scrollbar{width:5px}
+    .result-list::-webkit-scrollbar-thumb{background:rgba(100,116,139,.18);border-radius:999px}
 
-    #resultLinks {
-      border-radius: var(--radius-sm) !important;
-      border: 1px solid var(--border) !important;
-      box-shadow: var(--shadow-sm);
-      background: rgba(255,255,255,.92) !important;
+    .result-item{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:10px 14px;border-bottom:1px solid var(--border);
+      transition:background .12s;gap:8px;
     }
-
-    .result-item {
-      border-bottom-color: rgba(15,23,42,.08) !important;
+    .result-item:last-child{border-bottom:none}
+    .result-item:hover{background:var(--surface-2)}
+    .result-item .ri-left{display:flex;align-items:center;gap:8px;min-width:0;flex:1}
+    .result-item .ri-icon{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem;flex-shrink:0}
+    .result-item .ri-icon.success{background:rgba(16,185,129,.1);color:var(--accent)}
+    .result-item .ri-icon.error{background:rgba(239,68,68,.1);color:var(--danger)}
+    .result-item .ri-name{font-size:.82rem;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .result-item .ri-error{font-size:.72rem;color:var(--danger);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .result-item .ri-btn{
+      display:inline-flex;align-items:center;gap:5px;
+      padding:6px 12px;border-radius:var(--r-xs);
+      font-size:.75rem;font-weight:600;text-decoration:none;
+      color:var(--danger);background:rgba(239,68,68,.06);
+      border:1px solid rgba(239,68,68,.15);
+      transition:all .15s;white-space:nowrap;flex-shrink:0;
     }
+    .result-item .ri-btn:hover{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.25)}
 
-    .student-list-container::-webkit-scrollbar,
-    #resultLinks::-webkit-scrollbar { width: 10px; }
-    .student-list-container::-webkit-scrollbar-thumb,
-    #resultLinks::-webkit-scrollbar-thumb {
-      background: rgba(100,116,139,.35);
-      border-radius: 999px;
-      border: 2px solid rgba(255,255,255,.6);
+    /* ── Status area ── */
+    .status-msg{
+      padding:10px 14px;border-radius:var(--r-sm);
+      font-size:.82rem;font-weight:500;margin-top:12px;
+      display:flex;align-items:center;gap:8px;
+    }
+    .status-msg.info{background:rgba(99,102,241,.06);color:var(--primary);border:1px solid rgba(99,102,241,.12)}
+    .status-msg.success{background:rgba(16,185,129,.06);color:#059669;border:1px solid rgba(16,185,129,.12)}
+    .status-msg.danger{background:rgba(239,68,68,.06);color:var(--danger);border:1px solid rgba(239,68,68,.12)}
+
+    /* ── Responsive ── */
+    @media(max-width:600px){
+      .page-wrap{padding:14px 10px 20px}
+      .step-body{padding:14px}
+      .chips-row{gap:6px}
+      .chip{padding:6px 11px;font-size:.75rem}
+      .fab-inner{padding:6px 10px;gap:6px}
     }
   </style>
 </head>
 <body>
-  <div class="container py-4">
+  <div class="page-wrap">
+    <!-- Header -->
     <div class="page-header">
-      <div>
-        <h1 class="page-title"><i class="fas fa-tasks"></i>พิมพ์รายงาน ปพ.6</h1>
-        <div class="page-subtitle">เลือกชั้น/ห้อง แล้วเลือกนักเรียนเพื่อสร้างไฟล์ PDF แบบรายบุคคล</div>
+      <div class="header-icon"><i class="fa-solid fa-file-lines"></i></div>
+      <div class="header-text">
+        <h1>พิมพ์รายงาน ปพ.6</h1>
+        <p>สร้างรายงานผลพัฒนาคุณภาพผู้เรียนรายบุคคล (PDF)</p>
       </div>
     </div>
 
-    <div class="card surface-card">
-      <div class="card-body">
-        <div class="row g-3 mb-3">
-          <div class="col-md-6">
-            <label class="form-label fw-bold">ระดับชั้น</label>
-            <select id="gradeSelect" class="form-select">
-              <option value="">-- กำลังโหลด... --</option>
-            </select>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label fw-bold">ห้อง</label>
-            <select id="classSelect" class="form-select" disabled>
-              <option value="">-- เลือกระดับชั้นก่อน --</option>
-            </select>
-          </div>
+    <!-- Step 1: เลือกชั้น/ห้อง -->
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div class="step-title">เลือกชั้นเรียน</div>
+      </div>
+      <div class="step-body">
+        <div id="quickChips" class="chips-row"></div>
+        <div id="teacherInfoBox" class="teacher-info-box">
+          <div class="ti-icon"><i class="fa-solid fa-chalkboard-user"></i></div>
+          <div class="ti-text">ครูประจำชั้น: <strong id="teacherNameDisplay">-</strong></div>
         </div>
-
-        <div id="teacherInfoBox" class="teacher-info-box" style="display:none;">
-          <i class="fas fa-chalkboard-teacher me-2"></i>
-          <span>ครูประจำชั้น: </span>
-          <strong id="teacherNameDisplay">-</strong>
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label fw-bold">รายชื่อนักเรียน</label>
-          <div class="student-list-container">
-            <div class="list-controls d-flex justify-content-between align-items-center">
-              <div>
-                <input type="checkbox" id="selectAll" disabled> 
-                <label for="selectAll" class="small text-muted ms-1">เลือกทั้งหมด</label>
-              </div>
-              <span class="badge bg-secondary" id="selectedCount">เลือก 0 คน</span>
-            </div>
-            <div id="studentListBody" class="p-2 text-center text-muted">
-              <small>กรุณาเลือกห้องเรียนเพื่อแสดงรายชื่อ</small>
-            </div>
-          </div>
-        </div>
-
-        <div class="form-check form-switch mb-3">
-          <input class="form-check-input" type="checkbox" id="showRankToggle" checked>
-          <label class="form-check-label" for="showRankToggle">แสดงอันดับที่ในรายงาน</label>
-        </div>
-
-        <button id="generateBtn" class="btn btn-primary w-100" disabled>
-          <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-          <span class="btn-text d-inline-flex align-items-center gap-2">
-            <span class="btn-icon"><i class="fas fa-print"></i></span>
-            <span class="btn-label">พิมพ์รายการที่เลือก</span>
-          </span>
-        </button>
-
-        <div id="progressContainer" class="progress-container">
-          <div class="d-flex justify-content-between small mb-1">
-            <span id="progressText">กำลังเตรียมข้อมูล...</span>
-            <span id="progressPercent">0%</span>
-          </div>
-          <div class="progress" style="height: 20px;">
-            <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 0%"></div>
-          </div>
-          <div id="resultLinks" class="mt-2 rounded p-2 bg-white border" style="max-height: 200px; overflow-y: auto;"></div>
-        </div>
-
       </div>
     </div>
-    <div id="statusArea" class="mt-3"></div>
+
+    <!-- Step 2: เลือกนักเรียนและพิมพ์ -->
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-num">2</div>
+        <div class="step-title">เลือกนักเรียนและพิมพ์</div>
+      </div>
+      <div class="step-body">
+        <div class="search-toolbar">
+          <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" id="studentSearch" placeholder="ค้นหาชื่อ / รหัส..." disabled>
+          </div>
+          <div class="tool-btn" id="selectAllBtn" title="เลือกทั้งหมด">
+            <i class="fa-solid fa-check-double"></i> ทั้งหมด
+          </div>
+        </div>
+        <div class="student-grid" id="studentListBody">
+          <div class="empty-state">
+            <i class="fa-solid fa-users"></i>
+            <span>เลือกชั้น/ห้องเพื่อแสดงรายชื่อ</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Progress Card (shown during generation) -->
+    <div class="progress-card" id="progressContainer">
+      <div class="progress-card-header">
+        <div class="pch-icon"><i class="fa-solid fa-gear fa-spin"></i></div>
+        <div class="pch-title" id="progressCardTitle">กำลังสร้างรายงาน...</div>
+      </div>
+      <div class="progress-card-body">
+        <div class="progress-header">
+          <span class="ph-text" id="progressText">กำลังเตรียมข้อมูล...</span>
+          <span class="ph-pct" id="progressPercent">0%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill animated" id="progressBar"></div>
+        </div>
+        <div class="result-list" id="resultLinks"></div>
+      </div>
+    </div>
+
+    <div id="statusArea"></div>
+  </div>
+
+  <!-- Floating Action Bar -->
+  <div class="fab-bar" id="fabBar">
+    <div class="fab-inner">
+      <div class="fab-count" id="fabCount">0</div>
+      <button class="fab-deselect" id="fabDeselect" title="ยกเลิกทั้งหมด"><i class="fa-solid fa-xmark"></i></button>
+      <div class="fab-sep"></div>
+      <div class="fab-toggle" title="แสดงอันดับ">
+        <label class="toggle-switch">
+          <input type="checkbox" id="showRankToggle" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+      <button id="generateBtn" disabled>
+        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+        <i class="fa-solid fa-print"></i>
+        <span class="btn-label">พิมพ์</span>
+      </button>
+    </div>
   </div>
 
 <script>
 (function() {
   'use strict';
 
-  const elements = {
-    gradeSelect: document.getElementById('gradeSelect'),
-    classSelect: document.getElementById('classSelect'),
+  var el = {
     studentListBody: document.getElementById('studentListBody'),
-    selectAll: document.getElementById('selectAll'),
-    selectedCount: document.getElementById('selectedCount'),
+    selectAllBtn: document.getElementById('selectAllBtn'),
     generateBtn: document.getElementById('generateBtn'),
     statusArea: document.getElementById('statusArea'),
     progressContainer: document.getElementById('progressContainer'),
     progressBar: document.getElementById('progressBar'),
     progressText: document.getElementById('progressText'),
     progressPercent: document.getElementById('progressPercent'),
+    progressCardTitle: document.getElementById('progressCardTitle'),
     resultLinks: document.getElementById('resultLinks'),
     teacherInfoBox: document.getElementById('teacherInfoBox'),
     teacherNameDisplay: document.getElementById('teacherNameDisplay'),
-    showRankToggle: document.getElementById('showRankToggle')
+    showRankToggle: document.getElementById('showRankToggle'),
+    quickChips: document.getElementById('quickChips'),
+    studentSearch: document.getElementById('studentSearch'),
+    fabBar: document.getElementById('fabBar'),
+    fabCount: document.getElementById('fabCount'),
+    fabDeselect: document.getElementById('fabDeselect')
   };
 
-  let dataCache = { allStudents: null, currentGrade: null, currentClass: null };
-  let batchQueue = [], batchTotal = 0, batchSuccess = 0, batchFail = 0, lastSuccessUrl = '';
+  var allSelected = false;
+  var dataCache = { allStudents: null, currentGrade: null, currentClass: null };
+  var batchQueue = [], batchTotal = 0, batchSuccess = 0, batchFail = 0, lastSuccessUrl = '';
 
-  // --- Helper Functions ---
-  function showStatus(msg, type = 'info') {
-    elements.statusArea.innerHTML = `<div class="alert alert-${type} py-2">${msg}</div>`;
+  // --- Helper ---
+  function showStatus(msg, type) {
+    type = type || 'info';
+    el.statusArea.innerHTML = '<div class="status-msg ' + type + '">' + msg + '</div>';
   }
 
   function base64ToBlobUrl_(base64, mimeType) {
-    const clean = String(base64 || '').replace(/\s/g, '');
-    const binary = atob(clean);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    const blob = new Blob([bytes], { type: mimeType || 'application/pdf' });
+    var clean = String(base64 || '').replace(/\s/g, '');
+    var binary = atob(clean);
+    var bytes = new Uint8Array(binary.length);
+    for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    var blob = new Blob([bytes], { type: mimeType || 'application/pdf' });
     return URL.createObjectURL(blob);
   }
 
-  function addOptions(el, options) {
-    const fragment = document.createDocumentFragment();
-    options.forEach(val => {
-      const opt = document.createElement('option');
-      opt.value = opt.textContent = val;
-      fragment.appendChild(opt);
-    });
-    el.appendChild(fragment);
+  function getGender(name) {
+    if (!name) return 'boy';
+    if (name.indexOf('หญิง') !== -1 || name.indexOf('นางสาว') !== -1 || name.indexOf('น.ส.') !== -1) return 'girl';
+    return 'boy';
   }
+
+  function getInitials(name) {
+    if (!name) return '?';
+    var clean = name.replace(/^(เด็ก(?:ชาย|หญิง)|นาย|นาง(?:สาว)?|น\.ส\.)\s*/i, '');
+    return clean.charAt(0) || '?';
+  }
+
+  // --- Quick Chips ---
+  function buildQuickChips() {
+    if (!dataCache.allStudents) return;
+    el.quickChips.innerHTML = '';
+    var grades = Object.keys(dataCache.allStudents).sort();
+    var frag = document.createDocumentFragment();
+    grades.forEach(function(g) {
+      if (/^อ\.\d/.test(g)) return;
+      var classes = Object.keys(dataCache.allStudents[g]).sort();
+      classes.forEach(function(c) {
+        var chip = document.createElement('div');
+        chip.className = 'chip';
+        chip.textContent = g + '/' + c;
+        chip.dataset.grade = g;
+        chip.dataset.class = c;
+        chip.onclick = function() { selectGradeClass(g, c); };
+        frag.appendChild(chip);
+      });
+    });
+    el.quickChips.appendChild(frag);
+  }
+
+  function highlightChip(grade, cls) {
+    el.quickChips.querySelectorAll('.chip').forEach(function(ch) {
+      ch.classList.toggle('active', ch.dataset.grade === grade && ch.dataset.class === cls);
+    });
+  }
+
+  function selectGradeClass(grade, cls) {
+    dataCache.currentGrade = grade;
+    dataCache.currentClass = cls;
+    highlightChip(grade, cls);
+
+    el.studentSearch.value = '';
+    allSelected = false;
+    el.selectAllBtn.classList.remove('active');
+
+    var students = dataCache.allStudents[grade] && dataCache.allStudents[grade][cls];
+    renderStudentList(students);
+
+    el.teacherInfoBox.style.display = 'flex';
+    el.teacherNameDisplay.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="font-size:.75rem"></i> กำลังโหลด...';
+    google.script.run
+      .withSuccessHandler(function(name) {
+        el.teacherNameDisplay.textContent = name || 'ไม่พบข้อมูล';
+      })
+      .withFailureHandler(function() {
+        el.teacherNameDisplay.textContent = 'ไม่พบข้อมูล';
+      })
+      .getHomeroomTeacher(grade, cls);
+  }
+
+  // --- Search Filter ---
+  el.studentSearch.addEventListener('input', function() {
+    var q = this.value.trim().toLowerCase();
+    document.querySelectorAll('.student-card').forEach(function(card) {
+      var text = card.textContent.toLowerCase();
+      card.style.display = !q || text.indexOf(q) !== -1 ? '' : 'none';
+    });
+  });
+
+  // --- Select All Button ---
+  el.selectAllBtn.addEventListener('click', function() {
+    allSelected = !allSelected;
+    var cbs = document.querySelectorAll('.student-checkbox');
+    cbs.forEach(function(cb) {
+      var card = cb.closest('.student-card');
+      if (!card || card.style.display !== 'none') cb.checked = allSelected;
+    });
+    el.selectAllBtn.classList.toggle('active', allSelected);
+    updateSelectedCount();
+  });
+
+  // --- Deselect all ---
+  el.fabDeselect.addEventListener('click', function() {
+    document.querySelectorAll('.student-checkbox').forEach(function(cb) { cb.checked = false; });
+    allSelected = false;
+    el.selectAllBtn.classList.remove('active');
+    updateSelectedCount();
+  });
 
   // --- Core Logic ---
   function loadAllData() {
-    showStatus('⏳ กำลังโหลดข้อมูล...', 'info');
+    showStatus('<i class="fa-solid fa-spinner fa-spin"></i> กำลังโหลดข้อมูล...', 'info');
     google.script.run
-      .withSuccessHandler(data => {
+      .withSuccessHandler(function(data) {
         dataCache.allStudents = data;
-        elements.gradeSelect.innerHTML = '<option value="">-- เลือกระดับชั้น --</option>';
-        addOptions(elements.gradeSelect, Object.keys(data).sort());
-        showStatus('✅ พร้อมใช้งาน', 'success');
+        buildQuickChips();
+        el.studentSearch.disabled = false;
+        showStatus('<i class="fa-solid fa-circle-check"></i> พร้อมใช้งาน', 'success');
       })
-      .withFailureHandler(err => showStatus('❌ โหลดข้อมูลล้มเหลว: ' + err.message, 'danger'))
+      .withFailureHandler(function(err) { showStatus('<i class="fa-solid fa-circle-xmark"></i> โหลดข้อมูลล้มเหลว: ' + err.message, 'danger'); })
       .getAllStudentDataOptimized();
   }
 
-  function onGradeChange() {
-    const grade = elements.gradeSelect.value;
-    dataCache.currentGrade = grade;
-    elements.classSelect.innerHTML = '<option value="">-- เลือกห้อง --</option>';
-    elements.classSelect.disabled = !grade;
-    elements.studentListBody.innerHTML = '<div class="p-2 text-center text-muted"><small>กรุณาเลือกห้องเรียน</small></div>';
-    elements.selectAll.disabled = true;
-    elements.selectAll.checked = false;
-    updateSelectedCount();
-
-    if (grade && dataCache.allStudents[grade]) {
-      addOptions(elements.classSelect, Object.keys(dataCache.allStudents[grade]).sort());
-    }
-
-    // ซ่อนครูประจำชั้นเมื่อเปลี่ยนชั้น
-    elements.teacherInfoBox.style.display = 'none';
-    elements.teacherNameDisplay.textContent = '-';
-  }
-
-  function onClassChange() {
-    const grade = dataCache.currentGrade;
-    const classNo = elements.classSelect.value;
-    dataCache.currentClass = classNo;
-    elements.selectAll.disabled = false;
-    elements.selectAll.checked = false;
-
-    if (!grade || !classNo) return;
-
-    const students = dataCache.allStudents[grade][classNo];
-    renderStudentList(students);
-
-    // ดึงชื่อครูประจำชั้น
-    elements.teacherInfoBox.style.display = 'flex';
-    elements.teacherNameDisplay.innerHTML = '<span class="spinner-border spinner-border-sm me-1" style="width:14px;height:14px;"></span> กำลังโหลด...';
-    google.script.run
-      .withSuccessHandler(function(name) {
-        elements.teacherNameDisplay.textContent = name || 'ไม่พบข้อมูล';
-      })
-      .withFailureHandler(function() {
-        elements.teacherNameDisplay.textContent = 'ไม่พบข้อมูล';
-      })
-      .getHomeroomTeacher(grade, classNo);
-  }
-
-  // ⭐ สร้างรายการ Checkbox
   function renderStudentList(students) {
-    elements.studentListBody.innerHTML = '';
+    el.studentListBody.innerHTML = '';
     if (!students || students.length === 0) {
-      elements.studentListBody.innerHTML = '<div class="text-center text-danger p-2">ไม่พบนักเรียน</div>';
+      el.studentListBody.innerHTML = '<div class="empty-state"><i class="fa-solid fa-user-slash"></i><span>ไม่พบนักเรียน</span></div>';
       return;
     }
 
-    const fragment = document.createDocumentFragment();
-    students.forEach(s => {
-      const div = document.createElement('div');
-      div.className = 'student-item d-flex align-items-center';
-      div.onclick = (e) => {
-        if (e.target.type !== 'checkbox') {
-           const cb = div.querySelector('input');
-           cb.checked = !cb.checked;
-           updateSelectedCount();
-        }
+    var fragment = document.createDocumentFragment();
+    students.forEach(function(s, idx) {
+      var card = document.createElement('div');
+      card.className = 'student-card';
+      card.onclick = function(e) {
+        if (e.target.type === 'checkbox') return;
+        var cb = card.querySelector('input');
+        cb.checked = !cb.checked;
+        updateSelectedCount();
       };
 
-      const cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.value = s.id;
-      cb.dataset.name = s.fullName;
-      cb.className = 'student-checkbox';
+      var gender = getGender(s.fullName);
+      var initials = getInitials(s.fullName);
+
+      card.innerHTML =
+        '<input type="checkbox" class="student-checkbox" value="' + s.id + '" data-name="' + s.fullName.replace(/"/g, '&quot;') + '">' +
+        '<div class="sc-avatar ' + gender + '">' +
+          initials +
+          '<div class="sc-check"><i class="fa-solid fa-check"></i></div>' +
+        '</div>' +
+        '<div class="sc-info">' +
+          '<div class="sc-name">' + s.fullName + '</div>' +
+          '<div class="sc-id">รหัส ' + s.id + '</div>' +
+        '</div>' +
+        '<div class="sc-num">' + (idx + 1) + '</div>';
+
+      var cb = card.querySelector('input');
       cb.onchange = updateSelectedCount;
 
-      const label = document.createElement('span');
-      label.textContent = `${s.id} - ${s.fullName}`;
-
-      div.appendChild(cb);
-      div.appendChild(label);
-      fragment.appendChild(div);
+      fragment.appendChild(card);
     });
-    elements.studentListBody.appendChild(fragment);
+    el.studentListBody.appendChild(fragment);
     updateSelectedCount();
   }
 
   function updateSelectedCount() {
-    const checked = document.querySelectorAll('.student-checkbox:checked');
-    const count = checked.length;
-    elements.selectedCount.textContent = `เลือก ${count} คน`;
-    
-    const btnLabel = elements.generateBtn.querySelector('.btn-label');
-    btnLabel.textContent = count > 0 ? `พิมพ์รายการที่เลือก (${count} คน)` : 'พิมพ์รายการที่เลือก';
-    elements.generateBtn.disabled = count === 0;
+    var checked = document.querySelectorAll('.student-checkbox:checked');
+    var count = checked.length;
+
+    // Update FAB
+    var fabVisible = count > 0;
+    el.fabBar.classList.toggle('visible', fabVisible);
+    document.body.classList.toggle('has-fab', fabVisible);
+    el.fabCount.textContent = count;
+
+    var btnLabel = el.generateBtn.querySelector('.btn-label');
+    btnLabel.textContent = count > 0 ? 'พิมพ์ ' + count + ' รายงาน' : 'พิมพ์รายงาน';
+    el.generateBtn.disabled = count === 0;
 
     document.querySelectorAll('.student-checkbox').forEach(function(cb) {
-      var row = cb.closest('.student-item');
-      if (row) row.classList.toggle('is-checked', cb.checked);
+      var card = cb.closest('.student-card');
+      if (card) card.classList.toggle('is-checked', cb.checked);
     });
   }
 
-  // ⭐ จัดการ Select All
-  elements.selectAll.addEventListener('change', function() {
-    const checkboxes = document.querySelectorAll('.student-checkbox');
-    checkboxes.forEach(cb => cb.checked = this.checked);
-    updateSelectedCount();
-  });
-
   // --- Batch Process ---
-  elements.generateBtn.addEventListener('click', function() {
-    const checkedBoxes = document.querySelectorAll('.student-checkbox:checked');
+  el.generateBtn.addEventListener('click', function() {
+    var checkedBoxes = document.querySelectorAll('.student-checkbox:checked');
     if (checkedBoxes.length === 0) return;
 
-    // เตรียมคิว
-    batchQueue = Array.from(checkedBoxes).map(cb => ({ id: cb.value, name: cb.dataset.name }));
+    batchQueue = Array.from(checkedBoxes).map(function(cb) { return { id: cb.value, name: cb.dataset.name }; });
     batchTotal = batchQueue.length;
     batchSuccess = 0;
     batchFail = 0;
     lastSuccessUrl = '';
 
-    // UI Reset
-    elements.generateBtn.disabled = true;
-    elements.generateBtn.classList.add('loading');
-    elements.gradeSelect.disabled = true;
-    elements.classSelect.disabled = true;
-    elements.progressContainer.style.display = 'block';
-    elements.progressBar.style.width = '0%';
-    elements.progressBar.classList.add('progress-bar-striped', 'progress-bar-animated');
-    elements.progressText.textContent = '⏳ กำลังเตรียมข้อมูล...';
-    elements.progressPercent.textContent = '0%';
-    elements.resultLinks.innerHTML = '';
-    
-    // Scroll ลงไปดู progress
-    elements.progressContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    
+    el.generateBtn.disabled = true;
+    el.generateBtn.classList.add('loading');
+    el.progressContainer.style.display = 'block';
+    el.progressBar.style.width = '0%';
+    el.progressBar.classList.add('animated');
+    el.progressCardTitle.textContent = 'กำลังสร้างรายงาน (' + batchTotal + ' คน)...';
+    el.progressText.textContent = 'กำลังเตรียมข้อมูล...';
+    el.progressPercent.textContent = '0%';
+    el.resultLinks.innerHTML = '';
+
+    el.progressContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
     updateProgress();
-    processNext(); // เริ่มยิงคนแรก
+    processNext();
   });
 
   function processNext() {
@@ -486,19 +683,19 @@
       return;
     }
 
-    const current = batchQueue.shift();
-    const currentNum = batchTotal - batchQueue.length;
-    elements.progressText.textContent = `⏳ (${currentNum}/${batchTotal}) กำลังสร้าง: ${current.name}`;
+    var current = batchQueue.shift();
+    var currentNum = batchTotal - batchQueue.length;
+    el.progressText.textContent = '(' + currentNum + '/' + batchTotal + ') ' + current.name;
 
     google.script.run
-      .withSuccessHandler(res => {
+      .withSuccessHandler(function(res) {
         try {
           if (res && res.mode === 'url' && res.url) {
             batchSuccess++;
             addLink(current.name, res.url, true);
             lastSuccessUrl = res.url;
           } else if (res && res.mode === 'base64' && res.base64) {
-            const url = base64ToBlobUrl_(res.base64, res.mimeType);
+            var url = base64ToBlobUrl_(res.base64, res.mimeType);
             batchSuccess++;
             addLink(current.name, url, true);
             lastSuccessUrl = url;
@@ -515,65 +712,64 @@
           processNext();
         }
       })
-      .withFailureHandler(err => {
+      .withFailureHandler(function(err) {
         batchFail++;
         addLink(current.name, null, false, err && err.message ? err.message : String(err));
         updateProgress();
-        processNext(); // ต่อคนถัดไป (แม้จะ error)
+        processNext();
       })
-      .generateStudentReportPdfUnified(current.id, { term: 'both', showRank: elements.showRankToggle.checked });
+      .generateStudentReportPdfUnified(current.id, { term: 'both', showRank: el.showRankToggle.checked });
   }
 
   function updateProgress() {
-    const done = batchSuccess + batchFail;
-    const pct = Math.round((done / batchTotal) * 100);
-    elements.progressBar.style.width = `${pct}%`;
-    elements.progressPercent.textContent = `${pct}%`;
+    var done = batchSuccess + batchFail;
+    var pct = Math.round((done / batchTotal) * 100);
+    el.progressBar.style.width = pct + '%';
+    el.progressPercent.textContent = pct + '%';
   }
 
-  // ⭐⭐⭐ แก้ไขตรงนี้: เพิ่มปุ่มไอคอน PDF ⭐⭐⭐
-  function addLink(name, url, success, errorMsg = '') {
-    const div = document.createElement('div');
-    div.className = 'result-item border-bottom py-2 d-flex justify-content-between align-items-center px-2';
-    
+  function addLink(name, url, success, errorMsg) {
+    errorMsg = errorMsg || '';
+    var div = document.createElement('div');
+    div.className = 'result-item';
+
     if (success) {
-        lastSuccessUrl = url;
-        // กรณีสำเร็จ: แสดงชื่อ + ปุ่มเปิดไฟล์สีแดง
-        div.innerHTML = `
-            <span>
-                <i class="fas fa-check-circle text-success me-2"></i> ${name}
-            </span>
-            <a href="${url}" target="_blank" class="btn btn-sm btn-outline-danger" title="เปิดไฟล์ PDF">
-                <i class="fas fa-file-pdf fa-lg"></i> เปิดไฟล์
-            </a>
-        `;
+      lastSuccessUrl = url;
+      div.innerHTML =
+        '<div class="ri-left">' +
+          '<div class="ri-icon success"><i class="fa-solid fa-check"></i></div>' +
+          '<span class="ri-name">' + name + '</span>' +
+        '</div>' +
+        '<a href="' + url + '" target="_blank" class="ri-btn">' +
+          '<i class="fa-solid fa-file-pdf"></i> เปิด' +
+        '</a>';
     } else {
-        // กรณีพลาด: แสดงชื่อ + ข้อความ error
-        div.innerHTML = `
-            <span class="text-danger">
-                <i class="fas fa-times-circle me-2"></i> ${name} (${errorMsg})
-            </span>
-        `;
+      div.innerHTML =
+        '<div class="ri-left">' +
+          '<div class="ri-icon error"><i class="fa-solid fa-xmark"></i></div>' +
+          '<div style="min-width:0">' +
+            '<div class="ri-name">' + name + '</div>' +
+            '<div class="ri-error">' + errorMsg + '</div>' +
+          '</div>' +
+        '</div>';
     }
-    elements.resultLinks.prepend(div);
+    el.resultLinks.prepend(div);
   }
 
   function finishBatch() {
-    elements.progressText.textContent = `✅ เสร็จสิ้น! (สำเร็จ ${batchSuccess} / ผิดพลาด ${batchFail})`;
-    elements.progressBar.classList.remove('progress-bar-animated');
-    elements.generateBtn.disabled = false;
-    elements.generateBtn.classList.remove('loading');
-    elements.gradeSelect.disabled = false;
-    elements.classSelect.disabled = false;
-    // เปิดไฟล์อัตโนมัติถ้าสร้างสำเร็จ
+    el.progressText.textContent = 'สำเร็จ ' + batchSuccess + ' / ผิดพลาด ' + batchFail;
+    el.progressCardTitle.textContent = 'เสร็จสิ้น!';
+    var iconEl = el.progressContainer.querySelector('.pch-icon');
+    if (iconEl) iconEl.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+    el.progressBar.classList.remove('animated');
+    el.generateBtn.disabled = false;
+    el.generateBtn.classList.remove('loading');
     if (batchSuccess > 0 && lastSuccessUrl) {
       window.open(lastSuccessUrl, '_blank');
     }
   }
 
   // --- Init ---
-  elements.gradeSelect.addEventListener('change', onGradeChange);
-  elements.classSelect.addEventListener('change', onClassChange);
   loadAllData();
 
 })();

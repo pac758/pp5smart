@@ -110,6 +110,109 @@ function getAvailableClasses_DEBUG(grade) {
   }
 }
 
+function getAvailableClassesForDelete(grade) {
+  try {
+    if (typeof getAvailableClasses === 'function') {
+      return getAvailableClasses(grade);
+    }
+    return getAvailableClasses_DEBUG(grade);
+  } catch (e) {
+    Logger.log('getAvailableClassesForDelete error: ' + e.message);
+    return [];
+  }
+}
+
+function getStudentsForDeleteByClass(grade, classNo, limit) {
+  try {
+    var g = String(grade || '').trim();
+    var c = String(classNo || '').trim();
+    if (!g || !c) return [];
+
+    var students = getStudentsByClass(g, c) || [];
+    var max = Math.max(1, Math.min(parseInt(limit, 10) || 60, 200));
+
+    var mapped = students.map(function(s) {
+      var name = (String(s.title || '').trim() + String(s.firstname || '').trim() + ' ' + String(s.lastname || '').trim()).trim();
+      return { id: String(s.id || '').trim(), name: name, grade: String(s.grade || '').trim(), classNo: String(s.classNo || '').trim() };
+    }).filter(function(s) { return !!s.id; });
+
+    mapped.sort(function(a, b) {
+      return String(a.id).localeCompare(String(b.id), undefined, { numeric: true });
+    });
+
+    if (mapped.length > max) mapped = mapped.slice(0, max);
+    return mapped;
+  } catch (e) {
+    Logger.log('getStudentsForDeleteByClass error: ' + e.message);
+    return [];
+  }
+}
+
+function searchStudentsForDelete(searchType, searchValue, limit) {
+  try {
+    var q = String(searchValue || '').trim();
+    if (!q) return [];
+
+    var ss = SS();
+    var sheet = ss.getSheetByName('Students');
+    if (!sheet) return [];
+
+    var data = sheet.getDataRange().getValues();
+    if (!data || data.length < 2) return [];
+
+    var headers = data[0] || [];
+    var col = {};
+    headers.forEach(function(h, i) { col[String(h || '').trim()] = i; });
+
+    var idxId = col['student_id'];
+    var idxTitle = col['title'];
+    var idxFn = col['firstname'];
+    var idxLn = col['lastname'];
+    var idxGrade = col['grade'];
+    var idxClass = col['class_no'];
+    var idxCard = col['id_card'];
+
+    if (idxId == null) return [];
+
+    var qLower = q.toLowerCase();
+    var results = [];
+    var max = Math.max(1, Math.min(parseInt(limit, 10) || 20, 100));
+
+    for (var r = 1; r < data.length; r++) {
+      var row = data[r];
+      var sid = String(row[idxId] || '').trim();
+      if (!sid) continue;
+
+      var title = idxTitle != null ? String(row[idxTitle] || '').trim() : '';
+      var fn = idxFn != null ? String(row[idxFn] || '').trim() : '';
+      var ln = idxLn != null ? String(row[idxLn] || '').trim() : '';
+      var fullName = (title + fn + ' ' + ln).trim();
+      var grade = idxGrade != null ? String(row[idxGrade] || '').trim() : '';
+      var classNo = idxClass != null ? String(row[idxClass] || '').trim() : '';
+      var idCard = idxCard != null ? String(row[idxCard] || '').trim() : '';
+
+      var ok = false;
+      if (searchType === 'student_id') ok = sid === q;
+      else if (searchType === 'id_card') ok = idCard === q;
+      else if (searchType === 'name') ok = fullName.toLowerCase().indexOf(qLower) !== -1;
+      else {
+        var hay = (sid + ' ' + fullName + ' ' + idCard + ' ' + grade + '/' + classNo).toLowerCase();
+        ok = hay.indexOf(qLower) !== -1;
+      }
+
+      if (ok) {
+        results.push({ id: sid, name: fullName, grade: grade, classNo: classNo });
+        if (results.length >= max) break;
+      }
+    }
+
+    return results;
+  } catch (e) {
+    Logger.log('searchStudentsForDelete error: ' + e.message);
+    return [];
+  }
+}
+
 function saveStudentData(data) {
   try {
     data = data || {};
@@ -489,11 +592,14 @@ function getStudentById(data, headers, searchType, searchValue) {
  */
 function deleteStudent(deleteData) {
   try {
-    // ตรวจสอบรหัสผ่านผู้ดูแลระบบ
-    const ADMIN_PASSWORD = 'admin123'; 
-    if (deleteData.adminPassword !== ADMIN_PASSWORD) {
-      return { success: false, message: 'รหัสผ่านผู้ดูแลระบบไม่ถูกต้อง' };
-    }
+    var session = (typeof getLoginSession === 'function') ? getLoginSession() : null;
+    var role = String((session && session.role) || '').toLowerCase();
+    if (role !== 'admin') return { success: false, message: 'ไม่มีสิทธิ์ลบข้อมูลนักเรียน (ต้องเป็นผู้ดูแลระบบ)' };
+
+    var studentId = '';
+    if (typeof deleteData === 'string' || typeof deleteData === 'number') studentId = String(deleteData).trim();
+    else if (deleteData && typeof deleteData === 'object') studentId = String(deleteData.studentId || '').trim();
+    if (!studentId) return { success: false, message: 'ไม่พบรหัสนักเรียนที่ต้องการลบ' };
     
     const ss = SS();
     const sheet = ss.getSheetByName("Students");
@@ -501,7 +607,7 @@ function deleteStudent(deleteData) {
 
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
-    const student = getStudentById(data, headers, 'student_id', deleteData.studentId);
+    const student = getStudentById(data, headers, 'student_id', studentId);
 
     if (!student) {
       return { success: false, message: 'ไม่พบข้อมูลนักเรียนที่ต้องการลบ' };
@@ -586,13 +692,11 @@ function createStudentsSheet(ss) {
     // สร้าง header
     const headers = [
       'student_id', 'id_card', 'title', 'firstname', 'lastname', 
-      'grade', 'class_no', 'gender', 'created_date', 'status'
-    ];
-    
-    // สร้าง header ภาษาไทย (แถวที่ 2 สำหรับอ้างอิง)
-    const thaiHeaders = [
-      'รหัสนักเรียน', 'เลขบัตรประชาชน', 'คำนำหน้า', 'ชื่อ', 'นามสกุล',
-      'ชั้น', 'ห้อง', 'เพศ', 'วันที่สร้าง', 'สถานะ'
+      'grade', 'class_no', 'gender', 'birthdate', 'photo_url',
+      'academic_year', 'weight', 'height', 'blood_type', 'religion',
+      'father_name', 'father_lastname', 'father_occupation',
+      'mother_name', 'mother_lastname', 'mother_occupation',
+      'address', 'created_date', 'status'
     ];
     
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
@@ -613,17 +717,24 @@ function createStudentsSheet(ss) {
     sheet.setColumnWidth(6, 80);  // grade
     sheet.setColumnWidth(7, 60);  // class_no
     sheet.setColumnWidth(8, 80);  // gender
-    sheet.setColumnWidth(9, 120); // created_date
-    sheet.setColumnWidth(10, 100); // status
+    sheet.setColumnWidth(9, 110); // birthdate
+    sheet.setColumnWidth(10, 120); // photo_url
+    sheet.setColumnWidth(11, 100); // academic_year
+    sheet.setColumnWidth(12, 80);  // weight
+    sheet.setColumnWidth(13, 80);  // height
+    sheet.setColumnWidth(14, 80);  // blood_type
+    sheet.setColumnWidth(15, 100); // religion
+    sheet.setColumnWidth(16, 140); // father_name
+    sheet.setColumnWidth(17, 140); // father_lastname
+    sheet.setColumnWidth(18, 130); // father_occupation
+    sheet.setColumnWidth(19, 140); // mother_name
+    sheet.setColumnWidth(20, 140); // mother_lastname
+    sheet.setColumnWidth(21, 130); // mother_occupation
+    sheet.setColumnWidth(22, 200); // address
+    sheet.setColumnWidth(23, 120); // created_date
+    sheet.setColumnWidth(24, 100); // status
     
-    // เพิ่มข้อมูลตัวอย่าง
-    const sampleData = [
-      ['2024001', '1234567890123', 'เด็กชาย', 'สมชาย', 'ใจดี', 'ป.1', '1', 'ชาย', new Date(), 'active'],
-      ['2024002', '1234567890124', 'เด็กหญิง', 'สมหญิง', 'ใจงาม', 'ป.1', '1', 'หญิง', new Date(), 'active'],
-      ['2024003', '1234567890125', 'เด็กชาย', 'สมศักดิ์', 'ใจสู้', 'ป.1', '2', 'ชาย', new Date(), 'active']
-    ];
-    
-    sheet.getRange(2, 1, sampleData.length, sampleData[0].length).setValues(sampleData);
+    // ไม่เพิ่มข้อมูลตัวอย่าง — ชีตเริ่มต้นว่าง พร้อมให้เพิ่มนักเรียนจริง
     
     Logger.log('Created Students sheet with sample data');
     return sheet;
@@ -1243,16 +1354,9 @@ function exportStudentListPDF(grade, classNo) {
       .setName(`รายชื่อนักเรียน_${grade || 'ทุกชั้น'}_ห้อง${classNo || 'ทุกห้อง'}.pdf`)
       .getAs('application/pdf');
 
-    const folderName = "AttendancePDFs";
-    let folder;
-    const folders = DriveApp.getFoldersByName(folderName);
-    folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
-    
-    const file = folder.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
-    Logger.log(`✅ Student List PDF created: ${file.getUrl()}`);
-    return file.getUrl();
+    const url = _saveBlobGetUrl_(blob, "AttendancePDFs");
+    Logger.log(`✅ Student List PDF created: ${url}`);
+    return url;
 
   } catch (error) {
     Logger.log(`❌ Error in exportStudentListPDF: ${error.message}`);
@@ -1350,8 +1454,7 @@ function createStudentListHTMLForPDF(students, grade, classNo) {
 function getLogoAsBase64_(fileId) {
   try {
     if (!fileId) return '';
-    const file = DriveApp.getFileById(fileId);
-    const blob = file.getBlob();
+    const blob = _getFileBlobCompat_(fileId);
     const contentType = blob.getContentType();
     const base64Data = Utilities.base64Encode(blob.getBytes());
     return `data:${contentType};base64,${base64Data}`;
@@ -1436,13 +1539,7 @@ function exportStudentRegistryPDF(grade, classNo) {
       .setName(`ทะเบียนประวัตินักเรียน_${grade || 'ทุกชั้น'}_ห้อง${classNo || 'ทุกห้อง'}.pdf`)
       .getAs('application/pdf');
 
-    const folderName = "AttendancePDFs";
-    const folders = DriveApp.getFoldersByName(folderName);
-    const folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
-    
-    const file = folder.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    return file.getUrl();
+    return _saveBlobGetUrl_(blob, "AttendancePDFs");
 
   } catch (error) {
     Logger.log(`❌ Error in exportStudentRegistryPDF: ${error.message}`);

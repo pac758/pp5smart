@@ -365,14 +365,13 @@ function exportToSchoolMIS(sheetName, term, sortMode) {
     var csvWithBom = bom + csvContent;
     var blobWithBom = Utilities.newBlob(csvWithBom, 'text/csv', fileName);
     
-    var file = DriveApp.createFile(blobWithBom);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    var fileUrl = _saveBlobGetUrl_(blobWithBom);
     
     var result = {
       success: true,
       fileName: fileName,
-      fileUrl: file.getUrl(),
-      downloadUrl: file.getDownloadUrl(),
+      fileUrl: fileUrl,
+      downloadUrl: fileUrl,
       csvContent: csvContent,
       studentCount: csvLines.length - 1,
       message: '✅ ส่งออกสำเร็จ ' + (csvLines.length - 1) + ' คน'
@@ -485,7 +484,7 @@ function exportToSchoolMIS_Average(sheetName, sortMode) {
         var v2 = Number(sc2[j]) || 0;
         var has1 = (v1 > 0);
         var has2 = (v2 > 0);
-        if (has1 && has2) avgScores.push(Math.round(((v1 + v2) / 2) * 100) / 100);
+        if (has1 && has2) avgScores.push(Math.ceil((v1 + v2) / 2));
         else if (has1) avgScores.push(v1);
         else if (has2) avgScores.push(v2);
         else avgScores.push(0);
@@ -494,7 +493,7 @@ function exportToSchoolMIS_Average(sheetName, sortMode) {
       var mid1 = Number(r1.mid) || 0;
       var mid2 = Number(r2.mid) || 0;
       var avgMid = '';
-      if (mid1 > 0 && mid2 > 0) avgMid = Math.round(((mid1 + mid2) / 2) * 100) / 100;
+      if (mid1 > 0 && mid2 > 0) avgMid = Math.ceil((mid1 + mid2) / 2);
       else if (mid1 > 0) avgMid = mid1;
       else if (mid2 > 0) avgMid = mid2;
       if (avgMid !== '' && avgMid > midMax) avgMid = midMax;
@@ -502,14 +501,14 @@ function exportToSchoolMIS_Average(sheetName, sortMode) {
       var fin1 = Number(r1.final) || 0;
       var fin2 = Number(r2.final) || 0;
       var avgFinal = '';
-      if (fin1 > 0 && fin2 > 0) avgFinal = Math.round(((fin1 + fin2) / 2) * 100) / 100;
+      if (fin1 > 0 && fin2 > 0) avgFinal = Math.ceil((fin1 + fin2) / 2);
       else if (fin1 > 0) avgFinal = fin1;
       else if (fin2 > 0) avgFinal = fin2;
       if (avgFinal !== '' && avgFinal > finMax) avgFinal = finMax;
       
       var avgTotal = '';
       if (avgMid !== '' || avgFinal !== '') {
-        avgTotal = Math.round(((Number(avgMid) || 0) + (Number(avgFinal) || 0)) * 100) / 100;
+        avgTotal = (Number(avgMid) || 0) + (Number(avgFinal) || 0);
       }
       
       var avgGrade = '';
@@ -586,14 +585,13 @@ function exportToSchoolMIS_Average(sheetName, sortMode) {
     var csvWithBom = bom + csvContent;
     var blobWithBom = Utilities.newBlob(csvWithBom, 'text/csv', fileName);
     
-    var file = DriveApp.createFile(blobWithBom);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    var fileUrl = _saveBlobGetUrl_(blobWithBom);
     
     var result = {
       success: true,
       fileName: fileName,
-      fileUrl: file.getUrl(),
-      downloadUrl: file.getDownloadUrl(),
+      fileUrl: fileUrl,
+      downloadUrl: fileUrl,
       csvContent: csvContent,
       studentCount: csvLines.length - 1,
       message: '✅ ส่งออกเฉลี่ย 2 ภาคสำเร็จ ' + (csvLines.length - 1) + ' คน'

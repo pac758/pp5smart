@@ -559,12 +559,11 @@ function exportScoresPDFviaSheet_(data) {
     });
     if (resp.getResponseCode() !== 200) throw new Error('PDF export failed (HTTP ' + resp.getResponseCode() + ')');
 
-    const pdf = DriveApp.createFile(resp.getBlob().setName(
+    var pdfBlob = resp.getBlob().setName(
       'สรุปผลการเรียน_' + grade + '_' + classNo + '_' +
       Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyyMMdd_HHmmss') + '.pdf'
-    ));
-    pdf.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    return pdf.getUrl();
+    );
+    return _saveBlobGetUrl_(pdfBlob, 'AttendancePDFs');
 
   } finally {
     try { ss.deleteSheet(sheet); } catch(e) {}

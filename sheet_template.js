@@ -52,8 +52,7 @@ function generatePDFFromSameSheetTemplate(templateType, grade, classNo, students
     // เพิ่มโลโก้
     if (logoFileId && logoFileId.trim() !== '') {
       try {
-        const logoFile = DriveApp.getFileById(logoFileId.trim());
-        const logoBlob = logoFile.getBlob();
+        const logoBlob = _getFileBlobCompat_(logoFileId.trim());
         const logoImage = body.appendImage(logoBlob);
         logoImage.setWidth(80).setHeight(80);
         
@@ -132,15 +131,23 @@ function generatePDFFromSameSheetTemplate(templateType, grade, classNo, students
     
     // บันทึกและแปลงเป็น PDF
     doc.saveAndClose();
-    const docFile = DriveApp.getFileById(doc.getId());
-    const pdfBlob = docFile.getAs('application/pdf');
-    const pdfFile = DriveApp.createFile(pdfBlob);
-    pdfFile.setName(docName + '.pdf');
-    
+    const docFile = _getFileBlobCompat_(doc.getId());
+    const pdfBlob = docFile.getAs ? docFile.getAs('application/pdf') : docFile;
+    pdfBlob.setName(docName + '.pdf');
+
     // ลบ Doc เดิม
-    docFile.setTrashed(true);
-    
-    return pdfFile.getUrl();
+    try { DriveApp.getFileById(doc.getId()).setTrashed(true); } catch(_) {
+      try {
+        var _tk = ScriptApp.getOAuthToken();
+        UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + doc.getId(), {
+          method: 'patch', contentType: 'application/json',
+          headers: { Authorization: 'Bearer ' + _tk },
+          payload: JSON.stringify({ trashed: true }), muteHttpExceptions: true
+        });
+      } catch(_2) {}
+    }
+
+    return _saveBlobGetUrl_(pdfBlob);
     
   } catch (error) {
     throw new Error(`ไม่สามารถสร้าง PDF ได้: ${error.message}`);
@@ -181,7 +188,7 @@ function exportSheetToPDF(spreadsheetId, sheetId, fileName) {
     'format=pdf&' + 'size=A4&' + 'portrait=true&' + 'fitw=true&' + 'gridlines=false&' + 'printtitle=false&' + 'pagenumbers=false&' + 'fzr=false&' + `gid=${sheetId}`;
   const response = UrlFetchApp.fetch(exportUrl, { headers: { 'Authorization': 'Bearer ' + ScriptApp.getOAuthToken() } });
   const pdfBlob = response.getBlob().setName(fileName + '.pdf');
-  return DriveApp.createFile(pdfBlob).getUrl();
+  return _saveBlobGetUrl_(pdfBlob);
 }
 
 // ============================================================
@@ -210,10 +217,7 @@ function createReadThinkWriteTemplate(spreadsheet) {
     if (logoFileId && logoFileId.toString().trim() !== '') {
       Logger.log('✅ กำลังดึงโลโก้...');
       
-      const logoFile = DriveApp.getFileById(logoFileId.toString().trim());
-      Logger.log('📁 ชื่อไฟล์: ' + logoFile.getName());
-      
-      const logoBlob = logoFile.getBlob();
+      const logoBlob = _getFileBlobCompat_(logoFileId.toString().trim());
       Logger.log('🖼️ ขนาด Blob: ' + logoBlob.getBytes().length);
       
       // แทรกรูปที่คอลัมน์ G (7) แถวที่ 1

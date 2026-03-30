@@ -241,6 +241,14 @@ function _ensureDrivePermissionForPdf_() {
     DriveApp.getRootFolder().getName();
     return true;
   } catch (e) {
+    // Fallback: ลองผ่าน REST API
+    try {
+      var token = ScriptApp.getOAuthToken();
+      var res = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files?pageSize=1&fields=files(id)', {
+        headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true
+      });
+      if (res.getResponseCode() === 200) return true;
+    } catch (_) {}
     throw new Error(
       'ระบบยังไม่ได้รับอนุญาตให้เข้าถึง Google Drive สำหรับการสร้าง PDF\n' +
       'วิธีแก้:\n' +
@@ -324,9 +332,7 @@ function generatePp6Pdf(studentId, showRank) {
 
       try {
 
-        const logoFile = DriveApp.getFileById(schoolData.logoFileId);
-
-        const logoBlob = logoFile.getBlob();
+        const logoBlob = _getFileBlobCompat_(schoolData.logoFileId);
 
         const logoPara = body.appendParagraph('');
 
@@ -533,18 +539,20 @@ function generatePp6Pdf(studentId, showRank) {
       p.setSpacingBefore(topSpace != null ? topSpace : (isRole ? 0 : 4)).setSpacingAfter(0); // ลดระยะห่างลายเซ็น
     };
 
-    // ดึงชื่อครูประจำชั้น
-    const homeroomName = getHomeroomTeacher(student.grade, String(student.classNo));
+    // ดึงชื่อครูประจำชั้นทั้ง 2 คน
+    const homeroomTeachers = getHomeroomTeachers(student.grade, String(student.classNo));
+    const homeroomName = homeroomTeachers.teacher1;
+    const homeroomName2 = homeroomTeachers.teacher2;
 
     addSign('ลงชื่อ.........................................', false, 8); // ลดระยะห่างด้านบนลายเซ็น
     addSign('(' + (homeroomName && homeroomName !== '...' ? homeroomName : '                                    ') + ')', false, 0);
-    addSign('ครูประจำชั้น', true);
+    addSign('ครูประจำชั้นคนที่ 1', true);
+    addSign('ลงชื่อ.........................................', false, 10);
+    addSign('(' + (homeroomName2 || '                                    ') + ')', false, 0);
+    addSign('ครูประจำชั้นคนที่ 2', true);
     addSign('ลงชื่อ.........................................', false, 10);
     addSign('(' + (schoolData.director || '                                    ') + ')', false, 0);
     addSign(schoolData.directorPosition, true);
-    addSign('ลงชื่อ.........................................', false, 10);
-    addSign('(                                          )', false, 0);
-    addSign('ผู้ปกครอง', true);
 
 
 
@@ -637,29 +645,27 @@ function generatePp6Pdf(studentId, showRank) {
     // แปลง PDF (ใช้ pattern เดียวกับ OnePageReport เพื่อความเสถียร)
     let _pdfStep = 'getFileById';
     try {
-      const docFile = DriveApp.getFileById(docId);
       _pdfStep = 'getAs_pdf';
-      const pdfBlob = docFile.getAs('application/pdf');
-      
-      _pdfStep = 'getCachedFolder';
-      const folder = getCachedFolder_(settings);
-      
-      _pdfStep = 'createFile';
-      const pdfFile = folder.createFile(pdfBlob);
-      pdfFile.setName(`ปพ.6_${student.id}_${student.name}.pdf`);
-      
-      _pdfStep = 'setSharing';
-      try {
-        pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-      } catch (shareErr) {
-        Logger.log('⚠️ setSharing failed: ' + shareErr.message);
-      }
-      
+      const pdfBlob = _getFileBlobCompat_(docId).getAs('application/pdf');
+      pdfBlob.setName(`ปพ.6_${student.id}_${student.name}.pdf`);
+
+      _pdfStep = 'saveBlobGetUrl';
+      const pdfUrl = _saveBlobGetUrl_(pdfBlob, null, settings.pdfSaveFolderId || null);
+
       _pdfStep = 'setTrashed';
-      docFile.setTrashed(true);
-      
-      Logger.log('✅ สร้าง PDF สำเร็จ: ' + pdfFile.getUrl());
-      return pdfFile.getUrl();
+      try { DriveApp.getFileById(docId).setTrashed(true); } catch(_) {
+        try {
+          var _tk = ScriptApp.getOAuthToken();
+          UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + docId, {
+            method: 'patch', contentType: 'application/json',
+            headers: { Authorization: 'Bearer ' + _tk },
+            payload: JSON.stringify({ trashed: true }), muteHttpExceptions: true
+          });
+        } catch(_2) {}
+      }
+
+      Logger.log('✅ สร้าง PDF สำเร็จ: ' + pdfUrl);
+      return pdfUrl;
       
     } catch (pdfErr) {
       Logger.log(`❌ PDF Conversion Error at [${_pdfStep}]: ` + pdfErr.message);
@@ -771,9 +777,13 @@ function getCachedFolder_(settings) {
 
   }
 
-  const folders = DriveApp.getFoldersByName(folderName);
-
-  CACHED_FOLDER = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
+  try {
+    const folders = DriveApp.getFoldersByName(folderName);
+    CACHED_FOLDER = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
+  } catch (e) {
+    Logger.log('getCachedFolder_ DriveApp fallback: ' + e.message);
+    CACHED_FOLDER = null;
+  }
 
   return CACHED_FOLDER;
 
@@ -1119,7 +1129,11 @@ function getStudentScores_(id, year, assessmentsCache) {
 
           else if (n.includes('ลูกเสือ') || n.includes('เนตรนารี')) actGrade = activityMap['ลูกเสือ_เนตรนารี'] || activityMap['ลูกเสือ/เนตรนารี'] || 'ผ่าน';
 
-          else if (n.includes('ชุมนุม')) actGrade = activityMap['ชุมนุม'] || 'ผ่าน';
+          else if (n.includes('ชุมนุม')) {
+            actGrade = activityMap['ชุมนุม'] || 'ผ่าน';
+            // ถ้ามีชื่อชุมนุมรายคน → ใช้แทนชื่อจากรายวิชา
+            if (activityMap['ชื่อชุมนุม']) s.name = activityMap['ชื่อชุมนุม'];
+          }
 
           else if (n.includes('สังคม') || n.includes('สาธารณ')) actGrade = activityMap['เพื่อสังคมและสาธารณประโยชน์'] || activityMap['เพื่อสังคม'] || 'ผ่าน';
 

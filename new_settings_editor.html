@@ -609,8 +609,25 @@ if (typeof window.SettingsEditor === 'undefined') {
                     lines.push('<hr class="my-1">');
                     lines.push('<strong>🎓 นักเรียน (' + result.studentCount + ' คน):</strong>');
                     var gc = result.gradeCounts || {};
-                    ['ป.1','ป.2','ป.3','ป.4','ป.5','ป.6'].forEach(function(g) {
-                        if (gc[g]) lines.push('&nbsp;&nbsp;• ' + g + ': ' + gc[g] + ' คน' + (g === 'ป.6' ? ' → <span class="text-danger fw-bold">จำหน่าย</span>' : ' → เลื่อนเป็น ' + g.replace(/\d/, function(d){return parseInt(d)+1;})));
+                    var orderedGrades = ['อ.1','อ.2','อ.3','ป.1','ป.2','ป.3','ป.4','ป.5','ป.6','ม.1','ม.2','ม.3'];
+                    var nextGradeMap = {
+                        'อ.1': 'อ.2',
+                        'อ.2': 'อ.3',
+                        'อ.3': 'ป.1',
+                        'ป.1': 'ป.2',
+                        'ป.2': 'ป.3',
+                        'ป.3': 'ป.4',
+                        'ป.4': 'ป.5',
+                        'ป.5': 'ป.6',
+                        'ม.1': 'ม.2',
+                        'ม.2': 'ม.3'
+                    };
+                    orderedGrades.forEach(function(g) {
+                        if (!gc[g]) return;
+                        var actionText = (g === 'ป.6' || g === 'ม.3')
+                            ? ' → <span class="text-danger fw-bold">จำหน่าย</span>'
+                            : (nextGradeMap[g] ? ' → เลื่อนเป็น ' + nextGradeMap[g] : '');
+                        lines.push('&nbsp;&nbsp;• ' + g + ': ' + gc[g] + ' คน' + actionText);
                     });
                     lines.push('<hr class="my-1">');
                     lines.push('<strong>📝 ชีตที่จะ Rename (เก็บข้อมูลเดิมไว้):</strong>');
@@ -631,7 +648,8 @@ if (typeof window.SettingsEditor === 'undefined') {
                     }
                     lines.push('<hr class="my-1">');
                     lines.push('<span class="text-success fw-bold">✅ ข้อมูลเดิมทั้งหมดจะยังคงอยู่ในชีตเดิม (แค่เปลี่ยนชื่อ)</span>');
-                    lines.push('<strong>สรุป:</strong> เลื่อนชั้น ' + (result.promoteCount || 0) + ' คน | จำหน่าย ป.6 ' + (result.p6Count || 0) + ' คน');
+                    var graduatedCount = result.graduateCount || result.p6Count || 0;
+                    lines.push('<strong>สรุป:</strong> เลื่อนชั้น ' + (result.promoteCount || 0) + ' คน | จำหน่าย ป.6/ม.3 ' + graduatedCount + ' คน');
 
                     var previewEl = self.$('switchPreview');
                     var infoEl = self.$('previewInfo');
@@ -655,7 +673,7 @@ if (typeof window.SettingsEditor === 'undefined') {
                 self.setSwitchStatus('กรุณาระบุปีการศึกษาใหม่', 'warning');
                 return;
             }
-            if (!confirm('⚠️ ยืนยันเปลี่ยนปีการศึกษาเป็น ' + newYear + '?\n\nระบบจะ:\n1. สำรอง Spreadsheet ทั้งไฟล์ (backup)\n2. เปลี่ยนชื่อชีตข้อมูลเดิม → เติม _ปีเก่า\n3. สร้างชีตว่างสำหรับปีใหม่\n4. เปลี่ยนชื่อชีตคะแนนรายวิชา → เติม _ปีเก่า\n5. จำหน่ายนักเรียน ป.6\n6. เลื่อนชั้นนักเรียน (ป.1→ป.2 ... ป.5→ป.6)\n7. อัปเดตปีการศึกษา\n\n✅ ข้อมูลเดิมทั้งหมดจะยังอยู่ (แค่เปลี่ยนชื่อชีต)')) {
+            if (!confirm('⚠️ ยืนยันเปลี่ยนปีการศึกษาเป็น ' + newYear + '?\n\nระบบจะ:\n1. สำรอง Spreadsheet ทั้งไฟล์ (backup)\n2. เปลี่ยนชื่อชีตข้อมูลเดิม → เติม _ปีเก่า\n3. สร้างชีตว่างสำหรับปีใหม่\n4. เปลี่ยนชื่อชีตคะแนนรายวิชา → เติม _ปีเก่า\n5. จำหน่ายนักเรียนจบชั้น (ป.6 และ ม.3)\n6. เลื่อนชั้นนักเรียนที่ยัง active (อ.1→อ.2 ... ม.2→ม.3)\n7. อัปเดตปีการศึกษา\n\n✅ ข้อมูลเดิมทั้งหมดจะยังอยู่ (แค่เปลี่ยนชื่อชีต)')) {
                 return;
             }
 
@@ -676,7 +694,7 @@ if (typeof window.SettingsEditor === 'undefined') {
                     var msg = '<strong>✅ ' + result.message + '</strong><br>';
                     msg += '📦 Backup: <a href="' + result.archiveUrl + '" target="_blank">เปิดไฟล์สำรอง</a><br>';
                     msg += '📝 Rename: ' + (result.sheetsRenamed || 0) + ' ชีต | ✨ สร้างใหม่: ' + (result.sheetsCreated || 0) + ' ชีต | 📝 ชีตคะแนน: ' + (result.scoreSheetArchived || 0) + ' ชีต<br>';
-                    msg += '🎓 เลื่อนชั้น: ' + (result.studentsPromoted || 0) + ' คน | จำหน่าย ป.6: ' + (result.studentsGraduated || 0) + ' คน';
+                    msg += '🎓 เลื่อนชั้น: ' + (result.studentsPromoted || 0) + ' คน | จำหน่าย ป.6/ม.3: ' + (result.studentsGraduated || 0) + ' คน';
                     self.setSwitchStatus(msg, 'success');
 
                     // รีโหลดข้อมูลหน้า settings

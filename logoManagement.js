@@ -72,19 +72,79 @@ function uploadLogoFromDataUrl(dataUrl, filename) {
     const bytes = Utilities.base64Decode(base64);
     const blob = Utilities.newBlob(bytes, mime, filename);
 
-    // หาโฟลเดอร์เป้าหมาย
-    const folder = _ensureSystemAssetsFolder_();
-    const file = folder.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    var fileId, fileName;
+
+    // ลอง DriveApp ก่อน (ทำงานได้จาก Editor)
+    try {
+      var folder = _ensureSystemAssetsFolder_();
+      var file = folder.createFile(blob);
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      fileId = file.getId();
+      fileName = file.getName();
+    } catch (driveErr) {
+      // DriveApp ใช้ไม่ได้ใน web app context → ใช้ Drive REST API แทน
+      Logger.log('DriveApp fallback → REST API: ' + driveErr.message);
+      var result = _uploadViaRestApi_(blob, filename, mime);
+      fileId = result.fileId;
+      fileName = result.name;
+    }
 
     // ตั้งเป็นโลโก้
-    saveSystemSettings({ logoFileId: file.getId() });
+    saveSystemSettings({ logoFileId: fileId });
     try { clearSettingsCache(); } catch (_e) {}
 
-    return { ok:true, fileId:file.getId(), name:file.getName() };
+    return { ok:true, fileId: fileId, name: fileName };
   } catch (e) {
     return { ok:false, msg:'uploadLogoFromDataUrl error: ' + e.message };
   }
+}
+
+/**
+ * อัปโหลดไฟล์ไป Drive ผ่าน REST API (ใช้เมื่อ DriveApp ไม่พร้อมใช้ใน web app)
+ */
+function _uploadViaRestApi_(blob, filename, mime) {
+  var token = ScriptApp.getOAuthToken();
+
+  // 1) อัปโหลดไฟล์
+  var uploadRes = UrlFetchApp.fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=media&fields=id,name',
+    {
+      method: 'post',
+      contentType: mime,
+      headers: { Authorization: 'Bearer ' + token },
+      payload: blob,
+      muteHttpExceptions: true
+    }
+  );
+  if (uploadRes.getResponseCode() !== 200) {
+    throw new Error('Drive API upload failed (' + uploadRes.getResponseCode() + '): ' + uploadRes.getContentText());
+  }
+  var uploaded = JSON.parse(uploadRes.getContentText());
+  var fileId = uploaded.id;
+
+  // 2) ตั้งชื่อไฟล์
+  UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + fileId, {
+    method: 'patch',
+    contentType: 'application/json',
+    headers: { Authorization: 'Bearer ' + token },
+    payload: JSON.stringify({ name: filename }),
+    muteHttpExceptions: true
+  });
+
+  // 3) แชร์ Public (anyone with link = viewer)
+  try {
+    UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '/permissions', {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { Authorization: 'Bearer ' + token },
+      payload: JSON.stringify({ role: 'reader', type: 'anyone' }),
+      muteHttpExceptions: true
+    });
+  } catch (shareErr) {
+    Logger.log('⚠️ ตั้งค่าแชร์ไม่ได้: ' + shareErr.message);
+  }
+
+  return { fileId: fileId, name: filename };
 }
 
 /**
@@ -106,14 +166,18 @@ function _ensureSystemAssetsFolder_() {
     }
 
     // หาโฟลเดอร์ SystemAssets ในราก
-    const it = DriveApp.getFoldersByName('SystemAssets');
-    if (it.hasNext()) return it.next();
-
-    // สร้างใหม่
-    const folder = DriveApp.createFolder('SystemAssets');
-    return folder;
+    try {
+      const it = DriveApp.getFoldersByName('SystemAssets');
+      if (it.hasNext()) return it.next();
+      // สร้างใหม่
+      return DriveApp.createFolder('SystemAssets');
+    } catch (e2) {
+      Logger.log('DriveApp folder fallback: ' + e2.message);
+      return null;
+    }
   } catch (e) {
-    throw new Error('_ensureSystemAssetsFolder_ error: ' + e.message);
+    Logger.log('_ensureSystemAssetsFolder_ error: ' + e.message);
+    return null;
   }
 }
 /**
@@ -129,15 +193,25 @@ function fixLogoSharing() {
       return '⚠️ ไม่พบไอดีโลโก้ในระบบ กรุณาตั้งค่าโลโก้ก่อน';
     }
     
-    // ดึงไฟล์จาก Drive
-    const file = DriveApp.getFileById(fileId.trim());
-    
-    // ตรวจสอบสถานะปัจจุบัน
-    const currentAccess = file.getSharingAccess();
-    Logger.log('🔐 Sharing Access ปัจจุบัน: ' + currentAccess);
-    
-    // ตั้งค่าให้เป็น Public (Anyone with the link can VIEW)
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    // ดึงไฟล์จาก Drive + ตั้งค่าแชร์
+    var fileName = '';
+    try {
+      const file = DriveApp.getFileById(fileId.trim());
+      fileName = file.getName();
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (_) {
+      // REST API fallback
+      var _tk = ScriptApp.getOAuthToken();
+      UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + fileId.trim() + '/permissions', {
+        method: 'post', contentType: 'application/json',
+        headers: { Authorization: 'Bearer ' + _tk },
+        payload: JSON.stringify({ role: 'reader', type: 'anyone' }), muteHttpExceptions: true
+      });
+      var _meta = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + fileId.trim() + '?fields=name', {
+        headers: { Authorization: 'Bearer ' + _tk }, muteHttpExceptions: true
+      });
+      if (_meta.getResponseCode() === 200) fileName = JSON.parse(_meta.getContentText()).name || '';
+    }
 
     try { clearSettingsCache(); } catch (_e) {}
     
@@ -145,8 +219,7 @@ function fixLogoSharing() {
     Logger.log('🔗 URL: https://drive.google.com/uc?export=view&id=' + fileId);
     
     return '✅ ตั้งค่าแชร์โลโก้เป็น Public สำเร็จแล้ว!\n' +
-           'ชื่อไฟล์: ' + file.getName() + '\n' +
-           'ขนาดไฟล์: ' + Math.round(file.getSize() / 1024) + ' KB';
+           'ชื่อไฟล์: ' + (fileName || fileId);
     
   } catch (e) {
     Logger.log('❌ fixLogoSharing error: ' + e.message);

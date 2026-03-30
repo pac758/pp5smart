@@ -153,6 +153,9 @@
                     <p class="page-subtitle">แก้ไขรายชื่อครูประจำชั้นแบบแถวต่อแถว แล้วบันทึกได้ทันที</p>
                 </div>
                 <div class="d-flex gap-2">
+                    <button class="btn btn-primary" id="addNewClassBtn">
+                        <i class="bi bi-plus-circle"></i> เพิ่มชั้นเรียน/ห้อง
+                    </button>
                     <button class="btn btn-outline-primary" id="refreshBtn">
                         <i class="bi bi-arrow-clockwise"></i> โหลดข้อมูลใหม่
                     </button>
@@ -171,6 +174,42 @@
         </div>
         
         <div id="status" class="mt-3"></div>
+    </div>
+
+    <!-- Modal สำหรับเพิ่มชั้นเรียนใหม่ -->
+    <div class="modal fade" id="addClassModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content card border-0">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold">➕ เพิ่มชั้นเรียนใหม่</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addClassForm">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">ระดับชั้น</label>
+                            <input type="text" class="form-control" id="newGrade" placeholder="เช่น ป.1 หรือ ม.3" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">ห้อง</label>
+                            <input type="text" class="form-control" id="newClassNo" placeholder="เช่น 1 หรือ 2" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">ชื่อครูประจำชั้นคนที่ 1</label>
+                            <input type="text" class="form-control" id="newTeacher1" placeholder="ชื่อ-นามสกุล" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">ชื่อครูประจำชั้นคนที่ 2 (ถ้ามี)</label>
+                            <input type="text" class="form-control" id="newTeacher2" placeholder="ชื่อ-นามสกุล">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="btn btn-primary" id="saveNewClassBtn">บันทึกข้อมูล</button>
+                </div>
+            </div>
+        </div>
     </div>
 <script>
     // 1. ฟังก์ชันหลักสำหรับโหลดและแสดงข้อมูล (ทำงานเมื่อหน้าถูกโหลด)
@@ -198,7 +237,8 @@
                     <tr>
                         <th>ระดับชั้น</th>
                         <th>ห้อง</th>
-                        <th>ชื่อครูประจำชั้น</th>
+                        <th>ครูประจำชั้นคนที่ 1</th>
+                        <th>ครูประจำชั้นคนที่ 2</th>
                         <th class="text-end">จัดการ</th>
                     </tr>
                 </thead>
@@ -213,7 +253,11 @@
                     <td>${item.classNo}</td>
                     <td>
                         <span class="teacher-name-display">${item.teacherName || '<span class="text-muted">-- ว่าง --</span>'}</span>
-                        <input type="text" class="form-control d-none" value="${item.teacherName || ''}">
+                        <input type="text" class="form-control d-none teacher1-input" value="${item.teacherName || ''}">
+                    </td>
+                    <td>
+                        <span class="teacher2-name-display">${item.teacher2Name || '<span class="text-muted">-- ว่าง --</span>'}</span>
+                        <input type="text" class="form-control d-none teacher2-input" value="${item.teacher2Name || ''}">
                     </td>
                     <td class="text-end">
                         <button class="btn btn-sm btn-outline-primary btn-edit">แก้ไข</button>
@@ -231,7 +275,9 @@
     // 3. ฟังก์ชันสลับโหมดแสดงผล/แก้ไข
     function toggleEditMode(rowElement, isEditing) {
         rowElement.querySelector('.teacher-name-display').classList.toggle('d-none', isEditing);
-        rowElement.querySelector('input').classList.toggle('d-none', !isEditing);
+        rowElement.querySelector('.teacher1-input').classList.toggle('d-none', !isEditing);
+        rowElement.querySelector('.teacher2-name-display').classList.toggle('d-none', isEditing);
+        rowElement.querySelector('.teacher2-input').classList.toggle('d-none', !isEditing);
         rowElement.querySelector('.btn-edit').classList.toggle('d-none', isEditing);
         rowElement.querySelector('.btn-save').classList.toggle('d-none', !isEditing);
         rowElement.querySelector('.btn-cancel').classList.toggle('d-none', !isEditing);
@@ -242,7 +288,8 @@
         const teacherInfo = {
             grade: rowElement.dataset.grade,
             classNo: rowElement.dataset.classNo,
-            teacherName: rowElement.querySelector('input').value.trim()
+            teacherName: rowElement.querySelector('.teacher1-input').value.trim(),
+            teacher2Name: rowElement.querySelector('.teacher2-input').value.trim()
         };
         
         const saveBtn = rowElement.querySelector('.btn-save');
@@ -252,6 +299,7 @@
         google.script.run
             .withSuccessHandler(message => {
                 rowElement.querySelector('.teacher-name-display').innerHTML = teacherInfo.teacherName || '<span class="text-muted">-- ว่าง --</span>';
+                rowElement.querySelector('.teacher2-name-display').innerHTML = teacherInfo.teacher2Name || '<span class="text-muted">-- ว่าง --</span>';
                 toggleEditMode(rowElement, false);
                 saveBtn.innerHTML = 'บันทึก';
                 saveBtn.disabled = false;
@@ -289,7 +337,9 @@
         } else if (target.classList.contains('btn-cancel')) {
             // Reset input value to original display value before cancelling
             const originalName = row.querySelector('.teacher-name-display').textContent;
-            row.querySelector('input').value = (originalName === '-- ว่าง --') ? '' : originalName;
+            row.querySelector('.teacher1-input').value = (originalName === '-- ว่าง --') ? '' : originalName;
+            const originalName2 = row.querySelector('.teacher2-name-display').textContent;
+            row.querySelector('.teacher2-input').value = (originalName2 === '-- ว่าง --') ? '' : originalName2;
             toggleEditMode(row, false);
         }
     });
@@ -297,6 +347,89 @@
     document.getElementById('refreshBtn').addEventListener('click', function() {
         initializeTeacherEditor();
     });
+
+    // 6. จัดการ Modal เพิ่มชั้นเรียน (ไม่ใช้ DOMContentLoaded เพราะหน้านี้โหลดผ่าน SPA innerHTML injection)
+    let addClassModal = null;
+    (function initAddClassModal() {
+        try {
+            if (typeof bootstrap !== 'undefined') {
+                addClassModal = new bootstrap.Modal(document.getElementById('addClassModal'));
+            }
+        } catch(_e) {}
+        
+        var addBtn = document.getElementById('addNewClassBtn');
+        if (addBtn) {
+            addBtn.addEventListener('click', function() {
+                document.getElementById('addClassForm').reset();
+                if (addClassModal) {
+                    addClassModal.show();
+                } else {
+                    // Fallback: แสดง/ซ่อน modal ด้วย CSS ถ้าไม่มี Bootstrap JS
+                    var modalEl = document.getElementById('addClassModal');
+                    modalEl.style.display = 'block';
+                    modalEl.classList.add('show');
+                    modalEl.style.backgroundColor = 'rgba(0,0,0,0.5)';
+                }
+            });
+        }
+
+        var saveBtn = document.getElementById('saveNewClassBtn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', function() {
+                var grade = document.getElementById('newGrade').value.trim();
+                var classNo = document.getElementById('newClassNo').value.trim();
+                var teacher1 = document.getElementById('newTeacher1').value.trim();
+                var teacher2 = document.getElementById('newTeacher2').value.trim();
+
+                if (!grade || !classNo || !teacher1) {
+                    alert('กรุณากรอกข้อมูลให้ครบ (ระดับชั้น, ห้อง, ครูคนที่ 1)');
+                    return;
+                }
+
+                var btn = this;
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> กำลังบันทึก...';
+
+                google.script.run
+                    .withSuccessHandler(function(msg) {
+                        btn.disabled = false;
+                        btn.innerHTML = 'บันทึกข้อมูล';
+                        if (addClassModal) addClassModal.hide();
+                        else {
+                            var modalEl = document.getElementById('addClassModal');
+                            modalEl.style.display = 'none';
+                            modalEl.classList.remove('show');
+                        }
+                        showStatus(msg, 'success');
+                        initializeTeacherEditor();
+                    })
+                    .withFailureHandler(function(err) {
+                        btn.disabled = false;
+                        btn.innerHTML = 'บันทึกข้อมูล';
+                        showStatus('เกิดข้อผิดพลาด: ' + err.message, 'danger');
+                    })
+                    .saveSingleTeacher({
+                        grade: grade,
+                        classNo: classNo,
+                        teacherName: teacher1,
+                        teacher2Name: teacher2
+                    });
+            });
+        }
+        
+        // ปุ่มปิด modal (dismiss)
+        var closeButtons = document.querySelectorAll('[data-bs-dismiss="modal"]');
+        closeButtons.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                if (addClassModal) addClassModal.hide();
+                else {
+                    var modalEl = document.getElementById('addClassModal');
+                    modalEl.style.display = 'none';
+                    modalEl.classList.remove('show');
+                }
+            });
+        });
+    })();
 
     // เริ่มต้นทำงานเมื่อหน้าเว็บถูกโหลดเข้ามา
     initializeTeacherEditor();

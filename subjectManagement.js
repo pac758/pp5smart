@@ -215,12 +215,9 @@ function exportAllSubjectsAsPdf() {
     pdfBlob.setName(fileName);
     
     // บันทึกไฟล์
-    const folder = _getOrCreateFolder_('Subject Reports');
-    const file = folder.createFile(pdfBlob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    
+    const url = _saveBlobGetUrl_(pdfBlob, 'Subject Reports');
     Logger.log(`✅ ส่งออกรายวิชาทั้งหมด: ${subjects.length} รายการ`);
-    return file.getUrl();
+    return url;
 
   } catch (error) {
     Logger.log('❌ exportAllSubjectsAsPdf:', error);
@@ -595,11 +592,16 @@ function importSubjectsFromCSV(csvBase64) {
  * �🔧 ฟังก์ชันสำหรับสร้างโฟลเดอร์ (ถ้ายังไม่มีในไฟล์อื่น)
  */
 function _getOrCreateFolder_(folderName) {
-  const folders = DriveApp.getFoldersByName(folderName);
-  if (folders.hasNext()) {
-    return folders.next();
-  } else {
-    return DriveApp.createFolder(folderName);
+  try {
+    const folders = DriveApp.getFoldersByName(folderName);
+    if (folders.hasNext()) {
+      return folders.next();
+    } else {
+      return DriveApp.createFolder(folderName);
+    }
+  } catch (e) {
+    Logger.log('_getOrCreateFolder_ DriveApp fallback: ' + e.message);
+    return null;
   }
 }
 

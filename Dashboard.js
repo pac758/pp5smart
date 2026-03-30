@@ -733,7 +733,23 @@ function getDashboardProgress() {
         for (let i = 1; i < mData.length; i++) {
           if (presentIdx >= 0 && Number(mData[i][presentIdx]) > 0) checkedCount++;
         }
-        const totalStudents = mData.length - 1;
+        // นับจำนวนนักเรียน ป.1-ป.6 จาก Students sheet
+        let totalStudents = 0;
+        const studentsSheet = ss.getSheetByName('Students');
+        if (studentsSheet && studentsSheet.getLastRow() > 1) {
+          const stData = studentsSheet.getDataRange().getValues();
+          const stHeaders = stData[0];
+          let gCol = stHeaders.indexOf('grade');
+          if (gCol < 0) gCol = stHeaders.indexOf('ชั้น');
+          if (gCol >= 0) {
+            const validGrades = ['ป.1','ป.2','ป.3','ป.4','ป.5','ป.6'];
+            for (let s = 1; s < stData.length; s++) {
+              const g = String(stData[s][gCol] || '').trim();
+              if (validGrades.includes(g)) totalStudents++;
+            }
+          }
+        }
+        if (totalStudents === 0) totalStudents = mData.length - 1;
         items.push({
           label: 'เช็คชื่อเดือนนี้ (' + currentMonth.replace(/\d+/g,'') + ')',
           completed: checkedCount,
@@ -751,7 +767,20 @@ function getDashboardProgress() {
       if (rtwSheet && rtwSheet.getLastRow() > 1) {
         const rtwData = rtwSheet.getDataRange().getValues();
         const studentsSheet = ss.getSheetByName('Students');
-        const totalStudents = studentsSheet ? Math.max(studentsSheet.getLastRow() - 1, 0) : 0;
+        let totalStudents = 0;
+        if (studentsSheet && studentsSheet.getLastRow() > 1) {
+          const stData = studentsSheet.getDataRange().getValues();
+          const stHeaders = stData[0];
+          let gCol = stHeaders.indexOf('grade');
+          if (gCol < 0) gCol = stHeaders.indexOf('ชั้น');
+          if (gCol >= 0) {
+            const validGrades = ['ป.1','ป.2','ป.3','ป.4','ป.5','ป.6'];
+            for (let s = 1; s < stData.length; s++) {
+              const g = String(stData[s][gCol] || '').trim();
+              if (validGrades.includes(g)) totalStudents++;
+            }
+          }
+        }
         const rtwStudents = new Set();
         for (let i = 1; i < rtwData.length; i++) {
           const sid = String(rtwData[i][0] || '').trim();

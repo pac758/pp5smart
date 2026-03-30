@@ -244,13 +244,14 @@ function S_processLogoUrls(settings) {
   
   try {
     // ตรวจสอบและแชร์ไฟล์
-    const file = DriveApp.getFileById(fileId);
-    const access = file.getSharingAccess();
-    
-    if (access !== DriveApp.Access.ANYONE_WITH_LINK && access !== DriveApp.Access.ANYONE) {
-      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-      S_Log.success('Logo file shared successfully');
-    }
+    try {
+      const file = DriveApp.getFileById(fileId);
+      const access = file.getSharingAccess();
+      if (access !== DriveApp.Access.ANYONE_WITH_LINK && access !== DriveApp.Access.ANYONE) {
+        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        S_Log.success('Logo file shared successfully');
+      }
+    } catch (_) { /* DriveApp unavailable in web app */ }
     
     // สร้าง URLs หลายรูปแบบ
     settings.logo = `https://lh3.googleusercontent.com/d/${fileId}`;
@@ -620,10 +621,19 @@ function fixLogoSharing_S() {
       throw new Error('ไม่มี logoFileId ในการตั้งค่า');
     }
     
-    const file = DriveApp.getFileById(logoFileId);
-    S_Log.info(`Found file: ${file.getName()}`);
-    
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    try {
+      const file = DriveApp.getFileById(logoFileId);
+      S_Log.info(`Found file: ${file.getName()}`);
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (_) {
+      // REST API fallback for sharing
+      var _tk = ScriptApp.getOAuthToken();
+      UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + logoFileId + '/permissions', {
+        method: 'post', contentType: 'application/json',
+        headers: { Authorization: 'Bearer ' + _tk },
+        payload: JSON.stringify({ role: 'reader', type: 'anyone' }), muteHttpExceptions: true
+      });
+    }
     S_Log.success('Logo file sharing updated to PUBLIC');
     
     // ล้าง Cache เพื่อให้โหลดการตั้งค่าใหม่

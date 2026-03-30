@@ -496,9 +496,10 @@ function pp5s_coverDoc_(meta, studentCount, subjectSummary, reading, attributes,
     }
   } catch (me) { Logger.log('Cover merge: ' + me.message); }
 
-  var docFile = DriveApp.getFileById(docId);
-  var pdfBlob = docFile.getAs('application/pdf');
-  try { docFile.setTrashed(true); } catch (e) {}
+  var pdfBlob = _getFileBlobCompat_(docId).getAs('application/pdf');
+  try { DriveApp.getFileById(docId).setTrashed(true); } catch (_) {
+    try { var _tk=ScriptApp.getOAuthToken(); UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/'+docId,{method:'patch',contentType:'application/json',headers:{Authorization:'Bearer '+_tk},payload:JSON.stringify({trashed:true}),muteHttpExceptions:true}); } catch(_e) {}
+  }
   Logger.log('✅ ปก (Google Doc → PDF)');
   return pdfBlob;
 }
@@ -2101,15 +2102,16 @@ async function exportPp5FullBookSheets(grade, classNo, parts) {
     var fileName = 'ปพ.5 รวมเล่ม_' + grade + '_' + classNo + '_' + Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyyMMdd_HHmmss') + '.pdf';
     var pdfBlob = await pp5s_mergePdfs_(allPdfBlobs, fileName);
 
-    var file = DriveApp.createFile(pdfBlob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    var pp5SheetsUrl = _saveBlobGetUrl_(pdfBlob);
 
     // ลบ temp spreadsheet
-    try { DriveApp.getFileById(tempSS.getId()).setTrashed(true); } catch (e) {}
+    try { DriveApp.getFileById(tempSS.getId()).setTrashed(true); } catch (_) {
+      try { var _tk2=ScriptApp.getOAuthToken(); UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/'+tempSS.getId(),{method:'patch',contentType:'application/json',headers:{Authorization:'Bearer '+_tk2},payload:JSON.stringify({trashed:true}),muteHttpExceptions:true}); } catch(_e) {}
+    }
 
     pp5fb_setProgress_(100, 5, 'เสร็จสมบูรณ์!');
-    Logger.log('✅ สร้าง ปพ.5 รวมเล่มสำเร็จ (Sheets→PDF): ' + file.getUrl());
-    return file.getUrl();
+    Logger.log('✅ สร้าง ปพ.5 รวมเล่มสำเร็จ (Sheets→PDF): ' + pp5SheetsUrl);
+    return pp5SheetsUrl;
 
   } catch (error) {
     Logger.log('❌ exportPp5FullBookSheets error: ' + error.message);

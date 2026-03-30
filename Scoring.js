@@ -334,9 +334,18 @@ function getExistingScoreSheets() {
     // ✅ [FIXED] ดึงเวลาแก้ไขล่าสุดของไฟล์ Spreadsheet (เพราะ Sheet ไม่มีเมธอด getLastEditTime)
     let fileLastUpdated = new Date();
     try {
-      fileLastUpdated = DriveApp.getFileById(getSpreadsheetId_()).getLastUpdated();
+      try {
+        fileLastUpdated = DriveApp.getFileById(getSpreadsheetId_()).getLastUpdated();
+      } catch (_) {
+        // REST API fallback
+        var _tk = ScriptApp.getOAuthToken();
+        var _r = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + getSpreadsheetId_() + '?fields=modifiedTime', {
+          headers: { Authorization: 'Bearer ' + _tk }, muteHttpExceptions: true
+        });
+        if (_r.getResponseCode() === 200) fileLastUpdated = new Date(JSON.parse(_r.getContentText()).modifiedTime);
+      }
     } catch (err) {
-      Logger.log("⚠️ ไม่สามารถดึงเวลาแก้ไขจาก DriveApp ได้: " + err.message);
+      Logger.log("⚠️ ไม่สามารถดึงเวลาแก้ไขได้: " + err.message);
     }
 
     // ชีตที่ไม่ใช่ตารางคะแนน
@@ -868,7 +877,7 @@ function saveScoreSheetData(sheetName, term, studentScores, fullScores, fullFina
       const thisTotal  = total;
       let average = 0, finalGradeVal = '';
       if (thisTotal > 0 && otherTotal > 0) {
-        average = Math.round((thisTotal + otherTotal) / 2);
+        average = Math.ceil((thisTotal + otherTotal) / 2);
         finalGradeVal = calculateFinalGrade(average);
       } else if (thisTotal > 0 || otherTotal > 0) {
         average = thisTotal > 0 ? thisTotal : otherTotal;
@@ -1186,9 +1195,17 @@ function _batchRebuild_(ss, scoreSheets, filterGrade, filterClassNo) {
       var yearAvg = Number(r[layout.yearAvgCol]) || 0;
       var yearGrade = String(r[layout.yearGradeCol] || '');
 
-      if (yearAvg <= 0 && term1Total <= 0 && term2Total <= 0) {
-        var avg2 = (term1Total + term2Total) / 2;
-        if (avg2 > 0) yearAvg = avg2;
+      // ✅ Fix: ถ้า yearAvg ว่างแต่ term totals มีค่า → คำนวณใหม่ (เหมือน saveScoreSheetData)
+      if (yearAvg <= 0 && (term1Total > 0 || term2Total > 0)) {
+        if (term1Total > 0 && term2Total > 0) {
+          yearAvg = Math.ceil((term1Total + term2Total) / 2);
+        } else {
+          yearAvg = term1Total > 0 ? term1Total : term2Total;
+        }
+        Logger.log('📊 Rebuild recalc yearAvg for ' + sid + ': t1=' + term1Total + ' t2=' + term2Total + ' → avg=' + yearAvg);
+      }
+      if (!yearGrade && yearAvg > 0) {
+        yearGrade = (typeof calculateFinalGrade === 'function') ? calculateFinalGrade(yearAvg) : '';
       }
       var finalGpa = yearGrade || ((typeof _scoreToGPA === 'function') ? _scoreToGPA(yearAvg).gpa : '');
 
@@ -1270,6 +1287,70 @@ function rebuildScoresWarehouseAll(year) {
   }
   var result = _batchRebuild_(ss, scoreSheets, null, null);
   return 'Rebuild สำเร็จ: ทั้งหมด ' + result.sheetCount + ' วิชา, ' + result.rowCount + ' รายการ';
+}
+
+/**
+ * ✅ Diagnostic: ตรวจสอบข้อมูลคะแนนระหว่างชีตคะแนน vs SCORES_WAREHOUSE
+ * รันจาก Apps Script Editor: Run > debugScoreWarehouseCheck
+ */
+function debugScoreWarehouseCheck(grade, classNo) {
+  grade = grade || 'ป.3';
+  classNo = classNo || '1';
+  var ss = SS();
+  
+  // 1. หาชีตคะแนน
+  var scoreSheets = _findScoreSheets_(ss, grade, classNo);
+  Logger.log('=== Score Sheets for ' + grade + '/' + classNo + ' ===');
+  Logger.log('พบ ' + scoreSheets.length + ' ชีต');
+  
+  scoreSheets.forEach(function(item) {
+    var layout = detectSheetLayout_(item.sheet);
+    var data = item.sheet.getDataRange().getValues();
+    Logger.log('\n📄 ' + item.name + ' (layout: ' + layout.layout + ')');
+    Logger.log('  term1.total col=' + layout.term1.total + ', term2.total col=' + layout.term2.total);
+    Logger.log('  yearAvgCol=' + layout.yearAvgCol + ', yearGradeCol=' + layout.yearGradeCol);
+    
+    // แสดงข้อมูล 3 คนแรก
+    for (var i = 4; i < Math.min(7, data.length); i++) {
+      var r = data[i];
+      var sid = String(r[1] || '').trim();
+      if (!sid) continue;
+      var t1 = Number(r[layout.term1.total]) || 0;
+      var t2 = Number(r[layout.term2.total]) || 0;
+      var avg = Number(r[layout.yearAvgCol]) || 0;
+      var gr = String(r[layout.yearGradeCol] || '');
+      Logger.log('  ID=' + sid + ' | t1=' + t1 + ' | t2=' + t2 + ' | yearAvg=' + avg + ' | yearGrade=' + gr);
+    }
+  });
+  
+  // 2. ดู SCORES_WAREHOUSE
+  var wh = (typeof S_getYearlySheet === 'function') ? S_getYearlySheet('SCORES_WAREHOUSE') : ss.getSheetByName('SCORES_WAREHOUSE');
+  if (!wh) { Logger.log('❌ ไม่พบชีต SCORES_WAREHOUSE'); return; }
+  var whData = wh.getDataRange().getValues();
+  var h = whData[0];
+  var iSid = h.indexOf('student_id');
+  var iGrade = h.indexOf('grade');
+  var iClass = h.indexOf('class_no');
+  var iSubj = h.indexOf('subject_name');
+  var iT1 = h.indexOf('term1_total');
+  var iT2 = h.indexOf('term2_total');
+  var iAvg = h.indexOf('average');
+  var iFg = h.indexOf('final_grade');
+  
+  Logger.log('\n=== SCORES_WAREHOUSE for ' + grade + '/' + classNo + ' ===');
+  Logger.log('Headers: ' + JSON.stringify({iSid:iSid, iGrade:iGrade, iClass:iClass, iSubj:iSubj, iT1:iT1, iT2:iT2, iAvg:iAvg, iFg:iFg}));
+  
+  var count = 0;
+  for (var ri = 1; ri < whData.length; ri++) {
+    if (String(whData[ri][iGrade]) !== grade || String(whData[ri][iClass]) != classNo) continue;
+    if (count < 15) {
+      Logger.log('  ' + whData[ri][iSid] + ' | ' + whData[ri][iSubj] + ' | t1=' + whData[ri][iT1] + ' | t2=' + whData[ri][iT2] + ' | avg=' + whData[ri][iAvg] + ' | grade=' + whData[ri][iFg]);
+    }
+    count++;
+  }
+  Logger.log('รวม ' + count + ' แถวใน SCORES_WAREHOUSE');
+  
+  return 'ดู Logger เพื่อตรวจสอบผลลัพธ์';
 }
 
 /**
@@ -1896,24 +1977,9 @@ function convertAndSavePDF(htmlContent, fileInfo) {
     
     // บันทึกไฟล์
     const settings = getSystemSettings();
-    let folder;
-    
-    try {
-      if (settings.pdfSaveFolderId) {
-        folder = DriveApp.getFolderById(settings.pdfSaveFolderId);
-      } else {
-        folder = DriveApp.getRootFolder();
-      }
-    } catch (e) {
-      Logger.log('ไม่สามารถใช้โฟลเดอร์ที่กำหนดได้ ใช้โฟลเดอร์ราก');
-      folder = DriveApp.getRootFolder();
-    }
-    
-    const file = folder.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    
+    const url = _saveBlobGetUrl_(blob, null, settings.pdfSaveFolderId || null);
     Logger.log(`✅ บันทึกไฟล์ PDF: ${fileName}`);
-    return file.getUrl();
+    return url;
     
   } catch (error) {
     Logger.log('❌ convertAndSavePDF error:', error);
@@ -2591,8 +2657,7 @@ function placeHeader_(sheet, settings, meta, colCount) {
   // ใส่โลโก้ตรงกลาง
   try {
     if (settings && settings.logoFileId) {
-      const file = DriveApp.getFileById(settings.logoFileId);
-      const blob = file.getBlob();
+      const blob = _getFileBlobCompat_(settings.logoFileId);
       
       // คำนวณความกว้างรวมของตาราง
       let totalWidth = 0;

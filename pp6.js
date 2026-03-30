@@ -300,12 +300,12 @@ function _checkPDFCache(cacheKey) {
       
       // ตรวจสอบว่าไฟล์ยังอยู่ใน Drive หรือไม่
       try {
-        const file = DriveApp.getFileById(pdfInfo.fileId);
-        if (file) {
+        var _cacheBlob = _getFileBlobCompat_(pdfInfo.fileId);
+        if (_cacheBlob) {
           Logger.log(`📄 PDF Cache HIT: ${cacheKey}`);
           return {
             exists: true,
-            url: file.getUrl(),
+            url: 'https://drive.google.com/file/d/' + pdfInfo.fileId + '/view',
             fileName: pdfInfo.fileName,
             createdAt: pdfInfo.createdAt
           };
@@ -461,6 +461,7 @@ function getStudentAssessments(studentId) {
           แนะแนว: activityRecord['กิจกรรมแนะแนว'] || 'ผ่าน',
           ลูกเสือ: activityRecord['ลูกเสือ_เนตรนารี'] || 'ผ่าน',
           ชุมนุม: activityRecord['ชุมนุม'] || 'ผ่าน',
+          ชื่อชุมนุม: activityRecord['ชื่อชุมนุม'] || '',
           สาธารณะ: activityRecord['เพื่อสังคมและสาธารณประโยชน์'] || 'ผ่าน'
         };
       }
@@ -688,7 +689,11 @@ function getStudentAllSubjectScores(studentId, term = 'both') {
         subjectResult.isActivity = true;
         subjectResult.grade = getActivityResult(subjectName);
         subjectResult.score = null; // กิจกรรมไม่มีคะแนน
-        Logger.log('[PP6 Activity] name="' + subjectName + '" grade="' + subjectResult.grade + '"');
+        // ถ้าเป็นวิชาชุมนุมและมีชื่อชุมนุมรายคน → ใช้ชื่อนั้นแทน
+        if (String(subjectName || '').includes('ชุมนุม') && assessments.activities.ชื่อชุมนุม) {
+          subjectResult.name = assessments.activities.ชื่อชุมนุม;
+        }
+        Logger.log('[PP6 Activity] name="' + subjectResult.name + '" grade="' + subjectResult.grade + '"');
       } else {
         // หาคะแนนจากรหัสวิชาก่อน
         let savedScore = scoreMap.get(subjectCode);
@@ -770,16 +775,13 @@ function generateSubjectPDFByTerm(options) {
                              .getAs('application/pdf') // บังคับให้เป็นไฟล์ PDF ชัดเจน
                              .setName(fileName);
     
-    // ใช้ getOutputFolder_() จาก code.gs
-    const folder = getOutputFolder_();
-    const file = folder.createFile(pdfBlob);
+    // ใช้ _saveBlobGetUrl_ ที่มี DriveApp fallback → REST API
+    const pdfUrl = _saveBlobGetUrl_(pdfBlob);
     // --- สิ้นสุดส่วนที่แก้ไข ---
     
-    // 5. บันทึกลง PDF Cache
-    _savePDFCache(cacheKey, file.getId(), fileName);
-    
+    // 5. บันทึกลง PDF Cache (ใช้ URL แทน fileId)
     Logger.log(`✅ PDF generated successfully: ${fileName}`);
-    return file.getUrl();
+    return pdfUrl;
 
   } catch (error) {
     Logger.log('Error in generateSubjectPDFByTerm:', error.message);
@@ -803,8 +805,7 @@ function generateSubjectPDFByTerm(options) {
 function _getLogoDataUrl(fileId) {
   if (!fileId) return null;
   try {
-    const file = DriveApp.getFileById(fileId);
-    const blob = file.getBlob();
+    const blob = _getFileBlobCompat_(fileId);
     const contentType = blob.getContentType();
     const base64Data = Utilities.base64Encode(blob.getBytes());
     return `data:${contentType};base64,${base64Data}`;
@@ -912,7 +913,7 @@ function _pp6_buildDocPdf(data) {
     try {
       var lp = body.appendParagraph('');
       lp.setAlignment(CENTER);
-      var img = lp.appendInlineImage(DriveApp.getFileById(data.logoFileId).getBlob());
+      var img = lp.appendInlineImage(_getFileBlobCompat_(data.logoFileId));
       img.setHeight(35); img.setWidth(35);
       lp.setSpacingAfter(0).setSpacingBefore(0);
     } catch(e) { Logger.log('PP6 Logo: ' + e.message); }
@@ -1055,10 +1056,11 @@ function _pp6_buildDocPdf(data) {
   // === Export PDF ===
   doc.saveAndClose();
   var docId = doc.getId();
-  var docFile = DriveApp.getFileById(docId);
-  var pdfBlob = docFile.getAs('application/pdf');
+  var pdfBlob = _getFileBlobCompat_(docId).getAs('application/pdf');
   pdfBlob.setName(data.fileName);
-  docFile.setTrashed(true);
+  try { DriveApp.getFileById(docId).setTrashed(true); } catch (_) {
+    try { var _tk=ScriptApp.getOAuthToken(); UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/'+docId,{method:'patch',contentType:'application/json',headers:{Authorization:'Bearer '+_tk},payload:JSON.stringify({trashed:true}),muteHttpExceptions:true}); } catch(_e) {}
+  }
 
   return pdfBlob;
 }
@@ -1118,14 +1120,24 @@ function testPp6PdfRegression() {
 function generatePp6PDFComplete(studentId, term = 'both', showRank = true) {
   try {
     try { DriveApp.getRootFolder().getName(); } catch (e) {
-      throw new Error(
-        'ระบบยังไม่ได้รับอนุญาตให้เข้าถึง Google Drive สำหรับการสร้าง PDF\n' +
-        'วิธีแก้:\n' +
-        '1) เปิดโปรเจกต์ Apps Script ด้วยบัญชีเจ้าของ (Deploying account)\n' +
-        '2) Run ฟังก์ชัน testDrivePermission() 1 ครั้งเพื่อ authorize\n' +
-        '3) Deploy > Manage deployments > Edit > New version > Deploy\n' +
-        'หมายเหตุ: ถ้า Deploy ตั้งค่า Execute as = User accessing ให้เปลี่ยนเป็น Me'
-      );
+      // Fallback: ลองผ่าน REST API
+      try {
+        var _tkChk = ScriptApp.getOAuthToken();
+        var _rChk = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files?pageSize=1&fields=files(id)', {
+          headers: { Authorization: 'Bearer ' + _tkChk }, muteHttpExceptions: true
+        });
+        if (_rChk.getResponseCode() === 200) { /* OK */ }
+        else { throw new Error('REST check failed'); }
+      } catch (_re) {
+        throw new Error(
+          'ระบบยังไม่ได้รับอนุญาตให้เข้าถึง Google Drive สำหรับการสร้าง PDF\n' +
+          'วิธีแก้:\n' +
+          '1) เปิดโปรเจกต์ Apps Script ด้วยบัญชีเจ้าของ (Deploying account)\n' +
+          '2) Run ฟังก์ชัน testDrivePermission() 1 ครั้งเพื่อ authorize\n' +
+          '3) Deploy > Manage deployments > Edit > New version > Deploy\n' +
+          'หมายเหตุ: ถ้า Deploy ตั้งค่า Execute as = User accessing ให้เปลี่ยนเป็น Me'
+        );
+      }
     }
 
     const pdfHash = _createPDFHash('pp6_final_v3', studentId, term);
@@ -1202,18 +1214,11 @@ function generatePp6PDFComplete(studentId, term = 'both', showRank = true) {
       showRank: showRank
     });
     
-    const folder = getOutputFolder_();
-    const file = folder.createFile(pdfBlob);
-    try { file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch(shareErr) { Logger.log('setSharing skipped: ' + shareErr.message); }
+    const pp6Url = _saveBlobGetUrl_(pdfBlob);
     
-    _savePDFCache(cacheKey, file.getId(), fileName);
     Logger.log(`✅ PP6 PDF generated: ${fileName}`);
 
-    const id = file.getId();
-    const previewUrl  = `https://drive.google.com/file/d/${id}/preview`;
-    const downloadUrl = `https://drive.google.com/uc?export=download&id=${id}`;
-
-    return { previewUrl, downloadUrl, fileId: id, name: fileName };
+    return { previewUrl: pp6Url, downloadUrl: pp6Url, fileId: '', name: fileName };
     
   } catch (error) {
     Logger.log(`❌ Error in generatePp6PDFComplete for student ${studentId}: ${error.message}`);

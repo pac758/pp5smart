@@ -12,7 +12,7 @@
         </div>
 
         <div class="card shadow-sm mb-4">
-            <div class="card-header fw-bold">🔍 ค้นหานักเรียนที่ต้องการลบ</div>
+            <div class="card-header fw-bold"> ค้นหานักเรียนที่ต้องการลบ</div>
             <div class="card-body">
                 <div class="row g-3 align-items-end">
                     <div class="col-md-4">
@@ -34,106 +34,263 @@
             </div>
         </div>
 
+        <div class="card shadow-sm mb-4">
+            <div class="card-header fw-bold"> เลือกชั้น/ห้องเพื่อเลือกนักเรียน</div>
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label for="deleteGrade" class="form-label">ระดับชั้น:</label>
+                        <select id="deleteGrade" class="form-select">
+                            <option value="">-- เลือกชั้น --</option>
+                            <option value="อ.1">อ.1</option>
+                            <option value="อ.2">อ.2</option>
+                            <option value="อ.3">อ.3</option>
+                            <option value="ป.1">ป.1</option>
+                            <option value="ป.2">ป.2</option>
+                            <option value="ป.3">ป.3</option>
+                            <option value="ป.4">ป.4</option>
+                            <option value="ป.5">ป.5</option>
+                            <option value="ป.6">ป.6</option>
+                            <option value="ม.1">ม.1</option>
+                            <option value="ม.2">ม.2</option>
+                            <option value="ม.3">ม.3</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="deleteClass" class="form-label">ห้อง:</label>
+                        <select id="deleteClass" class="form-select" disabled>
+                            <option value="">-- เลือกห้อง --</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="deleteStudentSelect" class="form-label">นักเรียน:</label>
+                        <select id="deleteStudentSelect" class="form-select" disabled>
+                            <option value="">-- เลือกนักเรียน --</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row g-3 mt-1">
+                    <div class="col-md-4"></div>
+                    <div class="col-md-4"></div>
+                    <div class="col-md-4 text-end">
+                        <button id="chooseStudentBtn" class="btn btn-outline-danger" disabled>เลือกเพื่อลบ</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div id="resultContainer"></div>
         
         <div id="status" class="mt-3"></div>
     </div>
 
     <script>
-        let currentStudentId = null;
+        (function() {
+            const state = window.__deleteStudentState || (window.__deleteStudentState = { currentStudentId: null });
+            if (window.__deleteStudentInitialized) return;
+            window.__deleteStudentInitialized = true;
 
-        // --- Event Listeners ---
-        document.getElementById('searchBtn').addEventListener('click', searchStudent);
-        document.getElementById('searchValue').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                searchStudent();
-            }
-        });
-        
-        // Event Delegation for delete button
-        document.getElementById('resultContainer').addEventListener('click', function(event) {
-            if (event.target.id === 'confirmDeleteBtn') {
-                confirmDelete();
-            }
-        });
+            const elSearchBtn = document.getElementById('searchBtn');
+            const elSearchValue = document.getElementById('searchValue');
+            const elResultContainer = document.getElementById('resultContainer');
+            const elSearchType = document.getElementById('searchType');
+            const elStatus = document.getElementById('status');
 
-        // --- Functions ---
-        function searchStudent() {
-            const searchType = document.getElementById('searchType').value;
-            const searchValue = document.getElementById('searchValue').value.trim();
-            if (!searchValue) {
-                alert('กรุณากรอกคำค้นหา');
-                return;
-            }
-            
-            showStatus('กำลังค้นหา...', 'info');
+            const elDeleteGrade = document.getElementById('deleteGrade');
+            const elDeleteClass = document.getElementById('deleteClass');
+            const elDeleteStudentSelect = document.getElementById('deleteStudentSelect');
+            const elChooseStudentBtn = document.getElementById('chooseStudentBtn');
 
-            google.script.run
-                .withSuccessHandler(student => {
-                    const container = document.getElementById('resultContainer');
-                    if (student) {
-                        currentStudentId = student.id;
-                        container.innerHTML = `
-                            <div class="card shadow-sm border-danger">
-                                <div class="card-header bg-danger text-white fw-bold">ยืนยันการลบข้อมูล</div>
-                                <div class="card-body">
-                                    <p>คุณต้องการลบข้อมูลของนักเรียนคนนี้ใช่หรือไม่?</p>
-                                    <ul class="list-group list-group-flush mb-3">
-                                        <li class="list-group-item"><strong>รหัส:</strong> ${student.id}</li>
-                                        <li class="list-group-item"><strong>ชื่อ:</strong> ${student.name}</li>
-                                        <li class="list-group-item"><strong>ชั้น/ห้อง:</strong> ${student.grade}/${student.classNo}</li>
-                                    </ul>
-                                    <p class="text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill"></i> คำเตือน: การดำเนินการนี้ไม่สามารถย้อนกลับได้!</p>
-                                    <div class="text-end">
-                                        <button id="confirmDeleteBtn" class="btn btn-danger">ยืนยันการลบ</button>
-                                    </div>
+            function showStatus(message, type = 'info') {
+                if (!message) {
+                    elStatus.innerHTML = '';
+                    return;
+                }
+                elStatus.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            }
+
+            function handleError(error) {
+                showStatus(`เกิดข้อผิดพลาด: ${error.message}`, 'danger');
+            }
+
+            function renderCandidateList(students) {
+                if (!students || students.length === 0) {
+                    elResultContainer.innerHTML = '<div class="alert alert-warning">ไม่พบข้อมูลนักเรียนที่ค้นหา</div>';
+                    return;
+                }
+
+                if (students.length === 1) {
+                    renderConfirmCard(students[0]);
+                    return;
+                }
+
+                const options = students.map(s => {
+                    const label = `${s.id} - ${s.name} (${s.grade}/${s.classNo})`;
+                    return `<option value="${s.id}">${label}</option>`;
+                }).join('');
+
+                elResultContainer.innerHTML = `
+                    <div class="card shadow-sm">
+                        <div class="card-header fw-bold">เลือกนักเรียนที่ต้องการลบ</div>
+                        <div class="card-body">
+                            <div class="row g-2 align-items-end">
+                                <div class="col-md-9">
+                                    <label class="form-label">พบ ${students.length} รายการ</label>
+                                    <select id="studentCandidateSelect" class="form-select">${options}</select>
+                                </div>
+                                <div class="col-md-3">
+                                    <button id="selectCandidateBtn" class="btn btn-outline-danger w-100">เลือก</button>
                                 </div>
                             </div>
-                        `;
-                        showStatus(''); // Clear loading message
-                    } else {
-                        container.innerHTML = '<div class="alert alert-warning">ไม่พบข้อมูลนักเรียนที่ค้นหา</div>';
-                        showStatus('');
-                    }
-                })
-                .withFailureHandler(handleError)
-                .searchStudentBy(searchType, searchValue);
-        }
+                        </div>
+                    </div>
+                `;
 
-        function confirmDelete() {
-            if (!currentStudentId) return;
+                const btn = document.getElementById('selectCandidateBtn');
+                btn.addEventListener('click', function() {
+                    const sel = document.getElementById('studentCandidateSelect');
+                    const sid = sel && sel.value ? sel.value : '';
+                    if (!sid) return;
+                    const chosen = students.find(x => x.id === sid);
+                    if (chosen) renderConfirmCard(chosen);
+                });
+            }
 
-            if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบนักเรียนรหัส ${currentStudentId} ออกจากระบบอย่างถาวร?`)) {
-                showStatus('กำลังลบข้อมูล...', 'info');
+            function renderConfirmCard(student) {
+                state.currentStudentId = student.id;
+                elResultContainer.innerHTML = `
+                    <div class="card shadow-sm border-danger">
+                        <div class="card-header bg-danger text-white fw-bold">ยืนยันการลบข้อมูล</div>
+                        <div class="card-body">
+                            <p>คุณต้องการลบข้อมูลของนักเรียนคนนี้ใช่หรือไม่?</p>
+                            <ul class="list-group list-group-flush mb-3">
+                                <li class="list-group-item"><strong>รหัส:</strong> ${student.id}</li>
+                                <li class="list-group-item"><strong>ชื่อ:</strong> ${student.name}</li>
+                                <li class="list-group-item"><strong>ชั้น/ห้อง:</strong> ${student.grade}/${student.classNo}</li>
+                            </ul>
+                            <p class="text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill"></i> คำเตือน: การดำเนินการนี้ไม่สามารถย้อนกลับได้!</p>
+                            <div class="text-end">
+                                <button id="confirmDeleteBtn" class="btn btn-danger">ยืนยันการลบ</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                const btn = document.getElementById('confirmDeleteBtn');
+                btn.addEventListener('click', confirmDelete);
+            }
 
+            function searchStudent() {
+                const searchType = elSearchType.value;
+                const searchValue = elSearchValue.value.trim();
+                if (!searchValue) {
+                    alert('กรุณากรอกคำค้นหา');
+                    return;
+                }
+
+                showStatus('กำลังค้นหา...', 'info');
                 google.script.run
-                    .withSuccessHandler(result => {
-                        if (result.success) {
-                            showStatus(result.message, 'success');
-                            document.getElementById('resultContainer').innerHTML = '';
-                            document.getElementById('searchValue').value = '';
-                            currentStudentId = null;
-                        } else {
-                            showStatus(result.message, 'danger');
-                        }
+                    .withSuccessHandler(function(result) {
+                        showStatus('');
+                        renderCandidateList(result || []);
                     })
                     .withFailureHandler(handleError)
-                    .deleteStudent(currentStudentId);
+                    .searchStudentsForDelete(searchType, searchValue, 20);
             }
-        }
-        
-        function showStatus(message, type = 'info') {
-            const statusDiv = document.getElementById('status');
-            if (!message) {
-                statusDiv.innerHTML = '';
-                return;
+
+            function confirmDelete() {
+                const studentId = state.currentStudentId;
+                if (!studentId) return;
+                if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบนักเรียนรหัส ${studentId} ออกจากระบบอย่างถาวร?`)) {
+                    showStatus('กำลังลบข้อมูล...', 'info');
+                    google.script.run
+                        .withSuccessHandler(function(result) {
+                            if (result && result.success) {
+                                showStatus(result.message, 'success');
+                                elResultContainer.innerHTML = '';
+                                elSearchValue.value = '';
+                                state.currentStudentId = null;
+                            } else {
+                                showStatus((result && result.message) || 'ลบไม่สำเร็จ', 'danger');
+                            }
+                        })
+                        .withFailureHandler(handleError)
+                        .deleteStudent({ studentId: studentId });
+                }
             }
-            statusDiv.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
-        }
-        
-        function handleError(error) {
-            showStatus(`เกิดข้อผิดพลาด: ${error.message}`, 'danger');
-        }
+
+            function resetDeleteSelectors() {
+                elDeleteClass.innerHTML = '<option value="">-- เลือกห้อง --</option>';
+                elDeleteStudentSelect.innerHTML = '<option value="">-- เลือกนักเรียน --</option>';
+                elDeleteClass.disabled = true;
+                elDeleteStudentSelect.disabled = true;
+                elChooseStudentBtn.disabled = true;
+            }
+
+            function loadClassesForGrade() {
+                const grade = elDeleteGrade.value;
+                resetDeleteSelectors();
+                if (!grade) return;
+                showStatus('กำลังโหลดห้อง...', 'info');
+                google.script.run
+                    .withSuccessHandler(function(classes) {
+                        showStatus('');
+                        const list = classes || [];
+                        elDeleteClass.disabled = false;
+                        elDeleteClass.innerHTML = '<option value="">-- เลือกห้อง --</option>' +
+                            list.map(c => `<option value="${String(c)}">${String(c)}</option>`).join('');
+                    })
+                    .withFailureHandler(handleError)
+                    .getAvailableClassesForDelete(grade);
+            }
+
+            function loadStudentsForClass() {
+                const grade = elDeleteGrade.value;
+                const classNo = elDeleteClass.value;
+                elDeleteStudentSelect.innerHTML = '<option value="">-- เลือกนักเรียน --</option>';
+                elDeleteStudentSelect.disabled = true;
+                elChooseStudentBtn.disabled = true;
+                if (!grade || !classNo) return;
+
+                showStatus('กำลังโหลดรายชื่อนักเรียน...', 'info');
+                google.script.run
+                    .withSuccessHandler(function(students) {
+                        showStatus('');
+                        const list = students || [];
+                        elDeleteStudentSelect.disabled = false;
+                        elDeleteStudentSelect.innerHTML = '<option value="">-- เลือกนักเรียน --</option>' +
+                            list.map(s => {
+                                const label = `${s.id} - ${s.name}`;
+                                const payload = encodeURIComponent(JSON.stringify(s));
+                                return `<option value="${payload}">${label}</option>`;
+                            }).join('');
+                    })
+                    .withFailureHandler(handleError)
+                    .getStudentsForDeleteByClass(grade, classNo, 120);
+            }
+
+            function chooseStudentFromSelectors() {
+                const raw = elDeleteStudentSelect.value;
+                if (!raw) return;
+                try {
+                    const student = JSON.parse(decodeURIComponent(raw));
+                    renderConfirmCard(student);
+                } catch (e) {
+                    showStatus('ข้อมูลนักเรียนไม่ถูกต้อง', 'danger');
+                }
+            }
+
+            elSearchBtn.addEventListener('click', searchStudent);
+            elSearchValue.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') searchStudent();
+            });
+
+            elDeleteGrade.addEventListener('change', loadClassesForGrade);
+            elDeleteClass.addEventListener('change', loadStudentsForClass);
+            elDeleteStudentSelect.addEventListener('change', function() {
+                elChooseStudentBtn.disabled = !elDeleteStudentSelect.value;
+            });
+            elChooseStudentBtn.addEventListener('click', chooseStudentFromSelectors);
+        })();
     </script>
 </body>
 </html>
