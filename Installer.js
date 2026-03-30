@@ -1029,6 +1029,31 @@ function switchAcademicYear(newYear, options) {
     var archiveUrl = copiedFile.getUrl();
     Logger.log('✅ Archive สำเร็จ: ' + archiveName);
 
+    // ============ ขั้นที่ 1.5: Snapshot ชีตที่ใช้ร่วมกัน ============
+    Logger.log('📸 กำลัง snapshot ชีตที่ใช้ร่วม (Students, รายวิชา, HomeroomTeachers)...');
+    var sharedSheets = (typeof S_SHARED_SHEETS !== 'undefined') ? S_SHARED_SHEETS : ['Students', 'รายวิชา', 'HomeroomTeachers'];
+    var snapshotCount = 0;
+
+    sharedSheets.forEach(function(baseName) {
+      var srcSheet = ss.getSheetByName(baseName);
+      if (!srcSheet) {
+        Logger.log('  ⚠️ ไม่พบชีต ' + baseName + ' — ข้าม snapshot');
+        return;
+      }
+      var snapshotName = baseName + '_' + oldYear;
+      if (ss.getSheetByName(snapshotName)) {
+        Logger.log('  ℹ️ ' + snapshotName + ' มีอยู่แล้ว — ข้าม');
+        return;
+      }
+      // Copy ทั้งชีต (ข้อมูล + formatting)
+      var copied = srcSheet.copyTo(ss);
+      copied.setName(snapshotName);
+      snapshotCount++;
+      var rows = Math.max(0, srcSheet.getLastRow() - 1);
+      Logger.log('  📸 Snapshot: ' + baseName + ' → ' + snapshotName + ' (' + rows + ' rows)');
+    });
+    Logger.log('✅ Snapshot ชีตร่วม: ' + snapshotCount + ' ชีต');
+
     // ============ ขั้นที่ 2: Rename ชีตข้อมูลเดิม + สร้างชีตใหม่ ============
     Logger.log('📋 กำลัง rename ชีตเก่า + สร้างชีตใหม่...');
     var yearlyBases = S_YEARLY_SHEETS; // จาก settings_unified.js
@@ -1075,13 +1100,17 @@ function switchAcademicYear(newYear, options) {
     // ============ ขั้นที่ 3: Rename ชีตคะแนนรายวิชาเก่า ============
     Logger.log('� กำลัง rename ชีตคะแนนรายวิชา...');
     var systemSheets = [
-      'global_settings', 'Users', 'Students', 'รายวิชา', 'Holidays', 'HomeroomTeachers'
+      'global_settings', 'Users', 'users', 'Students', 'รายวิชา', 'Holidays', 'วันหยุด', 'HomeroomTeachers'
     ];
     // เพิ่มชีตที่เพิ่ง rename/สร้าง ลงใน systemSheets
     yearlyBases.forEach(function(b) {
       systemSheets.push(b);
       systemSheets.push(b + '_' + oldYear);
       systemSheets.push(b + '_' + newYear);
+    });
+    // เพิ่ม snapshot ชีตร่วม
+    sharedSheets.forEach(function(b) {
+      systemSheets.push(b + '_' + oldYear);
     });
     var prefixSkip = ['BACKUP_', 'Template_', 'TMP_'];
 
@@ -1152,6 +1181,7 @@ function switchAcademicYear(newYear, options) {
       archiveUrl: archiveUrl,
       sheetsRenamed: renamedCount,
       sheetsCreated: createdCount,
+      sharedSheetsSnapshot: snapshotCount,
       scoreSheetArchived: archivedScoreSheets,
       studentsPromoted: studentResult.promoted,
       studentsGraduated: studentResult.graduated,
@@ -1369,6 +1399,22 @@ function previewSwitchAcademicYear() {
 
     var graduateCount = gradeCounts['ป.6'] + gradeCounts['ม.3'];
 
+    // ชีตที่จะ snapshot (Students, รายวิชา, HomeroomTeachers)
+    var sharedToSnapshot = [];
+    var sharedBases = (typeof S_SHARED_SHEETS !== 'undefined') ? S_SHARED_SHEETS : ['Students', 'รายวิชา', 'HomeroomTeachers'];
+    sharedBases.forEach(function(baseName) {
+      var sheet = ss.getSheetByName(baseName);
+      var snapshotName = baseName + '_' + currentYear;
+      var alreadyExists = !!ss.getSheetByName(snapshotName);
+      sharedToSnapshot.push({
+        from: baseName,
+        to: snapshotName,
+        rows: sheet ? Math.max(0, sheet.getLastRow() - 1) : 0,
+        exists: !!sheet,
+        alreadySnapshot: alreadyExists
+      });
+    });
+
     return {
       success: true,
       currentYear: currentYear,
@@ -1380,6 +1426,7 @@ function previewSwitchAcademicYear() {
       promoteCount: studentCount - graduateCount,
       sheetsToRename: sheetsToRename,
       sheetsToCreate: sheetsToCreate,
+      sharedToSnapshot: sharedToSnapshot,
       scoreSheets: scoreSheets,
       totalDataRows: sheetsToRename.reduce(function(sum, d) { return sum + (d.rows || 0); }, 0)
     };
