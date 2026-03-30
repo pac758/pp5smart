@@ -370,7 +370,7 @@ function getStudentAssessments(studentId) {
     const result = {
       reading: { result: 'ไม่พบข้อมูล', score: 0 },
       character: { result: 'ไม่พบข้อมูล', score: 0 },
-      activities: { result: 'ไม่ผ่าน' }
+      activities: { result: 'ผ่าน' }
     };
 
     // 1. การประเมินอ่าน คิด เขียน (ปรับใหม่: nums ก่อน if + no error fallback in catch)
@@ -647,24 +647,24 @@ function getStudentAllSubjectScores(studentId, term = 'both') {
     
     // ⭐ ลบ assessmentMap ออก แล้วใช้ฟังก์ชันนี้แทน
     const getActivityResult = (subjectName) => {
-      if (!subjectName) return 'มผ';
+      if (!subjectName) return 'ผ่าน';
       const name = subjectName.toLowerCase();
       
       if (name.includes('แนะแนว')) {
-        return assessments.activities.แนะแนว || 'มผ';
+        return assessments.activities.แนะแนว || 'ผ่าน';
       }
       if (name.includes('ลูกเสือ')) {
-        return assessments.activities.ลูกเสือ || 'มผ';
+        return assessments.activities.ลูกเสือ || 'ผ่าน';
       }
       if (name.includes('ชุมนุม')) {
-        return assessments.activities.ชุมนุม || 'มผ';
+        return assessments.activities.ชุมนุม || 'ผ่าน';
       }
       if (name.includes('สังคม') || name.includes('สาธารณ')) {
-        return assessments.activities.สาธารณะ || 'มผ';
+        return assessments.activities.สาธารณะ || 'ผ่าน';
       }
 
       // fallback: ใช้ผลรวมกิจกรรม (รวมกิจกรรม) หากไม่ตรง keyword เฉพาะ
-      return assessments.activities.result || 'มผ';
+      return assessments.activities.result || 'ผ่าน';
     };
 
     // 3. สร้างรายการวิชาจาก Master Sheet
@@ -957,7 +957,7 @@ function _pp6_buildDocPdf(data) {
   };
 
   var fmtAct = function(txt) {
-    if (!txt) return 'มผ';
+    if (!txt) return 'ผ่าน';
     var s = String(txt).trim();
     if (s === 'ผ่าน' || s === 'ผ') return 'ผ่าน';
     if (s === 'ไม่ผ่าน' || s === 'มผ') return 'มผ';
@@ -1314,7 +1314,7 @@ function _createPp6ReportHTML(data) {
   const termText = term === 'both' ? 'ภาคเรียนที่ 1 และ 2' : `ภาคเรียนที่ ${term}`;
   
 const formatActivityResult = (resultText) => {
-  if (!resultText) return 'มผ';
+  if (!resultText) return 'ผ';
   const text = String(resultText).trim();
   if (text === 'ผ่าน' || text === 'ผ') return 'ผ';
   if (text === 'ไม่ผ่าน' || text === 'มผ') return 'มผ';

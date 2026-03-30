@@ -26,7 +26,7 @@ function formatGradeForDisplay_(s) {
 
   if (isActivitySubject_(s)) {
 
-    if (!g) return 'มผ';
+    if (!g) return 'ผ';
 
     const t = String(g).trim();
 
@@ -1227,25 +1227,25 @@ function getStudentScores_(id, year, assessmentsCache) {
 
             
 
-            let activityGrade = 'มผ';
+            let activityGrade = 'ผ่าน';
 
             
 
             if (subjectNameLower.includes('แนะแนว')) {
 
-              activityGrade = assessments.activities.แนะแนว || 'มผ';
+              activityGrade = assessments.activities.แนะแนว || 'ผ่าน';
 
             } else if (subjectNameLower.includes('ลูกเสือ') || subjectNameLower.includes('เนตรนารี')) {
 
-              activityGrade = assessments.activities.ลูกเสือ || 'มผ';
+              activityGrade = assessments.activities.ลูกเสือ || 'ผ่าน';
 
             } else if (subjectNameLower.includes('ชุมนุม')) {
 
-              activityGrade = assessments.activities.ชุมนุม || 'มผ';
+              activityGrade = assessments.activities.ชุมนุม || 'ผ่าน';
 
             } else if (subjectNameLower.includes('สังคม') || subjectNameLower.includes('สาธารณ')) {
 
-              activityGrade = assessments.activities.สาธารณะ || 'มผ';
+              activityGrade = assessments.activities.สาธารณะ || 'ผ่าน';
 
             }
 
