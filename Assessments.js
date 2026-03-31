@@ -386,8 +386,7 @@ function ensureRTWSheetAndHeaders_() {
   if (!sheet) sheet = ss.getSheetByName(RTW_SHEET);
 
   if (!sheet) {
-    var sheetName = (typeof S_sheetName === 'function') ? S_sheetName(RTW_SHEET) : RTW_SHEET;
-    sheet = ss.insertSheet(sheetName);
+    sheet = ss.insertSheet(RTW_SHEET);
     sheet.getRange(1, 1, 1, RTW_HEADERS.length).setValues([RTW_HEADERS]);
     var headerRange = sheet.getRange(1, 1, 1, RTW_HEADERS.length);
     headerRange.setBackground('#ffc107');
@@ -454,8 +453,7 @@ function ensureCharSheetAndHeaders_() {
   try { if (typeof S_getYearlySheet === 'function') sheet = S_getYearlySheet(CHARACTER_SHEET); } catch(_) {}
   if (!sheet) sheet = ss.getSheetByName(CHARACTER_SHEET);
   if (!sheet) {
-    var sheetName = (typeof S_sheetName === 'function') ? S_sheetName(CHARACTER_SHEET) : CHARACTER_SHEET;
-    sheet = ss.insertSheet(sheetName);
+    sheet = ss.insertSheet(CHARACTER_SHEET);
     sheet.getRange(1, 1, 1, CHARACTER_HEADERS.length).setValues([CHARACTER_HEADERS]);
     return { sheet: sheet, idx: charHeaderIndex_(sheet) };
   }
@@ -505,8 +503,7 @@ function ensureCompetencySheetAndHeaders_() {
   if (!sheet) sheet = ss.getSheetByName(COMPETENCY_SHEET);
 
   if (!sheet) {
-    var sheetName = (typeof S_sheetName === 'function') ? S_sheetName(COMPETENCY_SHEET) : COMPETENCY_SHEET;
-    sheet = ss.insertSheet(sheetName);
+    sheet = ss.insertSheet(COMPETENCY_SHEET);
     sheet.getRange(1, 1, 1, COMPETENCY_HEADERS.length).setValues([COMPETENCY_HEADERS]);
     return sheet;
   }
@@ -886,8 +883,7 @@ function saveActivityAssessmentBatch(payload) {
   return withLock_('activity_' + grade + '_' + classNo, function() {
     var sheet = S_getYearlySheet(ACTIVITY_SHEET);
     if (!sheet) {
-      var sheetName = (typeof S_sheetName === 'function') ? S_sheetName(ACTIVITY_SHEET) : ACTIVITY_SHEET;
-      sheet = ss.insertSheet(sheetName);
+      sheet = ss.insertSheet(ACTIVITY_SHEET);
       sheet.appendRow(ACTIVITY_HEADERS);
     }
     var now = new Date();
@@ -1522,4 +1518,77 @@ function createCompetencySummaryHTML(students, grade, classNo, year, school, dir
     + '<div class="footer"><table><tr><td><div class="sign-line">ลงชื่อ...................................................ครูประจำชั้น</div><div class="sign-line">(' + (teacherName || '.............................................................') + ')</div><div class="sign-line">ตำแหน่ง ครู &nbsp;&nbsp; วันที่........./........./..........</div></td>'
     + '<td><div class="sign-line">ลงชื่อ...................................................ผู้อำนวยการ</div><div class="sign-line">(' + director + ')</div><div class="sign-line">ผู้อำนวยการสถานศึกษา &nbsp;&nbsp; วันที่........./........./..........</div></td></tr></table></div>'
     + '</body></html>';
+}
+
+
+// ============================================================
+// SECTION I: ONE-TIME FIX — เปลี่ยนชื่อชีตประเมินที่มี _ปี กลับเป็นชื่อเดิม
+// ============================================================
+
+/**
+ * แก้ไขชีตประเมินที่ถูกสร้างผิดเป็นชื่อ _2568 (หรือปีอื่น)
+ * เปลี่ยนกลับเป็นชื่อฐาน (ไม่มี suffix ปี)
+ * 
+ * วิธีใช้: รันฟังก์ชันนี้ครั้งเดียวใน GAS Editor → Run
+ * ถ้ามีทั้งชีตชื่อเดิมและ _ปี จะย้ายข้อมูลจาก _ปี ไปรวมกับชีตเดิม
+ * 
+ * @returns {string} สรุปผลการทำงาน
+ */
+function fixYearlySheetsToBaseName() {
+  var ss = SS();
+  var year = S_getAcademicYear();
+  var baseNames = [
+    'การประเมินอ่านคิดเขียน',
+    'การประเมินคุณลักษณะ',
+    'การประเมินกิจกรรมพัฒนาผู้เรียน',
+    'การประเมินสมรรถนะ'
+  ];
+  
+  var results = [];
+  
+  baseNames.forEach(function(baseName) {
+    var yearName = baseName + '_' + year;
+    var yearSheet = ss.getSheetByName(yearName);
+    var baseSheet = ss.getSheetByName(baseName);
+    
+    if (!yearSheet) {
+      results.push('skip: ' + yearName + ' not found');
+      return;
+    }
+    
+    var yearRows = yearSheet.getLastRow();
+    
+    if (!baseSheet) {
+      // กรณี 1: มีแค่ชีต _ปี ไม่มีชีตเดิม → เปลี่ยนชื่อ
+      yearSheet.setName(baseName);
+      results.push('renamed: ' + yearName + ' -> ' + baseName + ' (' + Math.max(0, yearRows - 1) + ' rows)');
+    } else {
+      // กรณี 2: มีทั้ง 2 ชีต → ย้ายข้อมูลจาก _ปี ไปชีตเดิม
+      if (yearRows > 1) {
+        var lastCol = yearSheet.getLastColumn();
+        var data = yearSheet.getRange(2, 1, yearRows - 1, lastCol).getValues();
+        var baseLastRow = baseSheet.getLastRow();
+        var baseLastCol = baseSheet.getLastColumn();
+        
+        if (baseLastRow < 1 || baseLastCol < 1) {
+          var yearHeaders = yearSheet.getRange(1, 1, 1, lastCol).getValues()[0];
+          baseSheet.getRange(1, 1, 1, lastCol).setValues([yearHeaders]);
+          baseSheet.getRange(2, 1, data.length, lastCol).setValues(data);
+        } else {
+          baseSheet.getRange(baseLastRow + 1, 1, data.length, lastCol).setValues(data);
+        }
+        
+        results.push('merged: ' + data.length + ' rows from ' + yearName + ' -> ' + baseName);
+      } else {
+        results.push('skip: ' + yearName + ' has no data');
+      }
+      
+      ss.deleteSheet(yearSheet);
+      results.push('deleted: ' + yearName);
+    }
+  });
+  
+  var summary = '=== fixYearlySheetsToBaseName ===\nYear: ' + year + '\n' + results.join('\n');
+  Logger.log(summary);
+  return summary;
 }

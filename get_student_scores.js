@@ -1236,11 +1236,12 @@ function generateStudentReportPdfUnified(studentId, options) {
   options = options || {};
   var term = options.term || 'both';
   var showRank = options.showRank !== false; // default true
+  var year = options.year || undefined; // ปีการศึกษา (optional, สำหรับดูข้อมูลย้อนหลัง)
 
   // ✅ เรียก generatePp6PDFComplete โดยตรง (ปพ.6 จริง มีส่วนผู้ปกครอง/คุณลักษณะ)
   if (typeof generatePp6PDFComplete === 'function') {
     try {
-      var res = generatePp6PDFComplete(studentId, term, showRank);
+      var res = generatePp6PDFComplete(studentId, term, showRank, year);
       var pdfUrl = typeof res === 'string' ? res : (res && (res.previewUrl || res.downloadUrl) ? (res.previewUrl || res.downloadUrl) : '');
       if (pdfUrl) return { mode: 'url', url: pdfUrl };
     } catch (e) {

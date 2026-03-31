@@ -1029,6 +1029,31 @@ function switchAcademicYear(newYear, options) {
     var archiveUrl = copiedFile.getUrl();
     Logger.log('✅ Archive สำเร็จ: ' + archiveName);
 
+    // ============ ขั้นที่ 1.5: Snapshot ชีตที่ใช้ร่วมกัน ============
+    Logger.log('📸 กำลัง snapshot ชีตที่ใช้ร่วม (Students, รายวิชา, HomeroomTeachers)...');
+    var sharedSheets = (typeof S_SHARED_SHEETS !== 'undefined') ? S_SHARED_SHEETS : ['Students', 'รายวิชา', 'HomeroomTeachers'];
+    var snapshotCount = 0;
+
+    sharedSheets.forEach(function(baseName) {
+      var srcSheet = ss.getSheetByName(baseName);
+      if (!srcSheet) {
+        Logger.log('  ⚠️ ไม่พบชีต ' + baseName + ' — ข้าม snapshot');
+        return;
+      }
+      var snapshotName = baseName + '_' + oldYear;
+      if (ss.getSheetByName(snapshotName)) {
+        Logger.log('  ℹ️ ' + snapshotName + ' มีอยู่แล้ว — ข้าม');
+        return;
+      }
+      // Copy ทั้งชีต (ข้อมูล + formatting)
+      var copied = srcSheet.copyTo(ss);
+      copied.setName(snapshotName);
+      snapshotCount++;
+      var rows = Math.max(0, srcSheet.getLastRow() - 1);
+      Logger.log('  📸 Snapshot: ' + baseName + ' → ' + snapshotName + ' (' + rows + ' rows)');
+    });
+    Logger.log('✅ Snapshot ชีตร่วม: ' + snapshotCount + ' ชีต');
+
     // ============ ขั้นที่ 2: Rename ชีตข้อมูลเดิม + สร้างชีตใหม่ ============
     Logger.log('📋 กำลัง rename ชีตเก่า + สร้างชีตใหม่...');
     var yearlyBases = S_YEARLY_SHEETS; // จาก settings_unified.js
@@ -1075,13 +1100,17 @@ function switchAcademicYear(newYear, options) {
     // ============ ขั้นที่ 3: Rename ชีตคะแนนรายวิชาเก่า ============
     Logger.log('� กำลัง rename ชีตคะแนนรายวิชา...');
     var systemSheets = [
-      'global_settings', 'Users', 'Students', 'รายวิชา', 'Holidays', 'HomeroomTeachers'
+      'global_settings', 'Users', 'users', 'Students', 'รายวิชา', 'Holidays', 'วันหยุด', 'HomeroomTeachers'
     ];
     // เพิ่มชีตที่เพิ่ง rename/สร้าง ลงใน systemSheets
     yearlyBases.forEach(function(b) {
       systemSheets.push(b);
       systemSheets.push(b + '_' + oldYear);
       systemSheets.push(b + '_' + newYear);
+    });
+    // เพิ่ม snapshot ชีตร่วม
+    sharedSheets.forEach(function(b) {
+      systemSheets.push(b + '_' + oldYear);
     });
     var prefixSkip = ['BACKUP_', 'Template_', 'TMP_'];
 
@@ -1128,14 +1157,14 @@ function switchAcademicYear(newYear, options) {
       }
     }
 
-    // ============ ขั้นที่ 5: จำหน่าย ป.6 + เลื่อนชั้น ============
+    // ============ ขั้นที่ 5: จำหน่าย ป.6/ม.3 + เลื่อนชั้น ============
     var studentResult = { promoted: 0, graduated: 0 };
     if (options.promoteStudents !== false) {
-      Logger.log('🎓 กำลังจำหน่ายนักเรียน ป.6 และเลื่อนชั้น...');
+      Logger.log('🎓 กำลังจำหน่ายนักเรียน ป.6/ม.3 และเลื่อนชั้น...');
       try {
-        var gradResult = graduateP6Students_();
+        var gradResult = graduateStudents_();
         studentResult.graduated = gradResult.graduated || 0;
-      } catch (e) { Logger.log('⚠️ graduateP6: ' + e.message); }
+      } catch (e) { Logger.log('⚠️ graduateStudents: ' + e.message); }
       try {
         var proResult = promoteStudents_();
         studentResult.promoted = proResult.promoted || 0;
@@ -1152,6 +1181,7 @@ function switchAcademicYear(newYear, options) {
       archiveUrl: archiveUrl,
       sheetsRenamed: renamedCount,
       sheetsCreated: createdCount,
+      sharedSheetsSnapshot: snapshotCount,
       scoreSheetArchived: archivedScoreSheets,
       studentsPromoted: studentResult.promoted,
       studentsGraduated: studentResult.graduated,
@@ -1175,8 +1205,8 @@ function switchAcademicYear(newYear, options) {
 
 /**
  * เลื่อนชั้นนักเรียนที่ status = 'active':
- * ป.1 → ป.2, ป.2 → ป.3, ..., ป.5 → ป.6
- * (ป.6 ไม่เลื่อน — ต้องจำหน่ายก่อน)
+ * อ.1 → อ.2, ..., ป.1 → ป.2, ..., ป.5 → ป.6, ม.1 → ม.2, ม.2 → ม.3
+ * (ป.6 และ ม.3 ไม่เลื่อน — ต้องจำหน่ายก่อน ยกเว้นกรณีขยายโอกาสที่ต้องการเลื่อน ป.6 → ม.1 สามารถปรับ gradeMap ได้)
  * @returns {Object} { promoted: number }
  */
 function promoteStudents_() {
@@ -1196,11 +1226,17 @@ function promoteStudents_() {
   if (gradeIdx == null) return { promoted: 0 };
 
   var gradeMap = {
+    'อ.1': 'อ.2',
+    'อ.2': 'อ.3',
+    'อ.3': 'ป.1',
     'ป.1': 'ป.2',
     'ป.2': 'ป.3',
     'ป.3': 'ป.4',
     'ป.4': 'ป.5',
-    'ป.5': 'ป.6'
+    'ป.5': 'ป.6',
+    // 'ป.6': 'ม.1', // ปกติจำหน่าย แต่ถ้ามีมัธยมอาจเลื่อนเอง
+    'ม.1': 'ม.2',
+    'ม.2': 'ม.3'
   };
 
   var promoted = 0;
@@ -1234,15 +1270,15 @@ function promoteAllStudents() {
 }
 
 // ============================================================
-// 🎓 GRADUATE P.6 — จำหน่ายนักเรียน ป.6
+// 🎓 GRADUATE STUDENTS — จำหน่ายนักเรียนที่จบการศึกษา (ป.6 / ม.3)
 // ============================================================
 
 /**
- * จำหน่ายนักเรียน ป.6 ที่ status = 'active':
+ * จำหน่ายนักเรียน ป.6 และ ม.3 ที่ status = 'active':
  * เปลี่ยน status เป็น 'จำหน่าย' (ไม่ลบข้อมูล ยังดูได้)
  * @returns {Object} { graduated: number }
  */
-function graduateP6Students_() {
+function graduateStudents_() {
   var ss = SS();
   var sheet = ss.getSheetByName('Students');
   if (!sheet) return { graduated: 0 };
@@ -1270,24 +1306,24 @@ function graduateP6Students_() {
   for (var r = 1; r < data.length; r++) {
     var currentGrade = String(data[r][gradeIdx]).trim();
     var status = String(data[r][statusIdx] || '').trim();
-    if (currentGrade === 'ป.6' && (status === 'active' || status === '')) {
+    if ((currentGrade === 'ป.6' || currentGrade === 'ม.3') && (status === 'active' || status === '')) {
       sheet.getRange(r + 1, statusIdx + 1).setValue('จำหน่าย');
       graduated++;
     }
   }
 
-  Logger.log('🎓 จำหน่ายนักเรียน ป.6: ' + graduated + ' คน');
+  Logger.log('🎓 จำหน่ายนักเรียน ป.6/ม.3: ' + graduated + ' คน');
   return { graduated: graduated };
 }
 
 /**
- * จำหน่ายนักเรียน ป.6 (เรียกจากภายนอก / UI)
+ * จำหน่ายนักเรียนที่จบการศึกษา (เรียกจากภายนอก / UI)
  * @returns {Object}
  */
-function graduateP6() {
+function graduateStudents() {
   try {
-    var result = graduateP6Students_();
-    return { success: true, message: 'จำหน่ายนักเรียน ป.6 จำนวน ' + result.graduated + ' คน', graduated: result.graduated };
+    var result = graduateStudents_();
+    return { success: true, message: 'จำหน่ายนักเรียนที่จบการศึกษา จำนวน ' + result.graduated + ' คน', graduated: result.graduated };
   } catch (e) {
     return { success: false, message: e.message };
   }
@@ -1344,7 +1380,7 @@ function previewSwitchAcademicYear() {
     // นับนักเรียนแยกตามชั้น
     var studentsSheet = ss.getSheetByName('Students');
     var studentCount = 0;
-    var gradeCounts = { 'ป.1': 0, 'ป.2': 0, 'ป.3': 0, 'ป.4': 0, 'ป.5': 0, 'ป.6': 0 };
+    var gradeCounts = { 'อ.1': 0, 'อ.2': 0, 'อ.3': 0, 'ป.1': 0, 'ป.2': 0, 'ป.3': 0, 'ป.4': 0, 'ป.5': 0, 'ป.6': 0, 'ม.1': 0, 'ม.2': 0, 'ม.3': 0 };
     if (studentsSheet && studentsSheet.getLastRow() > 1) {
       var sData = studentsSheet.getDataRange().getValues();
       var sHeaders = sData[0];
@@ -1361,16 +1397,36 @@ function previewSwitchAcademicYear() {
       }
     }
 
+    var graduateCount = gradeCounts['ป.6'] + gradeCounts['ม.3'];
+
+    // ชีตที่จะ snapshot (Students, รายวิชา, HomeroomTeachers)
+    var sharedToSnapshot = [];
+    var sharedBases = (typeof S_SHARED_SHEETS !== 'undefined') ? S_SHARED_SHEETS : ['Students', 'รายวิชา', 'HomeroomTeachers'];
+    sharedBases.forEach(function(baseName) {
+      var sheet = ss.getSheetByName(baseName);
+      var snapshotName = baseName + '_' + currentYear;
+      var alreadyExists = !!ss.getSheetByName(snapshotName);
+      sharedToSnapshot.push({
+        from: baseName,
+        to: snapshotName,
+        rows: sheet ? Math.max(0, sheet.getLastRow() - 1) : 0,
+        exists: !!sheet,
+        alreadySnapshot: alreadyExists
+      });
+    });
+
     return {
       success: true,
       currentYear: currentYear,
       suggestedNewYear: newYear,
       studentCount: studentCount,
       gradeCounts: gradeCounts,
-      p6Count: gradeCounts['ป.6'],
-      promoteCount: studentCount - gradeCounts['ป.6'],
+      graduateCount: graduateCount,
+      p6Count: graduateCount, // ใช้ชื่อตัวแปร p6Count เพื่อให้ UI เดิมทำงานได้ หรืออาจจะเปลี่ยนเป็น graduateCount แล้วไปแก้ UI ด้วย
+      promoteCount: studentCount - graduateCount,
       sheetsToRename: sheetsToRename,
       sheetsToCreate: sheetsToCreate,
+      sharedToSnapshot: sharedToSnapshot,
       scoreSheets: scoreSheets,
       totalDataRows: sheetsToRename.reduce(function(sum, d) { return sum + (d.rows || 0); }, 0)
     };

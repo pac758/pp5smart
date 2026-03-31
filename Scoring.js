@@ -1324,7 +1324,7 @@ function debugScoreWarehouseCheck(grade, classNo) {
   });
   
   // 2. ดู SCORES_WAREHOUSE
-  var wh = ss.getSheetByName('SCORES_WAREHOUSE');
+  var wh = (typeof S_getYearlySheet === 'function') ? S_getYearlySheet('SCORES_WAREHOUSE') : ss.getSheetByName('SCORES_WAREHOUSE');
   if (!wh) { Logger.log('❌ ไม่พบชีต SCORES_WAREHOUSE'); return; }
   var whData = wh.getDataRange().getValues();
   var h = whData[0];

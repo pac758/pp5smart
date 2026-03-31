@@ -504,6 +504,52 @@ var S_YEARLY_SHEETS = [
   'ความเห็นครู'
 ];
 
+/** ชีตที่ใช้ร่วมกันทุกปี — จะถูก snapshot เป็น ชื่อ_ปี เมื่อเปลี่ยนปีการศึกษา */
+var S_SHARED_SHEETS = ['Students', 'รายวิชา', 'HomeroomTeachers'];
+
+/**
+ * ดึง Sheet object ของชีตที่ใช้ร่วม (Students/รายวิชา/HomeroomTeachers)
+ * - ถ้าระบุ year และมี snapshot (เช่น Students_2568) → คืน snapshot
+ * - ถ้าไม่ระบุ year หรือ year = ปีปัจจุบัน → คืนชีต live
+ * - fallback: ชื่อเดิมไม่มี suffix
+ * @param {string} baseName - ชื่อฐานชีต เช่น 'Students'
+ * @param {string} [year] - ปีการศึกษา (optional, ถ้าไม่ระบุ = ปีปัจจุบัน)
+ * @returns {GoogleAppsScript.Spreadsheet.Sheet|null}
+ */
+function S_getSharedSheet(baseName, year) {
+  var ss = SS();
+  var currentYear = S_getAcademicYear();
+  var requestedYear = year ? String(year) : String(currentYear);
+
+  // ถ้าขอปีปัจจุบัน → ใช้ชีต live
+  if (requestedYear === String(currentYear)) {
+    return ss.getSheetByName(baseName) || null;
+  }
+
+  // ถ้าขอปีเก่า → ลอง snapshot ก่อน แล้ว fallback ไปชีต live
+  var snapshotName = baseName + '_' + requestedYear;
+  return ss.getSheetByName(snapshotName) || ss.getSheetByName(baseName) || null;
+}
+
+/**
+ * ดึงรายการปีการศึกษาที่มีข้อมูลในระบบ (จากชีต snapshot + ชีตรายปี)
+ * @returns {string[]} เช่น ['2567', '2568', '2569']
+ */
+function S_getAvailableYears() {
+  var ss = SS();
+  var years = {};
+  var currentYear = S_getAcademicYear();
+  years[String(currentYear)] = true;
+
+  ss.getSheets().forEach(function(sheet) {
+    var name = sheet.getName();
+    var match = name.match(/_(\d{4})$/);
+    if (match) years[match[1]] = true;
+  });
+
+  return Object.keys(years).sort();
+}
+
 /**
  * สร้างชื่อชีตสำหรับปีที่ระบุ
  * เช่น S_sheetName('SCORES_WAREHOUSE', '2568') → 'SCORES_WAREHOUSE_2568'

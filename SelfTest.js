@@ -178,7 +178,7 @@ function findStudent763() {
   }
 
   // 3. ค้นหาใน SCORES_WAREHOUSE
-  var wh = ss.getSheetByName('SCORES_WAREHOUSE');
+  var wh = (typeof S_getYearlySheet === 'function') ? S_getYearlySheet('SCORES_WAREHOUSE') : ss.getSheetByName('SCORES_WAREHOUSE');
   if (wh) {
     var wd = wh.getDataRange().getValues();
     for (var r = 0; r < wd.length; r++) {
