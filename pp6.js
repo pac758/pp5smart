@@ -500,6 +500,33 @@ function _pp6_getDetailedAssessments(studentId) {
     }
   } catch(e) { Logger.log('PP6 char detail: ' + e.message); }
 
+  // เพิ่มอ่านคิดเขียน 5 เกณฑ์ (จากชีตใหม่)
+  var rtw5Headers = [
+    'อ่านเพื่อหาข้อมูลสารสนเทศ', 'จับประเด็นสำคัญ', 'เชื่อมโยงความสัมพันธ์',
+    'แสดงความคิดเห็น', 'ถ่ายทอดความคิดโดยการเขียน'
+  ];
+  var rtw5Labels = [
+    'สามารถอ่านเพื่อหาข้อมูลสารสนเทศ', 'สามารถจับประเด็นสำคัญ',
+    'สามารถเชื่อมโยงความสัมพันธ์', 'สามารถแสดงความคิดเห็น',
+    'สามารถถ่ายทอดความคิดโดยการเขียน'
+  ];
+  base.reading.criteria = {};
+  try {
+    var rtw5Data = _readSheetToObjects('ประเมินอ่านคิดเขียน5เกณฑ์');
+    var rtw5Rec = rtw5Data.find(function(r) { return String(r['รหัสนักเรียน']).trim() === sid; });
+    if (rtw5Rec) {
+      rtw5Headers.forEach(function(h, i) {
+        var score = parseFloat(rtw5Rec[h]) || 0;
+        base.reading.criteria[rtw5Labels[i]] = score >= 2.5 ? 'ดีเยี่ยม' : score >= 2.0 ? 'ดี' : score >= 1.0 ? 'ผ่าน' : 'ปรับปรุง';
+      });
+      // อัปเดตสรุปจากชีต 5 เกณฑ์ (ถ้ามี)
+      var rtw5Result = String(rtw5Rec['ผลการประเมิน'] || '').trim();
+      if (rtw5Result) {
+        base.reading.result = rtw5Result;
+      }
+    }
+  } catch(e) { Logger.log('PP6 rtw5 detail: ' + e.message); }
+
   // เพิ่มสมรรถนะ 5 ด้าน
   var compGroups = [
     { name: 'ความสามารถในการสื่อสาร', prefix: 'สื่อสาร_' },
@@ -964,6 +991,13 @@ function _pp6_buildDocPdf(data) {
     return p;
   };
 
+  // helper: ย่อช่องว่างระหว่าง table
+  var _sp = function() {
+    var p = body.appendParagraph('');
+    p.setSpacingAfter(0).setSpacingBefore(0);
+    p.editAsText().setFontSize(1).setFontFamily(F);
+  };
+
   // === HEADER ===
   if (data.logoFileId) {
     try {
@@ -983,70 +1017,51 @@ function _pp6_buildDocPdf(data) {
   addLine(infoText, 11, false, 2, CENTER);
 
   // === ตารางรายวิชา ===
-  if (data.term === 'both') {
-    // 11 คอลัมน์: ที่ | รหัส | ชื่อวิชา | ประเภท | น.น. | ภาค1(คะแนน,เกรด) | ภาค2(คะแนน,เกรด) | สรุป(คะแนนเฉลี่ย,เกรด)
+  if (true) {
+    // 11 คอลัมน์: ที่ | รหัส | ชื่อวิชา | ประเภท | น.น. | ภาค1(คะแนน,เกรด) | ภาค2(คะแนน,เกรด) | สรุปผลปลายปี(คะแนน) | ผลการประเมิน
     var T = body.appendTable();
     T.setBorderWidth(0.5);
     T.setBorderColor('#000000');
-    var W = [18, 42, 190, 40, 24, 38, 26, 38, 26, 42, 45];
+    var W = [18, 40, 170, 36, 22, 36, 24, 36, 24, 48, 75];
 
     var r1 = T.appendTableRow();
-    var h1 = ['ที่','รหัสวิชา','ชื่อวิชา','ประเภท','น.น.','ภาคเรียนที่ 1','','ภาคเรียนที่ 2','','สรุปผล',''];
+    var h1 = ['ที่','รหัสวิชา','ชื่อวิชา','ประเภท','น.น.','ภาคเรียนที่ 1','','ภาคเรียนที่ 2','','คะแนนเฉลี่ย','ผลการ'];
     h1.forEach(function(h, i) { _opr_cell(r1.appendTableCell(h), W[i], FS_H, true, HDR_BG); });
     _opr_addLine(r1.getCell(3), 'วิชา', FS_H, true);
-    _opr_addLine(r1.getCell(9), 'ปลายปี', FS_H, true);
+    _opr_addLine(r1.getCell(9), '2 ภาคเรียน', FS_H, true);
+    _opr_addLine(r1.getCell(10), 'ประเมิน', FS_H, true);
 
     var r2 = T.appendTableRow();
-    var h2 = ['','','','','','คะแนน','เกรด','คะแนน','เกรด','คะแนน','เกรด'];
+    var h2 = ['','','','','','คะแนน','เกรด','คะแนน','เกรด','',''];
     h2.forEach(function(h, i) { _opr_cell(r2.appendTableCell(h), W[i], FS_H, true, HDR_BG); });
 
     data.subjects.forEach(function(s, idx) {
       var isAct = s.isActivity;
       var row = T.appendTableRow();
+      var showTerm1 = data.term === '1' || data.term === '2' || data.term === 'both';
+      var showTerm2 = data.term === '2' || data.term === 'both';
+      var showYearSummary = data.term === '2' || data.term === 'both';
       var v = [
         String(idx + 1),
         s.code || '',
         s.name || '',
         s.type || '',
         String(s.credit || ''),
-        isAct ? '' : (s.t1 > 0 ? String(Math.round(s.t1)) : ''),
-        isAct ? '' : (s.t1g > 0 ? _fmtGrade(s.t1g) : ''),
-        isAct ? '' : (s.t2 > 0 ? String(Math.round(s.t2)) : ''),
-        isAct ? '' : (s.t2g > 0 ? _fmtGrade(s.t2g) : ''),
-        isAct ? '' : (s.avg > 0 ? s.avg.toFixed(1) : ''),
-        isAct ? (s.actResult || 'ผ่าน') : (s.fg >= 0 ? _fmtGrade(s.fg) : '')
+        isAct ? '' : (showTerm1 && s.t1 > 0 ? String(Math.round(s.t1)) : ''),
+        isAct ? '' : (showTerm1 && s.t1g > 0 ? _fmtGrade(s.t1g) : ''),
+        isAct ? '' : (showTerm2 && s.t2 > 0 ? String(Math.round(s.t2)) : ''),
+        isAct ? '' : (showTerm2 && s.t2g > 0 ? _fmtGrade(s.t2g) : ''),
+        isAct ? '' : (showYearSummary && s.avg > 0 ? s.avg.toFixed(1) : ''),
+        isAct ? (showYearSummary ? (s.actResult || 'ผ่าน') : '') : (showYearSummary && s.fg >= 0 ? _fmtGrade(s.fg) : '')
       ];
       v.forEach(function(val, i) {
         _opr_cell(row.appendTableCell(val), W[i], FS_D, false, null, (i === 2 ? LEFT : null));
       });
     });
-  } else {
-    // Single term — 7 คอลัมน์
-    var TT = body.appendTable();
-    TT.setBorderWidth(0.5);
-    TT.setBorderColor('#000000');
-    var W7 = [18, 42, 250, 45, 30, 70, 74];
-    var termHdr = 'ภาค ' + data.term;
-    var hr7 = TT.appendTableRow();
-    ['ที่','รหัสวิชา','ชื่อวิชา','ประเภท','น.น.','คะแนน ' + termHdr,'เกรด ' + termHdr]
-      .forEach(function(h, i) { _opr_cell(hr7.appendTableCell(h), W7[i], FS_H, true, HDR_BG); });
-    data.subjects.forEach(function(s, idx) {
-      var isAct = s.isActivity;
-      var row7 = TT.appendTableRow();
-      var score = data.term === '1' ? Number(s.t1) : Number(s.t2);
-      var gradeVal = data.term === '1' ? Number(s.t1g) : Number(s.t2g);
-      var vv = [
-        String(idx + 1), s.code || '', s.name || '', s.type || '', String(s.credit || ''),
-        isAct ? '' : (Number.isFinite(score) && score > 0 ? String(Math.round(score)) : ''),
-        isAct ? (s.actResult || 'ผ่าน') : (Number.isFinite(gradeVal) && gradeVal > 0 ? _fmtGrade(gradeVal) : '')
-      ];
-      vv.forEach(function(val, i) {
-        _opr_cell(row7.appendTableCell(val), W7[i], FS_D, false, null, (i === 2 ? LEFT : null));
-      });
-    });
   }
 
   // === สรุป GPA ===
+  _sp();
   var gpa = data.gpaInfo;
   var sumT = body.appendTable();
   sumT.setBorderWidth(0.5);
@@ -1059,25 +1074,31 @@ function _pp6_buildDocPdf(data) {
   _opr_cell(sumR.appendTableCell(sumTxt), 529, 10, true, HDR_BG);
 
   // === ผลการประเมิน 4 กล่อง (2 ตาราง × 2 คอลัมน์) ===
+  if (true) {
   var assessments = data.assessments || {};
-  var readResult = (assessments.reading && assessments.reading.result) || '-';
-  var charResult = (assessments.character && assessments.character.result) || '-';
-  var actResult = (assessments.activities && assessments.activities.result) || '-';
-  var compResult = (assessments.competency && assessments.competency.result) || '-';
-  var charTraits = (assessments.character && assessments.character.traits) || {};
-  var compItems = (assessments.competency && assessments.competency.items) || {};
-  var activities = assessments.activities || {};
+  var showAssessmentValues = data.term === '2' || data.term === 'both';
+  var readResult = showAssessmentValues ? ((assessments.reading && assessments.reading.result) || '-') : '';
+  var charResult = showAssessmentValues ? ((assessments.character && assessments.character.result) || '-') : '';
+  var actResult = showAssessmentValues ? ((assessments.activities && assessments.activities.result) || '-') : '';
+  var compResult = showAssessmentValues ? ((assessments.competency && assessments.competency.result) || '-') : '';
+  var charTraits = showAssessmentValues ? ((assessments.character && assessments.character.traits) || {}) : {};
+  var compItems = showAssessmentValues ? ((assessments.competency && assessments.competency.items) || {}) : {};
+  var activities = showAssessmentValues ? (assessments.activities || {}) : {};
+  var readCriteria = showAssessmentValues ? ((assessments.reading && assessments.reading.criteria) || {}) : {};
 
-  var AW = [264, 265];
+  var AW4 = [210, 54, 211, 54];
   var FS_A = 9;
 
-  // --- ตาราง A1: อ่านคิดเขียน + คุณลักษณะ ---
+  // --- ตาราง A1: อ่านคิดเขียน + คุณลักษณะ (4 คอลัมน์: label|result|label|result) ---
+  _sp();
   var A1 = body.appendTable();
   A1.setBorderWidth(0.5);
   A1.setBorderColor('#000000');
   var a1h = A1.appendTableRow();
-  _opr_cell(a1h.appendTableCell('ผลการประเมินการอ่าน คิดวิเคราะห์ และเขียน'), AW[0], FS_A, true, HDR_BG, LEFT);
-  _opr_cell(a1h.appendTableCell('ผลการประเมินคุณลักษณะอันพึงประสงค์'), AW[1], FS_A, true, HDR_BG, LEFT);
+  _opr_cell(a1h.appendTableCell('ผลการประเมินการอ่าน คิดวิเคราะห์ และเขียน'), AW4[0], FS_A, true, HDR_BG, LEFT);
+  _opr_cell(a1h.appendTableCell(''), AW4[1], FS_A, true, HDR_BG);
+  _opr_cell(a1h.appendTableCell('ผลการประเมินคุณลักษณะอันพึงประสงค์'), AW4[2], FS_A, true, HDR_BG, LEFT);
+  _opr_cell(a1h.appendTableCell(''), AW4[3], FS_A, true, HDR_BG);
 
   var readLabels = [
     '1. สามารถอ่านเพื่อหาข้อมูลสารสนเทศ',
@@ -1086,35 +1107,45 @@ function _pp6_buildDocPdf(data) {
     '4. สามารถแสดงความคิดเห็น',
     '5. สามารถถ่ายทอดความคิดโดยการเขียน'
   ];
+  var readCriteriaKeys = [
+    'สามารถอ่านเพื่อหาข้อมูลสารสนเทศ', 'สามารถจับประเด็นสำคัญ',
+    'สามารถเชื่อมโยงความสัมพันธ์', 'สามารถแสดงความคิดเห็น',
+    'สามารถถ่ายทอดความคิดโดยการเขียน'
+  ];
   var traitNames = ['รักชาติ ศาสน์ กษัตริย์','ซื่อสัตย์สุจริต','มีวินัย','ใฝ่เรียนรู้',
     'อยู่อย่างพอเพียง','มุ่งมั่นในการทำงาน','รักความเป็นไทย','มีจิตสาธารณะ'];
 
   var maxR1 = Math.max(readLabels.length + 1, traitNames.length + 1);
   for (var ri = 0; ri < maxR1; ri++) {
     var aRow = A1.appendTableRow();
-    var lt = '';
-    if (ri < readLabels.length) lt = readLabels[ri];
-    else if (ri === readLabels.length) lt = 'สรุป: ' + readResult;
-    _opr_cell(aRow.appendTableCell(lt), AW[0], FS_A, ri === readLabels.length, null, LEFT);
-    var rt = '';
-    if (ri < traitNames.length) rt = (ri + 1) + '. ' + traitNames[ri] + '  ' + (charTraits[traitNames[ri]] || '');
-    else if (ri === traitNames.length) rt = 'สรุป: ' + charResult;
-    _opr_cell(aRow.appendTableCell(rt), AW[1], FS_A, ri === traitNames.length, null, LEFT);
+    var lt = '', lv = '';
+    if (ri < readLabels.length) { lt = readLabels[ri]; lv = readCriteria[readCriteriaKeys[ri]] || ''; }
+    else if (ri === readLabels.length) { lt = 'สรุป:'; lv = readResult; }
+    _opr_cell(aRow.appendTableCell(lt), AW4[0], FS_A, ri === readLabels.length, null, LEFT);
+    _opr_cell(aRow.appendTableCell(lv), AW4[1], FS_A, false);
+    var rt = '', rv = '';
+    if (ri < traitNames.length) { rt = (ri + 1) + '. ' + traitNames[ri]; rv = charTraits[traitNames[ri]] || ''; }
+    else if (ri === traitNames.length) { rt = 'สรุป:'; rv = charResult; }
+    _opr_cell(aRow.appendTableCell(rt), AW4[2], FS_A, ri === traitNames.length, null, LEFT);
+    _opr_cell(aRow.appendTableCell(rv), AW4[3], FS_A, false);
   }
 
-  // --- ตาราง A2: กิจกรรม + สมรรถนะ ---
+  // --- ตาราง A2: กิจกรรม + สมรรถนะ (4 คอลัมน์) ---
+  _sp();
   var A2 = body.appendTable();
   A2.setBorderWidth(0.5);
   A2.setBorderColor('#000000');
   var a2h = A2.appendTableRow();
-  _opr_cell(a2h.appendTableCell('ผลการประเมินกิจกรรมพัฒนาผู้เรียน'), AW[0], FS_A, true, HDR_BG, LEFT);
-  _opr_cell(a2h.appendTableCell('ผลการประเมินสมรรถนะสำคัญของผู้เรียน'), AW[1], FS_A, true, HDR_BG, LEFT);
+  _opr_cell(a2h.appendTableCell('ผลการประเมินกิจกรรมพัฒนาผู้เรียน'), AW4[0], FS_A, true, HDR_BG, LEFT);
+  _opr_cell(a2h.appendTableCell(''), AW4[1], FS_A, true, HDR_BG);
+  _opr_cell(a2h.appendTableCell('ผลการประเมินสมรรถนะสำคัญของผู้เรียน'), AW4[2], FS_A, true, HDR_BG, LEFT);
+  _opr_cell(a2h.appendTableCell(''), AW4[3], FS_A, true, HDR_BG);
 
   var actItems = [
-    { label: '1. กิจกรรมแนะแนว', val: activities.แนะแนว || 'ผ่าน' },
-    { label: '2. ลูกเสือ-เนตรนารี', val: activities.ลูกเสือ || 'ผ่าน' },
-    { label: '3. ชุมนุม' + (activities.ชื่อชุมนุม ? ' (' + activities.ชื่อชุมนุม + ')' : ''), val: activities.ชุมนุม || 'ผ่าน' },
-    { label: '4. เพื่อสังคมและสาธารณประโยชน์', val: activities.สาธารณะ || 'ผ่าน' }
+    { label: '1. กิจกรรมแนะแนว', val: showAssessmentValues ? (activities.แนะแนว || 'ผ่าน') : '' },
+    { label: '2. ลูกเสือ-เนตรนารี', val: showAssessmentValues ? (activities.ลูกเสือ || 'ผ่าน') : '' },
+    { label: '3. ชุมนุม' + (activities.ชื่อชุมนุม ? ' (' + activities.ชื่อชุมนุม + ')' : ''), val: showAssessmentValues ? (activities.ชุมนุม || 'ผ่าน') : '' },
+    { label: '4. เพื่อสังคมและสาธารณประโยชน์', val: showAssessmentValues ? (activities.สาธารณะ || 'ผ่าน') : '' }
   ];
   var compLabels = [
     'ความสามารถในการสื่อสาร','ความสามารถในการคิด','ความสามารถในการแก้ปัญหา',
@@ -1124,25 +1155,28 @@ function _pp6_buildDocPdf(data) {
   var maxR2 = Math.max(actItems.length + 1, compLabels.length + 1);
   for (var ri2 = 0; ri2 < maxR2; ri2++) {
     var aRow2 = A2.appendTableRow();
-    var lt2 = '';
-    if (ri2 < actItems.length) lt2 = actItems[ri2].label + '  ' + actItems[ri2].val;
-    else if (ri2 === actItems.length) lt2 = 'สรุป: ' + actResult;
-    _opr_cell(aRow2.appendTableCell(lt2), AW[0], FS_A, ri2 === actItems.length, null, LEFT);
-    var rt2 = '';
-    if (ri2 < compLabels.length) rt2 = (ri2 + 1) + '. ' + compLabels[ri2] + '  ' + (compItems[compLabels[ri2]] || '');
-    else if (ri2 === compLabels.length) rt2 = 'สรุป: ' + compResult;
-    _opr_cell(aRow2.appendTableCell(rt2), AW[1], FS_A, ri2 === compLabels.length, null, LEFT);
+    var lt2 = '', lv2 = '';
+    if (ri2 < actItems.length) { lt2 = actItems[ri2].label; lv2 = actItems[ri2].val; }
+    else if (ri2 === actItems.length) { lt2 = 'สรุป:'; lv2 = actResult; }
+    _opr_cell(aRow2.appendTableCell(lt2), AW4[0], FS_A, ri2 === actItems.length, null, LEFT);
+    _opr_cell(aRow2.appendTableCell(lv2), AW4[1], FS_A, false);
+    var rt2 = '', rv2 = '';
+    if (ri2 < compLabels.length) { rt2 = (ri2 + 1) + '. ' + compLabels[ri2]; rv2 = compItems[compLabels[ri2]] || ''; }
+    else if (ri2 === compLabels.length) { rt2 = 'สรุป:'; rv2 = compResult; }
+    _opr_cell(aRow2.appendTableCell(rt2), AW4[2], FS_A, ri2 === compLabels.length, null, LEFT);
+    _opr_cell(aRow2.appendTableCell(rv2), AW4[3], FS_A, false);
   }
+  } // end assessment boxes
 
   // === ความคิดเห็นของครูประจำชั้น ===
   var cmtH = body.appendParagraph('ความคิดเห็นของครูประจำชั้น / ครูที่ปรึกษา:');
   cmtH.editAsText().setBold(true).setFontSize(10).setFontFamily(F);
-  cmtH.setSpacingAfter(0).setSpacingBefore(3);
+  cmtH.setSpacingAfter(0).setSpacingBefore(1);
 
   var cmtText = data.teacherComment && data.teacherComment !== '-' ? data.teacherComment : '............................................................................................................................';
   var cmtP = body.appendParagraph(cmtText);
   cmtP.editAsText().setBold(false).setFontSize(10).setFontFamily(F);
-  cmtP.setSpacingAfter(20).setSpacingBefore(0);
+  cmtP.setSpacingAfter(4).setSpacingBefore(0);
 
   // === ลายเซ็น 3 คอลัมน์ ===
   var sigT = body.appendTable();
@@ -1184,7 +1218,7 @@ function _pp6_buildDocPdf(data) {
   var docId = doc.getId();
 
   // Merge header cells ของตาราง 11 คอลัมน์
-  if (data.term === 'both') {
+  if (true) {
     try {
       var dj = Docs.Documents.get(docId);
       var reqs = [];
@@ -1197,11 +1231,16 @@ function _pp6_buildDocPdf(data) {
           var si = el.startIndex;
           reqs.push(_opr_merge(si, 0, 5, 1, 2));  // ภาคเรียนที่ 1
           reqs.push(_opr_merge(si, 0, 7, 1, 2));  // ภาคเรียนที่ 2
-          reqs.push(_opr_merge(si, 0, 9, 1, 2));  // สรุปผลปลายปี
           for (var ci = 0; ci < 5; ci++) {
             reqs.push(_opr_merge(si, 0, ci, 2, 1)); // merge row1+row2 cols 0-4
           }
-          break;
+          reqs.push(_opr_merge(si, 0, 9, 2, 1)); // merge row1+row2 col 9 (สรุปผลปลายปี)
+          reqs.push(_opr_merge(si, 0, 10, 2, 1)); // merge row1+row2 col 10 (ผลการประเมิน)
+        }
+        if (nc === 4 && nr > 1) {
+          var si4 = el.startIndex;
+          reqs.push(_opr_merge(si4, 0, 0, 1, 2)); // merge header cols 0-1 (left box title)
+          reqs.push(_opr_merge(si4, 0, 2, 1, 2)); // merge header cols 2-3 (right box title)
         }
       }
       if (reqs.length > 0) Docs.Documents.batchUpdate({requests: reqs}, docId);
@@ -1235,8 +1274,8 @@ function testPp6PdfRegression() {
     ['setMarginRight(24)', 'marginRight'],
     ['setPageWidth(595)', 'pageWidth'],
     ['setPageHeight(842)', 'pageHeight'],
-    ['[18, 42, 190, 40, 24, 38, 26, 38, 26, 42, 45]', 'subject table W (11 col)'],
-    ['[264, 265]', 'assessment table AW'],
+    ['[18, 40, 170, 36, 22, 36, 24, 36, 24, 48, 75]', 'subject table W (11 col)'],
+    ['[210, 54, 211, 54]', 'assessment table AW4'],
     ['FS_H = 10', 'header font size'],
     ['FS_D = 9', 'data font size']
   ];
@@ -1248,13 +1287,13 @@ function testPp6PdfRegression() {
   });
 
   // 2. ตรวจสอบ column widths sum = 529
-  var W = [18, 42, 190, 40, 24, 38, 26, 38, 26, 42, 45];
+  var W = [18, 40, 170, 36, 22, 36, 24, 36, 24, 48, 75];
   var wSum = W.reduce(function(a, b) { return a + b; }, 0);
   if (wSum !== 529) errors.push('❌ Subject W sum=' + wSum + ' (ต้อง=529)');
 
-  var AW = [264, 265];
-  var awSum = AW.reduce(function(a, b) { return a + b; }, 0);
-  if (awSum !== 529) errors.push('❌ Assessment AW sum=' + awSum + ' (ต้อง=529)');
+  var AW4 = [210, 54, 211, 54];
+  var awSum = AW4.reduce(function(a, b) { return a + b; }, 0);
+  if (awSum !== 529) errors.push('❌ Assessment AW4 sum=' + awSum + ' (ต้อง=529)');
 
   // 3. สรุปผล
   if (errors.length === 0) {

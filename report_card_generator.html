@@ -380,6 +380,13 @@
       <div class="step-header">
         <div class="step-num">2</div>
         <div class="step-title">เลือกนักเรียนและพิมพ์</div>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
+          <label for="termSelector" style="font-size:.8rem;color:#666;white-space:nowrap;">ภาคเรียน:</label>
+          <select id="termSelector" style="padding:4px 8px;border:1px solid #ddd;border-radius:6px;font-size:.85rem;background:#fff;">
+            <option value="1">ภาคเรียนที่ 1</option>
+            <option value="2" selected>ภาคเรียนที่ 2</option>
+          </select>
+        </div>
       </div>
       <div class="step-body">
         <div class="search-toolbar">
@@ -464,7 +471,8 @@
     fabBar: document.getElementById('fabBar'),
     fabCount: document.getElementById('fabCount'),
     fabDeselect: document.getElementById('fabDeselect'),
-    yearSelector: document.getElementById('yearSelector')
+    yearSelector: document.getElementById('yearSelector'),
+    termSelector: document.getElementById('termSelector')
   };
 
   var allSelected = false;
@@ -472,6 +480,45 @@
   var batchQueue = [], batchTotal = 0, batchSuccess = 0, batchFail = 0, lastSuccessUrl = '';
 
   // --- Helper ---
+  function ensureTermSelector() {
+    var toolbar = document.querySelector('.search-toolbar');
+    if (!toolbar) return;
+    if (el.termSelector && toolbar.contains(el.termSelector)) return;
+
+    var wrap = document.getElementById('termSelectorInlineWrap');
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.id = 'termSelectorInlineWrap';
+      wrap.style.display = 'inline-flex';
+      wrap.style.alignItems = 'center';
+      wrap.style.gap = '6px';
+      wrap.style.marginLeft = '8px';
+      wrap.style.flexShrink = '0';
+      var label = document.createElement('label');
+      label.htmlFor = 'termSelectorInline';
+      label.textContent = 'ภาคเรียน:';
+      label.style.fontSize = '.8rem';
+      label.style.color = '#666';
+      label.style.whiteSpace = 'nowrap';
+      var select = document.createElement('select');
+      select.id = 'termSelectorInline';
+      select.style.padding = '4px 8px';
+      select.style.border = '1px solid #ddd';
+      select.style.borderRadius = '6px';
+      select.style.fontSize = '.85rem';
+      select.style.background = '#fff';
+      select.innerHTML = '<option value="1">ภาคเรียนที่ 1</option><option value="2" selected>ภาคเรียนที่ 2</option>';
+      wrap.appendChild(label);
+      wrap.appendChild(select);
+      toolbar.appendChild(wrap);
+      el.termSelector = select;
+      return;
+    }
+
+    var selectEl = wrap.querySelector('select');
+    if (selectEl) el.termSelector = selectEl;
+  }
+
   function showStatus(msg, type) {
     type = type || 'info';
     el.statusArea.innerHTML = '<div class="status-msg ' + type + '">' + msg + '</div>';
@@ -761,7 +808,7 @@
         updateProgress();
         processNext();
       })
-      .generateStudentReportPdfUnified(current.id, { term: 'both', showRank: el.showRankToggle.checked, year: dataCache.selectedYear || undefined });
+      .generateStudentReportPdfUnified(current.id, { term: el.termSelector.value, showRank: el.showRankToggle.checked, year: dataCache.selectedYear || undefined });
   }
 
   function updateProgress() {

@@ -35,6 +35,23 @@ const RTW_HEADERS = [
   'สรุปผลการประเมิน', 'วันที่บันทึก', 'ผู้บันทึก'
 ];
 
+// ----- Read Think Write 5 Criteria (อ่าน คิด วิเคราะห์ เขียน 5 เกณฑ์) -----
+const RTW5_SHEET = 'ประเมินอ่านคิดเขียน5เกณฑ์';
+const RTW5_CRITERIA_HEADERS = [
+  'อ่านเพื่อหาข้อมูลสารสนเทศ',
+  'จับประเด็นสำคัญ',
+  'เชื่อมโยงความสัมพันธ์',
+  'แสดงความคิดเห็น',
+  'ถ่ายทอดความคิดโดยการเขียน'
+];
+const RTW5_HEADERS = [
+  'รหัสนักเรียน', 'ชื่อ-นามสกุล', 'ชั้น', 'ห้อง',
+  'อ่านเพื่อหาข้อมูลสารสนเทศ', 'จับประเด็นสำคัญ', 'เชื่อมโยงความสัมพันธ์',
+  'แสดงความคิดเห็น', 'ถ่ายทอดความคิดโดยการเขียน',
+  'คะแนนรวม', 'คะแนนเฉลี่ย', 'ผลการประเมิน',
+  'วันที่บันทึก', 'ผู้บันทึก'
+];
+
 // ----- Characteristic (คุณลักษณะอันพึงประสงค์) -----
 const CHARACTER_SHEET = 'การประเมินคุณลักษณะ';
 const CHARACTER_HEADERS = [
@@ -546,6 +563,102 @@ function ensureCompetencySheetAndHeaders_() {
   return sheet;
 }
 
+// ----- RTW5 Sheet Setup -----
+function rtw5HeaderIndex_(sheet) {
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(String);
+  var idx = {};
+  headers.forEach(function(h, i) { idx[h] = i + 1; });
+  return idx;
+}
+
+function ensureRTW5SheetAndHeaders_() {
+  var ss = SS();
+  var sheet = null;
+  try { if (typeof S_getYearlySheet === 'function') sheet = S_getYearlySheet(RTW5_SHEET); } catch(_) {}
+  if (!sheet) sheet = ss.getSheetByName(RTW5_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(RTW5_SHEET);
+    sheet.getRange(1, 1, 1, RTW5_HEADERS.length).setValues([RTW5_HEADERS]);
+    var headerRange = sheet.getRange(1, 1, 1, RTW5_HEADERS.length);
+    headerRange.setBackground('#e8f5e9');
+    headerRange.setFontWeight('bold');
+    headerRange.setHorizontalAlignment('center');
+    return { sheet: sheet, idx: rtw5HeaderIndex_(sheet) };
+  }
+
+  var lastC = Math.max(sheet.getLastColumn(), RTW5_HEADERS.length);
+  if (sheet.getMaxColumns() < lastC) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), lastC - sheet.getMaxColumns());
+  }
+  var oldHeaders = sheet.getRange(1, 1, 1, lastC).getValues()[0].map(String);
+  var extras = oldHeaders.filter(function(h) { return h && RTW5_HEADERS.indexOf(h) === -1; });
+  var nextHeaders = RTW5_HEADERS.concat(extras);
+  if (sheet.getMaxColumns() < nextHeaders.length) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), nextHeaders.length - sheet.getMaxColumns());
+  }
+  var needReorder = nextHeaders.length !== oldHeaders.length || !nextHeaders.every(function(h, i) { return oldHeaders[i] === h; });
+  if (needReorder) {
+    var lastR = sheet.getLastRow();
+    var dataOld = lastR > 1 ? sheet.getRange(2, 1, lastR - 1, oldHeaders.length).getValues() : [];
+    var oldIdx = {};
+    oldHeaders.forEach(function(h, i) { if (h && oldIdx[h] === undefined) oldIdx[h] = i; });
+    var dataNew = dataOld.map(function(row) {
+      var out = new Array(nextHeaders.length).fill('');
+      nextHeaders.forEach(function(h, ni) {
+        var oi = oldIdx[h];
+        if (oi !== undefined && oi < row.length) out[ni] = row[oi];
+      });
+      return out;
+    });
+    sheet.getRange(1, 1, 1, nextHeaders.length).setValues([nextHeaders]);
+    if (dataNew.length) {
+      sheet.getRange(2, 1, dataNew.length, nextHeaders.length).setValues(dataNew);
+    }
+  }
+  return { sheet: sheet, idx: rtw5HeaderIndex_(sheet) };
+}
+
+/**
+ * สรุปคะแนน RTW5 (5 เกณฑ์, คะแนน 0-3)
+ */
+function summarizeRTW5Scores_(scores) {
+  var nums = scores.filter(function(s) { return s !== '' && Number.isFinite(s); });
+  if (nums.length !== 5) return { sum: '', avg: '', result: '' };
+  var sum = nums.reduce(function(a, b) { return a + b; }, 0);
+  var avg = sum / 5;
+  var result = 'ปรับปรุง';
+  if (avg >= 2.5) result = 'ดีเยี่ยม';
+  else if (avg >= 2.0) result = 'ดี';
+  else if (avg >= 1.0) result = 'ผ่าน';
+  return { sum: sum, avg: avg, result: result };
+}
+
+/**
+ * ตรวจสอบคะแนน RTW5 (0-3, จำนวน 5 ตัว)
+ */
+function validateRTW5Scores_(scores) {
+  if (!Array.isArray(scores)) {
+    return { valid: false, sanitized: [], error: 'ข้อมูลคะแนนไม่ใช่ array' };
+  }
+  if (scores.length !== 5) {
+    return { valid: false, sanitized: [], error: 'ต้องมีคะแนน 5 รายการ (ได้รับ ' + scores.length + ')' };
+  }
+  var sanitized = [];
+  for (var i = 0; i < scores.length; i++) {
+    var val = scores[i];
+    if (val === '' || val === null || val === undefined) {
+      sanitized.push('');
+      continue;
+    }
+    var num = parseInt(val, 10);
+    if (!Number.isFinite(num) || num < 0 || num > 3) {
+      return { valid: false, sanitized: [], error: 'คะแนนรายการที่ ' + (i + 1) + ' ไม่ถูกต้อง: "' + val + '" (ต้องเป็น 0-3)' };
+    }
+    sanitized.push(num);
+  }
+  return { valid: true, sanitized: sanitized };
+}
+
 /**
  * สรุปคะแนนคุณลักษณะ
  */
@@ -769,6 +882,45 @@ function getStudentsForSubjectScore(grade, classNo) {
     Logger.log('Error in getStudentsForSubjectScore: ' + error.message);
     throw new Error('ไม่สามารถดึงข้อมูลได้: ' + error.message);
   }
+}
+
+
+// ----- E5. RTW5 (อ่านคิดเขียน 5 เกณฑ์) -----
+function getStudentsForRTW5(grade, classNo) {
+  var validated = validateGradeAndClass_(grade, classNo);
+  grade = validated.grade;
+  classNo = validated.classNo;
+
+  var ss = SS();
+  var studentsSheet = ss.getSheetByName('Students');
+  if (!studentsSheet) throw new Error('ไม่พบชีต Students');
+  var data = studentsSheet.getRange(2, 1, studentsSheet.getLastRow() - 1, 7).getValues();
+  var students = data
+    .filter(function(r) { return String(r[5]) === grade && String(r[6]) === classNo && String(r[0]); })
+    .map(function(r) {
+      return {
+        studentId: String(r[0]),
+        name: ((r[2] || '') + (r[3] || '') + ' ' + (r[4] || '')).trim(),
+        grade: r[5],
+        classNo: r[6]
+      };
+    });
+  students.sort(function(a, b) { return String(a.studentId).localeCompare(String(b.studentId), undefined, { numeric: true }); });
+
+  var result = ensureRTW5SheetAndHeaders_();
+  var sheet = result.sheet;
+  var existingMap = new Map();
+  if (sheet && sheet.getLastRow() > 1) {
+    var all = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
+    all.forEach(function(row) {
+      if (String(row[2]) === grade && String(row[3]) === classNo) {
+        existingMap.set(String(row[0]), row.slice(4, 9).map(function(v) { return v !== '' ? (parseInt(v) || '') : ''; }));
+      }
+    });
+  }
+  return students.map(function(s) {
+    return Object.assign({}, s, { scores: existingMap.get(s.studentId) || Array(5).fill('') });
+  });
 }
 
 
@@ -1022,6 +1174,63 @@ function saveCompetencyAssessment(payload) {
       return {
         key: rec.studentId,
         rowData: [rec.studentId, rec.name, rec.grade, rec.classNo].concat(rec.scores).concat([now, who])
+      };
+    });
+
+    var stats = atomicUpsertRows_(sheet, 'รหัสนักเรียน', 'ชั้น', 'ห้อง', grade, classNo, upsertRecords);
+    return 'บันทึกสำเร็จ: อัปเดต ' + stats.updated + ' คน, เพิ่มใหม่ ' + stats.inserted + ' คน';
+  });
+}
+
+
+// ----- F5. RTW5 (อ่านคิดเขียน 5 เกณฑ์) -----
+function saveRTW5AssessmentBatch(payload) {
+  var records = Array.isArray(payload) ? payload : [];
+  if (!records.length) throw new Error('ไม่มีข้อมูลสำหรับบันทึก');
+  if (records.length > MAX_BATCH_SIZE) throw new Error('ส่งข้อมูลมากเกินไป (' + records.length + ')');
+
+  var ss = SS();
+  var validationErrors = [];
+
+  var validatedRecords = records.map(function(rec, index) {
+    var basicResult = validateRecordBasicFields_(rec, ss);
+    if (!basicResult.valid) {
+      validationErrors.push('รายการที่ ' + (index + 1) + ': ' + basicResult.errors.join(', '));
+      return null;
+    }
+    var scoresResult = validateRTW5Scores_(rec.scores);
+    if (!scoresResult.valid) {
+      validationErrors.push('รายการที่ ' + (index + 1) + ' (' + rec.studentId + '): ' + scoresResult.error);
+      return null;
+    }
+    return {
+      studentId: basicResult.sanitized.studentId,
+      name: String(rec.name || '').trim().substring(0, 100),
+      grade: basicResult.sanitized.grade,
+      classNo: basicResult.sanitized.classNo,
+      scores: scoresResult.sanitized
+    };
+  }).filter(Boolean);
+
+  if (validationErrors.length > 0) throw new Error('ข้อมูลไม่ถูกต้อง:\n' + validationErrors.join('\n'));
+  if (validatedRecords.length === 0) throw new Error('ไม่มีข้อมูลที่ถูกต้องสำหรับบันทึก');
+
+  var grade = validatedRecords[0].grade;
+  var classNo = validatedRecords[0].classNo;
+
+  return withLock_('rtw5_' + grade + '_' + classNo, function() {
+    var result = ensureRTW5SheetAndHeaders_();
+    var sheet = result.sheet;
+    var now = new Date();
+    var who = Session.getActiveUser().getEmail() || '';
+
+    var upsertRecords = validatedRecords.map(function(rec) {
+      var summary = summarizeRTW5Scores_(rec.scores);
+      return {
+        key: rec.studentId,
+        rowData: [rec.studentId, rec.name, rec.grade, rec.classNo]
+          .concat(rec.scores)
+          .concat([summary.sum, summary.avg !== '' ? summary.avg.toFixed(2) : '', summary.result, now, who])
       };
     });
 

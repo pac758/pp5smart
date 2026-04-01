@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ประเมินอ่าน คิดวิเคราะห์ เขียน (5 เกณฑ์)</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
+  
+  <style>
+    body { font-family: 'Sarabun', sans-serif; background-color: #f8f9fa; }
+    
+    .table-container {
+      max-height: 70vh;
+      overflow: auto;
+      position: relative;
+      border: 1px solid #dee2e6;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      background: #fff;
+    }
+    
+    .rtw5-table {
+      margin-bottom: 0;
+      border-collapse: separate; 
+      border-spacing: 0;
+      width: 100%;
+    }
+
+    .rtw5-table th { 
+      background-color: #43a047; 
+      color: #fff; 
+      text-align: center;
+      vertical-align: middle;
+      font-size: 13px;
+      padding: 8px 4px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.4);
+      border-bottom: 2px solid #dee2e6;
+    }
+
+    .rtw5-table td:nth-child(2),
+    .rtw5-table th:nth-child(2) {
+      position: sticky;
+      left: 0;
+      background-color: #fff;
+      z-index: 5;
+      border-right: 2px solid #dee2e6;
+    }
+    .rtw5-table th:nth-child(2) {
+      z-index: 15;
+      background-color: #2e7d32;
+    }
+
+    .score-cell {
+      padding: 0 !important;
+      height: 40px;
+      min-width: 70px;
+      border: 1px solid #dee2e6;
+    }
+
+    .score-input {
+      width: 100%;
+      height: 100%;
+      border: none;
+      text-align: center;
+      font-size: 14px;
+      cursor: pointer;
+      background: transparent;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+    }
+    
+    .score-input:focus {
+      outline: none;
+      background-color: #e8f5e9;
+    }
+    
+    .score-val-3 { color: #1565c0; font-weight: bold; }
+    .score-val-2 { color: #2e7d32; font-weight: bold; }
+    .score-val-1 { color: #f57f17; }
+    .score-val-0 { color: #c62828; font-weight: bold; background-color: #ffebee; }
+
+    select.header-select {
+      font-size: 11px;
+      padding: 2px 4px;
+      border: 1px solid rgba(255,255,255,0.5);
+      border-radius: 4px;
+      background-color: rgba(255,255,255,0.9);
+      color: #333;
+      cursor: pointer;
+      width: auto;
+      display: inline-block;
+      margin-top: 2px;
+    }
+
+    .result-badge {
+      display: inline-block;
+      width: 80px;
+      text-align: center;
+      padding: 4px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="container-fluid py-4">
+    
+    <!-- Header -->
+    <div class="card shadow-sm mb-3">
+      <div class="card-body py-3">
+        <div class="row align-items-center">
+          <div class="col-md-4 mb-2 mb-md-0">
+            <h5 class="mb-0" style="color:#2e7d32;"><i class="fas fa-book-reader mr-2"></i>ประเมินอ่าน คิดวิเคราะห์ เขียน</h5>
+            <small class="text-muted">5 เกณฑ์ (สำหรับ ปพ.6)</small>
+          </div>
+          <div class="col-md-8 text-md-right">
+            <div class="form-inline justify-content-md-end">
+              <div class="input-group input-group-sm mr-2 mb-2 mb-md-0">
+                <div class="input-group-prepend">
+                  <span class="input-group-text">ชั้น</span>
+                </div>
+                <select class="custom-select" id="gradeSelect" style="max-width: 80px;" onchange="window.appLoadStudents()">
+                  <option value="">เลือก</option>
+                  <option value="ป.1">ป.1</option>
+                  <option value="ป.2">ป.2</option>
+                  <option value="ป.3">ป.3</option>
+                  <option value="ป.4">ป.4</option>
+                  <option value="ป.5">ป.5</option>
+                  <option value="ป.6">ป.6</option>
+                </select>
+                <div class="input-group-prepend border-left-0">
+                  <span class="input-group-text">ห้อง</span>
+                </div>
+                <select class="custom-select" id="classSelect" style="max-width: 70px;" onchange="window.appLoadStudents()">
+                  <option value="">เลือก</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                </select>
+                <div class="input-group-append">
+                  <button class="btn btn-success" type="button" onclick="window.appLoadStudents()">
+                    <i class="fas fa-search"></i> แสดง
+                  </button>
+                </div>
+              </div>
+
+              <button class="btn btn-sm btn-success mr-2 mb-2 mb-md-0" id="saveBtn" onclick="window.appSave()" disabled>
+                <i class="fas fa-save"></i> บันทึก
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-0">
+        
+        <div id="loadingMessage" class="text-center py-5" style="display: none;">
+          <div class="spinner-border text-success mb-2" role="status"></div>
+          <p class="text-muted">กำลังโหลด...</p>
+        </div>
+        
+        <div id="emptyMessage" class="text-center py-5 text-muted bg-light">
+          <i class="fas fa-book-reader fa-3x mb-3 text-secondary"></i>
+          <h5>กรุณาเลือกระดับชั้นและห้องเรียน</h5>
+        </div>
+
+        <div id="errorMessage" class="alert alert-danger m-3" style="display: none;"></div>
+
+        <div id="studentsTableContainer" class="table-container" style="display: none;">
+          <table class="table rtw5-table table-hover mb-0" id="mainTable">
+            <thead>
+              <tr>
+                <th width="50">#</th>
+                <th width="230" class="text-left pl-3">ชื่อ-นามสกุล</th>
+                <th width="120">อ่านหาข้อมูล<br><select class="header-select" onchange="window.appBatchFill(0, this.value)"><option value="">เลือก</option><option value="3">3</option><option value="2">2</option><option value="1">1</option><option value="0">0</option></select></th>
+                <th width="120">จับประเด็น<br><select class="header-select" onchange="window.appBatchFill(1, this.value)"><option value="">เลือก</option><option value="3">3</option><option value="2">2</option><option value="1">1</option><option value="0">0</option></select></th>
+                <th width="120">เชื่อมโยง<br><select class="header-select" onchange="window.appBatchFill(2, this.value)"><option value="">เลือก</option><option value="3">3</option><option value="2">2</option><option value="1">1</option><option value="0">0</option></select></th>
+                <th width="120">แสดงความคิดเห็น<br><select class="header-select" onchange="window.appBatchFill(3, this.value)"><option value="">เลือก</option><option value="3">3</option><option value="2">2</option><option value="1">1</option><option value="0">0</option></select></th>
+                <th width="120">ถ่ายทอดการเขียน<br><select class="header-select" onchange="window.appBatchFill(4, this.value)"><option value="">เลือก</option><option value="3">3</option><option value="2">2</option><option value="1">1</option><option value="0">0</option></select></th>
+                <th width="70">เฉลี่ย</th>
+                <th width="100">ผลประเมิน</th>
+              </tr>
+            </thead>
+            <tbody id="studentsTableBody"></tbody>
+          </table>
+        </div>
+        
+        <div id="keyboardHelp" class="bg-light p-2 border-top small text-muted d-flex justify-content-between align-items-center" style="display:none;">
+            <span><i class="fas fa-keyboard mr-1"></i> ใช้ปุ่มลูกศรเลื่อน และพิมพ์ 0-3</span>
+            <button class="btn btn-outline-success btn-sm" onclick="window.appToggleSort()" id="btnSortToggle"><i class="fas fa-sort-amount-down"></i> <span id="btnSortLabel">ชาย→หญิง</span></button>
+            <span id="summaryStats"></span>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+
+  <script>
+    (function() {
+      var studentsData = [];
+      var currentGrade = '';
+      var currentClass = '';
+      var CRITERIA_COUNT = 5;
+
+      function calculateResult(scores) {
+        var nums = [];
+        for (var i = 0; i < scores.length; i++) {
+          if (scores[i] === '' || scores[i] == null) return { avg: '-', text: '-', colorClass: 'text-muted' };
+          nums.push(Number(scores[i]));
+        }
+        if (nums.length !== CRITERIA_COUNT) return { avg: '-', text: '-', colorClass: 'text-muted' };
+        
+        var sum = 0;
+        for (var i = 0; i < nums.length; i++) sum += nums[i];
+        var avg = sum / CRITERIA_COUNT;
+        
+        if (avg >= 2.5) return { avg: avg.toFixed(2), text: 'ดีเยี่ยม', colorClass: 'badge badge-primary' };
+        if (avg >= 2.0) return { avg: avg.toFixed(2), text: 'ดี', colorClass: 'badge badge-success' };
+        if (avg >= 1.0) return { avg: avg.toFixed(2), text: 'ผ่าน', colorClass: 'badge badge-warning' };
+        return { avg: avg.toFixed(2), text: 'ปรับปรุง', colorClass: 'badge badge-danger' };
+      }
+
+      function renderTable() {
+        var tbody = document.getElementById('studentsTableBody');
+        tbody.innerHTML = '';
+
+        for (var i = 0; i < studentsData.length; i++) {
+          var student = studentsData[i];
+          var scores = student.scores || [];
+          var result = calculateResult(scores);
+
+          var tr = document.createElement('tr');
+          tr.setAttribute('data-student-id', student.studentId);
+          tr.setAttribute('data-name', student.name || '');
+          
+          var html = '<td class="text-center text-muted">' + (i + 1) + '</td>';
+          html += '<td class="font-weight-bold text-dark text-left pl-3" style="min-width: 230px;">' + student.name + '</td>';
+
+          for (var j = 0; j < CRITERIA_COUNT; j++) {
+            var val = (scores[j] != null && scores[j] !== '') ? scores[j] : '';
+            var colorClass = val !== '' ? 'score-val-' + val : '';
+            
+            html += '<td class="score-cell">';
+            html += '<select class="score-input ' + colorClass + '" data-id="' + student.studentId + '" data-idx="' + j + '" onchange="window.appUpdateScore(this)">';
+            html += '<option value="" ' + (val === '' ? 'selected' : '') + '>-</option>';
+            html += '<option value="3" ' + (val == 3 ? 'selected' : '') + '>3</option>';
+            html += '<option value="2" ' + (val == 2 ? 'selected' : '') + '>2</option>';
+            html += '<option value="1" ' + (val == 1 ? 'selected' : '') + '>1</option>';
+            html += '<option value="0" ' + (val == 0 && val !== '' ? 'selected' : '') + '>0</option>';
+            html += '</select></td>';
+          }
+
+          html += '<td class="text-center align-middle"><span id="avg-' + student.studentId + '">' + result.avg + '</span></td>';
+          html += '<td class="text-center align-middle">';
+          html += '<span class="result-badge ' + result.colorClass + '" id="res-' + student.studentId + '">' + result.text + '</span>';
+          html += '</td>';
+
+          tr.innerHTML = html;
+          tbody.appendChild(tr);
+        }
+        updateStats();
+        setupKeyboardNav();
+      }
+
+      function updateRowResult(studentId) {
+        var student;
+        for (var i = 0; i < studentsData.length; i++) {
+          if (studentsData[i].studentId == studentId) { student = studentsData[i]; break; }
+        }
+        if (!student) return;
+        var result = calculateResult(student.scores);
+        
+        var avgEl = document.getElementById('avg-' + studentId);
+        if (avgEl) avgEl.textContent = result.avg;
+        
+        var badge = document.getElementById('res-' + studentId);
+        if (badge) {
+          badge.className = 'result-badge ' + result.colorClass;
+          badge.textContent = result.text;
+        }
+        updateStats();
+      }
+
+      function updateStats() {
+        var complete = 0;
+        for (var i = 0; i < studentsData.length; i++) {
+          var s = studentsData[i];
+          var isComp = true;
+          for (var j = 0; j < CRITERIA_COUNT; j++) {
+            if (s.scores[j] === '' || s.scores[j] == null) isComp = false;
+          }
+          if (isComp) complete++;
+        }
+        document.getElementById('summaryStats').innerHTML = 'บันทึกครบ: <strong>' + complete + '/' + studentsData.length + '</strong> คน';
+      }
+
+      function setupKeyboardNav() {
+        var table = document.getElementById('mainTable');
+        if (!table) return;
+        var newTable = table.cloneNode(true);
+        table.parentNode.replaceChild(newTable, table);
+        
+        newTable.addEventListener('keydown', function(e) {
+          if (!e.target.classList.contains('score-input')) return;
+          var currentInput = e.target;
+          var currentTd = currentInput.parentNode;
+          if (currentTd.tagName !== 'TD') currentTd = currentTd.closest('td');
+          var currentTr = currentTd.parentNode;
+          var cellIndex = currentTd.cellIndex;
+          
+          if (e.key === '0' || e.key === '1' || e.key === '2' || e.key === '3') {
+            e.preventDefault();
+            currentInput.value = e.key;
+            var evt = document.createEvent("HTMLEvents");
+            evt.initEvent("change", false, true);
+            currentInput.dispatchEvent(evt);
+            return;
+          }
+
+          var nextInput = null;
+          if (e.key === 'ArrowRight') {
+            var nextTd = currentTr.cells[cellIndex + 1];
+            if (nextTd) nextInput = nextTd.querySelector('.score-input');
+          } else if (e.key === 'ArrowLeft') {
+            var prevTd = currentTr.cells[cellIndex - 1];
+            if (prevTd) nextInput = prevTd.querySelector('.score-input');
+          } else if (e.key === 'ArrowDown') {
+            var nextRow = currentTr.nextElementSibling;
+            if (nextRow) nextInput = nextRow.cells[cellIndex] ? nextRow.cells[cellIndex].querySelector('.score-input') : null;
+          } else if (e.key === 'ArrowUp') {
+            var prevRow = currentTr.previousElementSibling;
+            if (prevRow) nextInput = prevRow.cells[cellIndex] ? prevRow.cells[cellIndex].querySelector('.score-input') : null;
+          }
+          if (nextInput) nextInput.focus();
+        });
+      }
+
+      // --- GLOBAL EXPORTS ---
+      
+      window.appLoadStudents = function() {
+        var g = document.getElementById('gradeSelect').value;
+        var c = document.getElementById('classSelect').value;
+        currentGrade = g;
+        currentClass = c;
+        if (!g || !c) return;
+
+        document.getElementById('emptyMessage').style.display = 'none';
+        document.getElementById('studentsTableContainer').style.display = 'none';
+        document.getElementById('loadingMessage').style.display = 'block';
+        document.getElementById('errorMessage').style.display = 'none';
+        document.getElementById('saveBtn').disabled = true;
+        document.getElementById('keyboardHelp').style.display = 'none';
+
+        google.script.run
+          .withSuccessHandler(function(data) {
+            studentsData = data || [];
+            studentsData.sort(function(a, b) { return String(a.studentId).localeCompare(String(b.studentId), undefined, { numeric: true }); });
+            document.getElementById('loadingMessage').style.display = 'none';
+            if (studentsData.length === 0) {
+              document.getElementById('errorMessage').innerText = 'ไม่พบข้อมูลนักเรียน';
+              document.getElementById('errorMessage').style.display = 'block';
+              return;
+            }
+            document.getElementById('studentsTableContainer').style.display = 'block';
+            document.getElementById('saveBtn').disabled = false;
+            document.getElementById('keyboardHelp').style.display = 'flex';
+            renderTable();
+          })
+          .withFailureHandler(function(err) {
+            document.getElementById('loadingMessage').style.display = 'none';
+            document.getElementById('errorMessage').innerText = 'Error: ' + err.message;
+            document.getElementById('errorMessage').style.display = 'block';
+          })
+          .getStudentsForRTW5(g, c);
+      };
+
+      var _sortMode = 'gender';
+      window.appToggleSort = function() {
+        _sortMode = _sortMode === 'gender' ? 'id' : 'gender';
+        var label = document.getElementById('btnSortLabel');
+        if (label) label.textContent = _sortMode === 'gender' ? 'ชาย→หญิง' : 'เลขประจำตัว';
+        var tbody = document.getElementById('studentsTableBody');
+        if (!tbody) return;
+        var rows = Array.from(tbody.querySelectorAll('tr'));
+        rows.sort(function(a, b) {
+          var idA = a.getAttribute('data-student-id') || '';
+          var idB = b.getAttribute('data-student-id') || '';
+          if (_sortMode === 'gender') {
+            var nA = a.getAttribute('data-name') || '';
+            var nB = b.getAttribute('data-name') || '';
+            var mA = nA.indexOf('ชาย') !== -1 || nA.indexOf('นาย') === 0;
+            var mB = nB.indexOf('ชาย') !== -1 || nB.indexOf('นาย') === 0;
+            if (mA && !mB) return -1;
+            if (!mA && mB) return 1;
+          }
+          return String(idA).localeCompare(String(idB), undefined, { numeric: true });
+        });
+        rows.forEach(function(row, idx) {
+          tbody.appendChild(row);
+          var fc = row.querySelector('td:first-child');
+          if (fc) fc.textContent = idx + 1;
+        });
+      };
+
+      window.appBatchFill = function(criteriaIdx, value) {
+        if (value === '') return;
+        for (var i = 0; i < studentsData.length; i++) {
+          if (!studentsData[i].scores) studentsData[i].scores = Array(CRITERIA_COUNT).fill('');
+          studentsData[i].scores[criteriaIdx] = parseInt(value);
+        }
+        renderTable();
+        var selects = document.querySelectorAll('.header-select');
+        for (var i = 0; i < selects.length; i++) selects[i].value = '';
+      };
+
+      window.appUpdateScore = function(el) {
+        var studentId = el.getAttribute('data-id');
+        var idx = parseInt(el.getAttribute('data-idx'));
+        var value = el.value;
+        
+        var student;
+        for (var i = 0; i < studentsData.length; i++) {
+          if (studentsData[i].studentId == studentId) { student = studentsData[i]; break; }
+        }
+        if (student) {
+          if (!student.scores) student.scores = Array(CRITERIA_COUNT).fill('');
+          student.scores[idx] = value === '' ? '' : parseInt(value);
+          el.className = 'score-input ' + (value !== '' ? 'score-val-' + value : '');
+          updateRowResult(studentId);
+        }
+      };
+
+      window.appSave = function() {
+        var btn = document.getElementById('saveBtn');
+        var originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> บันทึก...';
+        btn.disabled = true;
+
+        var payload = [];
+        for (var i = 0; i < studentsData.length; i++) {
+          var s = studentsData[i];
+          payload.push({
+            studentId: s.studentId,
+            name: s.name,
+            grade: currentGrade,
+            classNo: currentClass,
+            scores: s.scores || Array(CRITERIA_COUNT).fill('')
+          });
+        }
+
+        google.script.run
+          .withSuccessHandler(function(msg) {
+            btn.innerHTML = '<i class="fas fa-check"></i> สำเร็จ!';
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-success');
+            setTimeout(function() {
+              btn.innerHTML = originalText;
+              btn.classList.add('btn-success');
+              btn.classList.remove('btn-outline-success');
+              btn.disabled = false;
+            }, 2000);
+          })
+          .withFailureHandler(function(e) {
+            alert('บันทึกไม่สำเร็จ: ' + e.message);
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+          })
+          .saveRTW5AssessmentBatch(payload);
+      };
+
+    })();
+  </script>
+</body>
+</html>
