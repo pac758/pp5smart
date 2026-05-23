@@ -928,7 +928,7 @@ function xlsxBase64ToCsv_(base64Content) {
 
 function xlsxCollectText_(element) {
   var text = '';
-  element.getContent().forEach(function(content) {
+  element.getAllContent().forEach(function(content) {
     if (content.getType && content.getType() === XmlService.ContentTypes.TEXT) {
       text += content.asText().getText();
     } else if (content.getType && content.getType() === XmlService.ContentTypes.ELEMENT) {
