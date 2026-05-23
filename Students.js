@@ -985,7 +985,7 @@ function importCsvStudents(csvContent) {
     sheetHeaders.forEach((h, i) => { if (h) col[String(h).trim()] = i; });
 
     // ถ้าชีตยังไม่มีคอลัมน์เหล่านี้ให้เพิ่ม header อัตโนมัติ
-    const extraCols = ['birthdate', 'weight', 'height', 'blood_type', 'religion',
+    const extraCols = ['academic_year', 'birthdate', 'weight', 'height', 'blood_type', 'religion',
       'address', 'father_name', 'father_lastname', 'father_occupation',
       'mother_name', 'mother_lastname', 'mother_occupation'];
     extraCols.forEach(name => {
@@ -1019,6 +1019,7 @@ function importCsvStudents(csvContent) {
     let updatedCount = 0;
     let insertedCount = 0;
     const totalCols = sheetHeaders.length;
+    const importAcademicYear = (typeof AY_getCurrentAcademicYear === 'function') ? AY_getCurrentAcademicYear(false) : '';
 
     // โหลด sheet data ทั้งหมดลง memory เพื่อแก้ไข batch
     const sheetData = existingData.map(r => r.slice()); // deep copy
@@ -1046,6 +1047,7 @@ function importCsvStudents(csvContent) {
       setCol('lastname',   String(row[9] || '').trim());
       setCol('grade',      String(row[3] || '').trim());
       setCol('class_no',   String(row[4] || '').trim());
+      setCol('academic_year', importAcademicYear);
       setCol('gender',     gender === 'ช' ? 'ชาย' : gender === 'ญ' ? 'หญิง' : gender);
       setCol('birthdate',  birthdate);
       setCol('weight',     weight);
