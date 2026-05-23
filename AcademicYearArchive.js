@@ -1176,10 +1176,22 @@ function AY_cancelEditingOldYear(targetYear) {
   try {
     var year = AY_archiveTargetYear_(targetYear);
     if (!year) throw new Error('ไม่พบปีการศึกษา');
-    var current = (typeof AY_getCurrentAcademicYear === 'function') ? AY_getCurrentAcademicYear(false) : '';
     var registryStatus = AY_registryGetStatus_(year);
     if (registryStatus !== 'editing') {
       throw new Error('ปี ' + year + ' ไม่ได้อยู่ในโหมดแก้ไขย้อนหลัง จึงไม่ต้องยกเลิกการแก้ไข');
+    }
+
+    var computedYear = (typeof AY_computeAcademicYearFromDate === 'function')
+      ? AY_computeAcademicYearFromDate(new Date())
+      : '';
+    if (!computedYear) throw new Error('ไม่สามารถคำนวณปีการศึกษาปัจจุบันได้');
+    if (String(year) === String(computedYear)) {
+      throw new Error('ปี ' + year + ' เป็นปีปัจจุบันตามปฏิทิน จึงไม่ใช่ปีเก่าย้อนหลังที่ต้องยกเลิก');
+    }
+
+    var switchResult = switchAcademicYearOnly(computedYear);
+    if (!switchResult || !switchResult.success) {
+      throw new Error('สลับกลับปีปัจจุบัน ' + computedYear + ' ไม่สำเร็จ: ' + ((switchResult && switchResult.message) || 'ไม่ทราบสาเหตุ'));
     }
     
     var ss = SS();
@@ -1197,9 +1209,10 @@ function AY_cancelEditingOldYear(targetYear) {
     return {
       success: true,
       targetYear: year,
+      restoredToYear: computedYear,
       deletedCount: deleted.length,
       deleted: deleted,
-      message: 'ยกเลิกการดึงข้อมูลปี ' + year + ' มาแก้ไข และนำชีตชั่วคราวออกจากไฟล์หลักแล้ว ' + deleted.length + ' ชีต'
+      message: 'ยกเลิกการดึงข้อมูลปี ' + year + ' มาแก้ไข สลับกลับปีปัจจุบัน ' + computedYear + ' และนำชีตชั่วคราวออกจากไฟล์หลักแล้ว ' + deleted.length + ' ชีต'
     };
   } catch (e) {
     Logger.log('AY_cancelEditingOldYear error: ' + e.message);

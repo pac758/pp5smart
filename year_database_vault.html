@@ -698,46 +698,32 @@ function executeCancelWorkflow(year, computedYear) {
   showOverlay(
     'กำลังยกเลิกการแก้ไข...',
     'ระบบกำลังนำชีตชั่วคราวออกเพื่อคืนค่าเดิม ห้ามปิดหน้าต่างนี้',
-    '• ขั้นตอนที่ 1/2: กำลังล้างชีต Snapshot ประวัติทั้งหมดทิ้ง...<br>• ขั้นตอนที่ 2/2: กำลังสลับระบบกลับสู่ปีปกติ...'
+    '• ขั้นตอนที่ 1/2: กำลังสลับระบบกลับสู่ปีปัจจุบัน...<br>• ขั้นตอนที่ 2/2: กำลังล้างชีต Snapshot ประวัติทั้งหมดทิ้ง...'
   );
   
   if (typeof google !== 'undefined' && google.script && google.script.run) {
-    // 1. ยกเลิกแก้ไขและนำชีตออก
     google.script.run
       .withSuccessHandler(function(cancelRes) {
+        hideOverlay();
         if (!cancelRes.success) {
-          hideOverlay();
           showToastError('การนำชีตชั่วคราวออกล้มเหลว: ' + cancelRes.message);
           return;
         }
-        
-        // 2. สลับปีคืน
-        google.script.run
-          .withSuccessHandler(function(switchRes) {
-            hideOverlay();
-            if (switchRes.success) {
-              if (typeof Swal !== 'undefined') {
-                Swal.fire({
-                  icon: 'success',
-                  title: 'ยกเลิกสำเร็จ!',
-                  text: 'นำชีตประวัติออกแล้ว และเปลี่ยนปีกลับคืนสู่ปีปัจจุบัน (' + computedYear + ') แล้ว',
-                  confirmButtonText: 'ตกลง'
-                }).then(function() {
-                  loadRegistryData();
-                });
-              } else {
-                alert('✅ ยกเลิกรายการสำเร็จ! ระบบคืนสถานะสู่ปกติแล้ว');
-                loadRegistryData();
-              }
-            } else {
-              showToastError('ลบชีตสำเร็จแล้ว แต่เกิดปัญหาคืนค่าปีใช้งาน: ' + switchRes.message);
-            }
-          })
-          .withFailureHandler(function(err) {
-            hideOverlay();
-            showToastError('เกิดข้อผิดพลาดในการสลับคืนสู่ปีหลัก: ' + err.message);
-          })
-          .switchAcademicYearOnly(computedYear);
+
+        const restoredYear = cancelRes.restoredToYear || computedYear || '-';
+        if (typeof Swal !== 'undefined') {
+          Swal.fire({
+            icon: 'success',
+            title: 'ยกเลิกสำเร็จ!',
+            text: 'นำชีตประวัติออกแล้ว และเปลี่ยนปีกลับคืนสู่ปีปัจจุบัน (' + restoredYear + ') แล้ว',
+            confirmButtonText: 'ตกลง'
+          }).then(function() {
+            loadRegistryData();
+          });
+        } else {
+          alert('✅ ยกเลิกรายการสำเร็จ! ระบบคืนสถานะสู่ปกติแล้ว');
+          loadRegistryData();
+        }
       })
       .withFailureHandler(function(err) {
         hideOverlay();

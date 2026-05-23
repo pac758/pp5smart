@@ -120,16 +120,27 @@ function AY_getStudentsSheetForRead(targetYear) {
 
 function AY_getStudentsSheetForWrite(targetYear) {
   var ss = SS();
-  var year = AY_normalizeYear_(targetYear || AY_getCurrentAcademicYear(false));
+  var currentYear = (typeof AY_getCurrentAcademicYear === 'function') ? AY_getCurrentAcademicYear(false) : '';
+  var year = AY_normalizeYear_(targetYear || currentYear);
+  var computedYear = (typeof AY_computeAcademicYearFromDate === 'function')
+    ? AY_computeAcademicYearFromDate(new Date())
+    : currentYear;
   if (year) {
+    var isOldYear = computedYear && String(year) !== String(computedYear);
+    if (isOldYear) {
+      var status = '';
+      try {
+        status = (typeof AY_registryGetStatus_ === 'function') ? AY_registryGetStatus_(year) : '';
+      } catch (_) {}
+      if (status !== 'editing') {
+        throw new Error('ไม่อนุญาตให้ เพิ่ม/ลบ/แก้ไข ข้อมูลนักเรียนปีการศึกษาเก่า ' + year + ' เนื่องจากยังไม่ได้อยู่ในโหมดแก้ไขย้อนหลัง');
+      }
+    }
+
     var yearly = ss.getSheetByName('Students_' + year);
     if (yearly) return yearly;
 
-    var status = '';
-    try {
-      status = (typeof AY_registryGetStatus_ === 'function') ? AY_registryGetStatus_(year) : '';
-    } catch (_) {}
-    if (status === 'editing') {
+    if (isOldYear) {
       throw new Error('ไม่พบชีต Students_' + year + ' สำหรับโหมดแก้ไขปีเก่า กรุณากู้คืนข้อมูลจากคลังก่อนบันทึก');
     }
   }
