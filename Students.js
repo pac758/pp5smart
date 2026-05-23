@@ -836,22 +836,127 @@ function createStudentsSheet(ss) {
 /**
  * ✅ ฟังก์ชันหลักสำหรับนำเข้าไฟล์
  */
-function importStudentFile(fileType, csvContent, fileName) {
-  if (fileType !== 'csv') {
-    throw new Error('อนุญาตให้นำเข้าเฉพาะไฟล์ CSV เท่านั้น');
+function importStudentFile(fileType, fileContent, fileName) {
+  var type = String(fileType || '').toLowerCase();
+  var name = String(fileName || '').toLowerCase();
+  if (!type && name) type = name.split('.').pop();
+  if (type !== 'csv' && type !== 'xlsx') {
+    throw new Error('อนุญาตให้นำเข้าเฉพาะไฟล์ CSV หรือ XLSX เท่านั้น');
   }
   const lock = LockService.getScriptLock();
   try {
     if (!lock.tryLock(30000)) {
       throw new Error('ระบบกำลังนำเข้าข้อมูลอยู่ กรุณารอสักครู่แล้วลองใหม่');
     }
-    return importCsvStudents(csvContent);
+    if (type === 'xlsx') {
+      return importCsvStudents(xlsxBase64ToCsv_(fileContent));
+    }
+    return importCsvStudents(fileContent);
   } catch (e) {
     Logger.log('importStudentFile error: ' + e.message);
     throw e;
   } finally {
     lock.releaseLock();
   }
+}
+
+function xlsxBase64ToCsv_(base64Content) {
+  var clean = String(base64Content || '').replace(/^data:.*;base64,/, '');
+  if (!clean) throw new Error('ไม่พบข้อมูลไฟล์ Excel');
+
+  var bytes = Utilities.base64Decode(clean);
+  var blob = Utilities.newBlob(bytes, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'import.xlsx');
+  var files = Utilities.unzip(blob);
+  var zip = {};
+  files.forEach(function(file) {
+    zip[file.getName()] = file.getDataAsString('UTF-8');
+  });
+
+  var sheetXml = zip['xl/worksheets/sheet1.xml'];
+  if (!sheetXml) throw new Error('ไม่พบแผ่นงานแรกในไฟล์ Excel');
+
+  var sharedStrings = [];
+  if (zip['xl/sharedStrings.xml']) {
+    var sharedRoot = XmlService.parse(zip['xl/sharedStrings.xml']).getRootElement();
+    var sharedNs = sharedRoot.getNamespace();
+    sharedRoot.getChildren('si', sharedNs).forEach(function(si) {
+      sharedStrings.push(xlsxCollectText_(si));
+    });
+  }
+
+  var root = XmlService.parse(sheetXml).getRootElement();
+  var ns = root.getNamespace();
+  var sheetData = root.getChild('sheetData', ns);
+  if (!sheetData) throw new Error('ไม่พบข้อมูลตารางในไฟล์ Excel');
+
+  var rows = [];
+  var maxCol = 0;
+  sheetData.getChildren('row', ns).forEach(function(rowEl) {
+    var row = [];
+    rowEl.getChildren('c', ns).forEach(function(cellEl) {
+      var ref = cellEl.getAttribute('r') ? cellEl.getAttribute('r').getValue() : '';
+      var colIdx = xlsxColumnIndex_(ref);
+      if (colIdx < 0) colIdx = row.length;
+      var type = cellEl.getAttribute('t') ? cellEl.getAttribute('t').getValue() : '';
+      var value = '';
+      if (type === 'inlineStr') {
+        var inline = cellEl.getChild('is', ns);
+        value = inline ? xlsxCollectText_(inline) : '';
+      } else {
+        var v = cellEl.getChild('v', ns);
+        value = v ? v.getText() : '';
+        if (type === 's') {
+          var idx = parseInt(value, 10);
+          value = sharedStrings[idx] || '';
+        } else if (type === 'b') {
+          value = value === '1' ? 'TRUE' : 'FALSE';
+        }
+      }
+      row[colIdx] = value;
+      if (colIdx + 1 > maxCol) maxCol = colIdx + 1;
+    });
+    rows.push(row);
+  });
+
+  rows = rows.map(function(row) {
+    var out = [];
+    for (var i = 0; i < maxCol; i++) out.push(row[i] == null ? '' : row[i]);
+    return out;
+  });
+  return rowsToCsv_(rows);
+}
+
+function xlsxCollectText_(element) {
+  var text = '';
+  element.getContent().forEach(function(content) {
+    if (content.getType && content.getType() === XmlService.ContentTypes.TEXT) {
+      text += content.asText().getText();
+    } else if (content.getType && content.getType() === XmlService.ContentTypes.ELEMENT) {
+      text += xlsxCollectText_(content.asElement());
+    }
+  });
+  return text;
+}
+
+function xlsxColumnIndex_(cellRef) {
+  var match = String(cellRef || '').match(/^([A-Z]+)/i);
+  if (!match) return -1;
+  var letters = match[1].toUpperCase();
+  var n = 0;
+  for (var i = 0; i < letters.length; i++) {
+    n = n * 26 + (letters.charCodeAt(i) - 64);
+  }
+  return n - 1;
+}
+
+function rowsToCsv_(rows) {
+  return (rows || []).map(function(row) {
+    return row.map(function(value) {
+      var s = String(value == null ? '' : value);
+      if (/[",\r\n]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+      return s;
+    }).join(',');
+  }).join('\n');
 }
 
 /**
