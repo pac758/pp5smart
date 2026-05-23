@@ -274,7 +274,7 @@ function exportToSchoolMIS(sheetName, term, sortMode) {
     Logger.log('📐 Export layout: ' + sheetLayout.layout + ' for ' + sheetName);
     
     // 3. ดึงข้อมูลนักเรียนจากชีต Students เพื่อเอา idCard
-    var studentsSheet = ss.getSheetByName('Students');
+    var studentsSheet = AY_getStudentsSheetForRead();
     var studentsData = studentsSheet ? studentsSheet.getDataRange().getValues() : [];
     var studentIdCardMap = buildStudentIdCardMapSync_(studentsData);
     
@@ -456,7 +456,7 @@ function exportToSchoolMIS_Average(sheetName, sortMode) {
     
     // 3. ดึง idCard จาก Students sheet
     var ss = SS();
-    var studentsSheet = ss.getSheetByName('Students');
+    var studentsSheet = AY_getStudentsSheetForRead();
     var studentsData = studentsSheet ? studentsSheet.getDataRange().getValues() : [];
     var studentIdCardMap = buildStudentIdCardMapSync_(studentsData);
     

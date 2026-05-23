@@ -9,7 +9,7 @@ function getGraduationStatus() {
     
     // ดึงข้อมูลนักเรียน ป.6 ทั้งหมด
     var ss = SS();
-    var sheet = ss.getSheetByName('Students');
+    var sheet = AY_getStudentsSheetForRead();
     if (!sheet) {
       return {
         currentYear: currentYear,
@@ -82,7 +82,7 @@ function previewGraduation() {
     
     // ดึงข้อมูลนักเรียน
     var ss = SS();
-    var sheet = ss.getSheetByName('Students');
+    var sheet = AY_getStudentsSheetForRead();
     if (!sheet) {
       return { success: false, message: 'ไม่พบชีต Students' };
     }

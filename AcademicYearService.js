@@ -117,3 +117,21 @@ function AY_getStudentsSheetForRead(targetYear) {
   }
   return ss.getSheetByName('Students');
 }
+
+function AY_getStudentsSheetForWrite(targetYear) {
+  var ss = SS();
+  var year = AY_normalizeYear_(targetYear || AY_getCurrentAcademicYear(false));
+  if (year) {
+    var yearly = ss.getSheetByName('Students_' + year);
+    if (yearly) return yearly;
+
+    var status = '';
+    try {
+      status = (typeof AY_registryGetStatus_ === 'function') ? AY_registryGetStatus_(year) : '';
+    } catch (_) {}
+    if (status === 'editing') {
+      throw new Error('ไม่พบชีต Students_' + year + ' สำหรับโหมดแก้ไขปีเก่า กรุณากู้คืนข้อมูลจากคลังก่อนบันทึก');
+    }
+  }
+  return ss.getSheetByName('Students');
+}

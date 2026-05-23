@@ -7,7 +7,7 @@
 
 /* ── helpers ภายในไฟล์ ────────────────────────────────── */
 function _cr_getStudents(ss, grade, classNo) {
-  var sheet = ss.getSheetByName('Students');
+  var sheet = AY_getStudentsSheetForRead();
   if (!sheet) throw new Error('ไม่พบชีต "Students"');
   var data = sheet.getDataRange().getValues();
   var h = data[0];

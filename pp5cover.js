@@ -44,7 +44,7 @@ function exportPp5CoverPDF(grade, classNo) {
 
     // --- ดึงข้อมูลนักเรียน ---
     const ss = _pp5SS_();
-    const studentsSheet = ss.getSheetByName("Students") || ss.getSheetByName("นักเรียน");
+    const studentsSheet = AY_getStudentsSheetForRead();
     if (!studentsSheet) throw new Error("ไม่พบชีต 'Students/นักเรียน'");
     
     const studentData = studentsSheet.getDataRange().getValues();

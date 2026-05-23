@@ -92,7 +92,7 @@ function getAllStudentDataOptimized(year) {
 
   const ss = SS();
 
-  const sheet = (year && typeof S_getSharedSheet === 'function') ? S_getSharedSheet('Students', year) : ss.getSheetByName('Students');
+  const sheet = S_getSharedSheet('Students', year);
 
   
 
@@ -801,13 +801,13 @@ function getCachedSheetData_(sheetName, year) {
 
     case 'Students':
       if (isOldYear) {
-        var snapSheet = (typeof S_getSharedSheet === 'function') ? S_getSharedSheet('Students', year) : SS().getSheetByName('Students');
+        var snapSheet = S_getSharedSheet('Students', year);
         return snapSheet ? snapSheet.getDataRange().getValues() : [];
       }
 
       if (CACHED_STUDENTS_DATA && (now - CACHED_STUDENTS_TIME) < CACHE_DURATION) return CACHED_STUDENTS_DATA;
 
-      CACHED_STUDENTS_DATA = SS().getSheetByName('Students').getDataRange().getValues();
+      CACHED_STUDENTS_DATA = AY_getStudentsSheetForRead().getDataRange().getValues();
 
       CACHED_STUDENTS_TIME = now;
 

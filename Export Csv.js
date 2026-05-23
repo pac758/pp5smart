@@ -74,7 +74,7 @@ function exportClassScoresToCSV(grade, classNo, academicYear, sortMode) {
 
 function getStudentsInClass(grade, classNo, sortMode) {
   const ss = SS();
-  const studentsSheet = ss.getSheetByName('Students');
+  const studentsSheet = AY_getStudentsSheetForRead();
   
   if (!studentsSheet) {
     throw new Error('ไม่พบชีต Students');

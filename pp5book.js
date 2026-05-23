@@ -805,7 +805,7 @@ function pp5book_getCharacteristicData_(grade, classNo) {
   var ss = SS();
 
   // --- ดึงรายชื่อนักเรียน ---
-  var studentsSheet = ss.getSheetByName('Students');
+  var studentsSheet = AY_getStudentsSheetForRead();
   if (!studentsSheet) throw new Error('ไม่พบชีต Students');
   var stuData = studentsSheet.getRange(2, 1, studentsSheet.getLastRow() - 1, 7).getValues();
   var students = stuData
@@ -875,7 +875,7 @@ function pp5book_getRTWData_(grade, classNo) {
   var ss = SS();
 
   // --- ดึงรายชื่อนักเรียน ---
-  var studentsSheet = ss.getSheetByName('Students');
+  var studentsSheet = AY_getStudentsSheetForRead();
   if (!studentsSheet) throw new Error('ไม่พบชีต Students');
   var stuData = studentsSheet.getRange(2, 1, studentsSheet.getLastRow() - 1, 7).getValues();
   var students = stuData
@@ -980,7 +980,7 @@ function pp5book_getSubjectScoreData_(grade, classNo) {
   var ss = SS();
 
   // --- ดึงรายชื่อนักเรียน ---
-  var studentsSheet = ss.getSheetByName('Students');
+  var studentsSheet = AY_getStudentsSheetForRead();
   if (!studentsSheet) throw new Error('ไม่พบชีต Students');
   var stuData = studentsSheet.getRange(2, 1, studentsSheet.getLastRow() - 1, 7).getValues();
   var students = stuData

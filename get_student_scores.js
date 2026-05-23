@@ -28,7 +28,7 @@ function convertToGrade(value) {
 function getStudentScoresForWeb(grade, classNo) {
   try {
     const ss = SS();
-    const studentsSheet = ss.getSheetByName("Students");
+    const studentsSheet = AY_getStudentsSheetForRead();
     if (!studentsSheet) {
       throw new Error("ไม่พบชีต 'Students'");
     }
@@ -809,7 +809,7 @@ function getAvailableClasses(grade) {  // ⚠️ เพิ่ม parameter
     const ss = (getSpreadsheetId_())
       ? SS()
       : SpreadsheetApp.getActiveSpreadsheet();
-    const studentsSheet = ss.getSheetByName("Students") || ss.getSheetByName("นักเรียน");
+    const studentsSheet = AY_getStudentsSheetForRead();
     
     if (!studentsSheet) {
       Logger.log("❌ ไม่พบชีต Students/นักเรียน");
@@ -896,9 +896,7 @@ function getParentStudentScores(studentId) {
     var ss = SS();
 
     // ดึงข้อมูลจาก SCORES_WAREHOUSE
-    var warehouseSheet = (typeof S_getYearlySheet === 'function')
-      ? S_getYearlySheet('SCORES_WAREHOUSE')
-      : ss.getSheetByName('SCORES_WAREHOUSE');
+    var warehouseSheet = S_getYearlySheet('SCORES_WAREHOUSE');
 
     if (!warehouseSheet) return { success: true, scores: [], message: 'ไม่พบชีต SCORES_WAREHOUSE' };
 
@@ -1103,7 +1101,7 @@ function getParentStudents() {
     }
 
     // ดึงข้อมูลนักเรียนจาก Students sheet
-    var studSheet = ss.getSheetByName('Students');
+    var studSheet = AY_getStudentsSheetForRead();
     if (!studSheet) return { success: false, message: 'ไม่พบชีต Students' };
 
     var studData = studSheet.getDataRange().getValues();
@@ -1150,7 +1148,7 @@ function getParentStudentAttendance(studentId) {
 
     // หา grade, classNo ของนักเรียน
     var ss = SS();
-    var studSheet = ss.getSheetByName('Students');
+    var studSheet = AY_getStudentsSheetForRead();
     if (!studSheet) return { success: false, message: 'ไม่พบชีต Students' };
 
     var studData = studSheet.getDataRange().getValues();

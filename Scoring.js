@@ -32,7 +32,7 @@ function getAvailableGrades() {
     // 🎯 วิธีที่ 1: อ่านจากชีต "Students"
     // ============================================
     try {
-      const studentsSheet = (typeof AY_getStudentsSheetForRead === 'function') ? AY_getStudentsSheetForRead() : ss.getSheetByName("Students");
+      const studentsSheet = AY_getStudentsSheetForRead();
       if (studentsSheet) {
         const data = studentsSheet.getDataRange().getValues();
         
@@ -119,7 +119,7 @@ function getAvailableClassNos(grade) {
     grade = String(grade || '').trim();
     if (!grade) return [];
     var ss = SS();
-    var sheet = (typeof AY_getStudentsSheetForRead === 'function') ? AY_getStudentsSheetForRead() : ss.getSheetByName('Students');
+    var sheet = AY_getStudentsSheetForRead();
     if (!sheet) return [];
     var data = sheet.getDataRange().getValues();
     var headers = data[0];
@@ -997,9 +997,7 @@ function _syncSubjectToWarehouse_(sheetName, studentRows) {
   } catch (e) { Logger.log('_syncSubjectToWarehouse_ subject lookup: ' + e.message); }
 
   // ดึง SCORES_WAREHOUSE
-  const warehouseSheet = (typeof S_getYearlySheet === 'function')
-    ? S_getYearlySheet('SCORES_WAREHOUSE')
-    : ss.getSheetByName('SCORES_WAREHOUSE');
+  const warehouseSheet = S_getYearlySheet('SCORES_WAREHOUSE');
   if (!warehouseSheet) return;
 
   const whData    = warehouseSheet.getDataRange().getValues();
@@ -1139,7 +1137,7 @@ function _findScoreSheets_(ss, filterGrade, filterClassNo) {
  * @returns {{sheetCount:number, rowCount:number}}
  */
 function _batchRebuild_(ss, scoreSheets, filterGrade, filterClassNo) {
-  var wh = (typeof S_getYearlySheet === 'function') ? S_getYearlySheet('SCORES_WAREHOUSE') : ss.getSheetByName('SCORES_WAREHOUSE');
+  var wh = S_getYearlySheet('SCORES_WAREHOUSE');
   if (!wh) throw new Error('ไม่พบชีต SCORES_WAREHOUSE');
 
   var whData = wh.getDataRange().getValues();
@@ -1321,7 +1319,7 @@ function getScoresWarehouseHealth(grade, classNo, year) {
     if (!grade || !classNo) throw new Error('กรุณาระบุชั้นและห้อง');
 
     var scoreSheets = _findScoreSheets_(ss, grade, classNo);
-    var wh = (typeof S_getYearlySheet === 'function') ? S_getYearlySheet('SCORES_WAREHOUSE', year) : ss.getSheetByName('SCORES_WAREHOUSE');
+    var wh = S_getYearlySheet('SCORES_WAREHOUSE', year);
     if (!wh) throw new Error('ไม่พบชีต SCORES_WAREHOUSE สำหรับปี ' + year);
 
     var expected = {};
@@ -1447,7 +1445,7 @@ function debugScoreWarehouseCheck(grade, classNo) {
   });
   
   // 2. ดู SCORES_WAREHOUSE
-  var wh = (typeof S_getYearlySheet === 'function') ? S_getYearlySheet('SCORES_WAREHOUSE') : ss.getSheetByName('SCORES_WAREHOUSE');
+  var wh = S_getYearlySheet('SCORES_WAREHOUSE');
   if (!wh) { Logger.log('❌ ไม่พบชีต SCORES_WAREHOUSE'); return; }
   var whData = wh.getDataRange().getValues();
   var h = whData[0];
@@ -1492,7 +1490,7 @@ function calculateFinalGrade(score) {
 
 function getActiveStudentIdsForScores_() {
   var ss = SS();
-  var sheet = (typeof AY_getStudentsSheetForRead === 'function') ? AY_getStudentsSheetForRead() : ss.getSheetByName('Students');
+  var sheet = AY_getStudentsSheetForRead();
   if (!sheet) return null;
 
   var data = sheet.getDataRange().getValues();

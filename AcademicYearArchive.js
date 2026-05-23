@@ -504,7 +504,7 @@ function AY_externalArchiveRegistrySheet_() {
   var sheet = ss.getSheetByName(AY_EXTERNAL_ARCHIVE_REGISTRY);
   if (!sheet) {
     sheet = ss.insertSheet(AY_EXTERNAL_ARCHIVE_REGISTRY);
-    sheet.getRange(1, 1, 1, 8).setValues([[
+    sheet.getRange(1, 1, 1, 11).setValues([[
       'academic_year',
       'spreadsheet_id',
       'url',
@@ -512,9 +512,32 @@ function AY_externalArchiveRegistrySheet_() {
       'created_at',
       'archived_sheet_count',
       'cleaned_at',
-      'notes'
+      'notes',
+      'status',
+      'verified_at',
+      'last_restored_at'
     ]]);
     try { sheet.hideSheet(); } catch (_) {}
+  } else {
+    // อัปเกรดคอลัมน์เก่าหากจำเป็น (ต้องมีอย่างน้อย 11 คอลัมน์)
+    var maxCols = sheet.getMaxColumns();
+    if (maxCols < 11) {
+      try { sheet.insertColumnsAfter(maxCols, 11 - maxCols); } catch (_) {}
+    }
+    // อัปเดต headers เสมอเพื่อให้แน่ใจว่าคอลัมน์ตรงกัน
+    sheet.getRange(1, 1, 1, 11).setValues([[
+      'academic_year',
+      'spreadsheet_id',
+      'url',
+      'name',
+      'created_at',
+      'archived_sheet_count',
+      'cleaned_at',
+      'notes',
+      'status',
+      'verified_at',
+      'last_restored_at'
+    ]]);
   }
   return sheet;
 }
@@ -533,7 +556,10 @@ function AY_externalArchiveFindRecord_(year) {
         createdAt: values[i][4] || '',
         archivedSheetCount: values[i][5] || 0,
         cleanedAt: values[i][6] || '',
-        notes: String(values[i][7] || '')
+        notes: String(values[i][7] || ''),
+        status: String(values[i][8] || ''),
+        verifiedAt: values[i][9] || '',
+        lastRestoredAt: values[i][10] || ''
       };
     }
   }
@@ -545,17 +571,76 @@ function AY_externalArchiveSaveRecord_(year, archive, sheetCount, notes) {
   var record = AY_externalArchiveFindRecord_(year);
   var row = record ? record.row : sheet.getLastRow() + 1;
   var existingCleanedAt = record ? record.cleanedAt : '';
-  sheet.getRange(row, 1, 1, 8).setValues([[
+  var existingStatus = record ? record.status : 'archived'; // ค่าเริ่มต้น
+  var existingVerifiedAt = record ? record.verifiedAt : '';
+  var existingLastRestoredAt = record ? record.lastRestoredAt : '';
+  
+  sheet.getRange(row, 1, 1, 11).setValues([[
     String(year),
     archive.getId(),
     archive.getUrl(),
     archive.getName(),
-    new Date(),
+    record ? record.createdAt || new Date() : new Date(),
     sheetCount || 0,
     existingCleanedAt || '',
-    notes || ''
+    notes || (record ? record.notes || '' : ''),
+    existingStatus || 'archived',
+    existingVerifiedAt || '',
+    existingLastRestoredAt || ''
   ]]);
   try { sheet.hideSheet(); } catch (_) {}
+}
+
+function AY_registrySetStatus_(year, status, extraFields) {
+  var sheet = AY_externalArchiveRegistrySheet_();
+  var record = AY_externalArchiveFindRecord_(year);
+  if (!record) return;
+  
+  sheet.getRange(record.row, 9).setValue(status);
+  
+  if (extraFields) {
+    if (extraFields.verifiedAt !== undefined) {
+      sheet.getRange(record.row, 10).setValue(extraFields.verifiedAt);
+    }
+    if (extraFields.lastRestoredAt !== undefined) {
+      sheet.getRange(record.row, 11).setValue(extraFields.lastRestoredAt);
+    }
+    if (extraFields.notes !== undefined) {
+      sheet.getRange(record.row, 8).setValue(extraFields.notes);
+    }
+    if (extraFields.cleanedAt !== undefined) {
+      sheet.getRange(record.row, 7).setValue(extraFields.cleanedAt);
+    }
+  }
+}
+
+function AY_registryGetStatus_(year) {
+  var record = AY_externalArchiveFindRecord_(year);
+  return record ? record.status || 'archived' : '';
+}
+
+function AY_getRegistryAll_() {
+  var sheet = AY_externalArchiveRegistrySheet_();
+  var values = sheet.getDataRange().getValues();
+  var list = [];
+  for (var i = 1; i < values.length; i++) {
+    var y = String(values[i][0] || '').trim();
+    if (!y) continue;
+    list.push({
+      year: y,
+      spreadsheetId: String(values[i][1] || ''),
+      url: String(values[i][2] || ''),
+      name: String(values[i][3] || ''),
+      createdAt: values[i][4] || '',
+      archivedSheetCount: values[i][5] || 0,
+      cleanedAt: values[i][6] || '',
+      notes: String(values[i][7] || ''),
+      status: String(values[i][8] || 'archived'),
+      verifiedAt: values[i][9] || '',
+      lastRestoredAt: values[i][10] || ''
+    });
+  }
+  return list;
 }
 
 function AY_externalArchiveMarkCleaned_(year, deletedCount) {
@@ -563,6 +648,9 @@ function AY_externalArchiveMarkCleaned_(year, deletedCount) {
   var record = AY_externalArchiveFindRecord_(year);
   if (!record) return;
   sheet.getRange(record.row, 7, 1, 2).setValues([[new Date(), 'cleaned local sheets: ' + deletedCount]]);
+  
+  // อัปเดตสถานะเป็น verified และบันทึก verifiedAt
+  AY_registrySetStatus_(year, 'verified', { verifiedAt: new Date() });
 }
 
 function AY_externalArchiveName_(year) {
@@ -836,8 +924,11 @@ function createAcademicYearExternalArchive(targetYear) {
     var year = AY_archiveTargetYear_(targetYear);
     var current = (typeof AY_getCurrentAcademicYear === 'function') ? AY_getCurrentAcademicYear(false) : '';
     if (!year) throw new Error('ไม่พบปีการศึกษา');
+    var registryStatus = AY_registryGetStatus_(year);
     if (current && String(year) === String(current)) {
-      return { success: false, message: 'ไม่ควรส่งออกปีปัจจุบัน ' + year + ' ไปคลังเก่า ให้ใช้กับปีเก่าเท่านั้น' };
+      if (registryStatus !== 'editing') {
+        return { success: false, message: 'ไม่ควรส่งออกปีปัจจุบัน ' + year + ' ไปคลังเก่า ให้ใช้กับปีเก่าหรือปีที่อยู่ในโหมดแก้ไขย้อนหลังเท่านั้น' };
+      }
     }
 
     var candidates = AY_externalArchiveCandidates_(year);
@@ -1017,6 +1108,11 @@ function restoreAcademicYearFromExternalArchive(targetYear) {
       }
     });
 
+    if (errors.length === 0 && restored.length > 0) {
+      // อัปเดตสถานะในคลังเป็น 'editing'
+      AY_registrySetStatus_(year, 'editing', { lastRestoredAt: new Date() });
+    }
+
     return {
       success: errors.length === 0,
       targetYear: year,
@@ -1067,6 +1163,120 @@ function switchAcademicYearOnly(targetYear) {
     };
   } catch (e) {
     Logger.log('switchAcademicYearOnly error: ' + e.message + '\n' + (e.stack || ''));
+    return { success: false, message: e.message };
+  }
+}
+
+// 📦 ฟังก์ชันยกเลิกการแก้ไขปีเก่า
+function AY_cancelEditingOldYear(targetYear) {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) {
+    return { success: false, message: 'ระบบยังทำงานคำสั่งก่อนหน้าอยู่ กรุณารอสักครู่แล้วกดใหม่' };
+  }
+  try {
+    var year = AY_archiveTargetYear_(targetYear);
+    if (!year) throw new Error('ไม่พบปีการศึกษา');
+    var current = (typeof AY_getCurrentAcademicYear === 'function') ? AY_getCurrentAcademicYear(false) : '';
+    var registryStatus = AY_registryGetStatus_(year);
+    if (registryStatus !== 'editing') {
+      throw new Error('ปี ' + year + ' ไม่ได้อยู่ในโหมดแก้ไขย้อนหลัง จึงไม่ต้องยกเลิกการแก้ไข');
+    }
+    
+    var ss = SS();
+    var candidates = AY_externalArchiveCandidates_(year);
+    var deleted = [];
+    candidates.forEach(function(item) {
+      var sheet = ss.getSheetByName(item.name);
+      if (sheet && ss.getSheets().length > 1) {
+        ss.deleteSheet(sheet);
+        deleted.push(item.name);
+      }
+    });
+    
+    AY_registrySetStatus_(year, 'verified', { notes: 'ยกเลิกแก้ไข คืนสถานะสมบูรณ์' });
+    return {
+      success: true,
+      targetYear: year,
+      deletedCount: deleted.length,
+      deleted: deleted,
+      message: 'ยกเลิกการดึงข้อมูลปี ' + year + ' มาแก้ไข และนำชีตชั่วคราวออกจากไฟล์หลักแล้ว ' + deleted.length + ' ชีต'
+    };
+  } catch (e) {
+    Logger.log('AY_cancelEditingOldYear error: ' + e.message);
+    return { success: false, message: e.message };
+  } finally {
+    try { lock.releaseLock(); } catch (_) {}
+  }
+}
+
+// 📊 ดึงคลังข้อมูลสำหรับ UI
+function getYearDatabaseRegistry() {
+  try {
+    var currentYear = (typeof AY_getCurrentAcademicYear === 'function') ? AY_getCurrentAcademicYear(false) : '';
+    
+    // คำนวณปีจริงตามปฏิทิน (เช่น พ.ค. เป็นต้นไป คือปีการศึกษาใหม่)
+    var computedYear = AY_computeAcademicYearFromDate(new Date());
+    var isEditingOldYear = currentYear && String(currentYear) !== String(computedYear);
+    
+    var years = AY_getRegistryAll_();
+    
+    // นำเข้าข้อมูลปีปัจจุบัน (active) เข้าไปในรายการเพื่อแสดงผลใน UI ด้วย
+    var hasCurrentYear = false;
+    for (var i = 0; i < years.length; i++) {
+      if (String(years[i].year) === String(currentYear)) {
+        years[i].status = 'active'; // บังคับแสดงผลเป็น active หากกำลังใช้อยู่
+        hasCurrentYear = true;
+      }
+    }
+    
+    // แปลงรูปแบบวันที่ใน Registry ให้สวยงามเหมาะสมสำหรับ UI
+    var formattedYears = years.map(function(y) {
+      return {
+        year: y.year,
+        spreadsheetId: y.spreadsheetId,
+        url: y.url,
+        name: y.name,
+        createdAt: y.createdAt ? Utilities.formatDate(new Date(y.createdAt), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss') : '',
+        archivedSheetCount: y.archivedSheetCount,
+        cleanedAt: y.cleanedAt ? Utilities.formatDate(new Date(y.cleanedAt), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss') : '',
+        notes: y.notes,
+        status: String(currentYear) === String(y.year) ? 'active' : (y.status || 'archived'),
+        verifiedAt: y.verifiedAt ? Utilities.formatDate(new Date(y.verifiedAt), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss') : '',
+        lastRestoredAt: y.lastRestoredAt ? Utilities.formatDate(new Date(y.lastRestoredAt), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss') : ''
+      };
+    });
+    
+    // ถ้ายังไม่มีปีปัจจุบันใน registry เลย ให้ใส่รายการจำลองสำหรับแสดง active
+    if (!hasCurrentYear && currentYear) {
+      formattedYears.unshift({
+        year: currentYear,
+        spreadsheetId: SS().getId(),
+        url: SS().getUrl(),
+        name: SS().getName(),
+        createdAt: '',
+        archivedSheetCount: 0,
+        cleanedAt: '',
+        notes: 'ปีการศึกษาที่ใช้งานในปัจจุบัน',
+        status: 'active',
+        verifiedAt: '',
+        lastRestoredAt: ''
+      });
+    }
+    
+    // เรียงลำดับปีจากมากไปน้อย
+    formattedYears.sort(function(a, b) {
+      return Number(b.year) - Number(a.year);
+    });
+    
+    return {
+      success: true,
+      currentYear: currentYear,
+      computedYear: computedYear,
+      isEditingOldYear: isEditingOldYear,
+      years: formattedYears
+    };
+  } catch (e) {
+    Logger.log('getYearDatabaseRegistry error: ' + e.message);
     return { success: false, message: e.message };
   }
 }

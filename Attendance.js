@@ -8,7 +8,7 @@ function debugAttendanceData() {
   Logger.log('=== DEBUG v4: เปรียบเทียบภาคเรียน 1 vs 2 ===');
 
   // === 1. หา ป.1/1 IDs จาก Students ===
-  var studentsSheet = ss.getSheetByName('Students');
+  var studentsSheet = AY_getStudentsSheetForRead();
   var sData = studentsSheet.getDataRange().getValues();
   var classMatchIds = new Set();
   for (var i = 1; i < sData.length; i++) {
@@ -206,7 +206,7 @@ function setupNewAcademicYear() {
  * ✅ ดึงรายชื่อนักเรียนสำหรับเช็คชื่อ (ใช้โค้ดเดิมที่ทำงานได้)
  */
 function getStudentsForAttendance(grade, classNo) {
-  const sheet = (typeof AY_getStudentsSheetForRead === 'function') ? AY_getStudentsSheetForRead() : SS().getSheetByName("Students");
+  const sheet = AY_getStudentsSheetForRead();
   if (!sheet) throw new Error('ไม่พบชีต "Students" กรุณาตรวจสอบว่ามีชีตนักเรียนในระบบ');
   const data = sheet.getDataRange().getValues();
   const result = [];
@@ -311,7 +311,7 @@ function getSavedAttendance(grade, classNo, year, month) {
     Logger.log(`Found ${dateCols.length} date columns:`, dateCols.slice(0, 5));
     
     // ✅ อ่านชีต Students ทั้งหมด (รวมนร.จำหน่าย/ย้ายออก) เพื่อสร้าง ID → class map
-    const studentsSheet = ss.getSheetByName("Students");
+    const studentsSheet = AY_getStudentsSheetForRead();
     const allStudentIdToClass = {}; // map: studentId → {grade, classNo}
     if (studentsSheet) {
       const sData = studentsSheet.getDataRange().getValues();
@@ -543,7 +543,7 @@ function getMonthlyFromSummaryColumns(data, headers, grade, classNo) {
 function isStudentInClass(studentId, targetGrade, targetClassNo) {
   try {
     const ss = SS();
-    const studentsSheet = ss.getSheetByName('Students');
+    const studentsSheet = AY_getStudentsSheetForRead();
     
     if (!studentsSheet) return false;
     
@@ -702,7 +702,7 @@ function getAttendanceVerticalTable(grade, classNo, year, month) {
       return { label: `${d}`, dow, date: dateStr, isHoliday, holidayType };
     });
 
-    const studentsSheet = ss.getSheetByName("Students");
+    const studentsSheet = AY_getStudentsSheetForRead();
     const studentsData = studentsSheet.getDataRange().getValues();
     const stuHeaders = studentsData[0];
     const stuIdCol = stuHeaders.indexOf("student_id");
@@ -2109,7 +2109,7 @@ function getStudentMonthlyStats(studentId, yearCE, month) {
 function getStudentBasicInfo(studentId) {
   try {
     const ss = SS();
-    const studentsSheet = ss.getSheetByName('Students');
+    const studentsSheet = AY_getStudentsSheetForRead();
     
     if (!studentsSheet) {
       throw new Error("ไม่พบชีต Students");
@@ -2509,7 +2509,7 @@ function rebuildYearlySummarySheet(academicYearBE_arg) {
   const ss = SS();
 
   // โหลด Students → map id -> {name, grade, classNo}
-  const studentsSheet = ss.getSheetByName('Students');
+  const studentsSheet = AY_getStudentsSheetForRead();
   if (!studentsSheet) throw new Error('ไม่พบชีต Students');
   const sVals = studentsSheet.getDataRange().getValues();
   const stuMap = {}; // id -> {name, grade, classNo}
@@ -4649,7 +4649,7 @@ function getAttendanceVerticalTableFiltered(grade, classNo, year, month) {
       return match ? { col: i, label: match[1] } : null;
     }).filter(Boolean);
 
-    const studentsSheet = ss.getSheetByName("Students");
+    const studentsSheet = AY_getStudentsSheetForRead();
     const studentsData = studentsSheet.getDataRange().getValues();
     const stuHeaders = studentsData[0];
     const stuIdCol = stuHeaders.indexOf("student_id");

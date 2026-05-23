@@ -68,7 +68,7 @@ function getCachedDashboardSummary() {
 
 function getDashboardSummary() {
   const ss = SS();
-  const sheet = ss.getSheetByName("Students");
+  const sheet = AY_getStudentsSheetForRead();
   if (!sheet) throw new Error("ไม่พบชีต Students");
 
   const data = sheet.getDataRange().getValues();
@@ -116,7 +116,7 @@ function getFastStudentStats() {
     if (hit) return JSON.parse(hit);
 
     const ss = SS();
-    const sheet = ss.getSheetByName("Students");
+    const sheet = AY_getStudentsSheetForRead();
     if (!sheet) return { total: 0, male: 0, female: 0 };
 
     const data = sheet.getDataRange().getValues();
@@ -766,7 +766,7 @@ function getDashboardProgress() {
         }
         // นับจำนวนนักเรียน ป.1-ป.6 จาก Students sheet
         let totalStudents = 0;
-        const studentsSheet = ss.getSheetByName('Students');
+        const studentsSheet = AY_getStudentsSheetForRead();
         if (studentsSheet && studentsSheet.getLastRow() > 1) {
           const stData = studentsSheet.getDataRange().getValues();
           const stHeaders = stData[0];
@@ -797,7 +797,7 @@ function getDashboardProgress() {
       const rtwSheet = S_getYearlySheet('การประเมินอ่านคิดเขียน');
       if (rtwSheet && rtwSheet.getLastRow() > 1) {
         const rtwData = rtwSheet.getDataRange().getValues();
-        const studentsSheet = ss.getSheetByName('Students');
+        const studentsSheet = AY_getStudentsSheetForRead();
         let totalStudents = 0;
         if (studentsSheet && studentsSheet.getLastRow() > 1) {
           const stData = studentsSheet.getDataRange().getValues();
@@ -886,7 +886,7 @@ function getDashboardAlerts() {
         // นับนักเรียนต่อชั้น
         var _studPerGrade = {};
         try {
-          var _stSheet = ss.getSheetByName('Students');
+          var _stSheet = AY_getStudentsSheetForRead();
           if (_stSheet && _stSheet.getLastRow() > 1) {
             var _stD = _stSheet.getDataRange().getValues();
             var _gC = _stD[0].indexOf('grade'); if (_gC<0) _gC = _stD[0].indexOf('ชั้น');
@@ -1037,7 +1037,7 @@ function getGradeRecordingChartData() {
     var studentsPerGrade = {};
     allGrades.forEach(function(g) { studentsPerGrade[g] = 0; });
     try {
-      var studSheet = ss.getSheetByName('Students');
+      var studSheet = AY_getStudentsSheetForRead();
       if (studSheet && studSheet.getLastRow() > 1) {
         var stData = studSheet.getDataRange().getValues();
         var stHeaders = stData[0];
@@ -1213,7 +1213,7 @@ function debugAttendanceDashboard() {
   });
 
   // 4. ตรวจสอบ Students sheet
-  const studSheet = ss.getSheetByName('Students');
+  const studSheet = AY_getStudentsSheetForRead();
   if (studSheet) {
     const studData = studSheet.getDataRange().getValues();
     const studHeaders = studData[0];

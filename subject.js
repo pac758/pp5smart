@@ -828,7 +828,7 @@ function getPp6ReportDataComplete(studentId, term = 'both') {
 function getStudentPersonalInfo(studentId) {
   try {
     const ss = SS();
-    const sheet = ss.getSheetByName('Students');
+    const sheet = AY_getStudentsSheetForRead();
     
     if (!sheet) {
       throw new Error('ไม่พบชีต Students');

@@ -207,7 +207,7 @@ function generateStudentListPDF(grade, classNo, gender) {
 function getFilteredStudents(grade, classNo, gender) {
   try {
     const ss = SS();
-    const sheet = ss.getSheetByName('Students') || ss.getSheetByName('นักเรียน') || ss.getSheets()[0];
+    const sheet = AY_getStudentsSheetForRead();
     
     if (!sheet) {
       throw new Error('ไม่พบชีทข้อมูลนักเรียน');
@@ -549,7 +549,7 @@ function generateParentInfoPDF(grade, classNo) {
   const ss = (getSpreadsheetId_())
     ? SS()
     : SS();
-  const studentSheet = ss.getSheetByName("Students") || ss.getSheetByName("นักเรียน");
+  const studentSheet = AY_getStudentsSheetForRead();
   if (!studentSheet) throw new Error("ไม่พบชีต 'Students/นักเรียน'");
   
   const studentData = studentSheet.getDataRange().getValues();
@@ -825,7 +825,7 @@ function getStudentAttendanceSummary(studentId) {
 function searchStudentsForEdit(grade, classNo, name) {
   try {
     const ss = SS();
-    const sheet = ss.getSheetByName('Students');
+    const sheet = AY_getStudentsSheetForRead();
     if (!sheet) throw new Error('ไม่พบชีต Students');
 
     const data = sheet.getDataRange().getValues();
@@ -896,7 +896,7 @@ function searchStudentsForEdit(grade, classNo, name) {
 function getStudentParentData(studentId) {
   try {
     const ss = SS();
-    const sheet = ss.getSheetByName('Students');
+    const sheet = AY_getStudentsSheetForRead();
     if (!sheet) throw new Error('ไม่พบชีต Students');
 
     const data = sheet.getDataRange().getValues();
@@ -987,7 +987,7 @@ function getStudentParentData(studentId) {
 function saveParentData(formData) {
   try {
     const ss = SS();
-    const sheet = ss.getSheetByName('Students');
+    const sheet = AY_getStudentsSheetForRead();
     if (!sheet) throw new Error('ไม่พบชีต Students');
 
     const data = sheet.getDataRange().getValues();

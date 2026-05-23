@@ -205,7 +205,7 @@ function _opr_getWarehouseForClass_(grade, classNo, cache) {
     sheet = (typeof S_getYearlySheet === 'function') ? S_getYearlySheet('SCORES_WAREHOUSE') : null;
   } catch (_e) {}
   try {
-    if (!sheet) sheet = SS().getSheetByName('SCORES_WAREHOUSE');
+    if (!sheet) sheet = S_getYearlySheet('SCORES_WAREHOUSE');
   } catch (_e) {}
   if (!sheet) {
     if (cache && cache.whByClass) cache.whByClass[classKey] = [];

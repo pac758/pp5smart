@@ -82,7 +82,7 @@ function getTeacherListForEditor() {
 
   // 2. ดึงโครงสร้างชั้นเรียนจาก Students (ถ้ามี)
   const classMap = new Map();
-  var studentSheet = ss.getSheetByName("Students");
+  var studentSheet = AY_getStudentsSheetForRead();
   if (studentSheet && studentSheet.getLastRow() > 1) {
     var allStudentData = studentSheet.getDataRange().getValues();
     var sHeaders = allStudentData[0];

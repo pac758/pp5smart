@@ -259,7 +259,7 @@ function validateCompetencyScores_(scores) {
  * ตรวจว่านักเรียนมีอยู่จริง
  */
 function studentExists_(ss, studentId, grade, classNo) {
-  var sheet = ss.getSheetByName('Students');
+  var sheet = AY_getStudentsSheetForRead();
   if (!sheet || sheet.getLastRow() < 2) return false;
   var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues();
   for (var i = 0; i < data.length; i++) {
@@ -733,7 +733,7 @@ function shouldIncludeHistoricalTerminalAssessmentStudent_(grade, status, academ
 
 function getActiveStudentsForAssessment_(grade, classNo) {
   var ss = SS();
-  var studentsSheet = (typeof AY_getStudentsSheetForRead === 'function') ? AY_getStudentsSheetForRead() : ss.getSheetByName('Students');
+  var studentsSheet = AY_getStudentsSheetForRead();
   if (!studentsSheet) throw new Error('ไม่พบชีต Students');
 
   var values = studentsSheet.getDataRange().getValues();

@@ -72,7 +72,7 @@ function getPp5ReadinessMatrix(academicYear) {
   try {
     var ss = SS();
     var year = String(academicYear || (typeof S_getAcademicYear === 'function' ? S_getAcademicYear() : '') || '').trim();
-    var studentsSheet = ss.getSheetByName('Students');
+    var studentsSheet = AY_getStudentsSheetForRead();
     if (!studentsSheet) throw new Error('ไม่พบชีต Students');
 
     var rows = pp5r_readObjects_(studentsSheet);
@@ -123,7 +123,7 @@ function pp5r_checkYearlySheets_(ss, year, result) {
 }
 
 function pp5r_getStudents_(ss, grade, classNo, result) {
-  var sheet = ss.getSheetByName('Students');
+  var sheet = AY_getStudentsSheetForRead();
   if (!sheet) {
     result.blockingIssues.push('ไม่พบชีต Students');
     result.sections.students = { ok: false, total: 0, missingIds: [], duplicateIds: [] };

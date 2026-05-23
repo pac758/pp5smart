@@ -266,7 +266,7 @@ function pp5a_readinessMap_(year) {
 }
 
 function pp5a_classList_(ss) {
-  var sheet = ss.getSheetByName('Students');
+  var sheet = AY_getStudentsSheetForRead();
   if (!sheet) return [];
   var rows = pp5a_readObjects_(sheet);
   var classes = {};

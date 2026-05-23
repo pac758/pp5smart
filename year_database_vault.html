@@ -1,0 +1,766 @@
+<style>
+  .vault-card {
+    border: none;
+    border-radius: 16px;
+    background: var(--bg-card);
+    box-shadow: var(--shadow-lg);
+    transition: var(--transition);
+  }
+  
+  .vault-header {
+    background: linear-gradient(135deg, #4f46e5 0%, #312e81 100%);
+    color: white;
+    border-radius: 16px 16px 0 0 !important;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .vault-header::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 300px;
+    height: 300px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .badge-active {
+    background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);
+    animation: pulse-glow 2s infinite;
+  }
+
+  .badge-archived {
+    background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+    box-shadow: 0 4px 10px rgba(99, 102, 241, 0.2);
+  }
+
+  .badge-verified {
+    background: linear-gradient(135deg, #0d9488 0%, #115e59 100%);
+    box-shadow: 0 4px 10px rgba(13, 148, 136, 0.2);
+  }
+
+  .badge-editing {
+    background: linear-gradient(135deg, #f59e0b 0%, #b45309 100%);
+    box-shadow: 0 4px 10px rgba(245, 158, 11, 0.2);
+    animation: pulse-glow-warning 2s infinite;
+  }
+
+  @keyframes pulse-glow {
+    0% { box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2); }
+    50% { box-shadow: 0 4px 20px rgba(16, 185, 129, 0.5); }
+    100% { box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2); }
+  }
+
+  @keyframes pulse-glow-warning {
+    0% { box-shadow: 0 4px 10px rgba(245, 158, 11, 0.2); }
+    50% { box-shadow: 0 4px 20px rgba(245, 158, 11, 0.5); }
+    100% { box-shadow: 0 4px 10px rgba(245, 158, 11, 0.2); }
+  }
+
+  .vault-banner {
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    border: 1px solid transparent;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .vault-banner-warning {
+    background-color: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.3);
+    color: #b45309;
+  }
+
+  .vault-banner-info {
+    background-color: rgba(79, 70, 229, 0.08);
+    border-color: rgba(79, 70, 229, 0.2);
+    color: #4338ca;
+  }
+
+  [data-theme="dark"] .vault-banner-warning {
+    background-color: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+  }
+
+  [data-theme="dark"] .vault-banner-info {
+    background-color: rgba(99, 102, 241, 0.15);
+    color: #818cf8;
+  }
+
+  .table-responsive {
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .vault-table th {
+    background-color: var(--sidebar-bg);
+    color: var(--sidebar-text);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+    padding: 14px 16px;
+    border-bottom: 2px solid var(--sidebar-divider);
+  }
+
+  .vault-table td {
+    padding: 16px;
+    vertical-align: middle;
+    color: var(--sidebar-text);
+    border-bottom: 1px solid var(--sidebar-divider);
+  }
+
+  .vault-table tr:hover {
+    background-color: var(--sidebar-hover);
+  }
+
+  .vault-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    color: white;
+  }
+
+  .vault-spinner-box {
+    background: var(--bg-card);
+    padding: 40px;
+    border-radius: 20px;
+    text-align: center;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+    color: var(--sidebar-text);
+  }
+
+  .vault-action-btn {
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+  }
+
+  .vault-action-btn:hover {
+    transform: translateY(-1px);
+  }
+
+  .vault-link {
+    color: #4f46e5;
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .vault-link:hover {
+    text-decoration: underline;
+  }
+
+  [data-theme="dark"] .vault-link {
+    color: #818cf8;
+  }
+</style>
+
+<div class="container py-4 animate-fade-in">
+  <!-- Warning Banner if editing old year -->
+  <div id="editingWarningBanner" class="vault-banner vault-banner-warning d-none">
+    <div style="font-size: 2rem;">⚠️</div>
+    <div>
+      <h6 class="mb-1 font-weight-bold">ขณะนี้ระบบกำลังทำงานอยู่ในโหมดแก้ไขข้อมูลปีเก่าย้อนหลัง</h6>
+      <p class="mb-0 small" style="opacity: 0.9;">
+        ข้อมูลที่แสดงในปพ.5 ในขณะนี้ เป็นข้อมูลของปีการศึกษาที่ถูกดึงกลับมาแก้ไขชั่วคราว ท่านสามารถตรวจคะแนน เช็คชื่อ หรือทำรายงานได้ตามปกติ เมื่อทำงานเสร็จสิ้นแล้ว กรุณากดปุ่ม <strong>"บันทึกกลับเข้าคลัง"</strong> ของปีนั้นๆ เพื่อส่งออกและบันทึกความเปลี่ยนแปลงลงในไฟล์คลังข้อมูล หรือกดปุ่ม <strong>"ยกเลิกแก้ไข"</strong> เพื่อยกเลิกรายการและคืนค่าเดิม
+      </p>
+    </div>
+  </div>
+
+  <div id="normalBanner" class="vault-banner vault-banner-info">
+    <div style="font-size: 1.5rem;">📦</div>
+    <div>
+      <h6 class="mb-1 font-weight-bold">ข้อมูลระบบคลังฐานข้อมูลรายปี (Year Database Vault)</h6>
+      <p class="mb-0 small" style="opacity: 0.9;">
+        ระบบส่งออกและกู้คืนคลังฐานข้อมูลรายปีช่วยประหยัดพื้นที่ไฟล์หลัก โดยคัดลอกไฟล์ Snapshot ของปีเก่าไปบันทึกไว้ใน Google Spreadsheet คลังต่างหาก และล้างชีตที่ไม่จำเป็นออกจากระบบ เมื่อท่านประสงค์จะตรวจหรือแก้ไขข้อมูลย้อนหลัง สามารถดึงกลับมาได้ตลอดเวลา
+      </p>
+    </div>
+  </div>
+
+  <div class="card vault-card">
+    <div class="vault-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+      <div>
+        <h4 class="mb-1 font-weight-bold"><i class="fas fa-archive me-2"></i> คลังฐานข้อมูลรายปี</h4>
+        <p class="mb-0 text-white-50 small">จัดการ ตรวจสอบ และแก้ไขคลังข้อมูลรายปีอย่างปลอดภัย</p>
+      </div>
+      <div>
+        <span class="badge rounded-pill bg-light text-dark px-3 py-2">
+          ปีการศึกษาที่ใช้งานอยู่: <strong><span id="currentYearDisplay">-</span></strong>
+        </span>
+      </div>
+    </div>
+    
+    <div class="card-body p-4">
+      <div id="registryLoading" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status" style="width: 2.5rem; height: 2.5rem;">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-3 text-muted">กำลังดึงข้อมูลทะเบียนคลังรายปี...</p>
+      </div>
+
+      <div id="registryContainer" class="d-none">
+        <div class="table-responsive border border-light">
+          <table class="table vault-table mb-0">
+            <thead>
+              <tr>
+                <th style="width: 12%;">ปีการศึกษา</th>
+                <th style="width: 15%;">สถานะ</th>
+                <th style="width: 25%;">ไฟล์คลังข้อมูลภายนอก</th>
+                <th style="width: 10%;">จำนวนชีต</th>
+                <th style="width: 15%;">รายละเอียดอัปเดต</th>
+                <th style="width: 23%;">การจัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="registryBody">
+              <!-- Data rows dynamically generated -->
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="mt-4 d-flex justify-content-between align-items-center flex-wrap gap-2 text-muted small">
+          <div><i class="bi bi-info-circle"></i> การกู้คืนหรือส่งออกข้อมูลใช้เวลาเฉลี่ย 1-2 นาทีต่อรายการ ห้ามปิดหน้าต่างหรือปิดคอมพิวเตอร์ระหว่างทำรายการ</div>
+          <div><button class="btn btn-sm btn-outline-secondary" onclick="loadRegistryData()"><i class="bi bi-arrow-clockwise"></i> รีเฟรชตาราง</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Lock & Progress Screen Overlay during Operations -->
+<div id="vaultOverlay" class="vault-overlay d-none">
+  <div class="vault-spinner-box">
+    <div class="spinner-border text-primary" role="status" style="width: 3.5rem; height: 3.5rem; border-width: 4px; margin-bottom: 20px;">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <h4 id="overlayTitle" class="font-weight-bold mb-2">กำลังบันทึกและจัดการข้อมูลคลัง...</h4>
+    <p id="overlaySub" class="text-muted mb-4">ห้ามปิดหน้านี้จนกว่าการทำงานจะเสร็จสิ้น</p>
+    
+    <div class="progress mb-3" style="height: 10px; border-radius: 10px;">
+      <div id="overlayProgress" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%;" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+    </div>
+    
+    <div id="overlayDetails" class="alert alert-light border small text-start py-2" style="max-height: 120px; overflow-y: auto;">
+      • เริ่มกระบวนการส่งออก...<br>
+      • กำลังคัดลอกไฟล์ทีละชีต เพื่อความปลอดภัยข้อมูลสูงสุด...<br>
+      • กรุณารอสักครู่ (ใช้เวลา 1-3 นาที)
+    </div>
+  </div>
+</div>
+
+<script>
+function setupYear_database_vaultPage() {
+  loadRegistryData();
+}
+
+function showOverlay(title, subtitle, details) {
+  document.getElementById('overlayTitle').textContent = title || 'กำลังจัดเก็บข้อมูล...';
+  document.getElementById('overlaySub').textContent = subtitle || 'กรุณาห้ามปิดเบราว์เซอร์หรือหยุดการทำงาน';
+  if (details) {
+    document.getElementById('overlayDetails').innerHTML = details;
+  } else {
+    document.getElementById('overlayDetails').innerHTML = '• ระบบกำลังประมวลผลคำสั่งหลังบ้านอย่างปลอดภัย...<br>• กรุณารอสักครู่ รายการนี้อาจใช้เวลาประมาณ 1-3 นาที';
+  }
+  document.getElementById('vaultOverlay').classList.remove('d-none');
+}
+
+function hideOverlay() {
+  document.getElementById('vaultOverlay').classList.add('d-none');
+}
+
+function loadRegistryData() {
+  document.getElementById('registryLoading').classList.remove('d-none');
+  document.getElementById('registryContainer').classList.add('d-none');
+  
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(response) {
+        document.getElementById('registryLoading').classList.add('d-none');
+        document.getElementById('registryContainer').classList.remove('d-none');
+        
+        if (response && response.success) {
+          renderRegistryTable(response);
+        } else {
+          showToastError('เกิดข้อผิดพลาดในการโหลดข้อมูลทะเบียนคลัง: ' + (response.message || ''));
+        }
+      })
+      .withFailureHandler(function(err) {
+        document.getElementById('registryLoading').classList.add('d-none');
+        showToastError('การเชื่อมต่อกับระบบหลังบ้านล้มเหลว: ' + err.message);
+      })
+      .getYearDatabaseRegistry();
+  } else {
+    // Mock simulation data if running offline
+    setTimeout(function() {
+      document.getElementById('registryLoading').classList.add('d-none');
+      document.getElementById('registryContainer').classList.remove('d-none');
+      renderRegistryTable({
+        success: true,
+        currentYear: '2568',
+        computedYear: '2569',
+        isEditingOldYear: true,
+        years: [
+          { year: '2569', status: 'archived', url: 'https://docs.google.com/spreadsheets/d/abc1', name: 'PP5Smart Archive 2569', createdAt: '2026-05-23 11:30:10', archivedSheetCount: 15, cleanedAt: '', notes: 'ส่งออกแล้ว รอตรวจล้างชีตหลัก', verifiedAt: '', lastRestoredAt: '' },
+          { year: '2568', status: 'active', url: 'https://docs.google.com/spreadsheets/d/abc2', name: 'PP5Smart Archive 2568', createdAt: '2026-05-22 10:15:30', archivedSheetCount: 15, cleanedAt: '2026-05-22 10:16:00', notes: 'ดึงกลับมาแก้ไขแล้วสลับปีใช้งาน', verifiedAt: '2026-05-22 10:16:00', lastRestoredAt: '2026-05-23 18:00:00' },
+          { year: '2567', status: 'verified', url: 'https://docs.google.com/spreadsheets/d/abc3', name: 'PP5Smart Archive 2567', createdAt: '2025-05-20 09:00:00', archivedSheetCount: 15, cleanedAt: '2025-05-20 09:02:00', notes: 'ตรวจล้างชีตหลักเรียบร้อย ปลอดภัย 100%', verifiedAt: '2025-05-20 09:02:00', lastRestoredAt: '' }
+        ]
+      });
+    }, 800);
+  }
+}
+
+function showToastError(msg) {
+  if (typeof Swal !== 'undefined') {
+    Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: msg });
+  } else {
+    alert('❌ ' + msg);
+  }
+}
+
+function renderRegistryTable(data) {
+  document.getElementById('currentYearDisplay').textContent = data.currentYear;
+  
+  const editingBanner = document.getElementById('editingWarningBanner');
+  const normalBanner = document.getElementById('normalBanner');
+  if (data.isEditingOldYear) {
+    editingBanner.classList.remove('d-none');
+    normalBanner.classList.add('d-none');
+  } else {
+    editingBanner.classList.add('d-none');
+    normalBanner.classList.remove('d-none');
+  }
+  
+  const tbody = document.getElementById('registryBody');
+  tbody.innerHTML = '';
+  
+  if (!data.years || data.years.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-5">ยังไม่พบบันทึกในระบบทะเบียนคลังข้อมูลรายปี</td></tr>';
+    return;
+  }
+  
+  data.years.forEach(function(item) {
+    const tr = document.createElement('tr');
+    
+    // Status Badge Render
+    let badgeHtml = '';
+    if (item.status === 'active') {
+      badgeHtml = '<span class="badge badge-active px-3 py-2"><i class="bi bi-play-circle-fill me-1"></i> ปีใช้งานปัจจุบัน</span>';
+    } else if (item.status === 'editing') {
+      badgeHtml = '<span class="badge badge-editing px-3 py-2 text-white"><i class="bi bi-pencil-square me-1"></i> แก้ไขย้อนหลัง</span>';
+    } else if (item.status === 'verified') {
+      badgeHtml = '<span class="badge badge-verified px-3 py-2"><i class="bi bi-shield-check me-1"></i> คลังสมบูรณ์</span>';
+    } else {
+      badgeHtml = '<span class="badge badge-archived px-3 py-2"><i class="bi bi-file-zip-fill me-1"></i> ส่งออกแล้ว</span>';
+    }
+    
+    // External Link Render
+    let fileLinkHtml = '-';
+    if (item.url) {
+      fileLinkHtml = '<a href="' + item.url + '" target="_blank" class="vault-link" title="เปิดไฟล์ Spreadsheet คลังข้อมูล"><i class="bi bi-file-earmark-excel-fill text-success me-1"></i> ' + (item.name || 'เปิดไฟล์คลังข้อมูล') + '</a>';
+    }
+    
+    // Info details
+    let infoDetailsHtml = '<div style="font-size:0.8rem;line-height:1.4;">';
+    if (item.createdAt) {
+      infoDetailsHtml += '<div><strong>บันทึก:</strong> ' + item.createdAt.substring(0, 16) + '</div>';
+    }
+    if (item.lastRestoredAt) {
+      infoDetailsHtml += '<div><strong>ดึงแก้ล่าสุด:</strong> ' + item.lastRestoredAt.substring(0, 16) + '</div>';
+    }
+    if (item.cleanedAt) {
+      infoDetailsHtml += '<div class="text-success"><strong>ตรวจล้าง:</strong> สำเร็จแล้ว</div>';
+    } else if (item.status !== 'active') {
+      infoDetailsHtml += '<div class="text-warning"><strong>ชีตหลัก:</strong> ยังไม่ล้าง</div>';
+    }
+    infoDetailsHtml += '</div>';
+    
+    // Actions Buttons Render
+    let actionsHtml = '<div class="d-flex flex-wrap gap-2">';
+    
+    if (item.status === 'active') {
+      // สำหรับปีปัจจุบัน หากไม่ใช่ปีจริงตามปฏิทิน (เช่น เกิดการเปลี่ยนปีค้างอยู่) หรือถ้าต้องการส่งออกปีเก่า
+      if (String(item.year) !== String(data.computedYear)) {
+        // ปีปัจจุบันที่ถูกสลับไปค้างไว้
+        actionsHtml += '<button class="btn btn-sm btn-outline-danger vault-action-btn" onclick="saveAndCleanOldYear(\'' + item.year + '\')"><i class="bi bi-cloud-arrow-up-fill"></i> บันทึก & ล้างชีต</button>';
+      } else {
+        // ปีการศึกษาหลักในปัจจุบัน
+        actionsHtml += '<span class="text-muted small py-1"><i class="bi bi-check-circle text-success"></i> กำลังใช้งานบันทึกข้อมูลหลัก</span>';
+      }
+    } else if (item.status === 'editing') {
+      // อยู่ในโหมดแก้ไขชั่วคราว
+      actionsHtml += '<button class="btn btn-sm btn-danger vault-action-btn" onclick="saveAndCleanOldYear(\'' + item.year + '\', \'' + data.computedYear + '\')" title="นำข้อมูลที่แก้ไขส่งกลับเข้าคลังภายนอก และล้างชีตหลักออก"><i class="bi bi-cloud-arrow-up-fill"></i> บันทึกกลับคลัง</button>';
+      actionsHtml += '<button class="btn btn-sm btn-outline-dark vault-action-btn" onclick="cancelEditingOldYear(\'' + item.year + '\', \'' + data.computedYear + '\')" title="ลบชีต Snapshot ในไฟล์หลักทิ้งและสลับไปปีปัจจุบัน"><i class="bi bi-x-circle"></i> ยกเลิกแก้ไข</button>';
+    } else {
+      // เก็บอยู่ในคลังเรียบร้อย (verified หรือ archived)
+      actionsHtml += '<button class="btn btn-sm btn-warning text-white vault-action-btn" onclick="restoreAndEditOldYear(\'' + item.year + '\')" title="ดึงข้อมูลย้อนหลังจากคลังกลับเข้าไฟล์หลักและเปิดให้สลับปีแก้ไข"><i class="bi bi-pencil-square"></i> ดึงมาแก้ไข</button>';
+      if (item.url) {
+        actionsHtml += '<a href="' + item.url + '" target="_blank" class="btn btn-sm btn-outline-primary vault-action-btn"><i class="bi bi-eye"></i> ดูข้อมูล</a>';
+      }
+      
+      // ถ้าสถานะเป็น archived (ยังไม่ล้างชีตต้นทาง)
+      if (item.status === 'archived') {
+        actionsHtml += '<button class="btn btn-sm btn-outline-success vault-action-btn" onclick="cleanupSheets(\'' + item.year + '\')" title="ล้างชีต Snapshot ปีเก่าออกจากระบบเพื่อลดพื้นที่"><i class="bi bi-trash"></i> ล้างชีตหลัก</button>';
+      }
+    }
+    
+    actionsHtml += '</div>';
+    
+    tr.innerHTML = `
+      <td><strong style="font-size:1.1rem;color:var(--sidebar-text);">${item.year}</strong></td>
+      <td>${badgeHtml}</td>
+      <td>${fileLinkHtml}</td>
+      <td><span class="badge bg-secondary rounded-pill px-2 py-1">${item.archivedSheetCount || 0} ชีต</span></td>
+      <td>${infoDetailsHtml}</td>
+      <td>${actionsHtml}</td>
+    `;
+    
+    tbody.appendChild(tr);
+  });
+}
+
+// 1. คำสั่งดึงคลังข้อมูลกลับมาแก้ไข
+function restoreAndEditOldYear(year) {
+  if (typeof Swal !== 'undefined') {
+    Swal.fire({
+      title: 'ต้องการดึงข้อมูลปี ' + year + ' กลับมาแก้ไขใช่หรือไม่?',
+      text: 'ระบบจะกู้คืนชีตประวัติของปี ' + year + ' ทั้งหมดกลับเข้ามาในไฟล์หลัก และสลับปีการศึกษาเป็นปี ' + year + ' เพื่อให้ท่านตรวจสอบและแก้ไข',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#f59e0b',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'ใช่, ดึงมาแก้ไข',
+      cancelButtonText: 'ยกเลิก'
+    }).then(function(result) {
+      if (result.isConfirmed) {
+        executeRestoreWorkflow(year);
+      }
+    });
+  } else {
+    if (confirm('คุณต้องการดึงข้อมูลปี ' + year + ' กลับมาแก้ไขใช่หรือไม่?')) {
+      executeRestoreWorkflow(year);
+    }
+  }
+}
+
+function executeRestoreWorkflow(year) {
+  showOverlay(
+    'กำลังกู้คืนคลังข้อมูลปี ' + year + '...',
+    'กำลังคัดลอกข้อมูลและดึงประวัติชีตกลับเข้าสู่ไฟล์หลัก โปรดห้ามปิดหน้านี้',
+    '• ขั้นตอนที่ 1/3: กำลังตรวจสอบรหัสไฟล์คลัง...<br>• ขั้นตอนที่ 2/3: กำลังคัดลอกชีตทั้งหมดจากคลังภายนอกกลับมา...<br>• ขั้นตอนที่ 3/3: กำลังสลับปีระบบชั่วคราว...'
+  );
+  
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    // 1. ดึงชีตกลับมาก่อน
+    google.script.run
+      .withSuccessHandler(function(restoreRes) {
+        if (!restoreRes.success) {
+          hideOverlay();
+          showToastError('ไม่สามารถดึงชีตกลับมาได้: ' + restoreRes.message);
+          return;
+        }
+        
+        // 2. สลับปีการศึกษาในระบบ
+        google.script.run
+          .withSuccessHandler(function(switchRes) {
+            hideOverlay();
+            if (switchRes.success) {
+              if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                  icon: 'success',
+                  title: 'ดึงข้อมูลสำเร็จ!',
+                  text: 'ระบบได้ดึงข้อมูลปี ' + year + ' และสลับปีเพื่อเข้าสู่โหมดแก้ไขย้อนหลังเรียบร้อยแล้ว',
+                  confirmButtonText: 'ตกลง'
+                }).then(function() {
+                  loadRegistryData();
+                });
+              } else {
+                alert('✅ ดึงข้อมูลสำเร็จ! ระบบกำลังแก้ไขข้อมูลปี ' + year);
+                loadRegistryData();
+              }
+            } else {
+              showToastError('กู้ชีตสำเร็จแล้ว แต่ไม่สามารถสลับปีทำงานได้: ' + switchRes.message);
+            }
+          })
+          .withFailureHandler(function(err) {
+            hideOverlay();
+            showToastError('เกิดข้อผิดพลาดในการสลับปีการศึกษา: ' + err.message);
+          })
+          .switchAcademicYearOnly(year);
+      })
+      .withFailureHandler(function(err) {
+        hideOverlay();
+        showToastError('เกิดข้อผิดพลาดในการดึงข้อมูลจากไฟล์คลัง: ' + err.message);
+      })
+      .restoreAcademicYearFromExternalArchive(year);
+  } else {
+    // Simulation Mode
+    setTimeout(function() {
+      hideOverlay();
+      alert('Mock: กู้คืนคลังและสลับปีการศึกษาเป็น ' + year + ' เรียบร้อย');
+      loadRegistryData();
+    }, 2000);
+  }
+}
+
+// 2. คำสั่งบันทึกการแก้ไขกลับเข้าคลังภายนอก และล้างชีตหลักออก
+function saveAndCleanOldYear(year, computedYear) {
+  if (!computedYear) computedYear = '2569'; // ค่า default fallback
+  
+  if (typeof Swal !== 'undefined') {
+    Swal.fire({
+      title: 'บันทึกการแก้ไขปี ' + year + ' กลับเข้าคลัง?',
+      text: 'ระบบจะนำความเปลี่ยนแปลงของปี ' + year + ' ส่งออกไปบันทึกทับในไฟล์คลังข้อมูลเดิม และล้างชีต Snapshot ในไฟล์หลักออกอย่างปลอดภัย พร้อมสลับคืนสู่ปีปัจจุบัน (' + computedYear + ')',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#dc3545',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'ใช่, ส่งออกและล้างข้อมูล',
+      cancelButtonText: 'ยกเลิก'
+    }).then(function(result) {
+      if (result.isConfirmed) {
+        executeSaveWorkflow(year, computedYear);
+      }
+    });
+  } else {
+    if (confirm('คุณต้องการส่งความเปลี่ยนแปลงปี ' + year + ' กลับเข้าคลังภายนอกและล้างชีตออกใช่หรือไม่?')) {
+      executeSaveWorkflow(year, computedYear);
+    }
+  }
+}
+
+function executeSaveWorkflow(year, computedYear) {
+  showOverlay(
+    'กำลังบันทึกและล้างข้อมูลปี ' + year + '...',
+    'กำลังส่งออกความเปลี่ยนแปลงกลับเข้าคลัง และเคลียร์พื้นที่ระบบ ห้ามปิดหน้าต่างนี้',
+    '• ขั้นตอนที่ 1/4: กำลังวิเคราะห์และส่งออกชีตที่แก้ไขเข้าคลังภายนอก...<br>• ขั้นตอนที่ 2/4: กำลังตรวจสอบความถูกต้องและนับจำนวนแถว...<br>• ขั้นตอนที่ 3/4: กำลังล้างชีตชั่วคราวเพื่อประหยัดพื้นที่หลัก...<br>• ขั้นตอนที่ 4/4: กำลังสลับคืนสู่ปีปัจจุบันย้อนหลัง...'
+  );
+  
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    // 1. ส่งออกทับคลังเดิม
+    google.script.run
+      .withSuccessHandler(function(exportRes) {
+        if (!exportRes.success) {
+          hideOverlay();
+          showToastError('ไม่สามารถส่งกลับเข้าคลังภายนอกได้: ' + exportRes.message);
+          return;
+        }
+        
+        // 2. เคลียร์ล้างชีต
+        google.script.run
+          .withSuccessHandler(function(cleanRes) {
+            if (!cleanRes.success) {
+              hideOverlay();
+              showToastError('ส่งข้อมูลสำเร็จแล้ว แต่เกิดปัญหาขณะล้างชีตหลัก: ' + cleanRes.message);
+              return;
+            }
+            
+            // 3. สลับคืนสู่ปีปกติ
+            google.script.run
+              .withSuccessHandler(function(switchRes) {
+                hideOverlay();
+                if (switchRes.success) {
+                  if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                      icon: 'success',
+                      title: 'จัดเก็บเข้าคลังสมบูรณ์!',
+                      text: 'ระบบได้ส่งคืนประวัติปี ' + year + ' เข้าคลังเรียบร้อย และเปลี่ยนกลับสู่ระบบปีปัจจุบัน (' + computedYear + ') แล้ว',
+                      confirmButtonText: 'ตกลง'
+                    }).then(function() {
+                      loadRegistryData();
+                    });
+                  } else {
+                    alert('✅ จัดเก็บประวัติเข้าคลังสำเร็จ! และกลับคืนสู่ปีการศึกษาหลักในปัจจุบัน');
+                    loadRegistryData();
+                  }
+                } else {
+                  showToastError('ส่งออกและล้างสำเร็จแล้ว แต่เกิดปัญหาสลับคืนปีปกติ: ' + switchRes.message);
+                }
+              })
+              .withFailureHandler(function(err) {
+                hideOverlay();
+                showToastError('เกิดข้อผิดพลาดในการสลับคืนสู่ปีหลัก: ' + err.message);
+              })
+              .switchAcademicYearOnly(computedYear);
+          })
+          .withFailureHandler(function(err) {
+            hideOverlay();
+            showToastError('เกิดข้อผิดพลาดระหว่างล้างชีตประวัติ: ' + err.message);
+          })
+          .cleanupArchivedYearSheetsFromMain(year);
+      })
+      .withFailureHandler(function(err) {
+        hideOverlay();
+        showToastError('เกิดข้อผิดพลาดในการส่งกลับคลังข้อมูล: ' + err.message);
+      })
+      .createAcademicYearExternalArchive(year);
+  } else {
+    // Simulation Mode
+    setTimeout(function() {
+      hideOverlay();
+      alert('Mock: บันทึกกลับคลัง ล้างชีต และสลับกลับปีปัจจุบันเรียบร้อย');
+      loadRegistryData();
+    }, 2000);
+  }
+}
+
+// 3. คำสั่งยกเลิกการดึงข้อมูลย้อนหลังมาแก้ไข
+function cancelEditingOldYear(year, computedYear) {
+  if (!computedYear) computedYear = '2569';
+  
+  if (typeof Swal !== 'undefined') {
+    Swal.fire({
+      title: 'ยืนยันยกเลิกการแก้ไขใช่หรือไม่?',
+      text: 'ข้อมูล Snapshot ชั่วคราวของปี ' + year + ' ทั้งหมดจะถูกลบออกจากไฟล์หลักทันที และจะไม่มีการส่งออกไปทับไฟล์คลัง (คลังภายนอกจะคงเดิม 100%) จากนั้นจะสลับกลับสู่ปีการศึกษาปัจจุบัน (' + computedYear + ')',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#6c757d',
+      cancelButtonColor: '#dc3545',
+      confirmButtonText: 'ใช่, ยกเลิกและลบทิ้ง',
+      cancelButtonText: 'ไม่'
+    }).then(function(result) {
+      if (result.isConfirmed) {
+        executeCancelWorkflow(year, computedYear);
+      }
+    });
+  } else {
+    if (confirm('คุณต้องการยกเลิกการแก้ไขและลบชีต Snapshot ในไฟล์หลักออกใช่หรือไม่?')) {
+      executeCancelWorkflow(year, computedYear);
+    }
+  }
+}
+
+function executeCancelWorkflow(year, computedYear) {
+  showOverlay(
+    'กำลังยกเลิกการแก้ไข...',
+    'ระบบกำลังนำชีตชั่วคราวออกเพื่อคืนค่าเดิม ห้ามปิดหน้าต่างนี้',
+    '• ขั้นตอนที่ 1/2: กำลังล้างชีต Snapshot ประวัติทั้งหมดทิ้ง...<br>• ขั้นตอนที่ 2/2: กำลังสลับระบบกลับสู่ปีปกติ...'
+  );
+  
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    // 1. ยกเลิกแก้ไขและนำชีตออก
+    google.script.run
+      .withSuccessHandler(function(cancelRes) {
+        if (!cancelRes.success) {
+          hideOverlay();
+          showToastError('การนำชีตชั่วคราวออกล้มเหลว: ' + cancelRes.message);
+          return;
+        }
+        
+        // 2. สลับปีคืน
+        google.script.run
+          .withSuccessHandler(function(switchRes) {
+            hideOverlay();
+            if (switchRes.success) {
+              if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                  icon: 'success',
+                  title: 'ยกเลิกสำเร็จ!',
+                  text: 'นำชีตประวัติออกแล้ว และเปลี่ยนปีกลับคืนสู่ปีปัจจุบัน (' + computedYear + ') แล้ว',
+                  confirmButtonText: 'ตกลง'
+                }).then(function() {
+                  loadRegistryData();
+                });
+              } else {
+                alert('✅ ยกเลิกรายการสำเร็จ! ระบบคืนสถานะสู่ปกติแล้ว');
+                loadRegistryData();
+              }
+            } else {
+              showToastError('ลบชีตสำเร็จแล้ว แต่เกิดปัญหาคืนค่าปีใช้งาน: ' + switchRes.message);
+            }
+          })
+          .withFailureHandler(function(err) {
+            hideOverlay();
+            showToastError('เกิดข้อผิดพลาดในการสลับคืนสู่ปีหลัก: ' + err.message);
+          })
+          .switchAcademicYearOnly(computedYear);
+      })
+      .withFailureHandler(function(err) {
+        hideOverlay();
+        showToastError('เกิดข้อผิดพลาดในการทำคำสั่งยกเลิกแก้ไข: ' + err.message);
+      })
+      .AY_cancelEditingOldYear(year);
+  } else {
+    // Simulation Mode
+    setTimeout(function() {
+      hideOverlay();
+      alert('Mock: ยกเลิกแก้ไข สำเร็จ');
+      loadRegistryData();
+    }, 1500);
+  }
+}
+
+// 4. สั่งล้างชีตหลักอย่างเดียว (กรณียังมีชีตหลักค้างอยู่ แต่ส่งออกแล้ว)
+function cleanupSheets(year) {
+  if (typeof Swal !== 'undefined') {
+    Swal.fire({
+      title: 'ต้องการล้างชีตปี ' + year + ' ออกจากไฟล์หลักหรือไม่?',
+      text: 'ระบบตรวจสอบแล้วว่า มีการส่งออกประวัติเข้าคลังสำเร็จ 100% ท่านสามารถลบชีต Snapshot ของปี ' + year + ' ในไฟล์หลักทิ้ง เพื่อประหยัดพื้นที่ไฟล์หลักได้เลยอย่างปลอดภัย',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#10b981',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'ล้างชีตออก',
+      cancelButtonText: 'ยกเลิก'
+    }).then(function(result) {
+      if (result.isConfirmed) {
+        showOverlay('กำลังล้างชีตปี ' + year + '...', 'โปรดรอสักครู่ ระบบกำลังลบข้อมูลชีตปีเก่าออกจากไฟล์หลักอย่างปลอดภัย');
+        google.script.run
+          .withSuccessHandler(function(response) {
+            hideOverlay();
+            if (response.success) {
+              Swal.fire('สำเร็จ!', 'ล้างชีตหลักออกจำนวน ' + response.deletedCount + ' ชีตสำเร็จ', 'success');
+              loadRegistryData();
+            } else {
+              showToastError('เกิดปัญหาระหว่างล้างข้อมูล: ' + response.message);
+            }
+          })
+          .withFailureHandler(function(err) {
+            hideOverlay();
+            showToastError('เกิดข้อผิดพลาด: ' + err.message);
+          })
+          .cleanupArchivedYearSheetsFromMain(year);
+        }
+    });
+  } else {
+    if (confirm('ยืนยันล้างชีต Snapshot ปี ' + year + ' ในไฟล์หลักออกจากระบบอย่างปลอดภัย?')) {
+      showOverlay('กำลังล้างชีตปี ' + year + '...');
+      google.script.run
+        .withSuccessHandler(function(response) {
+          hideOverlay();
+          if (response.success) {
+            alert('✅ สำเร็จ! ล้างชีตหลักจำนวน ' + response.deletedCount + ' ชีตสำเร็จ');
+            loadRegistryData();
+          } else {
+            alert('❌ ' + response.message);
+          }
+        })
+        .withFailureHandler(function(err) {
+          hideOverlay();
+          alert('❌ ' + err.message);
+        })
+        .cleanupArchivedYearSheetsFromMain(year);
+    }
+  }
+}
+</script>

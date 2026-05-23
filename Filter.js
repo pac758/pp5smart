@@ -5,7 +5,7 @@
 function getGradeList() {
   try {
     const ss = SS();
-    const sheet = ss.getSheetByName("Students");
+    const sheet = AY_getStudentsSheetForRead();
     
     if (!sheet) {
       Logger.log("❌ ไม่พบชีต 'Students'");

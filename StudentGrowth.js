@@ -103,7 +103,7 @@ function SG_ensureHeaders_(sheet, headers) {
 }
 
 function SG_ensureStudentsLatestColumns_() {
-  var sheet = SS().getSheetByName('Students');
+  var sheet = AY_getStudentsSheetForRead();
   if (!sheet) return null;
   SG_ensureHeaders_(sheet, [
     'student_id', 'id_card', 'title', 'firstname', 'lastname', 'grade', 'class_no',
@@ -224,7 +224,7 @@ function getStudentGrowthStudents(grade, classNo, academicYear, month, roundNo) 
     if (!grade || !classNo) return { success: false, message: 'กรุณาเลือกระดับชั้นและห้อง' };
 
     var ss = SS();
-    var sheet = ss.getSheetByName('Students');
+    var sheet = AY_getStudentsSheetForRead();
     if (!sheet) return { success: false, message: 'ไม่พบชีต Students' };
     var values = sheet.getDataRange().getValues();
     if (values.length <= 1) return { success: true, students: [] };
@@ -523,7 +523,7 @@ function SG_periodLabel_(period) {
 }
 
 function SG_getStudentsForMatrix_(grade, classNo) {
-  var sheet = SS().getSheetByName('Students');
+  var sheet = AY_getStudentsSheetForRead();
   if (!sheet) return [];
   var values = sheet.getDataRange().getValues();
   if (values.length <= 1) return [];

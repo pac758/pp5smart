@@ -20,7 +20,7 @@ function getAvailableClasses_DEBUG(grade) {
     Logger.log(`✅ Spreadsheet: ${ss.getName()}`);
     
     // 2️⃣ หาชีต Students
-    const sheet = (typeof AY_getStudentsSheetForRead === 'function') ? AY_getStudentsSheetForRead() : ss.getSheetByName("Students");
+    const sheet = AY_getStudentsSheetForRead();
     if (!sheet) {
       Logger.log("❌ ไม่พบชีต 'Students'");
       const allSheets = ss.getSheets().map(s => s.getName());
@@ -154,7 +154,7 @@ function searchStudentsForDelete(searchType, searchValue, limit) {
     if (!q) return [];
 
     var ss = SS();
-    var sheet = (typeof AY_getStudentsSheetForRead === 'function') ? AY_getStudentsSheetForRead() : ss.getSheetByName('Students');
+    var sheet = AY_getStudentsSheetForRead();
     if (!sheet) return [];
 
     var data = sheet.getDataRange().getValues();
@@ -246,7 +246,7 @@ function saveStudentData(data) {
       try {
         // เติมข้อมูลเพิ่มเติมลงคอลัมน์ที่มีอยู่ (ถ้าชีตมี header รองรับ)
         const ss = SS();
-        const sheet = ss.getSheetByName('Students');
+        const sheet = (typeof AY_getStudentsSheetForWrite === 'function') ? AY_getStudentsSheetForWrite() : ss.getSheetByName('Students');
         if (sheet) {
           const values = sheet.getDataRange().getValues();
           const headers = values[0] || [];
@@ -308,7 +308,7 @@ function updateStudentInline(studentData) {
     if (!id) throw new Error('ไม่พบรหัสนักเรียน');
 
     const ss = SS();
-    const sheet = ss.getSheetByName('Students');
+    const sheet = (typeof AY_getStudentsSheetForWrite === 'function') ? AY_getStudentsSheetForWrite() : ss.getSheetByName('Students');
     if (!sheet) throw new Error('ไม่พบชีต Students');
 
     const values = sheet.getDataRange().getValues();
@@ -421,7 +421,7 @@ function syncStudentRowToCurrentYearSheet_(sourceHeaders, sourceRow, studentId) 
 function getStudentsByClass(grade, classNo) {
   try {
     const ss = SS();
-    const sheet = (typeof AY_getStudentsSheetForRead === 'function') ? AY_getStudentsSheetForRead() : ss.getSheetByName("Students");
+    const sheet = AY_getStudentsSheetForRead();
     if (!sheet) return [];
     
     const data = sheet.getDataRange().getValues();
@@ -506,7 +506,7 @@ function getStudentsForAdminPreview(query) {
     }
 
     var ss = SS();
-    var sheet = (typeof AY_getStudentsSheetForRead === 'function') ? AY_getStudentsSheetForRead() : ss.getSheetByName('Students');
+    var sheet = AY_getStudentsSheetForRead();
     if (!sheet) return { success: false, message: 'ไม่พบชีต Students' };
 
     var data = sheet.getDataRange().getValues();
@@ -591,7 +591,7 @@ function getStudentsForAdminPreview(query) {
 function searchStudentBy(searchType, searchValue) {
   try {
     const ss = SS();
-    const sheet = ss.getSheetByName("Students");
+    const sheet = AY_getStudentsSheetForRead();
     if (!sheet) return null;
     
     const data = sheet.getDataRange().getValues();
@@ -666,7 +666,7 @@ function deleteStudent(deleteData) {
     if (!studentId) return { success: false, message: 'ไม่พบรหัสนักเรียนที่ต้องการลบ' };
     
     const ss = SS();
-    const sheet = ss.getSheetByName("Students");
+    const sheet = (typeof AY_getStudentsSheetForWrite === 'function') ? AY_getStudentsSheetForWrite() : ss.getSheetByName("Students");
     if (!sheet) return { success: false, message: 'ไม่พบชีต Students' };
 
     const data = sheet.getDataRange().getValues();
@@ -696,7 +696,7 @@ function deleteStudent(deleteData) {
 function addStudent(studentData) {
   try {
     const ss = SS();
-    let sheet = ss.getSheetByName("Students");
+    let sheet = (typeof AY_getStudentsSheetForWrite === 'function') ? AY_getStudentsSheetForWrite() : ss.getSheetByName("Students");
     
     // สร้างชีต Students ถ้ายังไม่มี
     if (!sheet) {
@@ -867,7 +867,7 @@ function importCsvStudents(csvContent) {
     const dataToImport = rows.slice(2); // ข้อมูลเริ่มจากแถวที่ 3
 
     const ss = SS();
-    let sheet = ss.getSheetByName("Students");
+    let sheet = (typeof AY_getStudentsSheetForWrite === 'function') ? AY_getStudentsSheetForWrite() : ss.getSheetByName("Students");
     if (!sheet) {
       sheet = createStudentsSheet(ss);
     }
@@ -1063,7 +1063,7 @@ function bulkDeleteStudents(studentIds) {
     }
 
     const ss = SS();
-    const sheet = ss.getSheetByName('Students');
+    const sheet = (typeof AY_getStudentsSheetForWrite === 'function') ? AY_getStudentsSheetForWrite() : ss.getSheetByName('Students');
     if (!sheet) {
       throw new Error('ไม่พบชีต Students');
     }
@@ -1124,7 +1124,7 @@ function bulkDeleteStudents(studentIds) {
 function getStudentStats() {
   try {
     const ss = SS();
-    const sheet = ss.getSheetByName("Students");
+    const sheet = AY_getStudentsSheetForRead();
     
     if (!sheet) {
       return { total: 0, byGrade: {}, byClass: {} };
@@ -1173,7 +1173,7 @@ function getStudentStats() {
 // ในไฟล์ Code.gs (นำไปวางทับของเดิม)
 
 function getFilteredStudentsInline(grade, classNo) {
-  const sheet = SS().getSheetByName("Students");
+  const sheet = AY_getStudentsSheetForRead();
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
   const result = [];
@@ -2108,9 +2108,7 @@ const updatedColIndex = headers.indexOf('วันที่อัปเดต');
 // Current-year safe override: many pages call this shared function, so it must
 // read Students_<academicYear> when the yearly sheet exists.
 function getFilteredStudentsInline(grade, classNo) {
-  var sheet = (typeof AY_getStudentsSheetForRead === 'function')
-    ? AY_getStudentsSheetForRead()
-    : SS().getSheetByName('Students');
+  var sheet = AY_getStudentsSheetForRead();
   if (!sheet) return [];
 
   var data = sheet.getDataRange().getValues();
@@ -2231,4 +2229,3 @@ function getFilteredStudentsInline(grade, classNo) {
   });
   return result;
 }
-
