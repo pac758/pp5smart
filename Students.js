@@ -865,7 +865,7 @@ function xlsxBase64ToCsv_(base64Content) {
   if (!clean) throw new Error('ไม่พบข้อมูลไฟล์ Excel');
 
   var bytes = Utilities.base64Decode(clean);
-  var blob = Utilities.newBlob(bytes, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'import.xlsx');
+  var blob = Utilities.newBlob(bytes, 'application/zip', 'import.xlsx');
   var files = Utilities.unzip(blob);
   var zip = {};
   files.forEach(function(file) {
