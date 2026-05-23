@@ -556,10 +556,14 @@
       // --- 2. Render Settings (Logo) ---
       function renderSettings(settings) {
         if (!settings) return;
-        if (settings['ชื่อโรงเรียน']) document.getElementById('schoolName').textContent = settings['ชื่อโรงเรียน'];
+        const schoolNameEl = document.getElementById('schoolName');
+        if (schoolNameEl && settings['ชื่อโรงเรียน']) {
+          schoolNameEl.textContent = settings['ชื่อโรงเรียน'];
+        }
         
         if (settings['logo']) {
           const img = document.getElementById('schoolLogo');
+          if (!img) return;
           const urls = [settings['logo'], settings['logoUrl_backup1'], settings['logoUrl_backup2']].filter(u => u);
           
           let i = 0;
