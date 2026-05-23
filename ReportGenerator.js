@@ -92,7 +92,9 @@ function getAllStudentDataOptimized(year) {
 
   const ss = SS();
 
-  const sheet = S_getSharedSheet('Students', year);
+  const sheet = (typeof AY_getStudentsSheetForRead === 'function')
+    ? AY_getStudentsSheetForRead(year)
+    : S_getSharedSheet('Students', year);
 
   
 
@@ -166,11 +168,11 @@ function getAllStudentDataOptimized(year) {
 
 // ============================================================
 
-function getTeacherComment_(studentId) {
+function getTeacherComment_(studentId, year) {
 
   try {
 
-    const data = getCachedSheetData_('ความเห็นครู');
+    const data = getCachedSheetData_('ความเห็นครู', year);
 
     if (!data || data.length < 2) return '-';
 

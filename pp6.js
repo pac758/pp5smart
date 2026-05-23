@@ -220,15 +220,19 @@ function _scoreToGPA(score) {
 /**
  * อ่านข้อมูลจากชีตเป็น Array of Objects (พร้อม Cache)
  */
-function _readSheetToObjects(sheetName, useCache = true) {
+function _readSheetToObjects(sheetName, useCache = true, year) {
   try {
     const ss = _openSpreadsheet();
     // ถ้าเป็นชีตรายปี ให้ใช้ S_getYearlySheet (resolve ชื่อ + fallback อัตโนมัติ)
     var sheet;
-    if (sheetName === 'ประเมินอ่านคิดเขียน5เกณฑ์' && typeof S_sheetName === 'function') {
-      sheet = ss.getSheetByName(S_sheetName(sheetName));
+    if (sheetName === 'Students' && typeof AY_getStudentsSheetForRead === 'function') {
+      sheet = AY_getStudentsSheetForRead(year);
+    } else if (sheetName === 'ประเมินอ่านคิดเขียน5เกณฑ์' && typeof S_getYearlySheet === 'function') {
+      sheet = S_getYearlySheet(sheetName, year);
     } else if (typeof S_YEARLY_SHEETS !== 'undefined' && S_YEARLY_SHEETS.indexOf(sheetName) !== -1) {
-      sheet = S_getYearlySheet(sheetName);
+      sheet = S_getYearlySheet(sheetName, year);
+    } else if (year && typeof S_SHARED_SHEETS !== 'undefined' && S_SHARED_SHEETS.indexOf(sheetName) !== -1 && typeof S_getSharedSheet === 'function') {
+      sheet = S_getSharedSheet(sheetName, year);
     } else {
       sheet = ss.getSheetByName(sheetName);
     }
@@ -279,8 +283,8 @@ function _readSheetToObjects(sheetName, useCache = true) {
 /**
  * 1. ดึงรายวิชาตามระดับชั้น (พร้อม Cache)
  */
-function getSubjectList(grade) {
-  const cacheKey = _createCacheKey('subjects', grade);
+function getSubjectList(grade, year) {
+  const cacheKey = _createCacheKey('subjects', grade, year || '');
   const cachedSubjects = _getFromCache(cacheKey);
   
   if (cachedSubjects) {
@@ -288,7 +292,7 @@ function getSubjectList(grade) {
   }
 
   try {
-    const subjects = _readSheetToObjects('รายวิชา', false); // ไม่ใช้ cache ซ้อน
+    const subjects = _readSheetToObjects('รายวิชา', false, year); // ไม่ใช้ cache ซ้อน
     const gradeSubjects = subjects
       .filter(subject => subject['ชั้น'] === grade)
       .map(subject => ({
@@ -385,8 +389,8 @@ function _savePDFCache(cacheKey, fileId, fileName) {
   }
 }
 
-function getStudentAssessments(studentId) {
-  const cacheKey = _createCacheKey('assessments', String(studentId).trim());
+function getStudentAssessments(studentId, year) {
+  const cacheKey = _createCacheKey('assessments', String(studentId).trim(), year || '');
   let cachedAssessments = _getFromCache(cacheKey);
   
   // ⭐ Force MISS สำหรับ debug (comment หลังทดสอบ)
@@ -407,7 +411,7 @@ function getStudentAssessments(studentId) {
 
     // 1. การประเมินอ่าน คิด เขียน (ปรับใหม่: nums ก่อน if + no error fallback in catch)
     try {
-      const readingData = _readSheetToObjects('การประเมินอ่านคิดเขียน');
+      const readingData = _readSheetToObjects('การประเมินอ่านคิดเขียน', true, year);
       Logger.log(`Total records in RTW sheet: ${readingData.length}`);
       
       const readingRecord = readingData.find(row => String(row['รหัสนักเรียน']).trim() === String(studentId).trim());
@@ -475,7 +479,7 @@ function getStudentAssessments(studentId) {
 
     // 2. การประเมินคุณลักษณะ (trim match)
     try {
-      const characterData = _readSheetToObjects('การประเมินคุณลักษณะ');
+      const characterData = _readSheetToObjects('การประเมินคุณลักษณะ', true, year);
       const characterRecord = characterData.find(row => String(row['รหัสนักเรียน']).trim() === String(studentId).trim());
       if (characterRecord) {
         result.character = {
@@ -489,7 +493,7 @@ function getStudentAssessments(studentId) {
 
     // 3. การประเมินกิจกรรม (trim match)
     try {
-      const activityData = _readSheetToObjects('การประเมินกิจกรรมพัฒนาผู้เรียน', false);
+      const activityData = _readSheetToObjects('การประเมินกิจกรรมพัฒนาผู้เรียน', false, year);
       const activityRecord = activityData.find(row => String(row['รหัสนักเรียน']).trim() === String(studentId).trim());
       if (activityRecord) {
         result.activities = {
@@ -517,9 +521,9 @@ function getStudentAssessments(studentId) {
 /**
  * ดึงผลประเมินละเอียดสำหรับ ปพ.6 (เพิ่มสมรรถนะ + คุณลักษณะรายข้อ)
  */
-function _pp6_getDetailedAssessments(studentId) {
+function _pp6_getDetailedAssessments(studentId, year) {
   var sid = String(studentId).trim();
-  var base = getStudentAssessments(studentId);
+  var base = getStudentAssessments(studentId, year);
 
   // เพิ่มคุณลักษณะรายข้อ (8 ข้อ)
   var traitHeaders = ['รักชาติ_ศาสน์_กษัตริย์','ซื่อสัตย์สุจริต','มีวินัย','ใฝ่เรียนรู้',
@@ -528,7 +532,7 @@ function _pp6_getDetailedAssessments(studentId) {
     'อยู่อย่างพอเพียง','มุ่งมั่นในการทำงาน','รักความเป็นไทย','มีจิตสาธารณะ'];
   base.character.traits = {};
   try {
-    var charData = _readSheetToObjects('การประเมินคุณลักษณะ');
+    var charData = _readSheetToObjects('การประเมินคุณลักษณะ', true, year);
     var charRec = charData.find(function(r) { return String(r['รหัสนักเรียน']).trim() === sid; });
     if (charRec) {
       traitHeaders.forEach(function(h, i) {
@@ -550,7 +554,7 @@ function _pp6_getDetailedAssessments(studentId) {
   ];
   base.reading.criteria = {};
   try {
-    var rtw5Data = _readSheetToObjects('ประเมินอ่านคิดเขียน5เกณฑ์');
+    var rtw5Data = _readSheetToObjects('ประเมินอ่านคิดเขียน5เกณฑ์', true, year);
     var rtw5Rec = rtw5Data.find(function(r) { return String(r['รหัสนักเรียน']).trim() === sid; });
     if (rtw5Rec) {
       rtw5Headers.forEach(function(h, i) {
@@ -575,7 +579,7 @@ function _pp6_getDetailedAssessments(studentId) {
   ];
   base.competency = { result: '-', items: {} };
   try {
-    var compData = _readSheetToObjects('การประเมินสมรรถนะ');
+    var compData = _readSheetToObjects('การประเมินสมรรถนะ', true, year);
     var compRec = compData.find(function(r) { return String(r['รหัสนักเรียน']).trim() === sid; });
     if (compRec) {
       var allKeys = Object.keys(compRec);
@@ -598,10 +602,10 @@ function _pp6_getDetailedAssessments(studentId) {
 /**
  * 4. คำนวณ GPA และอันดับของนักเรียน
  */
-function calculateGPAAndRank(studentId, grade, classNo) {
+function calculateGPAAndRank(studentId, grade, classNo, year) {
   try {
-    const warehouse = _readSheetToObjects('SCORES_WAREHOUSE');
-    const subjectSheet = _readSheetToObjects('รายวิชา');
+    const warehouse = _readSheetToObjects('SCORES_WAREHOUSE', true, year);
+    const subjectSheet = _readSheetToObjects('รายวิชา', true, year);
 
     // สร้าง map หน่วยกิต + ประเภทวิชา จากชีตรายวิชา
     const creditMap = {};  // subject_code -> hours (หน่วยกิต)
@@ -728,16 +732,16 @@ function _pp6SortSubjects(subjects) {
 /**
  * 5. ดึงคะแนนทุกวิชาของนักเรียน (ฉบับ Final - ยึดชีต "รายวิชา" เป็นหลัก)
  */
-function getStudentAllSubjectScores(studentId, term = 'both') {
+function getStudentAllSubjectScores(studentId, term = 'both', year) {
   try {
     // 1. ดึงข้อมูลหลักทั้งหมด
-    const studentData = _readSheetToObjects('SCORES_WAREHOUSE').find(row => row['student_id'] == studentId);
+    const studentData = _readSheetToObjects('SCORES_WAREHOUSE', true, year).find(row => row['student_id'] == studentId);
     if (!studentData) throw new Error(`ไม่พบข้อมูลนักเรียนรหัส ${studentId}`);
     
     const grade = studentData['grade'];
-    const allSubjectsFromSheet = _readSheetToObjects('รายวิชา');
-    const studentScoresFromWarehouse = _readSheetToObjects('SCORES_WAREHOUSE').filter(row => row['student_id'] == studentId);
-    const assessments = getStudentAssessments(studentId);
+    const allSubjectsFromSheet = _readSheetToObjects('รายวิชา', true, year);
+    const studentScoresFromWarehouse = _readSheetToObjects('SCORES_WAREHOUSE', true, year).filter(row => row['student_id'] == studentId);
+    const assessments = getStudentAssessments(studentId, year);
 
     // 2. สร้าง scoreMap
     const scoreMap = new Map();
@@ -935,14 +939,14 @@ function _getLogoDataUrl(fileId) {
 /**
  * 3. ดึงรายชื่อนักเรียนสำหรับ ปพ.6 (จากชีต Students)
  */
-function getStudentListForPp6(grade, classNo) {
-  const cacheKey = _createCacheKey('students_master', grade, classNo);
+function getStudentListForPp6(grade, classNo, year) {
+  const cacheKey = _createCacheKey('students_master', grade, classNo, year || '');
   const cachedStudents = _getFromCache(cacheKey);
   if (cachedStudents) return cachedStudents;
 
   try {
     // โหลดทะเบียนนักเรียนจากชีต Students
-    const allStudentsData = _readSheetToObjects('Students'); 
+    const allStudentsData = _readSheetToObjects('Students', true, year); 
     const studentNameMap = new Map();
     allStudentsData.forEach(student => {
       const fullName = `${student.title || ''}${student.firstname || ''} ${student.lastname || ''}`;
@@ -950,7 +954,7 @@ function getStudentListForPp6(grade, classNo) {
     });
 
     // ค้นหารหัสนักเรียนในชั้นเรียนจาก SCORES_WAREHOUSE
-    const warehouse = _readSheetToObjects('SCORES_WAREHOUSE');
+    const warehouse = _readSheetToObjects('SCORES_WAREHOUSE', true, year);
     const studentIdsInClass = new Set();
     warehouse
       .filter(row => row['grade'] === grade && row['class_no'] == classNo)
@@ -1346,7 +1350,7 @@ function testPp6PdfRegression() {
 /**
  * ฟังก์ชันสร้าง PDF รายงานรายบุคคล (ปพ.6) - ใช้ Google Docs (ฟอนต์ Sarabun)
  */
-function generatePp6PDFComplete(studentId, term = 'both', showRank = true) {
+function generatePp6PDFComplete(studentId, term = 'both', showRank = true, year) {
   try {
     try { DriveApp.getRootFolder().getName(); } catch (e) {
       // Fallback: ลองผ่าน REST API
@@ -1369,7 +1373,8 @@ function generatePp6PDFComplete(studentId, term = 'both', showRank = true) {
       }
     }
 
-    const pdfHash = _createPDFHash('pp6_final_v3', studentId, term);
+    year = year ? String(year).trim() : '';
+    const pdfHash = _createPDFHash('pp6_final_v3', studentId, term, year || '');
     const cacheKey = `pdf_pp6_${pdfHash}`;
     
     // ปิด Cache ชั่วคราวเพื่อทดสอบ
@@ -1380,7 +1385,7 @@ function generatePp6PDFComplete(studentId, term = 'both', showRank = true) {
       throw new Error('ไม่พบการตั้งค่าโรงเรียน');
     }
 
-    const allStudentsData = _readSheetToObjects('Students');
+    const allStudentsData = _readSheetToObjects('Students', true, year);
     const studentMasterData = allStudentsData.find(row => String(row.student_id).trim() === String(studentId).trim());
     
     if (!studentMasterData) {
@@ -1391,7 +1396,8 @@ function generatePp6PDFComplete(studentId, term = 'both', showRank = true) {
 
     // ดึง subject info จากชีตรายวิชา
     const sInfo = {};
-    _readSheetToObjects('รายวิชา').forEach(function(s) {
+    const subjectRows = _readSheetToObjects('รายวิชา', true, year);
+    subjectRows.forEach(function(s) {
       var code = String(s['รหัสวิชา'] || '').trim();
       if (code) {
         sInfo[code] = {
@@ -1404,10 +1410,28 @@ function generatePp6PDFComplete(studentId, term = 'both', showRank = true) {
     });
 
     // ดึงคะแนนรายภาคจาก SCORES_WAREHOUSE (แบบ OPR)
-    const warehouse = _readSheetToObjects('SCORES_WAREHOUSE');
-    const studentScores = warehouse.filter(row => String(row['student_id']).trim() === String(studentId).trim());
+    const warehouse = _readSheetToObjects('SCORES_WAREHOUSE', true, year);
+    let studentScores = warehouse.filter(row => String(row['student_id']).trim() === String(studentId).trim());
     if (!studentScores || studentScores.length === 0) {
-      throw new Error(`ไม่พบข้อมูลคะแนนของนักเรียนรหัส ${studentId} ใน SCORES_WAREHOUSE`);
+      var fallbackGrade = String(studentMasterData.grade || studentMasterData['ชั้น'] || '').trim();
+      var fallbackClassNo = String(studentMasterData.class_no || studentMasterData['ห้อง'] || '').trim();
+      if (!fallbackGrade || !fallbackClassNo) {
+        throw new Error(`ไม่พบข้อมูลคะแนนของนักเรียนรหัส ${studentId} ใน SCORES_WAREHOUSE และทะเบียนไม่มีชั้น/ห้อง`);
+      }
+      studentScores = subjectRows
+        .filter(function(s) { return String(s['ชั้น'] || '').trim() === fallbackGrade; })
+        .map(function(s) {
+          return {
+            student_id: studentId,
+            grade: fallbackGrade,
+            class_no: fallbackClassNo,
+            subject_code: String(s['รหัสวิชา'] || '').trim(),
+            subject_name: String(s['ชื่อวิชา'] || '').trim(),
+            subject_type: String(s['ประเภทวิชา'] || '').trim(),
+            hours: s['ชั่วโมง/ปี'],
+            __blankScore: true
+          };
+        });
     }
 
     const grade = studentScores[0]['grade'];
@@ -1422,9 +1446,10 @@ function generatePp6PDFComplete(studentId, term = 'both', showRank = true) {
       var inf = sInfo[code] || {};
       var tp = inf.type || String(r['subject_type'] || 'พื้นฐาน').trim();
       var isAct = tp.indexOf('กิจกรรม') !== -1;
-      var t1 = parseFloat(r['term1_total']) || 0;
-      var t2 = parseFloat(r['term2_total']) || 0;
-      var avg = parseFloat(r['average']) || ((t1 + t2) / 2);
+      var hasBlankScore = r.__blankScore === true;
+      var t1 = hasBlankScore ? 0 : (parseFloat(r['term1_total']) || 0);
+      var t2 = hasBlankScore ? 0 : (parseFloat(r['term2_total']) || 0);
+      var avg = hasBlankScore ? 0 : (parseFloat(r['average']) || ((t1 + t2) / 2));
       var fg = parseFloat(r['final_grade']);
       return {
         code: code,
@@ -1439,13 +1464,13 @@ function generatePp6PDFComplete(studentId, term = 'both', showRank = true) {
         t2: isAct ? 0 : t2,
         t2g: isAct ? 0 : _scoreToGPA(t2).gpa,
         avg: isAct ? 0 : avg,
-        fg: isAct ? 0 : (!isNaN(fg) ? fg : _scoreToGPA(avg).gpa)
+        fg: isAct ? 0 : (hasBlankScore ? -1 : (!isNaN(fg) ? fg : _scoreToGPA(avg).gpa))
       };
     });
     _pp6SortSubjects(subjects);
 
-    const gpaInfo = calculateGPAAndRank(studentId, grade, classNo);
-    const assessments = _pp6_getDetailedAssessments(studentId);
+    const gpaInfo = calculateGPAAndRank(studentId, grade, classNo, year);
+    const assessments = _pp6_getDetailedAssessments(studentId, year);
 
     // ใส่ผลกิจกรรมจากข้อมูลประเมิน
     subjects.forEach(function(s) {
@@ -1476,14 +1501,14 @@ function generatePp6PDFComplete(studentId, term = 'both', showRank = true) {
     } catch(e) {}
 
     // ✅ ใช้ getStudentInfo_ เหมือนรายงานหน้าเดียว เพื่อให้ grade/classNo format ตรงกับ HomeroomTeachers
-    const studentInfo = typeof getStudentInfo_ === 'function' ? getStudentInfo_(studentId) : null;
+    const studentInfo = typeof getStudentInfo_ === 'function' ? getStudentInfo_(studentId, year) : null;
     const teacherGrade = studentInfo ? studentInfo.grade : grade;
     const teacherClassNo = studentInfo ? String(studentInfo.classNo) : String(classNo);
     const _htPp6 = getHomeroomTeachers(teacherGrade, teacherClassNo);
     const homeroomTeacher = _htPp6.teacher1;
     const homeroomTeacher2 = _htPp6.teacher2;
     Logger.log('🔍 PP6 teacher lookup: grade=' + teacherGrade + ', classNo=' + teacherClassNo + ', result=' + homeroomTeacher + (homeroomTeacher2 ? ', ' + homeroomTeacher2 : ''));
-    const teacherComment = typeof getTeacherComment_ === 'function' ? getTeacherComment_(studentId) : '';
+    const teacherComment = typeof getTeacherComment_ === 'function' ? getTeacherComment_(studentId, year) : '';
 
     const fileName = `ปพ6_${studentFullName || studentId}_${studentId}_${term}.pdf`;
 
@@ -1504,7 +1529,7 @@ function generatePp6PDFComplete(studentId, term = 'both', showRank = true) {
       homeroomTeacher: homeroomTeacher,
       homeroomTeacher2: homeroomTeacher2,
       teacherComment: teacherComment,
-      academicYear: settings['ปีการศึกษา'] || new Date().getFullYear() + 543,
+      academicYear: year || settings['ปีการศึกษา'] || new Date().getFullYear() + 543,
       fileName: fileName,
       showRank: showRank
     });
@@ -1521,14 +1546,15 @@ function generatePp6PDFComplete(studentId, term = 'both', showRank = true) {
   }
 }
 
-function generatePp6PDFCompleteNoDrive(studentId, term = 'both', showRank = true) {
+function generatePp6PDFCompleteNoDrive(studentId, term = 'both', showRank = true, year) {
   try {
     const settings = getWebAppSettings();
     if (!settings['ชื่อโรงเรียน']) {
       throw new Error('ไม่พบการตั้งค่าโรงเรียน');
     }
 
-    const allStudentsData = _readSheetToObjects('Students');
+    year = year ? String(year).trim() : '';
+    const allStudentsData = _readSheetToObjects('Students', true, year);
     const studentMasterData = allStudentsData.find(row => String(row.student_id).trim() === String(studentId).trim());
     if (!studentMasterData) {
       throw new Error(`ไม่พบข้อมูลนักเรียนรหัส ${studentId} ในชีต Students`);
@@ -1538,7 +1564,8 @@ function generatePp6PDFCompleteNoDrive(studentId, term = 'both', showRank = true
 
     // ดึง subject info จากชีตรายวิชา
     const sInfoNd = {};
-    _readSheetToObjects('รายวิชา').forEach(function(s) {
+    const subjectRowsNd = _readSheetToObjects('รายวิชา', true, year);
+    subjectRowsNd.forEach(function(s) {
       var code = String(s['รหัสวิชา'] || '').trim();
       if (code) {
         sInfoNd[code] = {
@@ -1550,10 +1577,28 @@ function generatePp6PDFCompleteNoDrive(studentId, term = 'both', showRank = true
       }
     });
 
-    const warehouse = _readSheetToObjects('SCORES_WAREHOUSE');
-    const studentScoresNd = warehouse.filter(row => String(row['student_id']).trim() === String(studentId).trim());
+    const warehouse = _readSheetToObjects('SCORES_WAREHOUSE', true, year);
+    let studentScoresNd = warehouse.filter(row => String(row['student_id']).trim() === String(studentId).trim());
     if (!studentScoresNd || studentScoresNd.length === 0) {
-      throw new Error(`ไม่พบข้อมูลคะแนนของนักเรียนรหัส ${studentId} ใน SCORES_WAREHOUSE`);
+      var fallbackGradeNd = String(studentMasterData.grade || studentMasterData['ชั้น'] || '').trim();
+      var fallbackClassNoNd = String(studentMasterData.class_no || studentMasterData['ห้อง'] || '').trim();
+      if (!fallbackGradeNd || !fallbackClassNoNd) {
+        throw new Error(`ไม่พบข้อมูลคะแนนของนักเรียนรหัส ${studentId} ใน SCORES_WAREHOUSE และทะเบียนไม่มีชั้น/ห้อง`);
+      }
+      studentScoresNd = subjectRowsNd
+        .filter(function(s) { return String(s['ชั้น'] || '').trim() === fallbackGradeNd; })
+        .map(function(s) {
+          return {
+            student_id: studentId,
+            grade: fallbackGradeNd,
+            class_no: fallbackClassNoNd,
+            subject_code: String(s['รหัสวิชา'] || '').trim(),
+            subject_name: String(s['ชื่อวิชา'] || '').trim(),
+            subject_type: String(s['ประเภทวิชา'] || '').trim(),
+            hours: s['ชั่วโมง/ปี'],
+            __blankScore: true
+          };
+        });
     }
 
     const grade = studentScoresNd[0]['grade'];
@@ -1564,9 +1609,10 @@ function generatePp6PDFCompleteNoDrive(studentId, term = 'both', showRank = true
       var inf = sInfoNd[code] || {};
       var tp = inf.type || String(r['subject_type'] || 'พื้นฐาน').trim();
       var isAct = tp.indexOf('กิจกรรม') !== -1;
-      var t1 = parseFloat(r['term1_total']) || 0;
-      var t2 = parseFloat(r['term2_total']) || 0;
-      var avg = parseFloat(r['average']) || ((t1 + t2) / 2);
+      var hasBlankScore = r.__blankScore === true;
+      var t1 = hasBlankScore ? 0 : (parseFloat(r['term1_total']) || 0);
+      var t2 = hasBlankScore ? 0 : (parseFloat(r['term2_total']) || 0);
+      var avg = hasBlankScore ? 0 : (parseFloat(r['average']) || ((t1 + t2) / 2));
       var fg = parseFloat(r['final_grade']);
       return {
         code: code, name: String(r['subject_name'] || '').trim(), type: tp,
@@ -1574,13 +1620,13 @@ function generatePp6PDFCompleteNoDrive(studentId, term = 'both', showRank = true
         order: inf.order || 999, isActivity: isAct,
         t1: isAct ? 0 : t1, t1g: isAct ? 0 : _scoreToGPA(t1).gpa,
         t2: isAct ? 0 : t2, t2g: isAct ? 0 : _scoreToGPA(t2).gpa,
-        avg: isAct ? 0 : avg, fg: isAct ? 0 : (!isNaN(fg) ? fg : _scoreToGPA(avg).gpa)
+        avg: isAct ? 0 : avg, fg: isAct ? 0 : (hasBlankScore ? -1 : (!isNaN(fg) ? fg : _scoreToGPA(avg).gpa))
       };
     });
     _pp6SortSubjects(subjects);
 
-    const gpaInfo = calculateGPAAndRank(studentId, grade, classNo);
-    const assessments = _pp6_getDetailedAssessments(studentId);
+    const gpaInfo = calculateGPAAndRank(studentId, grade, classNo, year);
+    const assessments = _pp6_getDetailedAssessments(studentId, year);
 
     subjects.forEach(function(s) {
       if (s.isActivity) {
@@ -1609,14 +1655,14 @@ function generatePp6PDFCompleteNoDrive(studentId, term = 'both', showRank = true
     } catch(e) {}
 
     // ✅ ใช้ getStudentInfo_ เหมือนรายงานหน้าเดียว เพื่อให้ grade/classNo format ตรงกับ HomeroomTeachers
-    const studentInfo = typeof getStudentInfo_ === 'function' ? getStudentInfo_(studentId) : null;
+    const studentInfo = typeof getStudentInfo_ === 'function' ? getStudentInfo_(studentId, year) : null;
     const teacherGrade = studentInfo ? studentInfo.grade : grade;
     const teacherClassNo = studentInfo ? String(studentInfo.classNo) : String(classNo);
     const _htNd = getHomeroomTeachers(teacherGrade, teacherClassNo);
     const homeroomTeacher = _htNd.teacher1;
     const homeroomTeacher2 = _htNd.teacher2;
     Logger.log('🔍 PP6 NoDrive teacher lookup: grade=' + teacherGrade + ', classNo=' + teacherClassNo + ', result=' + homeroomTeacher + (homeroomTeacher2 ? ', ' + homeroomTeacher2 : ''));
-    const teacherComment = typeof getTeacherComment_ === 'function' ? getTeacherComment_(studentId) : '';
+    const teacherComment = typeof getTeacherComment_ === 'function' ? getTeacherComment_(studentId, year) : '';
 
     const fileName = `ปพ6_${studentFullName || studentId}_${studentId}_${term}.pdf`;
 
@@ -1637,7 +1683,7 @@ function generatePp6PDFCompleteNoDrive(studentId, term = 'both', showRank = true
       homeroomTeacher: homeroomTeacher,
       homeroomTeacher2: homeroomTeacher2,
       teacherComment: teacherComment,
-      academicYear: settings['ปีการศึกษา'] || new Date().getFullYear() + 543,
+      academicYear: year || settings['ปีการศึกษา'] || new Date().getFullYear() + 543,
       fileName: fileName,
       showRank: showRank
     });

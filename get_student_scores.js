@@ -1235,6 +1235,7 @@ function generateStudentReportPdfUnified(studentId, options) {
   var term = options.term || 'both';
   var showRank = options.showRank !== false; // default true
   var year = options.year || undefined; // ปีการศึกษา (optional, สำหรับดูข้อมูลย้อนหลัง)
+  var errors = [];
 
   // ✅ เรียก generatePp6PDFComplete โดยตรง (ปพ.6 จริง มีส่วนผู้ปกครอง/คุณลักษณะ)
   if (typeof generatePp6PDFComplete === 'function') {
@@ -1244,6 +1245,7 @@ function generateStudentReportPdfUnified(studentId, options) {
       if (pdfUrl) return { mode: 'url', url: pdfUrl };
     } catch (e) {
       Logger.log('⚠️ generatePp6PDFComplete failed: ' + e.message);
+      errors.push(e.message || String(e));
     }
   }
 
@@ -1251,14 +1253,15 @@ function generateStudentReportPdfUnified(studentId, options) {
   var raw = null;
   if (typeof generatePp6PDFCompleteNoDrive === 'function') {
     try {
-      raw = generatePp6PDFCompleteNoDrive(studentId, term, showRank);
+      raw = generatePp6PDFCompleteNoDrive(studentId, term, showRank, year);
     } catch (e2) {
       Logger.log('⚠️ generatePp6PDFCompleteNoDrive failed: ' + e2.message);
+      errors.push(e2.message || String(e2));
     }
   }
 
   if (raw && raw.base64) {
     return { mode: 'base64', fileName: raw.fileName, mimeType: raw.mimeType, base64: raw.base64 };
   }
-  throw new Error('ไม่สามารถสร้างรายงาน ปพ.6 ได้');
+  throw new Error('ไม่สามารถสร้างรายงาน ปพ.6 ได้' + (errors.length ? ': ' + errors.join(' | ') : ''));
 }
