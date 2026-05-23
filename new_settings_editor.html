@@ -435,6 +435,63 @@
         grid-template-columns: 1fr;
       }
     }
+
+    /* ── Custom Tab Selector ── */
+    .custom-tabs {
+      background: rgba(255, 255, 255, 0.65);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      padding: 6px;
+      border-radius: 20px;
+      backdrop-filter: blur(10px);
+      display: inline-flex;
+      gap: 4px;
+      margin-bottom: 24px;
+      width: 100%;
+      justify-content: center;
+    }
+    .custom-tabs .nav-item {
+      flex: 1;
+      max-width: 240px;
+    }
+    .custom-tabs .nav-link {
+      border-radius: 16px;
+      padding: 10px 14px;
+      font-weight: 700;
+      color: var(--muted);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 0;
+      background: transparent;
+      width: 100%;
+      font-size: 0.92rem;
+    }
+    .custom-tabs .nav-link:hover {
+      color: var(--primary);
+      background: rgba(79, 70, 229, 0.06);
+    }
+    .custom-tabs .nav-link.active {
+      background: linear-gradient(135deg, var(--primary), var(--primary-2)) !important;
+      color: #ffffff !important;
+      box-shadow: 0 8px 20px rgba(79, 70, 229, 0.22);
+    }
+    @media (max-width: 767.98px) {
+      .custom-tabs {
+        flex-direction: column;
+        border-radius: 22px;
+        padding: 8px;
+      }
+      .custom-tabs .nav-item {
+        max-width: 100%;
+        width: 100%;
+      }
+      .custom-tabs .nav-link {
+        justify-content: flex-start;
+        padding: 12px 16px;
+      }
+    }
   </style>
 </head>
 <body class="bg-light">
@@ -473,115 +530,144 @@
       </div>
     </div>
 
-    <div class="settings-shell">
-      <div class="card shadow-sm">
-        <div class="card-header bg-primary text-white">
-          <i class="bi bi-house-gear"></i>
-          <div class="card-header-content">
-            <div>ข้อมูลทั่วไปของโรงเรียน</div>
-            <div class="card-subtitle">ส่วนที่ผู้ใช้แก้ไขบ่อยที่สุด เช่น ชื่อโรงเรียน ปีการศึกษา และผู้บริหาร</div>
-          </div>
-        </div>
-        <div class="card-body stack-card">
-          <div class="section-intro">จัดกลุ่มข้อมูลให้กรอกง่ายขึ้น โดยแยกข้อมูลโรงเรียนและข้อมูลผู้บริหารไว้ในบล็อกเดียว</div>
-          <div class="setting-grid-2">
-            <div>
-              <label for="schoolName" class="form-label">ชื่อโรงเรียน</label>
-              <input id="schoolName" type="text" class="form-control" />
-            </div>
-            <div>
-              <label for="schoolAddress" class="form-label">ที่อยู่โรงเรียน</label>
-              <input id="schoolAddress" type="text" class="form-control" />
-            </div>
-            <div>
-              <label for="academicYear" class="form-label">ปีการศึกษา</label>
-              <input id="academicYear" type="number" class="form-control" />
-            </div>
-            <div>
-              <label for="semester" class="form-label">ภาคเรียน</label>
-              <input id="semester" type="number" class="form-control" />
-            </div>
-          </div>
-          <div class="setting-grid-2">
-            <div>
-              <label for="directorName" class="form-label">ชื่อผู้อำนวยการ</label>
-              <input id="directorName" type="text" class="form-control" />
-            </div>
-            <div>
-              <label for="directorPosition" class="form-label">ตำแหน่งผู้อำนวยการ</label>
-              <input id="directorPosition" type="text" class="form-control" />
-            </div>
-          </div>
-          <div>
-            <label for="supervisorName" class="form-label">ชื่อหัวหน้างานวิชาการ</label>
-            <input id="supervisorName" type="text" class="form-control" />
-            <div class="field-help">ใช้ในเอกสารที่เกี่ยวกับการรับรองผลการเรียนและงานวิชาการ</div>
-          </div>
-        </div>
-      </div>
+    <!-- Tab Navigation -->
+    <ul class="nav nav-pills custom-tabs" id="settingsTab" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="general-tab" data-bs-toggle="pill" data-bs-target="#generalTabPane" type="button" role="tab" aria-controls="generalTabPane" aria-selected="true">
+          <i class="bi bi-house-gear"></i> ข้อมูลทั่วไป
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="printing-tab" data-bs-toggle="pill" data-bs-target="#printingTabPane" type="button" role="tab" aria-controls="printingTabPane" aria-selected="false">
+          <i class="bi bi-printer"></i> การพิมพ์ & PDF
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="transition-tab" data-bs-toggle="pill" data-bs-target="#transitionTabPane" type="button" role="tab" aria-controls="transitionTabPane" aria-selected="false">
+          <i class="bi bi-calendar-event"></i> เปลี่ยนปีการศึกษา
+        </button>
+      </li>
+    </ul>
 
-      <div class="card shadow-sm">
-        <div class="card-header bg-secondary text-white">
-          <i class="bi bi-printer"></i>
-          <div class="card-header-content">
-            <div>การพิมพ์เอกสารและไฟล์ PDF</div>
-            <div class="card-subtitle">ตั้งค่าโลโก้และโฟลเดอร์ปลายทางสำหรับเอกสารที่ระบบสร้าง</div>
-          </div>
-          <span class="step-pill"><i class="bi bi-1-circle-fill"></i> ขั้นตอนที่ 1</span>
-        </div>
-        <div class="card-body stack-card">
-          <div class="section-intro">ตั้งค่าเพียงครั้งเดียว แล้วระบบจะนำไปใช้กับรายงาน PDF และเอกสารอื่นอัตโนมัติ</div>
-          <div class="media-panel">
-            <div class="preview-panel">
-              <img id="logoPreview" class="img-thumbnail" style="max-height: 120px; object-fit: contain;" alt="โลโก้" />
-              <div class="field-help">พรีวิวโลโก้จากรหัสไฟล์ Google Drive</div>
+    <!-- Tab Contents -->
+    <div class="tab-content settings-shell" id="settingsTabContent">
+      <!-- Tab 1: General Settings -->
+      <div class="tab-pane fade show active" id="generalTabPane" role="tabpanel" aria-labelledby="general-tab">
+        <div class="card shadow-sm">
+          <div class="card-header bg-primary text-white">
+            <i class="bi bi-house-gear"></i>
+            <div class="card-header-content">
+              <div>ข้อมูลทั่วไปของโรงเรียน</div>
+              <div class="card-subtitle">ส่วนที่ผู้ใช้แก้ไขบ่อยที่สุด เช่น ชื่อโรงเรียน ปีการศึกษา และผู้บริหาร</div>
             </div>
-            <div class="stack-card">
+          </div>
+          <div class="card-body stack-card">
+            <div class="section-intro">จัดกลุ่มข้อมูลให้กรอกง่ายขึ้น โดยแยกข้อมูลโรงเรียนและข้อมูลผู้บริหารไว้ในบล็อกเดียว</div>
+            <div class="setting-grid-2">
               <div>
-                <label for="logoFileId" class="form-label">รหัสโลโก้ Google Drive</label>
-                <input type="text" id="logoFileId" class="form-control" placeholder="เช่น 1AbC..."/>
-                <div class="field-help">วางเฉพาะ File ID ของรูปโลโก้ ระบบจะพยายามโหลดรูปให้อัตโนมัติ</div>
+                <label for="schoolName" class="form-label">ชื่อโรงเรียน</label>
+                <input id="schoolName" type="text" class="form-control" />
               </div>
               <div>
-                <label for="pdfSaveFolderId" class="form-label">รหัสโฟลเดอร์สำหรับบันทึก PDF</label>
-                <input type="text" id="pdfSaveFolderId" class="form-control" placeholder="เช่น 1XyZ..."/>
-                <div class="field-help">ใช้เป็นปลายทางเก็บไฟล์ PDF ทั้งหมดจากระบบ เพื่อให้ค้นหาไฟล์ย้อนหลังได้ง่าย</div>
+                <label for="schoolAddress" class="form-label">ที่อยู่โรงเรียน</label>
+                <input id="schoolAddress" type="text" class="form-control" />
               </div>
+              <div>
+                <label for="academicYear" class="form-label">ปีการศึกษา</label>
+                <input id="academicYear" type="number" class="form-control" />
+              </div>
+              <div>
+                <label for="semester" class="form-label">ภาคเรียน</label>
+                <input id="semester" type="number" class="form-control" />
+              </div>
+            </div>
+            <div class="setting-grid-2">
+              <div>
+                <label for="directorName" class="form-label">ชื่อผู้อำนวยการ</label>
+                <input id="directorName" type="text" class="form-control" />
+              </div>
+              <div>
+                <label for="directorPosition" class="form-label">ตำแหน่งผู้อำนวยการ</label>
+                <input id="directorPosition" type="text" class="form-control" />
+              </div>
+            </div>
+            <div>
+              <label for="supervisorName" class="form-label">ชื่อหัวหน้างานวิชาการ</label>
+              <input id="supervisorName" type="text" class="form-control" />
+              <div class="field-help">ใช้ในเอกสารที่เกี่ยวกับการรับรองผลการเรียนและงานวิชาการ</div>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="card shadow-sm border-warning">
-        <div class="card-header bg-warning text-dark">
-          <i class="bi bi-calendar-event"></i>
-          <div class="card-header-content">
-            <div>เปลี่ยนปีการศึกษา</div>
-            <div class="card-subtitle" style="color: rgba(17,24,39,0.76);">ส่วนนี้เป็นงานระดับระบบ ควรตรวจข้อมูลก่อนกดทำจริงทุกครั้ง</div>
+      <!-- Tab 2: Printing & PDF -->
+      <div class="tab-pane fade" id="printingTabPane" role="tabpanel" aria-labelledby="printing-tab">
+        <div class="card shadow-sm">
+          <div class="card-header bg-secondary text-white">
+            <i class="bi bi-printer"></i>
+            <div class="card-header-content">
+              <div>การพิมพ์เอกสารและไฟล์ PDF</div>
+              <div class="card-subtitle">ตั้งค่าโลโก้และโฟลเดอร์ปลายทางสำหรับเอกสารที่ระบบสร้าง</div>
+            </div>
+            <span class="step-pill"><i class="bi bi-1-circle-fill"></i> ขั้นตอนที่ 1</span>
           </div>
-          <span class="step-pill dark"><i class="bi bi-2-circle-fill"></i> ขั้นตอนที่ 2</span>
+          <div class="card-body stack-card">
+            <div class="section-intro">ตั้งค่าเพียงครั้งเดียว แล้วระบบจะนำไปใช้กับรายงาน PDF และเอกสารอื่นอัตโนมัติ</div>
+            <div class="media-panel">
+              <div class="preview-panel">
+                <img id="logoPreview" class="img-thumbnail" style="max-height: 120px; object-fit: contain;" alt="โลโก้" />
+                <div class="field-help">พรีวิวโลโก้จากรหัสไฟล์ Google Drive</div>
+              </div>
+              <div class="stack-card">
+                <div>
+                  <label for="logoFileId" class="form-label">รหัสโลโก้ Google Drive</label>
+                  <input type="text" id="logoFileId" class="form-control" placeholder="เช่น 1AbC..."/>
+                  <div class="field-help">วางเฉพาะ File ID ของรูปโลโก้ ระบบจะพยายามโหลดรูปให้อัตโนมัติ</div>
+                </div>
+                <div>
+                  <label for="pdfSaveFolderId" class="form-label">รหัสโฟลเดอร์สำหรับบันทึก PDF</label>
+                  <input type="text" id="pdfSaveFolderId" class="form-control" placeholder="เช่น 1XyZ..."/>
+                  <div class="field-help">ใช้เป็นปลายทางเก็บไฟล์ PDF ทั้งหมดจากระบบ เพื่อให้ค้นหาไฟล์ย้อนหลังได้ง่าย</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="card-body stack-card">
-          <div class="danger-soft">ระบบจะสำรองไฟล์ สร้าง snapshot ของชีตสำคัญ และเตรียมข้อมูลปีใหม่ โดยข้อมูลเดิมยังคงอยู่ในรูปแบบที่ย้อนดูได้</div>
-          <div class="actions-row">
-            <div>
-              <label class="form-label fw-bold">ปีการศึกษาใหม่ (พ.ศ.)</label>
-              <input type="number" id="newAcademicYear" class="form-control" style="width:160px;" />
-              <div class="field-help">แนะนำให้กด “ดูข้อมูลก่อนเปลี่ยน” เพื่อตรวจสอบผลกระทบก่อนดำเนินการ</div>
+      </div>
+
+      <!-- Tab 3: Change Academic Year -->
+      <div class="tab-pane fade" id="transitionTabPane" role="tabpanel" aria-labelledby="transition-tab">
+        <div class="card shadow-sm border-warning">
+          <div class="card-header bg-warning text-dark">
+            <i class="bi bi-calendar-event"></i>
+            <div class="card-header-content">
+              <div>เปลี่ยนปีการศึกษา</div>
+              <div class="card-subtitle" style="color: rgba(17,24,39,0.76);">ส่วนนี้เป็นงานระดับระบบ ควรตรวจข้อมูลก่อนกดทำจริงทุกครั้ง</div>
             </div>
-            <div class="actions">
-              <button id="previewSwitchBtn" class="btn btn-warning-soft">
-                <i class="bi bi-eye"></i> ดูข้อมูลก่อนเปลี่ยน
-              </button>
-              <button id="switchYearBtn" class="btn btn-danger" disabled>
-                <i class="bi bi-exclamation-triangle-fill"></i> เปลี่ยนปีการศึกษา
-              </button>
+            <span class="step-pill dark"><i class="bi bi-2-circle-fill"></i> ขั้นตอนที่ 2</span>
+          </div>
+          <div class="card-body stack-card">
+            <div class="danger-soft">ระบบจะสำรองไฟล์ สร้าง snapshot ของชีตสำคัญ และเตรียมข้อมูลปีใหม่ โดยข้อมูลเดิมยังคงอยู่ในรูปแบบที่ย้อนดูได้</div>
+            <div class="actions-row">
+              <div>
+                <label class="form-label fw-bold">ปีการศึกษาใหม่ (พ.ศ.)</label>
+                <input type="number" id="newAcademicYear" class="form-control" style="width:160px;" />
+                <div class="field-help">แนะนำให้กด “ดูข้อมูลก่อนเปลี่ยน” เพื่อตรวจสอบผลกระทบก่อนดำเนินการ</div>
+              </div>
+              <div class="actions">
+                <button id="previewSwitchBtn" class="btn btn-warning-soft">
+                  <i class="bi bi-eye"></i> ดูข้อมูลก่อนเปลี่ยน
+                </button>
+                <button id="switchYearBtn" class="btn btn-danger" disabled>
+                  <i class="bi bi-exclamation-triangle-fill"></i> เปลี่ยนปีการศึกษา
+                </button>
+              </div>
             </div>
+            <div id="switchPreview" class="preview-box" style="display:none;">
+              <div class="alert alert-info app-alert py-2 mb-0" id="previewInfo"></div>
+            </div>
+            <div id="switchStatus" class="mt-1"></div>
           </div>
-          <div id="switchPreview" class="preview-box" style="display:none;">
-            <div class="alert alert-info app-alert py-2 mb-0" id="previewInfo"></div>
-          </div>
-          <div id="switchStatus" class="mt-1"></div>
         </div>
       </div>
     </div>
