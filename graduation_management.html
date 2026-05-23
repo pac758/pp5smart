@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>จัดการนักเรียนจบการศึกษา</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .graduation-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            border-radius: 10px;
+        }
+        .action-card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            height: 100%;
+        }
+        .action-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+        }
+        .action-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        .graduate-icon { color: #28a745; }
+        .switch-icon { color: #007bff; }
+        .preview-icon { color: #ffc107; }
+        .warning-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 5px;
+        }
+        .success-box {
+            background-color: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 5px;
+        }
+        .loading-spinner {
+            display: none;
+        }
+        .result-box {
+            display: none;
+            margin-top: 2rem;
+        }
+        .student-count {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="graduation-header text-center">
+            <h1><i class="fas fa-graduation-cap"></i> จัดการนักเรียนจบการศึกษา</h1>
+            <p class="lead">ระบบจัดการนักเรียนที่จบ ป.6 และเปลี่ยนปีการศึกษา</p>
+        </div>
+
+        <!-- Current Status -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-info">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="fas fa-info-circle"></i> สถานะปัจจุบัน</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>ปีการศึกษาปัจจุบัน:</strong> <span id="currentYear">กำลังโหลด...</span></p>
+                                <p><strong>นักเรียน ป.6 ทั้งหมด:</strong> <span id="totalP6">กำลังโหลด...</span> คน</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>นักเรียน ป.6 ที่ยัง active:</strong> <span id="activeP6" class="text-success">กำลังโหลด...</span> คน</p>
+                                <p><strong>นักเรียน ป.6 ที่จำหน่ายแล้ว:</strong> <span id="graduatedP6" class="text-danger">กำลังโหลด...</span> คน</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Cards -->
+        <div class="row">
+            <!-- Option 1: Graduate Only -->
+            <div class="col-lg-4 mb-4">
+                <div class="card action-card">
+                    <div class="card-body text-center">
+                        <div class="action-icon graduate-icon">
+                            <i class="fas fa-user-graduate"></i>
+                        </div>
+                        <h5 class="card-title">จำหน่ายนักเรียน ป.6</h5>
+                        <p class="card-text">เปลี่ยนสถานะนักเรียน ป.6 เป็น "จำหน่าย" เท่านั้น<br>
+                        <small class="text-muted">เหมาะสำหรับกลางปีการศึกษา</small></p>
+                        
+                        <div class="warning-box text-left">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>หมายเหตุ:</strong><br>
+                            • ข้อมูลนักเรียนยังคงอยู่<br>
+                            • ไม่สามารถบันทึกคะแนนได้<br>
+                            • ไม่โชว์ในรายงานต่างๆ
+                        </div>
+                        
+                        <button class="btn btn-success btn-lg" onclick="graduateStudents()">
+                            <i class="fas fa-graduation-cap"></i> จำหน่ายนักเรียน ป.6
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Option 2: Switch Academic Year -->
+            <div class="col-lg-4 mb-4">
+                <div class="card action-card">
+                    <div class="card-body text-center">
+                        <div class="action-icon switch-icon">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <h5 class="card-title">เปลี่ยนปีการศึกษา</h5>
+                        <p class="card-text">จำหน่าย ป.6 + เลื่อนชั้น + สร้างปีใหม่<br>
+                        <small class="text-muted">เหมาะสำหรับปลายปีการศึกษา</small></p>
+                        
+                        <div class="warning-box text-left">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>การดำเนินการ:</strong><br>
+                            • จำหน่ายนักเรียน ป.6/ม.3<br>
+                            • เลื่อนชั้นนักเรียนทุกคน<br>
+                            • สร้างชีตใหม่ 2569<br>
+                            • สำรองข้อมูลอัตโนมัติ
+                        </div>
+                        
+                        <button class="btn btn-primary btn-lg" onclick="switchAcademicYear()">
+                            <i class="fas fa-sync-alt"></i> เปลี่ยนปี 2568 → 2569
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Option 3: Preview -->
+            <div class="col-lg-4 mb-4">
+                <div class="card action-card">
+                    <div class="card-body text-center">
+                        <div class="action-icon preview-icon">
+                            <i class="fas fa-eye"></i>
+                        </div>
+                        <h5 class="card-title">ดูตัวอย่างก่อนทำ</h5>
+                        <p class="card-text">ตรวจสอบสิ่งที่จะเกิดขึ้น<br>
+                        <small class="text-muted">ไม่มีการเปลี่ยนแปลงข้อมูล</small></p>
+                        
+                        <div class="success-box text-left">
+                            <i class="fas fa-check-circle"></i>
+                            <strong>ข้อมูลที่จะได้:</strong><br>
+                            • รายชื่อนักเรียนที่จะจำหน่าย<br>
+                            • รายชื่อนักเรียนที่จะเลื่อนชั้น<br>
+                            • ชีตที่จะสร้างใหม่
+                        </div>
+                        
+                        <button class="btn btn-warning btn-lg" onclick="previewChanges()">
+                            <i class="fas fa-search"></i> ดูตัวอย่าง
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div class="text-center loading-spinner" id="loadingSpinner">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                <span class="sr-only">กำลังดำเนินการ...</span>
+            </div>
+            <h4 class="mt-3">กำลังดำเนินการ...</h4>
+            <p class="text-muted">โปรดอย่าปิดหน้านี้ อาจใช้เวลาสักครู่</p>
+        </div>
+
+        <!-- Result Box -->
+        <div class="result-box" id="resultBox">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-check-circle"></i> ผลการดำเนินการ</h5>
+                </div>
+                <div class="card-body" id="resultContent">
+                    <!-- Results will be shown here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Load current status
+        $(document).ready(function() {
+            loadCurrentStatus();
+        });
+
+        function loadCurrentStatus() {
+            google.script.run
+                .withSuccessHandler(function(data) {
+                    $('#currentYear').text(data.currentYear || 'ไม่ทราบ');
+                    $('#totalP6').text(data.totalP6 || 0);
+                    $('#activeP6').text(data.activeP6 || 0);
+                    $('#graduatedP6').text(data.graduatedP6 || 0);
+                })
+                .withFailureHandler(function(error) {
+                    console.error('Error loading status:', error);
+                    $('#currentYear').text('ผิดพลาด');
+                })
+                .getGraduationStatus();
+        }
+
+        function showLoading() {
+            $('#loadingSpinner').show();
+            $('.action-card').hide();
+            $('.result-box').hide();
+        }
+
+        function hideLoading() {
+            $('#loadingSpinner').hide();
+            $('.action-card').show();
+        }
+
+        function showResult(title, content, isSuccess = true) {
+            $('#resultBox').show();
+            const alertClass = isSuccess ? 'alert-success' : 'alert-danger';
+            const icon = isSuccess ? 'fa-check-circle' : 'fa-exclamation-circle';
+            
+            $('#resultContent').html(`
+                <div class="alert ${alertClass}" role="alert">
+                    <h4><i class="fas ${icon}"></i> ${title}</h4>
+                    ${content}
+                </div>
+            `);
+            
+            // Scroll to result
+            $('html, body').animate({
+                scrollTop: $('#resultBox').offset().top - 100
+            }, 1000);
+        }
+
+        function graduateStudents() {
+            if (!confirm('คุณต้องการจำหน่ายนักเรียน ป.6 ทั้งหมดใช่หรือไม่?\n\n- นักเรียนจะมีสถานะเป็น "จำหน่าย"\n- ข้อมูลจะยังคงอยู่\n- ไม่สามารถบันทึกคะแนนได้')) {
+                return;
+            }
+
+            showLoading();
+            
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    hideLoading();
+                    if (result.success) {
+                        showResult('จำหน่ายนักเรียนสำเร็จ', `
+                            <p><strong>จำหน่ายแล้ว:</strong> ${result.graduated} คน</p>
+                            <p>นักเรียน ป.6 ทั้งหมดได้รับการจำหน่ายแล้ว</p>
+                            <button class="btn btn-info" onclick="location.reload()">โหลดสถานะใหม่</button>
+                        `);
+                        loadCurrentStatus();
+                    } else {
+                        showResult('เกิดข้อผิดพลาด', `<p>${result.message}</p>`, false);
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    showResult('เกิดข้อผิดพลาด', `<p>${error.message}</p>`, false);
+                })
+                .graduateStudents();
+        }
+
+        function switchAcademicYear() {
+            if (!confirm('คุณต้องการเปลี่ยนปีการศึกษาจาก 2568 เป็น 2569 ใช่หรือไม่?\n\nการดำเนินการนี้จะ:\n• จำหน่ายนักเรียน ป.6 และ ม.3\n• เลื่อนชั้นนักเรียนทุกคน\n• สร้างชีตใหม่สำหรับปี 2569\n• สำรองข้อมูลอัตโนมัติ\n\n⚠️ ใช้เวลาสักครู่ กรุณาอย่าปิดหน้านี้')) {
+                return;
+            }
+
+            showLoading();
+            
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    hideLoading();
+                    if (result.success) {
+                        showResult('เปลี่ยนปีการศึกษาสำเร็จ', `
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>🎓 จำหน่ายแล้ว:</strong> ${result.studentsGraduated} คน</p>
+                                    <p><strong>⬆️ เลื่อนชั้นแล้ว:</strong> ${result.studentsPromoted} คน</p>
+                                    <p><strong>📁 ชีท rename:</strong> ${result.sheetsRenamed} ชีท</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>📋 ชีทสร้างใหม่:</strong> ${result.sheetsCreated} ชีท</p>
+                                    <p><strong>📸 Snapshot:</strong> ${result.sharedSheetsSnapshot} ชีท</p>
+                                    <p><strong>💾 Archive:</strong> <a href="${result.archiveUrl}" target="_blank">${result.archiveName}</a></p>
+                                </div>
+                            </div>
+                            <hr>
+                            <p class="text-success"><strong>✅ เปลี่ยนปีการศึกษาเรียบร้อยแล้ว!</strong></p>
+                            <button class="btn btn-info" onclick="location.reload()">โหลดหน้าใหม่</button>
+                        `);
+                    } else {
+                        showResult('เกิดข้อผิดพลาด', `<p>${result.message}</p>`, false);
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    showResult('เกิดข้อผิดพลาด', `<p>${error.message}</p>`, false);
+                })
+                .switchAcademicYear(2569);
+        }
+
+        function previewChanges() {
+            showLoading();
+            
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    hideLoading();
+                    if (result.success) {
+                        showResult('ตัวอย่างการเปลี่ยนแปลง', `
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-user-graduate text-danger"></i> จะจำหน่าย (ป.6/ม.3)</h6>
+                                    <ul class="list-unstyled">
+                                        ${result.willGraduate.map(s => `<li>• ${s.name} (${s.studentId})</li>`).join('')}
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-arrow-up text-success"></i> จะเลื่อนชั้น</h6>
+                                    <p>นักเรียนทั้งหมด: ${result.willPromote} คน</p>
+                                    <p>ป.1 → ป.2, ป.2 → ป.3, ..., ป.5 → ป.6</p>
+                                </div>
+                            </div>
+                            <hr>
+                            <h6><i class="fas fa-folder-plus text-primary"></i> ชีทที่จะสร้างใหม่</h6>
+                            <p>${result.willCreateSheets.join(', ')}</p>
+                            <p class="text-muted"><small>นี่คือตัวอย่างเท่านั้น ยังไม่มีการเปลี่ยนแปลงข้อมูลจริง</small></p>
+                        `);
+                    } else {
+                        showResult('เกิดข้อผิดพลาด', `<p>${result.message}</p>`, false);
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    showResult('เกิดข้อผิดพลาด', `<p>${error.message}</p>`, false);
+                })
+                .previewGraduation();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,262 @@
+<style>
+  .pp5a-page { max-width: 1180px; margin: 0 auto; color: #0f172a; }
+  .pp5a-header { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; margin-bottom:16px; }
+  .pp5a-title { margin:0; font-size:1.35rem; font-weight:800; }
+  .pp5a-subtitle { margin:4px 0 0; color:#64748b; font-size:.88rem; }
+  .pp5a-panel { background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:16px; margin-bottom:14px; }
+  .pp5a-controls { display:grid; grid-template-columns:repeat(4, minmax(130px,1fr)); gap:12px; align-items:end; }
+  .pp5a-label { display:block; font-size:.78rem; font-weight:700; color:#475569; margin-bottom:5px; }
+  .pp5a-input, .pp5a-select, .pp5a-note { width:100%; border:1px solid #cbd5e1; border-radius:6px; padding:8px 10px; font-size:.92rem; background:#fff; }
+  .pp5a-note { min-height:76px; resize:vertical; }
+  .pp5a-btn { border:0; border-radius:6px; padding:9px 12px; font-weight:700; background:#2563eb; color:#fff; cursor:pointer; }
+  .pp5a-btn:disabled { opacity:.58; cursor:not-allowed; }
+  .pp5a-btn.submit { background:#2563eb; }
+  .pp5a-btn.review { background:#0f766e; }
+  .pp5a-btn.approve { background:#16a34a; }
+  .pp5a-btn.return { background:#dc2626; }
+  .pp5a-btn.secondary { background:#475569; }
+  .pp5a-badge { display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:5px 10px; font-weight:800; font-size:.8rem; white-space:nowrap; }
+  .pp5a-badge.draft { background:#f1f5f9; color:#334155; }
+  .pp5a-badge.submitted { background:#dbeafe; color:#1d4ed8; }
+  .pp5a-badge.reviewed { background:#ccfbf1; color:#0f766e; }
+  .pp5a-badge.approved { background:#dcfce7; color:#166534; }
+  .pp5a-badge.returned { background:#fee2e2; color:#991b1b; }
+  .pp5a-grid { display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:10px; }
+  .pp5a-metric { border:1px solid #e2e8f0; border-radius:8px; padding:12px; background:#f8fafc; }
+  .pp5a-metric .num { font-size:1.2rem; font-weight:800; }
+  .pp5a-metric .label { color:#64748b; font-size:.78rem; }
+  .pp5a-table { width:100%; border-collapse:collapse; font-size:.86rem; }
+  .pp5a-table th, .pp5a-table td { border-bottom:1px solid #e2e8f0; padding:8px; text-align:left; vertical-align:top; }
+  .pp5a-table th { background:#f8fafc; color:#475569; font-size:.76rem; }
+  .pp5a-muted { color:#64748b; }
+  .pp5a-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+  .pp5a-empty { color:#64748b; text-align:center; padding:22px; }
+  @media (max-width: 900px) {
+    .pp5a-header { flex-direction:column; }
+    .pp5a-controls, .pp5a-grid { grid-template-columns:1fr; }
+  }
+</style>
+
+<div class="pp5a-page animate-fade-in">
+  <div class="pp5a-header">
+    <div>
+      <h2 class="pp5a-title"><i class="bi bi-shield-check"></i> ส่งงาน / อนุมัติ ปพ.5</h2>
+      <div class="pp5a-subtitle">ติดตามสถานะการส่งตรวจ ปพ.5 รายห้อง พร้อมบันทึกประวัติทุกครั้ง</div>
+    </div>
+    <button class="pp5a-btn secondary" id="pp5aReloadBtn" type="button"><i class="bi bi-arrow-repeat"></i> โหลดภาพรวม</button>
+  </div>
+
+  <div class="pp5a-panel">
+    <div class="pp5a-controls">
+      <div>
+        <label class="pp5a-label" for="pp5aYear">ปีการศึกษา</label>
+        <input class="pp5a-input" id="pp5aYear" inputmode="numeric" pattern="\d{4}">
+      </div>
+      <div>
+        <label class="pp5a-label" for="pp5aGrade">ชั้น</label>
+        <select class="pp5a-select" id="pp5aGrade"></select>
+      </div>
+      <div>
+        <label class="pp5a-label" for="pp5aClass">ห้อง</label>
+        <select class="pp5a-select" id="pp5aClass"></select>
+      </div>
+      <button class="pp5a-btn" id="pp5aLoadBtn" type="button"><i class="bi bi-search"></i> ดูสถานะรายห้อง</button>
+    </div>
+  </div>
+
+  <div id="pp5aDashboard" class="pp5a-panel">
+    <div class="pp5a-empty">กำลังโหลดภาพรวม...</div>
+  </div>
+
+  <div id="pp5aDetail" class="pp5a-panel">
+    <div class="pp5a-empty">เลือกห้องเพื่อดูรายละเอียดและดำเนินการ</div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var fallbackGrades = ['อ.1','อ.2','อ.3','ป.1','ป.2','ป.3','ป.4','ป.5','ป.6','ม.1','ม.2','ม.3'];
+  var fallbackClasses = ['1','2','3','4','5','6'];
+  var statusLabels = {
+    draft: 'ยังไม่ส่ง',
+    submitted: 'ครูส่งแล้ว',
+    reviewed: 'วิชาการตรวจแล้ว',
+    approved: 'อนุมัติแล้ว',
+    returned: 'ส่งกลับแก้ไข'
+  };
+  var yearEl = document.getElementById('pp5aYear');
+  var gradeEl = document.getElementById('pp5aGrade');
+  var classEl = document.getElementById('pp5aClass');
+  var dashboardEl = document.getElementById('pp5aDashboard');
+  var detailEl = document.getElementById('pp5aDetail');
+  var reloadBtn = document.getElementById('pp5aReloadBtn');
+  var loadBtn = document.getElementById('pp5aLoadBtn');
+
+  function currentAcademicYear() {
+    var d = new Date();
+    var be = d.getFullYear() + 543;
+    return d.getMonth() + 1 >= 5 ? be : be - 1;
+  }
+
+  function esc(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function(ch) {
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]);
+    });
+  }
+
+  function fillSelect(el, values) {
+    el.innerHTML = values.map(function(v) { return '<option value="' + esc(v) + '">' + esc(v) + '</option>'; }).join('');
+  }
+
+  function setBusy(btn, busy) {
+    btn.disabled = busy;
+    btn.dataset.oldText = btn.dataset.oldText || btn.innerHTML;
+    btn.innerHTML = busy ? '<span class="spinner-border spinner-border-sm"></span> กำลังทำงาน...' : btn.dataset.oldText;
+  }
+
+  function runServer(name, args) {
+    args = args || [];
+    return new Promise(function(resolve, reject) {
+      if (typeof google === 'undefined' || !google.script || !google.script.run) {
+        reject(new Error('ไม่สามารถเชื่อมต่อ Apps Script ได้'));
+        return;
+      }
+      var runner = google.script.run.withSuccessHandler(resolve).withFailureHandler(reject);
+      runner[name].apply(runner, args);
+    });
+  }
+
+  function badge(status) {
+    status = status || 'draft';
+    return '<span class="pp5a-badge ' + esc(status) + '">' + esc(statusLabels[status] || status) + '</span>';
+  }
+
+  function loadClasses() {
+    runServer('getAvailableClasses', [gradeEl.value]).then(function(classes) {
+      fillSelect(classEl, Array.isArray(classes) && classes.length ? classes : fallbackClasses);
+    }).catch(function() { fillSelect(classEl, fallbackClasses); });
+  }
+
+  function init() {
+    yearEl.value = currentAcademicYear();
+    fillSelect(gradeEl, fallbackGrades);
+    fillSelect(classEl, fallbackClasses);
+    runServer('getAvailableGrades').then(function(grades) {
+      fillSelect(gradeEl, Array.isArray(grades) && grades.length ? grades : fallbackGrades);
+      loadClasses();
+    }).catch(loadClasses);
+    loadDashboard();
+  }
+
+  function renderDashboard(res) {
+    if (!res || !res.success) {
+      dashboardEl.innerHTML = '<div class="pp5a-badge returned">โหลดภาพรวมไม่สำเร็จ</div><p class="pp5a-muted mt-2">' + esc(res && res.message || 'ไม่ทราบสาเหตุ') + '</p>';
+      return;
+    }
+    var t = res.totals || {};
+    var rows = (res.classes || []).map(function(row) {
+      return '<tr>' +
+        '<td><button class="pp5a-btn secondary" style="padding:5px 8px" data-open="' + esc(row.grade + '|' + row.classNo) + '">เปิด</button></td>' +
+        '<td>' + esc(row.grade) + '</td>' +
+        '<td>' + esc(row.classNo) + '</td>' +
+        '<td>' + badge(row.status) + '</td>' +
+        '<td>' + esc(row.readinessScore == null ? '-' : row.readinessScore) + '</td>' +
+        '<td>' + esc(row.blockers == null ? '-' : row.blockers) + '</td>' +
+        '<td>' + esc(row.note || '') + '</td>' +
+        '<td class="pp5a-muted">' + esc(row.updatedAt || '') + '</td>' +
+      '</tr>';
+    }).join('');
+    dashboardEl.innerHTML =
+      '<div class="pp5a-grid">' +
+        '<div class="pp5a-metric"><div class="num">' + esc(t.all || 0) + '</div><div class="label">ทั้งหมด</div></div>' +
+        '<div class="pp5a-metric"><div class="num">' + esc(t.submitted || 0) + '</div><div class="label">ครูส่งแล้ว</div></div>' +
+        '<div class="pp5a-metric"><div class="num">' + esc(t.reviewed || 0) + '</div><div class="label">ตรวจแล้ว</div></div>' +
+        '<div class="pp5a-metric"><div class="num">' + esc(t.approved || 0) + '</div><div class="label">อนุมัติแล้ว</div></div>' +
+        '<div class="pp5a-metric"><div class="num">' + esc(t.returned || 0) + '</div><div class="label">ส่งกลับ</div></div>' +
+      '</div>' +
+      '<div style="overflow:auto;margin-top:14px">' +
+      '<table class="pp5a-table"><thead><tr><th></th><th>ชั้น</th><th>ห้อง</th><th>สถานะ</th><th>พร้อม</th><th>ต้องแก้</th><th>หมายเหตุ</th><th>อัปเดต</th></tr></thead><tbody>' +
+      (rows || '<tr><td colspan="8" class="pp5a-empty">ไม่พบข้อมูลห้องเรียน</td></tr>') +
+      '</tbody></table></div>';
+    dashboardEl.querySelectorAll('[data-open]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var parts = btn.getAttribute('data-open').split('|');
+        gradeEl.value = parts[0];
+        fillSelect(classEl, [parts[1]]);
+        classEl.value = parts[1];
+        loadRecord();
+      });
+    });
+  }
+
+  function renderDetail(res) {
+    if (!res || !res.success) {
+      detailEl.innerHTML = '<div class="pp5a-badge returned">โหลดสถานะไม่สำเร็จ</div><p class="pp5a-muted mt-2">' + esc(res && res.message || 'ไม่ทราบสาเหตุ') + '</p>';
+      return;
+    }
+    var rec = res.record || {};
+    var historyRows = (res.history || []).map(function(h) {
+      return '<tr><td>' + esc(h.timestamp || '') + '</td><td>' + esc(h.action || '') + '</td><td>' + esc(statusLabels[h.from_status] || h.from_status || '') + '</td><td>' + esc(statusLabels[h.to_status] || h.to_status || '') + '</td><td>' + esc(h.user || '') + '</td><td>' + esc(h.note || '') + '</td></tr>';
+    }).join('');
+    detailEl.innerHTML =
+      '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">' +
+        '<div><strong>' + esc(rec.grade) + '/' + esc(rec.class_no) + '</strong> <span class="pp5a-muted">ปีการศึกษา ' + esc(rec.academic_year) + '</span></div>' +
+        badge(rec.status || 'draft') +
+      '</div>' +
+      '<label class="pp5a-label mt-3" for="pp5aNote">หมายเหตุประกอบการดำเนินการ</label>' +
+      '<textarea class="pp5a-note" id="pp5aNote" placeholder="เช่น ตรวจแล้ว ขาดความเห็นครู 2 คน หรืออนุมัติหลังตรวจครบ"></textarea>' +
+      '<div class="pp5a-actions">' +
+        '<button class="pp5a-btn submit" data-action="submitPp5ForReview"><i class="bi bi-send"></i> ส่งตรวจ</button>' +
+        '<button class="pp5a-btn review" data-action="markPp5Reviewed"><i class="bi bi-check2-square"></i> วิชาการตรวจแล้ว</button>' +
+        '<button class="pp5a-btn approve" data-action="approvePp5Class"><i class="bi bi-shield-check"></i> อนุมัติ</button>' +
+        '<button class="pp5a-btn return" data-action="returnPp5ForCorrection"><i class="bi bi-arrow-counterclockwise"></i> ส่งกลับแก้ไข</button>' +
+      '</div>' +
+      '<div class="pp5a-muted mt-2">อัปเดตล่าสุด: ' + esc(rec.updated_at || '-') + ' โดย ' + esc(rec.updated_by || '-') + '</div>' +
+      '<h3 class="pp5a-title" style="font-size:1rem;margin-top:18px">ประวัติ</h3>' +
+      '<table class="pp5a-table"><thead><tr><th>เวลา</th><th>action</th><th>จาก</th><th>เป็น</th><th>ผู้ใช้</th><th>หมายเหตุ</th></tr></thead><tbody>' +
+      (historyRows || '<tr><td colspan="6" class="pp5a-empty">ยังไม่มีประวัติ</td></tr>') +
+      '</tbody></table>';
+    detailEl.querySelectorAll('[data-action]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var action = btn.getAttribute('data-action');
+        var note = document.getElementById('pp5aNote').value;
+        if (action === 'approvePp5Class' && !confirm('ยืนยันอนุมัติ ปพ.5 ห้องนี้ใช่หรือไม่?')) return;
+        doAction(action, note, btn);
+      });
+    });
+  }
+
+  function loadDashboard() {
+    setBusy(reloadBtn, true);
+    runServer('getPp5ApprovalDashboard', [yearEl.value])
+      .then(renderDashboard)
+      .catch(function(err) { renderDashboard({ success:false, message: err.message || err }); })
+      .finally(function() { setBusy(reloadBtn, false); });
+  }
+
+  function loadRecord() {
+    setBusy(loadBtn, true);
+    runServer('getPp5ApprovalRecord', [gradeEl.value, classEl.value, yearEl.value])
+      .then(renderDetail)
+      .catch(function(err) { renderDetail({ success:false, message: err.message || err }); })
+      .finally(function() { setBusy(loadBtn, false); });
+  }
+
+  function doAction(action, note, btn) {
+    setBusy(btn, true);
+    runServer(action, [gradeEl.value, classEl.value, yearEl.value, note])
+      .then(function(res) {
+        if (!res || !res.success) throw new Error(res && res.message || 'ดำเนินการไม่สำเร็จ');
+        loadRecord();
+        loadDashboard();
+      })
+      .catch(function(err) { alert(err.message || err); })
+      .finally(function() { setBusy(btn, false); });
+  }
+
+  gradeEl.addEventListener('change', loadClasses);
+  reloadBtn.addEventListener('click', loadDashboard);
+  loadBtn.addEventListener('click', loadRecord);
+  init();
+})();
+</script>

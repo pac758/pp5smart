@@ -113,6 +113,127 @@
       font-size: 0.9rem; color: #334155; background-color: #f8fafc; transition: all 0.2s;
     }
     .form-control:focus { outline: none; border-color: #6366f1; background-color: #fff; box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1); }
+
+    .thai-date-picker {
+      position: relative;
+      width: 100%;
+    }
+    .thai-date-button {
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      text-align: left;
+      cursor: pointer;
+      font-family: inherit;
+      line-height: 1.25;
+    }
+    .thai-date-button:hover {
+      border-color: #c7d2fe;
+      background: #fff;
+    }
+    .thai-date-icon {
+      flex: 0 0 auto;
+      opacity: .8;
+    }
+    .thai-date-popup {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      width: 310px;
+      max-width: calc(100vw - 32px);
+      padding: 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 20px 40px rgba(15, 23, 42, .16), 0 0 0 1px rgba(255,255,255,.9) inset;
+      z-index: 50;
+    }
+    .thai-date-picker-header {
+      display: grid;
+      grid-template-columns: 36px 1fr 36px;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .thai-date-title {
+      text-align: center;
+      color: #334155;
+      font-size: 1rem;
+      font-weight: 800;
+    }
+    .thai-date-nav,
+    .thai-date-today,
+    .thai-date-day {
+      font-family: inherit;
+      border: 0;
+      cursor: pointer;
+    }
+    .thai-date-nav {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: #f8fafc;
+      color: #334155;
+      font-size: 1.35rem;
+      line-height: 1;
+    }
+    .thai-date-nav:hover { background: #eef2ff; color: #4f46e5; }
+    .thai-date-weekdays,
+    .thai-date-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+    .thai-date-weekdays {
+      margin-bottom: 4px;
+      color: #64748b;
+      font-size: .76rem;
+      font-weight: 800;
+      text-align: center;
+    }
+    .thai-date-day {
+      aspect-ratio: 1;
+      border-radius: 999px;
+      background: transparent;
+      color: #334155;
+      font-size: .86rem;
+      font-weight: 600;
+      transition: background .15s, color .15s, box-shadow .15s;
+    }
+    .thai-date-day:hover {
+      background: #eef2ff;
+      color: #4338ca;
+    }
+    .thai-date-day.is-muted {
+      color: #cbd5e1;
+      font-weight: 500;
+    }
+    .thai-date-day.is-today {
+      box-shadow: inset 0 0 0 1.5px #94a3b8;
+    }
+    .thai-date-day.is-selected {
+      background: #3b82f6;
+      color: #fff;
+      box-shadow: 0 6px 14px rgba(59,130,246,.28);
+    }
+    .thai-date-footer {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid #f1f5f9;
+    }
+    .thai-date-today {
+      min-height: 30px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      background: #eef2ff;
+      color: #4f46e5;
+      font-weight: 800;
+    }
+    .thai-date-today:hover { background: #e0e7ff; }
     
     /* --- 5. Buttons --- */
     .btn {
@@ -192,6 +313,205 @@
       .mobile-only { display: none; }
       .desktop-only { display: block; }
     }
+
+    @media (min-width: 992px) {
+      .attendance-page {
+        padding: 10px 14px;
+        background-size: 18px 18px;
+      }
+      .main-container {
+        max-width: 1280px;
+        padding: 12px;
+        border-radius: 16px;
+      }
+      .card {
+        border-radius: 14px;
+        padding: 10px 12px;
+        margin-bottom: 8px;
+      }
+      .card:hover {
+        transform: none;
+      }
+      .header-card {
+        min-height: 58px;
+        padding: 10px 16px;
+        margin-bottom: 8px !important;
+        border-radius: 16px;
+        box-shadow: 0 6px 18px rgba(79, 70, 229, 0.16);
+      }
+      .header-card::before,
+      .header-card::after {
+        display: none;
+      }
+      .header-text h1 {
+        font-size: 1.22rem;
+      }
+      .header-text p {
+        font-size: 0.8rem;
+        margin-top: 2px;
+        letter-spacing: 0;
+      }
+      .header-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        font-size: 1.55rem;
+        transform: none;
+      }
+      .header-card:hover .header-icon {
+        transform: none;
+      }
+      .attendance-controls-card {
+        display: grid;
+        grid-template-columns: minmax(420px, 1fr) auto;
+        gap: 10px;
+        align-items: end;
+        position: sticky;
+        top: 0;
+        z-index: 5;
+      }
+      .attendance-controls-card #gcQB {
+        grid-column: 1 / -1;
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        gap: 6px !important;
+        margin: 0 !important;
+        overflow-x: auto;
+        padding-bottom: 2px;
+      }
+      .attendance-controls-card #gcQB .gc-qb {
+        min-width: 58px !important;
+        min-height: 30px;
+        padding: 5px 10px;
+        border-radius: 999px !important;
+        font-size: 0.82rem;
+        line-height: 1;
+        flex: 0 0 auto;
+      }
+      .attendance-controls-card .form-row {
+        display: grid;
+        grid-template-columns: minmax(210px, 1.05fr) minmax(130px, 0.8fr) minmax(120px, 0.7fr);
+        gap: 7px 8px;
+      }
+      .attendance-controls-card .form-row .form-group {
+        min-width: 0;
+      }
+      .form-label {
+        font-size: 0.78rem;
+      }
+      .form-control {
+        min-height: 38px;
+        padding: 7px 10px;
+        border-width: 1.5px;
+      }
+      .button-container {
+        margin-top: 0;
+        justify-content: flex-end;
+        align-items: center;
+        flex-wrap: nowrap;
+      }
+      .button-container .btn {
+        min-height: 38px;
+        padding: 8px 12px;
+      }
+      .attendance-summary-card {
+        position: static;
+        background: rgba(248, 250, 252, 0.96) !important;
+        backdrop-filter: blur(10px);
+      }
+      .attendance-summary-card h3 {
+        display: none;
+      }
+      .summary-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .summary-card {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 7px 12px;
+        border-radius: 12px;
+      }
+      .summary-card::after {
+        width: 4px;
+        height: 100%;
+      }
+      .summary-number {
+        font-size: 1.25rem;
+        margin: 0;
+      }
+      .summary-text {
+        font-weight: 700;
+        color: #475569;
+      }
+      .student-list-card {
+        padding-top: 8px;
+      }
+      .student-list-card h3 {
+        display: none !important;
+      }
+      .table-container {
+        border-radius: 12px;
+        max-height: calc(100vh - 286px);
+        overflow: auto;
+      }
+      .table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+      }
+      .table th {
+        padding: 8px 10px;
+        font-size: 0.86rem;
+      }
+      .table td {
+        padding: 7px 10px;
+      }
+      .table td:first-child,
+      .table th:first-child {
+        text-align: center;
+      }
+      .status-inline {
+        display: inline-grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0;
+        padding: 3px;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        background: #f8fafc;
+        min-width: 230px;
+      }
+      .status-inline .status-btn {
+        margin: 0;
+        min-height: 30px;
+        justify-content: center;
+        border: 0;
+        border-radius: 9px;
+        background: transparent;
+        box-shadow: none;
+        font-size: 0.82rem;
+        font-weight: 700;
+      }
+      .status-inline .status-present { background: #dcfce7; color: #166534; }
+      .status-inline .status-leave { background: #dbeafe; color: #1e40af; }
+      .status-inline .status-absent { background: #fee2e2; color: #991b1b; }
+      .badge {
+        padding: 4px 9px;
+        font-size: 0.72rem;
+      }
+    }
+
+    @media (min-width: 992px) and (max-width: 1180px) {
+      .attendance-controls-card {
+        grid-template-columns: 1fr;
+      }
+      .button-container {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+      }
+    }
     
     @media (max-width: 767px) {
       .attendance-page { padding: 6px !important; }
@@ -211,13 +531,23 @@
       .mobile-only { display: block; }
       .desktop-only { display: none; }
       .status-btn { flex: 1; justify-content: center; padding: 8px; font-size: 12px; border-radius: 10px; }
-      .student-card > div:last-child { display: flex; gap: 6px; }
-      .student-card { padding: 12px; margin-bottom: 10px; border-radius: 12px; }
-      .student-name { font-size: 0.95rem; padding-bottom: 8px; }
+      .student-card { padding: 10px; margin-bottom: 8px; border-radius: 12px; gap: 8px; }
+      .student-name { font-size: 0.93rem; padding-bottom: 0; border-bottom: 0; gap: 8px; align-items: flex-start; }
+      .student-name > span:first-child { min-width: 0; line-height: 1.35; }
+      .student-name .badge { flex: 0 0 auto; padding: 4px 8px; font-size: 0.68rem; }
+      .student-code-mobile { display: none; }
+      .status-segment { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; padding: 3px; border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; }
+      .status-segment .status-btn { margin: 0; min-height: 34px; border: 0; border-radius: 9px; background: transparent; box-shadow: none; font-weight: 700; }
+      .status-segment .status-btn span { font-size: 0.9em; }
+      .status-segment .status-present { background: #dcfce7; color: #166534; }
+      .status-segment .status-leave { background: #dbeafe; color: #1e40af; }
+      .status-segment .status-absent { background: #fee2e2; color: #991b1b; }
       .summary-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
       .summary-card { padding: 12px 6px; border-radius: 12px; }
       .summary-number { font-size: 22px; }
       .summary-text { font-size: 0.75rem; }
+      .attendance-loading-panel { padding: 16px 12px; margin-bottom: 12px; font-size: 0.92rem; }
+      .status-message { top: 104px; font-size: 0.86rem; padding: 10px 14px; }
     }
 
     .hidden { display: none !important; }
@@ -265,10 +595,37 @@
     }
 
     @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+    .attendance-loading-panel {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 20px;
+      margin: 4px 0 16px;
+      border: 1px solid #c7d2fe;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #eef2ff 0%, #f8fafc 100%);
+      color: #3730a3;
+      font-weight: 700;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+    .attendance-loading-panel.show { display: flex; }
+    .attendance-loading-spinner {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 3px solid #c7d2fe;
+      border-top-color: #4f46e5;
+      animation: spin 0.8s linear infinite;
+      flex: 0 0 auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
     
     /* Status Messages */
     .status-message {
-      position: fixed; top: 24px; left: 50%; transform: translateX(-50%);
+      position: sticky; top: 8px; left: auto; transform: none;
+      width: fit-content; max-width: calc(100% - 24px); margin: -2px auto 12px;
       padding: 12px 24px; border-radius: 50px; font-weight: 600; font-size: 0.95rem;
       box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
       z-index: 9999;
@@ -277,7 +634,7 @@
     .status-success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
     .status-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
     .status-loading { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
-    @keyframes slideDown { from { transform: translate(-50%, -100%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+    @keyframes slideDown { from { transform: translateY(-8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
   </style>
 </head>
@@ -305,11 +662,31 @@
     </div>
 
     <!-- Filters & Actions -->
-    <div class="card">
+    <div class="card attendance-controls-card">
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">📅 วันที่</label>
-          <input type="date" id="attendanceDate" class="form-control" />
+          <div class="thai-date-picker" id="attendanceDatePicker">
+            <input type="hidden" id="attendanceDate" />
+            <button type="button" id="attendanceDateButton" class="form-control thai-date-button" aria-haspopup="dialog" aria-expanded="false">
+              <span id="attendanceDateText">เลือกวันที่</span>
+              <span class="thai-date-icon">📅</span>
+            </button>
+            <div id="thaiDatePopup" class="thai-date-popup hidden" role="dialog" aria-label="เลือกวันที่">
+              <div class="thai-date-picker-header">
+                <button type="button" class="thai-date-nav" onclick="changeThaiPickerMonth(-1)" aria-label="เดือนก่อนหน้า">‹</button>
+                <div id="thaiDateTitle" class="thai-date-title">-</div>
+                <button type="button" class="thai-date-nav" onclick="changeThaiPickerMonth(1)" aria-label="เดือนถัดไป">›</button>
+              </div>
+              <div class="thai-date-weekdays" aria-hidden="true">
+                <span>จ</span><span>อ</span><span>พ</span><span>พฤ</span><span>ศ</span><span>ส</span><span>อา</span>
+              </div>
+              <div id="thaiDateGrid" class="thai-date-grid"></div>
+              <div class="thai-date-footer">
+                <button type="button" class="thai-date-today" onclick="selectThaiPickerToday()">วันนี้</button>
+              </div>
+            </div>
+          </div>
         </div>
         
         <div class="form-group">
@@ -344,7 +721,7 @@
           <span>🔄</span> <span class="btn-label">รีเฟรช</span>
         </button>
         <button onclick="resetAllStatus()" class="btn btn-warning">
-          <span>↺</span> <span class="btn-label">รีเซ็ต</span>
+          <span>✓</span> <span class="btn-label">ทั้งหมดมาเรียน</span>
         </button>
         <button onclick="confirmDeleteAttendance()" class="btn btn-danger">
           <span>🗑️</span> <span class="btn-label">ลบข้อมูล</span>
@@ -358,42 +735,8 @@
     <!-- Status Message Display -->
     <div id="statusMessage" class="hidden"></div>
 
-    <!-- Student List Section -->
-    <div class="card">
-      <h3 style="font-size: 1.1rem; font-weight: 700; color: #334155; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
-        <span style="background: #e0e7ff; color: #4f46e5; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">📝</span>
-        รายชื่อนักเรียน
-      </h3>
-      
-      <!-- Desktop Table -->
-      <div class="desktop-only">
-        <div class="table-container">
-          <table class="table">
-            <thead>
-              <tr>
-                <th style="width: 10%;">ลำดับ</th>
-                <th style="width: 30%;">ชื่อ - นามสกุล</th>
-                <th style="width: 20%;">สถานะ</th>
-                <th style="width: 40%;">การเช็คชื่อ</th>
-              </tr>
-            </thead>
-            <tbody id="attendanceBody"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Mobile Cards -->
-      <div class="mobile-only" id="attendanceCards"></div>
-      
-      <!-- Empty State -->
-      <div id="emptyState" class="hidden" style="text-align: center; padding: 40px; color: #94a3b8;">
-        <div style="font-size: 3rem; margin-bottom: 10px; opacity: 0.5;">📋</div>
-        <p>ยังไม่มีรายชื่อนักเรียน<br>กรุณาเลือก ชั้น/ห้อง ด้านบน</p>
-      </div>
-    </div>
-    
     <!-- Summary -->
-    <div class="card" style="background: #f8fafc; border: none;">
+    <div class="card attendance-summary-card" style="background: #f8fafc; border: none;">
       <h3 style="font-size: 1.1rem; font-weight: 700; color: #334155; margin-bottom: 16px; text-align: center;">
         📊 สรุปยอดวันนี้
       </h3>
@@ -410,6 +753,45 @@
           <div class="summary-number text-red-600" id="absentCount">0</div>
           <div class="summary-text">ขาด</div>
         </div>
+      </div>
+    </div>
+
+    <!-- Student List Section -->
+    <div class="card student-list-card">
+      <h3 style="font-size: 1.1rem; font-weight: 700; color: #334155; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+        <span style="background: #e0e7ff; color: #4f46e5; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">📝</span>
+        รายชื่อนักเรียน
+      </h3>
+
+      <div id="attendanceLoadingPanel" class="attendance-loading-panel">
+        <span class="attendance-loading-spinner"></span>
+        <span id="attendanceLoadingText">กำลังโหลดรายชื่อนักเรียน...</span>
+      </div>
+      
+      <!-- Desktop Table -->
+      <div class="desktop-only">
+        <div class="table-container">
+          <table class="table">
+            <thead>
+              <tr>
+                <th style="width: 8%;">เลขที่</th>
+                <th style="width: 42%;">ชื่อ - นามสกุล</th>
+                <th style="width: 16%;">สถานะ</th>
+                <th style="width: 34%;">การเช็คชื่อ</th>
+              </tr>
+            </thead>
+            <tbody id="attendanceBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Mobile Cards -->
+      <div class="mobile-only" id="attendanceCards"></div>
+      
+      <!-- Empty State -->
+      <div id="emptyState" class="hidden" style="text-align: center; padding: 40px; color: #94a3b8;">
+        <div style="font-size: 3rem; margin-bottom: 10px; opacity: 0.5;">📋</div>
+        <p>ยังไม่มีรายชื่อนักเรียน<br>กรุณาเลือก ชั้น/ห้อง ด้านบน</p>
       </div>
     </div>
   </div>
@@ -455,10 +837,21 @@
         const day = String(now.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
       },
+      toLocalDateString(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      },
       parseLocalDate(dateStr) {
         if (!dateStr) return null;
         const [year, month, day] = dateStr.split('-').map(Number);
         return new Date(year, month - 1, day);
+      },
+      formatThaiDate(dateStr) {
+        const date = this.parseLocalDate(dateStr);
+        if (!date) return 'เลือกวันที่';
+        return `${date.getDate()} ${THAI_MONTHS[date.getMonth()]} ${date.getFullYear() + 543}`;
       },
       isWeekend(dateStr) {
         const date = this.parseLocalDate(dateStr);
@@ -468,6 +861,128 @@
       }
     };
     window.DateUtils = DateUtils;
+
+    const THAI_MONTHS = [
+      'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+      'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+    ];
+    const THAI_WEEKDAYS = ['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'];
+    const ThaiDatePickerState = { viewYear: 0, viewMonth: 0 };
+
+    function initThaiDatePicker() {
+      const dateEl = document.getElementById('attendanceDate');
+      const button = document.getElementById('attendanceDateButton');
+      if (!dateEl || !button || button.dataset.bound === '1') return;
+      button.dataset.bound = '1';
+      button.addEventListener('click', function(event) {
+        event.stopPropagation();
+        toggleThaiDatePicker();
+      });
+      document.addEventListener('click', function(event) {
+        const picker = document.getElementById('attendanceDatePicker');
+        if (picker && !picker.contains(event.target)) closeThaiDatePicker();
+      });
+      document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') closeThaiDatePicker();
+      });
+      syncThaiDatePickerFromInput();
+      updateThaiDateDisplay();
+      renderThaiDatePicker();
+    }
+
+    function syncThaiDatePickerFromInput() {
+      const dateEl = document.getElementById('attendanceDate');
+      const selected = DateUtils.parseLocalDate(dateEl && dateEl.value) || new Date();
+      ThaiDatePickerState.viewYear = selected.getFullYear();
+      ThaiDatePickerState.viewMonth = selected.getMonth();
+    }
+
+    function updateThaiDateDisplay() {
+      const dateEl = document.getElementById('attendanceDate');
+      const textEl = document.getElementById('attendanceDateText');
+      if (textEl) textEl.textContent = DateUtils.formatThaiDate(dateEl && dateEl.value);
+    }
+
+    function openThaiDatePicker() {
+      const popup = document.getElementById('thaiDatePopup');
+      const button = document.getElementById('attendanceDateButton');
+      if (!popup || !button) return;
+      syncThaiDatePickerFromInput();
+      renderThaiDatePicker();
+      popup.classList.remove('hidden');
+      button.setAttribute('aria-expanded', 'true');
+    }
+
+    function closeThaiDatePicker() {
+      const popup = document.getElementById('thaiDatePopup');
+      const button = document.getElementById('attendanceDateButton');
+      if (popup) popup.classList.add('hidden');
+      if (button) button.setAttribute('aria-expanded', 'false');
+    }
+
+    window.toggleThaiDatePicker = function() {
+      const popup = document.getElementById('thaiDatePopup');
+      if (!popup) return;
+      if (popup.classList.contains('hidden')) openThaiDatePicker();
+      else closeThaiDatePicker();
+    };
+
+    window.changeThaiPickerMonth = function(delta) {
+      ThaiDatePickerState.viewMonth += delta;
+      if (ThaiDatePickerState.viewMonth < 0) {
+        ThaiDatePickerState.viewMonth = 11;
+        ThaiDatePickerState.viewYear--;
+      } else if (ThaiDatePickerState.viewMonth > 11) {
+        ThaiDatePickerState.viewMonth = 0;
+        ThaiDatePickerState.viewYear++;
+      }
+      renderThaiDatePicker();
+    };
+
+    window.selectThaiPickerToday = function() {
+      selectThaiCalendarDate(DateUtils.toLocalDateString(new Date()));
+    };
+
+    window.selectThaiCalendarDate = function(dateStr) {
+      const dateEl = document.getElementById('attendanceDate');
+      const selected = DateUtils.parseLocalDate(dateStr);
+      if (!dateEl || !selected) return;
+      dateEl.value = DateUtils.toLocalDateString(selected);
+      ThaiDatePickerState.viewYear = selected.getFullYear();
+      ThaiDatePickerState.viewMonth = selected.getMonth();
+      updateThaiDateDisplay();
+      renderThaiDatePicker();
+      closeThaiDatePicker();
+      dateEl.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+
+    function renderThaiDatePicker() {
+      const title = document.getElementById('thaiDateTitle');
+      const grid = document.getElementById('thaiDateGrid');
+      const dateEl = document.getElementById('attendanceDate');
+      if (!title || !grid) return;
+
+      const year = ThaiDatePickerState.viewYear;
+      const month = ThaiDatePickerState.viewMonth;
+      const selectedStr = dateEl && dateEl.value;
+      const todayStr = DateUtils.toLocalDateString(new Date());
+      const firstOfMonth = new Date(year, month, 1);
+      const startOffset = (firstOfMonth.getDay() + 6) % 7;
+      const startDate = new Date(year, month, 1 - startOffset);
+
+      title.textContent = `${THAI_MONTHS[month]} ${year + 543}`;
+      let html = '';
+      for (let i = 0; i < 42; i++) {
+        const cellDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + i);
+        const value = DateUtils.toLocalDateString(cellDate);
+        const classes = ['thai-date-day'];
+        if (cellDate.getMonth() !== month) classes.push('is-muted');
+        if (value === todayStr) classes.push('is-today');
+        if (value === selectedStr) classes.push('is-selected');
+        html += `<button type="button" class="${classes.join(' ')}" onclick="selectThaiCalendarDate('${value}')" aria-label="${cellDate.getDate()} ${THAI_MONTHS[cellDate.getMonth()]} ${cellDate.getFullYear() + 543}">${cellDate.getDate()}</button>`;
+      }
+      grid.innerHTML = html;
+    }
 
     const Validator = {
       isValidStatus(status) { return ['present', 'absent', 'leave'].includes(status); },
@@ -511,11 +1026,14 @@
 
       if (!dateEl) return;
       dateEl.value = DateUtils.getLocalDateString();
+      initThaiDatePicker();
 
       // ✅ Load holidays from backend on startup
       loadSpecialHolidays();
 
       dateEl.addEventListener('change', () => { 
+          updateThaiDateDisplay();
+          renderThaiDatePicker();
           // เปลี่ยนจาก checkWeekend เป็น updateHolidayWarning เพื่อรองรับวันหยุดพิเศษ
           updateHolidayWarning(); 
           tryAutoLoadDaily(); 
@@ -592,13 +1110,22 @@
     
     function updateEmptyState() {
         const hasStudents = window.dailyStudents && window.dailyStudents.length > 0;
+        const isLoading = window.AttendanceState && window.AttendanceState.isLoadingStudents;
         const emptyEl = document.getElementById('emptyState');
         
-        if (hasStudents) {
+        if (hasStudents || isLoading) {
             emptyEl.classList.add('hidden');
         } else {
             emptyEl.classList.remove('hidden');
         }
+    }
+
+    function setAttendanceLoading(on, text) {
+        const panel = document.getElementById('attendanceLoadingPanel');
+        const label = document.getElementById('attendanceLoadingText');
+        if (!panel) return;
+        if (label && text) label.textContent = text;
+        panel.classList.toggle('show', !!on);
     }
 
     // Debounce เพื่อป้องกัน grade+class change event ยิง loadDailyStudents 2 ครั้งติดกัน
@@ -638,6 +1165,11 @@
         // Reset state ทันทีเมื่อเริ่ม load ใหม่
         State.isLoadingStudents = true;
         State.lastLoadedKey = key;
+        window.dailyStudents = [];
+        renderDailyStudents();
+        updateSummary();
+        updateEmptyState();
+        setAttendanceLoading(true, 'กำลังโหลดรายชื่อนักเรียน ' + grade + '/' + classNo + '...');
         
         // console.log('🔄 Loading students:', key);
         showStatusMessage('⏳ กำลังโหลดข้อมูล...', 'loading');
@@ -647,6 +1179,7 @@
           if (token === dailyLoadRequestToken) {
             State.isLoadingStudents = false;
             State.lastLoadedKey = null;
+            setAttendanceLoading(false);
             showStatusMessage('⚠️ หมดเวลาโหลดข้อมูล กรุณาลองใหม่', 'error');
             setTimeout(hideStatusMessage, 3000);
           }
@@ -710,6 +1243,7 @@
         // Always clear loading state — request ใหม่จะ set state ใหม่เองอยู่แล้ว
         State.isLoadingStudents = false;
         State.lastLoadedKey = null;
+        setAttendanceLoading(false);
 
         if (token === dailyLoadRequestToken) {
             // console.log('✅ Loading complete, state cleared:', key);
@@ -755,7 +1289,7 @@
           <td>${i + 1}</td>
           <td><div style="font-weight:600;">${s.name}</div><div style="font-size:0.85em;color:#64748b;">${s.id}</div></td>
           <td>${getBadge(s.status)}</td>
-          <td>${renderButtons(s.id, s.status)}</td>
+          <td><div class="status-inline">${renderButtons(s.id, s.status)}</div></td>
         `;
         tbody.appendChild(tr);
 
@@ -766,8 +1300,8 @@
             <span>${i + 1}. ${s.name}</span>
             ${getBadge(s.status)}
           </div>
-          <div style="font-size:0.9em;color:#64748b;margin-bottom:8px;">รหัส: ${s.id}</div>
-          <div>${renderButtons(s.id, s.status)}</div>
+          <div class="student-code-mobile">รหัส: ${s.id}</div>
+          <div class="status-segment">${renderButtons(s.id, s.status)}</div>
         `;
         cards.appendChild(card);
       });

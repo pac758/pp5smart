@@ -33,7 +33,12 @@
   .opr-item input[type=checkbox] { width: 16px; height: 16px; accent-color: #10b981; }
   .opr-item .no { font-weight: 600; color: #64748b; min-width: 28px; text-align: center; font-size: 0.85rem; }
   .opr-item .sid { font-size: 0.78rem; color: #94a3b8; min-width: 50px; text-align: center; }
-  .opr-item .name { font-size: 0.92rem; color: #1e293b; }
+  .opr-item .name { font-size: 0.92rem; color: #1e293b; flex: 1; }
+  .opr-item .promo-select {
+    font-size: 0.78rem; padding: 2px 4px; border: 1px solid #cbd5e1;
+    border-radius: 6px; color: #1e293b; background: #fff; min-width: 72px;
+  }
+  .opr-item .promo-select.retain { background: #fef2f2; color: #dc2626; border-color: #fca5a5; }
   .opr-toolbar { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
   .opr-toolbar .count { font-size: 0.82rem; color: #64748b; margin-left: auto; }
   .opr-progress { margin-top: 1rem; }
@@ -53,6 +58,21 @@
   .opr-result-item.error { background: #fef2f2; }
   .opr-result-item.error span { color: #dc2626; }
   .opr-empty { text-align: center; padding: 2rem; color: #94a3b8; font-size: 0.9rem; }
+
+  /* ===== Mobile Responsive ===== */
+  @media (max-width: 600px) {
+    .opr-header { padding: 1rem 1.2rem; border-radius: 10px; }
+    .opr-header h2 { font-size: 1.1rem; }
+    .opr-card { padding: 0.8rem; }
+    .opr-row { flex-direction: column; gap: 8px; }
+    .opr-field select, .opr-field input[type=date] { width: 100%; min-width: unset; }
+    .opr-btn-primary { width: 100%; }
+    .opr-item { gap: 6px; padding: 8px 8px; flex-wrap: wrap; }
+    .opr-item .sid { display: none; }
+    .opr-item .name { font-size: 0.85rem; min-width: 0; }
+    .opr-item .promo-select { font-size: 0.75rem; min-width: 62px; }
+    .opr-list { max-height: 50vh; }
+  }
 </style>
 
 <div class="opr-page animate-fade-in">
@@ -77,9 +97,18 @@
           <option value="2">ภาคเรียนที่ 2</option>
         </select>
       </div>
+      <div class="opr-field">
+        <label>วันที่อนุมัติผลการเรียน</label>
+        <input type="date" id="oprApprovalDate" style="padding:8px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.9rem;min-width:160px;">
+      </div>
       <button class="opr-btn opr-btn-primary" id="oprGenBtn" onclick="oprGenerate()" disabled>
         <i class="bi bi-printer me-1"></i>สร้าง PDF
       </button>
+    </div>
+    <div style="margin-bottom:0.8rem;display:flex;align-items:center;gap:8px;">
+      <label style="font-size:0.85rem;color:#475569;display:flex;align-items:center;gap:6px;cursor:pointer;">
+        <input type="checkbox" id="oprShowRank" checked style="width:16px;height:16px;accent-color:#10b981;"> แสดงลำดับที่ในห้อง
+      </label>
     </div>
 
     <div class="opr-toolbar">
@@ -162,6 +191,10 @@ function oprOnClassSelect() {
       '<span class="no">'+(i+1)+'</span>' +
       '<span class="sid">['+s.id+']</span>' +
       '<span class="name">'+s.fullName+'</span>' +
+      '<select class="promo-select" data-sid="'+s.id+'" onchange="oprPromoStyle(this)" onclick="event.stopPropagation()">' +
+        '<option value="promote">เลื่อนชั้น</option>' +
+        '<option value="retain">ซ้ำชั้น</option>' +
+      '</select>' +
       '</label>';
   });
   list.innerHTML = html;
@@ -179,10 +212,36 @@ function oprUpdateCount() {
   document.getElementById('oprGenBtn').disabled = checked === 0;
 }
 
+function oprPromoStyle(sel) {
+  if (sel.value === 'retain') sel.classList.add('retain');
+  else sel.classList.remove('retain');
+}
+
+function oprSetAllPromo(val) {
+  document.querySelectorAll('.promo-select').forEach(function(s) {
+    s.value = val;
+    oprPromoStyle(s);
+  });
+}
+
 function oprGenerate() {
   var ids = [];
-  document.querySelectorAll('.oprChk:checked').forEach(function(c) { ids.push(c.value); });
+  var promoMap = {};
+  document.querySelectorAll('.oprChk:checked').forEach(function(c) {
+    ids.push(c.value);
+    var sel = document.querySelector('.promo-select[data-sid="'+c.value+'"]');
+    promoMap[c.value] = sel ? sel.value : 'promote';
+  });
   if (ids.length === 0) return;
+
+  // วันที่อนุมัติ
+  var approvalDateVal = document.getElementById('oprApprovalDate').value;
+  var approvalDate = '';
+  if (approvalDateVal) {
+    var dp = approvalDateVal.split('-');
+    var thaiMonths = ['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+    approvalDate = parseInt(dp[2]) + ' ' + thaiMonths[parseInt(dp[1])] + ' ' + (parseInt(dp[0]) + 543);
+  }
 
   var prog = document.getElementById('oprProgress');
   var bar = document.getElementById('oprPBar');
@@ -268,7 +327,11 @@ function oprGenerate() {
           '<span>' + name + ': ' + e.message + '</span></div>';
         next();
       })
-      .generateOnePageReportPdf(id, document.getElementById('oprTerm').value);
+      .generateOnePageReportPdf(id, document.getElementById('oprTerm').value, {
+        promotionStatus: promoMap[id] || 'promote',
+        approvalDate: approvalDate,
+        showRank: document.getElementById('oprShowRank').checked
+      });
   }
   next();
 }

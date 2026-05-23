@@ -20,7 +20,7 @@ function getAvailableClasses_DEBUG(grade) {
     Logger.log(`✅ Spreadsheet: ${ss.getName()}`);
     
     // 2️⃣ หาชีต Students
-    const sheet = ss.getSheetByName("Students");
+    const sheet = (typeof AY_getStudentsSheetForRead === 'function') ? AY_getStudentsSheetForRead() : ss.getSheetByName("Students");
     if (!sheet) {
       Logger.log("❌ ไม่พบชีต 'Students'");
       const allSheets = ss.getSheets().map(s => s.getName());
@@ -154,7 +154,7 @@ function searchStudentsForDelete(searchType, searchValue, limit) {
     if (!q) return [];
 
     var ss = SS();
-    var sheet = ss.getSheetByName('Students');
+    var sheet = (typeof AY_getStudentsSheetForRead === 'function') ? AY_getStudentsSheetForRead() : ss.getSheetByName('Students');
     if (!sheet) return [];
 
     var data = sheet.getDataRange().getValues();
@@ -234,7 +234,7 @@ function saveStudentData(data) {
       father_lastname: String(data.fatherLastname || '').trim(),
       mother_name: String(data.motherName || '').trim(),
       mother_lastname: String(data.motherLastname || '').trim(),
-      academic_year: String(data.academicYear || '').trim()
+      academic_year: String(data.academicYear || ((typeof AY_getCurrentAcademicYear === 'function') ? AY_getCurrentAcademicYear(false) : '')).trim()
     };
 
     if (!studentData.student_id || !studentData.firstname || !studentData.lastname) {
@@ -271,6 +271,9 @@ function saveStudentData(data) {
                 birthdate: studentData.birthdate,
                 weight: studentData.weight,
                 height: studentData.height,
+                latest_weight_kg: studentData.weight,
+                latest_height_cm: studentData.height,
+                latest_growth_date: (studentData.weight || studentData.height) ? new Date() : '',
                 photo_url: studentData.photo_url,
                 address: studentData.address,
                 father_name: studentData.father_name,
@@ -349,6 +352,8 @@ function updateStudentInline(studentData) {
         sheet.getRange(rowIndex, col[k] + 1).setValue(updates[k]);
       }
     });
+    var updatedRow = sheet.getRange(rowIndex, 1, 1, headers.length).getValues()[0];
+    syncStudentRowToCurrentYearSheet_(headers, updatedRow, id);
 
     return 'บันทึกข้อมูลเรียบร้อยแล้ว';
   } catch (e) {
@@ -359,10 +364,64 @@ function updateStudentInline(studentData) {
 /**
  * ✅ ดึงรายชื่อนักเรียนในชั้นและห้องที่เลือก
  */
+function isInactiveStudentStatus_(status) {
+  var st = String(status || '').trim().toLowerCase().replace(/\s+/g, '');
+  if (!st) return false;
+  return [
+    'จำหน่าย', 'ย้ายออก', 'พ้นสภาพ', 'จบ', 'จบการศึกษา', 'สำเร็จการศึกษา',
+    'ลาออก', 'พักการเรียน', 'inactive', 'graduated', 'transferred', 'deleted'
+  ].indexOf(st) !== -1;
+}
+
+function syncStudentRowToCurrentYearSheet_(sourceHeaders, sourceRow, studentId) {
+  try {
+    if (typeof AY_getCurrentAcademicYear !== 'function') return;
+    var year = AY_getCurrentAcademicYear(false);
+    var ss = SS();
+    var target = ss.getSheetByName('Students_' + year);
+    if (!target) return;
+
+    var targetData = target.getDataRange().getValues();
+    var targetHeaders = targetData[0] || [];
+    var sourceMap = {};
+    sourceHeaders.forEach(function(h, i) {
+      var key = String(h || '').trim();
+      if (key) sourceMap[key] = i;
+    });
+
+    var rowByTarget = targetHeaders.map(function(h) {
+      var key = String(h || '').trim();
+      return sourceMap[key] != null ? sourceRow[sourceMap[key]] : '';
+    });
+
+    var idIdx = targetHeaders.indexOf('student_id');
+    var sid = String(studentId || (idIdx >= 0 ? rowByTarget[idIdx] : '') || '').trim();
+    if (!sid) return;
+
+    var targetRow = -1;
+    if (idIdx >= 0) {
+      for (var r = 1; r < targetData.length; r++) {
+        if (String(targetData[r][idIdx] || '').trim() === sid) {
+          targetRow = r + 1;
+          break;
+        }
+      }
+    }
+
+    if (targetRow > 0) {
+      target.getRange(targetRow, 1, 1, rowByTarget.length).setValues([rowByTarget]);
+    } else {
+      target.appendRow(rowByTarget);
+    }
+  } catch (e) {
+    Logger.log('syncStudentRowToCurrentYearSheet_ warning: ' + e.message);
+  }
+}
+
 function getStudentsByClass(grade, classNo) {
   try {
     const ss = SS();
-    const sheet = ss.getSheetByName("Students");
+    const sheet = (typeof AY_getStudentsSheetForRead === 'function') ? AY_getStudentsSheetForRead() : ss.getSheetByName("Students");
     if (!sheet) return [];
     
     const data = sheet.getDataRange().getValues();
@@ -378,7 +437,8 @@ function getStudentsByClass(grade, classNo) {
       lastname: headers.indexOf("lastname"),
       grade: headers.indexOf("grade"),
       classNo: headers.indexOf("class_no"),
-      gender: headers.indexOf("gender")
+      gender: headers.indexOf("gender"),
+      academicYear: headers.indexOf("academic_year")
     };
     
     // ตรวจสอบว่าพบคอลัมน์ที่จำเป็นหรือไม่
@@ -388,6 +448,7 @@ function getStudentsByClass(grade, classNo) {
     }
     
     const statusIdx = headers.indexOf("status");
+    const currentAcademicYear = (typeof AY_getCurrentAcademicYear === 'function') ? AY_getCurrentAcademicYear(false) : '';
 
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
@@ -397,8 +458,9 @@ function getStudentsByClass(grade, classNo) {
       // กรองนักเรียนที่จำหน่าย/ย้ายออก/พ้นสภาพ
       if (statusIdx !== -1) {
         const st = String(row[statusIdx] || '').trim();
-        if (st === 'จำหน่าย' || st === 'ย้ายออก' || st === 'พ้นสภาพ') continue;
+        if (isInactiveStudentStatus_(st)) continue;
       }
+      if (typeof AY_rowMatchesAcademicYear === 'function' && !AY_rowMatchesAcademicYear(row, headers, currentAcademicYear)) continue;
 
       if (rowGrade === grade && rowClass === classNo) {
         result.push({
@@ -444,7 +506,7 @@ function getStudentsForAdminPreview(query) {
     }
 
     var ss = SS();
-    var sheet = ss.getSheetByName('Students');
+    var sheet = (typeof AY_getStudentsSheetForRead === 'function') ? AY_getStudentsSheetForRead() : ss.getSheetByName('Students');
     if (!sheet) return { success: false, message: 'ไม่พบชีต Students' };
 
     var data = sheet.getDataRange().getValues();
@@ -464,6 +526,7 @@ function getStudentsForAdminPreview(query) {
 
     var q = (query || '').trim().toLowerCase();
     var results = [];
+    var currentAcademicYear = (typeof AY_getCurrentAcademicYear === 'function') ? AY_getCurrentAcademicYear(false) : '';
 
     for (var i = 1; i < data.length; i++) {
       var row = data[i];
@@ -471,8 +534,9 @@ function getStudentsForAdminPreview(query) {
       // กรองนักเรียนที่จำหน่าย/ย้ายออก/พ้นสภาพ
       if (colIdx.status !== -1) {
         var st = String(row[colIdx.status] || '').trim();
-        if (st === 'จำหน่าย' || st === 'ย้ายออก' || st === 'พ้นสภาพ') continue;
+        if (isInactiveStudentStatus_(st)) continue;
       }
+      if (typeof AY_rowMatchesAcademicYear === 'function' && !AY_rowMatchesAcademicYear(row, headers, currentAcademicYear)) continue;
 
       var sid = String(row[colIdx.id] || '').trim();
       var fname = String(row[colIdx.firstname] || '').trim();
@@ -657,21 +721,39 @@ function addStudent(studentData) {
       }
     }
     
-    // เพิ่มข้อมูล
-    const newRow = [
-      studentData.student_id || '',
-      studentData.id_card || '',
-      studentData.title || '',
-      studentData.firstname || '',
-      studentData.lastname || '',
-      studentData.grade || '',
-      studentData.class_no || '',
-      studentData.gender || '',
-      new Date(), // created_date
-      'active'    // status
-    ];
+    // เพิ่มข้อมูลตามชื่อ header เพื่อไม่ให้ข้อมูลเลื่อนคอลัมน์เมื่อระบบมีคอลัมน์ใหม่
+    const rowByHeader = {
+      student_id: studentData.student_id || '',
+      id_card: studentData.id_card || '',
+      title: studentData.title || '',
+      firstname: studentData.firstname || '',
+      lastname: studentData.lastname || '',
+      grade: studentData.grade || '',
+      class_no: studentData.class_no || '',
+      gender: studentData.gender || '',
+      birthdate: studentData.birthdate || '',
+      photo_url: studentData.photo_url || '',
+      academic_year: studentData.academic_year || ((typeof AY_getCurrentAcademicYear === 'function') ? AY_getCurrentAcademicYear(false) : ''),
+      weight: studentData.weight || '',
+      height: studentData.height || '',
+      address: studentData.address || '',
+      father_name: studentData.father_name || '',
+      father_lastname: studentData.father_lastname || '',
+      mother_name: studentData.mother_name || '',
+      mother_lastname: studentData.mother_lastname || '',
+      created_date: new Date(),
+      status: 'active',
+      latest_weight_kg: studentData.weight || '',
+      latest_height_cm: studentData.height || '',
+      latest_growth_date: (studentData.weight || studentData.height) ? new Date() : ''
+    };
+    const newRow = headers.map(h => {
+      const key = String(h || '').trim();
+      return Object.prototype.hasOwnProperty.call(rowByHeader, key) ? rowByHeader[key] : '';
+    });
     
     sheet.appendRow(newRow);
+    syncStudentRowToCurrentYearSheet_(headers, newRow, studentData.student_id);
     
     Logger.log(`Added student: ${studentData.firstname} ${studentData.lastname} (ID: ${studentData.student_id})`);
     return { success: true, message: 'เพิ่มนักเรียนเรียบร้อยแล้ว' };
@@ -696,7 +778,9 @@ function createStudentsSheet(ss) {
       'academic_year', 'weight', 'height', 'blood_type', 'religion',
       'father_name', 'father_lastname', 'father_occupation',
       'mother_name', 'mother_lastname', 'mother_occupation',
-      'address', 'created_date', 'status'
+      'address', 'created_date', 'status',
+      'latest_weight_kg', 'latest_height_cm', 'latest_bmi',
+      'latest_growth_date', 'latest_nutrition_status'
     ];
     
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
@@ -951,6 +1035,11 @@ function importCsvStudents(csvContent) {
       skippedReasons.forEach(r => Logger.log('  - ' + r));
     }
 
+    // ล้าง dashboard cache เพื่อให้แสดงจำนวนนักเรียนถูกต้องทันที
+    try {
+      CacheService.getScriptCache().removeAll(['fast_student_stats_v1', 'dashboard_summary_v5', 'dashboard_summary_v3']);
+    } catch(_ce) {}
+
     let message = `✅ นำเข้าเสร็จสิ้น: เพิ่มใหม่ ${insertedCount} รายการ, อัปเดต ${updatedCount} รายการ`;
     if (skippedCount > 0) {
       message += `\n⚠️ ข้ามแถวที่มีข้อมูลไม่ถูกต้อง ${skippedCount} แถว (ดูรายละเอียดใน Execution log)`;
@@ -1131,6 +1220,7 @@ function getFilteredStudentsInline(grade, classNo) {
   }
   var filterGradeNorm = normalizeGrade_(grade);
   var filterClassNorm = String(classNo || '').trim();
+  var currentAcademicYear = (typeof AY_getCurrentAcademicYear === 'function') ? AY_getCurrentAcademicYear(false) : '';
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
@@ -1139,7 +1229,8 @@ function getFilteredStudentsInline(grade, classNo) {
 
     // กรองนักเรียนที่จำหน่าย/ย้ายออก/พ้นสภาพ
     var rowStatus = colMap['status'] != null ? String(row[colMap['status']] || '').trim() : '';
-    if (rowStatus === 'จำหน่าย' || rowStatus === 'ย้ายออก' || rowStatus === 'พ้นสภาพ') continue;
+    if (isInactiveStudentStatus_(rowStatus)) continue;
+    if (typeof AY_rowMatchesAcademicYear === 'function' && !AY_rowMatchesAcademicYear(row, headers, currentAcademicYear)) continue;
 
     // การเปรียบเทียบระดับชั้น: ใช้การเปรียบเทียบแบบตรงตัว (Exact Match) 
     // เพื่อป้องกันกรณี ป.3 ไปตรงกับ อ.3
@@ -2012,5 +2103,132 @@ const updatedColIndex = headers.indexOf('วันที่อัปเดต');
     Logger.log(`Error in saveCommentWithValidation: ${e.message}`);
     return { success: false, error: e.message };
   }
+}
+
+// Current-year safe override: many pages call this shared function, so it must
+// read Students_<academicYear> when the yearly sheet exists.
+function getFilteredStudentsInline(grade, classNo) {
+  var sheet = (typeof AY_getStudentsSheetForRead === 'function')
+    ? AY_getStudentsSheetForRead()
+    : SS().getSheetByName('Students');
+  if (!sheet) return [];
+
+  var data = sheet.getDataRange().getValues();
+  if (!data || data.length < 2) return [];
+
+  var headers = data[0];
+  var colMap = {};
+  headers.forEach(function(h, i) {
+    colMap[String(h || '').trim()] = i;
+  });
+
+  function findCol(names) {
+    for (var i = 0; i < names.length; i++) {
+      if (colMap[names[i]] != null) return colMap[names[i]];
+    }
+    return -1;
+  }
+
+  var idx = {
+    id: findCol(['student_id', 'id']),
+    idCard: findCol(['id_card', 'citizen_id']),
+    title: findCol(['title']),
+    firstname: findCol(['firstname', 'first_name']),
+    lastname: findCol(['lastname', 'last_name']),
+    grade: findCol(['grade']),
+    classNo: findCol(['class_no', 'class']),
+    gender: findCol(['gender']),
+    birthdate: findCol(['birthdate', 'birth_date']),
+    weight: findCol(['weight']),
+    height: findCol(['height']),
+    status: findCol(['status']),
+    fatherName: findCol(['father_name']),
+    fatherLastname: findCol(['father_lastname']),
+    fatherOccupation: findCol(['father_occupation']),
+    motherName: findCol(['mother_name']),
+    motherLastname: findCol(['mother_lastname']),
+    motherOccupation: findCol(['mother_occupation']),
+    address: findCol(['address']),
+    bloodType: findCol(['blood_type'])
+  };
+
+  var filterGrade = String(grade || '').trim();
+  var filterClass = String(classNo || '').trim();
+  var currentAcademicYear = (typeof AY_getCurrentAcademicYear === 'function') ? AY_getCurrentAcademicYear(false) : '';
+  var result = [];
+
+  function cell(row, col) {
+    return col >= 0 ? String(row[col] || '').trim() : '';
+  }
+
+  function formatDateInput(value) {
+    if (!value) return '';
+    if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value.getTime())) {
+      return Utilities.formatDate(value, 'Asia/Bangkok', 'yyyy-MM-dd');
+    }
+    var s = String(value).trim();
+    var m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    return m ? (m[1] + '-' + String(m[2]).padStart(2, '0') + '-' + String(m[3]).padStart(2, '0')) : s;
+  }
+
+  function calcAge(birthdateStr) {
+    if (!birthdateStr) return '';
+    var bd = new Date(birthdateStr);
+    if (isNaN(bd.getTime())) return '';
+    var now = new Date();
+    var age = now.getFullYear() - bd.getFullYear();
+    var m = now.getMonth() - bd.getMonth();
+    if (m < 0 || (m === 0 && now.getDate() < bd.getDate())) age--;
+    return age >= 0 ? age : '';
+  }
+
+  for (var r = 1; r < data.length; r++) {
+    var row = data[r];
+    var rowGrade = cell(row, idx.grade);
+    var rowClass = cell(row, idx.classNo);
+    var rowStatus = cell(row, idx.status);
+
+    if (typeof isInactiveStudentStatus_ === 'function' && isInactiveStudentStatus_(rowStatus)) continue;
+    if (typeof AY_rowMatchesAcademicYear === 'function' && !AY_rowMatchesAcademicYear(row, headers, currentAcademicYear)) continue;
+    if (filterGrade && rowGrade !== filterGrade) continue;
+    if (filterClass && rowClass !== filterClass) continue;
+
+    var birthdate = formatDateInput(idx.birthdate >= 0 ? row[idx.birthdate] : '');
+    var first = cell(row, idx.firstname);
+    var last = cell(row, idx.lastname);
+    var title = cell(row, idx.title);
+    var fatherName = (cell(row, idx.fatherName) + ' ' + cell(row, idx.fatherLastname)).trim();
+    var motherName = (cell(row, idx.motherName) + ' ' + cell(row, idx.motherLastname)).trim();
+
+    result.push({
+      id: cell(row, idx.id),
+      studentId: cell(row, idx.id),
+      idCard: cell(row, idx.idCard),
+      title: title,
+      firstname: first,
+      lastname: last,
+      fullName: (title + first + ' ' + last).trim(),
+      name: (title + first + ' ' + last).trim(),
+      grade: rowGrade,
+      classNo: rowClass,
+      class_no: rowClass,
+      gender: cell(row, idx.gender),
+      birthdate: birthdate,
+      age: calcAge(birthdate),
+      weight: cell(row, idx.weight),
+      height: cell(row, idx.height),
+      father_name: fatherName,
+      father_occupation: cell(row, idx.fatherOccupation),
+      mother_name: motherName,
+      mother_occupation: cell(row, idx.motherOccupation),
+      address: cell(row, idx.address),
+      blood_type: cell(row, idx.bloodType)
+    });
+  }
+
+  result.sort(function(a, b) {
+    return String(a.id || '').localeCompare(String(b.id || ''), undefined, { numeric: true });
+  });
+  return result;
 }
 

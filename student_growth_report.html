@@ -1,0 +1,129 @@
+<div class="growth-report">
+  <style>
+    .growth-report { font-family:'Sarabun', system-ui, sans-serif; color:#1f2937; }
+    .gr-band { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:16px; margin-bottom:14px; }
+    .gr-title { display:flex; justify-content:space-between; gap:12px; align-items:center; margin-bottom:14px; }
+    .gr-title h2 { margin:0; font-size:1.35rem; font-weight:700; }
+    .gr-grid { display:grid; grid-template-columns:repeat(6,minmax(120px,1fr)); gap:10px; align-items:end; }
+    .gr-field label { display:block; font-size:.86rem; font-weight:600; color:#475569; margin-bottom:5px; }
+    .gr-field input,.gr-field select { width:100%; border:1px solid #cbd5e1; border-radius:6px; padding:8px 10px; min-height:38px; }
+    .gr-actions { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+    .gr-btn { border:0; border-radius:6px; padding:9px 14px; font-weight:700; cursor:pointer; display:inline-flex; gap:6px; align-items:center; background:#2563eb; color:#fff; }
+    .gr-btn.pdf { background:#dc2626; }
+    .gr-btn.xls { background:#15803d; }
+    .gr-btn:disabled { opacity:.55; cursor:not-allowed; }
+    .gr-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
+    .gr-stat { border:1px solid #e5e7eb; border-radius:8px; padding:12px; background:#f8fafc; }
+    .gr-stat strong { display:block; font-size:1.35rem; color:#0f172a; }
+    .gr-table-wrap { overflow:auto; border:1px solid #e5e7eb; border-radius:8px; }
+    .gr-table { width:100%; min-width:900px; border-collapse:collapse; }
+    .gr-table th { background:#f8fafc; color:#334155; font-size:.86rem; padding:10px; border-bottom:1px solid #e5e7eb; text-align:left; white-space:nowrap; }
+    .gr-table td { padding:8px 10px; border-bottom:1px solid #eef2f7; }
+    .gr-alert { display:none; padding:10px 12px; border-radius:8px; margin-bottom:12px; }
+    .gr-alert.ok { display:block; background:#dcfce7; color:#166534; }
+    .gr-alert.info { display:block; background:#dbeafe; color:#1e40af; }
+    .gr-alert.err { display:block; background:#fee2e2; color:#991b1b; }
+    .gr-muted { color:#64748b; }
+    .gr-loading { display:none; align-items:center; gap:10px; padding:12px; border:1px solid #bfdbfe; border-radius:8px; background:#eff6ff; color:#1d4ed8; margin-bottom:12px; font-weight:700; }
+    .gr-loading.show { display:flex; }
+    .gr-spinner { width:18px; height:18px; border:3px solid #bfdbfe; border-top-color:#2563eb; border-radius:50%; animation:grSpin .8s linear infinite; flex:0 0 auto; }
+    @keyframes grSpin { to { transform:rotate(360deg); } }
+    @media (max-width:900px){ .gr-grid{grid-template-columns:1fr 1fr;} .gr-title{align-items:flex-start; flex-direction:column;} }
+  </style>
+
+  <div class="gr-band">
+    <div class="gr-title">
+      <h2><i class="bi bi-bar-chart-line"></i> รายงานน้ำหนัก-ส่วนสูง</h2>
+      <div class="gr-actions">
+        <button class="gr-btn" type="button" onclick="SGReport.load()"><i class="bi bi-search"></i> ดูรายงาน</button>
+        <button class="gr-btn pdf" id="grPdfBtn" type="button" onclick="SGReport.exportPdf()"><i class="bi bi-file-earmark-pdf"></i> ส่งออก PDF</button>
+        <button class="gr-btn xls" id="grXlsBtn" type="button" onclick="SGReport.exportXls()"><i class="bi bi-file-earmark-spreadsheet"></i> ส่งออก XLS</button>
+      </div>
+    </div>
+    <div class="gr-grid">
+      <div class="gr-field"><label>ปีการศึกษา</label><input id="grYear"></div>
+      <div class="gr-field"><label>แบบฟอร์ม</label><select id="grPeriod"><option value="term1">ภาคเรียนที่ 1</option><option value="term2">ภาคเรียนที่ 2</option><option value="year">ตลอดปี</option></select></div>
+      <div class="gr-field"><label>เดือน</label><select id="grMonth"><option value="">ทั้งปี</option></select></div>
+      <div class="gr-field"><label>รอบที่</label><select id="grRound"><option value="">ทุกรอบ</option><option value="1">รอบที่ 1</option><option value="2">รอบที่ 2</option></select></div>
+      <div class="gr-field"><label>ชั้น</label><select id="grGrade"><option value="">ทุกชั้น</option></select></div>
+      <div class="gr-field"><label>ห้อง</label><select id="grClass"><option value="">ทุกห้อง</option></select></div>
+    </div>
+  </div>
+  <div id="grAlert" class="gr-alert"></div>
+  <div id="grDownload" class="gr-alert ok" style="display:none"></div>
+  <div id="grLoading" class="gr-loading"><span class="gr-spinner"></span><span id="grLoadingText">กำลังโหลด...</span></div>
+  <div class="gr-band">
+    <div class="gr-title"><strong id="grTotal">ยังไม่ได้โหลดรายงาน</strong></div>
+    <div class="gr-summary" id="grSummary"></div>
+  </div>
+  <div class="gr-band">
+    <div class="gr-table-wrap">
+      <table class="gr-table">
+        <thead><tr><th>วันที่</th><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>ชั้น</th><th>ห้อง</th><th>น้ำหนัก</th><th>ส่วนสูง</th><th>BMI</th><th>สถานะ</th><th>หมายเหตุ</th></tr></thead>
+        <tbody id="grRows"><tr><td colspan="10" class="gr-muted">เลือกเงื่อนไขแล้วกดดูรายงาน</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <script>
+    window.SGReport=(function(){
+      var monthNames=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+      function $(id){return document.getElementById(id);}
+      function message(msg,type){var el=$('grAlert'); el.textContent=msg||''; el.className=msg?'gr-alert '+(type||'info'):'gr-alert';}
+      function downloadLink(res){
+        var box=$('grDownload');
+        if(!res||!res.url){box.style.display='none';box.innerHTML='';return;}
+        box.style.display='block';
+        box.innerHTML='สร้างไฟล์เรียบร้อยแล้ว: <a href="'+res.url+'" target="_blank" rel="noopener" style="font-weight:700;color:#166534;text-decoration:underline;">เปิด/ดาวน์โหลด '+(res.fileName||'ไฟล์รายงาน')+'</a>';
+      }
+      function err(msg){message(msg,'err');}
+      function filters(){return {academicYear:$('grYear').value,month:$('grMonth').value,roundNo:$('grRound').value,grade:$('grGrade').value,classNo:$('grClass').value,period:$('grPeriod').value};}
+      function setBusy(on,text){
+        ['grPdfBtn','grXlsBtn'].forEach(function(id){$(id).disabled=!!on;});
+        var box=$('grLoading'); var label=$('grLoadingText');
+        if(on){ label.textContent=text||'กำลังโหลด...'; box.classList.add('show'); }
+        else { box.classList.remove('show'); }
+      }
+      function init(){
+        $('grMonth').innerHTML='<option value="">ทั้งปี</option>'+monthNames.map(function(n,i){return '<option value="'+(i+1)+'">'+n+'</option>';}).join('');
+        google.script.run.withSuccessHandler(function(res){ if(res&&res.success) $('grYear').value=res.academicYear||''; }).getStudentGrowthDefaults();
+        google.script.run.withSuccessHandler(function(grades){ $('grGrade').innerHTML='<option value="">ทุกชั้น</option>'+(grades||[]).map(function(g){return '<option value="'+g+'">'+g+'</option>';}).join(''); }).getAvailableGrades();
+        $('grGrade').addEventListener('change', function(){
+          var g=$('grGrade').value; $('grClass').innerHTML='<option value="">ทุกห้อง</option>';
+          if(!g) return;
+          google.script.run.withSuccessHandler(function(classes){ $('grClass').innerHTML='<option value="">ทุกห้อง</option>'+(classes||[]).map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join(''); }).getAvailableClasses(g);
+        });
+      }
+      function load(){
+        message('', 'info'); downloadLink(null); setBusy(true,'กำลังโหลดข้อมูลรายงาน...');
+        google.script.run.withSuccessHandler(function(res){
+          setBusy(false);
+          if(!res||!res.success){err((res&&res.message)||'โหลดรายงานไม่สำเร็จ'); return;}
+          $('grTotal').textContent='ข้อมูลทั้งหมด '+(res.total||0)+' รายการ';
+          $('grSummary').innerHTML=(res.summary||[]).map(function(s){return '<div class="gr-stat"><span>'+s.status+'</span><strong>'+s.count+'</strong><small>'+s.percent+'%</small></div>';}).join('') || '<div class="gr-muted">ยังไม่มีข้อมูลสรุป</div>';
+          $('grRows').innerHTML=(res.rows||[]).map(function(r){return '<tr><td>'+r.measure_date+'</td><td>'+r.student_id+'</td><td>'+r.student_name+'</td><td>'+r.grade+'</td><td>'+r.class_no+'</td><td>'+r.weight_kg+'</td><td>'+r.height_cm+'</td><td>'+r.bmi+'</td><td>'+r.nutrition_status+'</td><td>'+(r.note||'')+'</td></tr>';}).join('') || '<tr><td colspan="10" class="gr-muted">ไม่พบข้อมูลตามเงื่อนไข</td></tr>';
+          message('โหลดรายงานเรียบร้อยแล้ว', 'ok');
+        }).withFailureHandler(function(e){setBusy(false);err(e.message||String(e));}).getStudentGrowthReport(filters());
+      }
+      function openResult(res){
+        setBusy(false);
+        if(!res||!res.success){err((res&&res.message)||'ส่งออกไม่สำเร็จ');return;}
+        message('สร้างไฟล์เรียบร้อยแล้ว กดลิงก์ด้านล่างเพื่อเปิดหรือดาวน์โหลดไฟล์', 'ok');
+        downloadLink(res);
+        try {
+          var opened = window.open(res.url, '_blank', 'noopener');
+          if (!opened) message('สร้างไฟล์เรียบร้อยแล้ว แต่เบราว์เซอร์บล็อกการเปิดแท็บใหม่ กดลิงก์ด้านล่างได้เลย', 'ok');
+        } catch(_e) {}
+      }
+      function exportPdf(){
+        message('', 'info'); downloadLink(null); setBusy(true,'กำลังสร้างไฟล์ PDF อาจใช้เวลาสักครู่...');
+        google.script.run.withSuccessHandler(openResult).withFailureHandler(function(e){setBusy(false);err(e.message||String(e));}).exportStudentGrowthMatrixPdf(filters());
+      }
+      function exportXls(){
+        message('', 'info'); downloadLink(null); setBusy(true,'กำลังสร้างไฟล์ XLS อาจใช้เวลาสักครู่...');
+        google.script.run.withSuccessHandler(openResult).withFailureHandler(function(e){setBusy(false);err(e.message||String(e));}).exportStudentGrowthMatrixXls(filters());
+      }
+      setTimeout(init,0);
+      return {load:load, exportPdf:exportPdf, exportXls:exportXls};
+    })();
+  </script>
+</div>

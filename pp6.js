@@ -121,6 +121,36 @@ function _clearRelatedCache(pattern) {
   }
 }
 
+function invalidateCacheAfterDataUpdate(sheetName) {
+  try {
+    const cache = CacheService.getScriptCache();
+    const keysToRemove = [
+      'students_master_',
+      'settings_webapp',
+      'warehouse_all',
+      'assessments_all'
+    ];
+
+    if (sheetName) {
+      keysToRemove.push(_createCacheKey('sheet', sheetName));
+      try {
+        if (typeof S_resolveSheetName === 'function') {
+          keysToRemove.push(_createCacheKey('sheet', S_resolveSheetName(sheetName)));
+        } else if (typeof S_sheetName === 'function') {
+          keysToRemove.push(_createCacheKey('sheet', S_sheetName(sheetName)));
+        }
+      } catch (_) {}
+    }
+
+    cache.removeAll(Array.from(new Set(keysToRemove)));
+    Logger.log('🧹 invalidateCacheAfterDataUpdate: ' + keysToRemove.join(', '));
+    return 'ล้าง cache ที่เกี่ยวข้องเรียบร้อย';
+  } catch (e) {
+    Logger.log('invalidateCacheAfterDataUpdate warning: ' + e.message);
+    return 'cache warning: ' + e.message;
+  }
+}
+
 /**
  * ล้าง cache ทั้งหมด (ใช้ในกรณีฉุกเฉิน) - แก้ไขแล้ว
  */
@@ -132,10 +162,15 @@ function clearAllCache() {
     const keysToRemove = [
       'settings_webapp',
       'sheet_SCORES_WAREHOUSE',
+      (typeof S_sheetName === 'function' ? _createCacheKey('sheet', S_sheetName('SCORES_WAREHOUSE')) : ''),
       'sheet_รายวิชา',
       'sheet_การประเมินอ่านคิดเขียน',
+      (typeof S_sheetName === 'function' ? _createCacheKey('sheet', S_sheetName('การประเมินอ่านคิดเขียน')) : ''),
+      (typeof S_sheetName === 'function' ? _createCacheKey('sheet', S_sheetName('ประเมินอ่านคิดเขียน5เกณฑ์')) : ''),
       'sheet_การประเมินคุณลักษณะ',
-      'sheet_การประเมินกิจกรรมพัฒนาผู้เรียน'
+      (typeof S_sheetName === 'function' ? _createCacheKey('sheet', S_sheetName('การประเมินคุณลักษณะ')) : ''),
+      'sheet_การประเมินกิจกรรมพัฒนาผู้เรียน',
+      (typeof S_sheetName === 'function' ? _createCacheKey('sheet', S_sheetName('การประเมินกิจกรรมพัฒนาผู้เรียน')) : '')
     ];
 
     // เพิ่ม Keys ของรายวิชาทุกระดับชั้น
@@ -146,7 +181,7 @@ function clearAllCache() {
 
     // สั่งลบ Keys ทั้งหมดที่รวบรวมมา
     if (keysToRemove.length > 0) {
-      cache.removeAll(keysToRemove);
+      cache.removeAll(keysToRemove.filter(Boolean));
     }
     
     Logger.log(`🧹 Cleared ${keysToRemove.length} known cache keys.`);
@@ -186,23 +221,26 @@ function _scoreToGPA(score) {
  * อ่านข้อมูลจากชีตเป็น Array of Objects (พร้อม Cache)
  */
 function _readSheetToObjects(sheetName, useCache = true) {
-  const cacheKey = _createCacheKey('sheet', sheetName);
-  
-  if (useCache) {
-    const cachedData = _getFromCache(cacheKey);
-    if (cachedData) return cachedData;
-  }
-  
   try {
     const ss = _openSpreadsheet();
     // ถ้าเป็นชีตรายปี ให้ใช้ S_getYearlySheet (resolve ชื่อ + fallback อัตโนมัติ)
     var sheet;
-    if (typeof S_YEARLY_SHEETS !== 'undefined' && S_YEARLY_SHEETS.indexOf(sheetName) !== -1) {
+    if (sheetName === 'ประเมินอ่านคิดเขียน5เกณฑ์' && typeof S_sheetName === 'function') {
+      sheet = ss.getSheetByName(S_sheetName(sheetName));
+    } else if (typeof S_YEARLY_SHEETS !== 'undefined' && S_YEARLY_SHEETS.indexOf(sheetName) !== -1) {
       sheet = S_getYearlySheet(sheetName);
     } else {
       sheet = ss.getSheetByName(sheetName);
     }
     if (!sheet) return [];
+
+    const resolvedSheetName = (typeof sheet.getName === 'function') ? sheet.getName() : sheetName;
+    const cacheKey = _createCacheKey('sheet', resolvedSheetName);
+
+    if (useCache) {
+      const cachedData = _getFromCache(cacheKey);
+      if (cachedData) return cachedData;
+    }
 
     const values = sheet.getDataRange().getValues();
     if (values.length < 2) return [];

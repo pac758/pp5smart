@@ -13,7 +13,7 @@
 
 /** * อ่านข้อมูลจากชีตเป็น Array of Objects * @param {string} sheetName - ชื่อชีต * @returns {Array<Object>} ข้อมูลในรูปแบบ Object */function U_getSheetData(sheetName) {  const sheet = U_getSheet(sheetName);  const data = sheet.getDataRange().getValues();    if (data.length === 0) {    return [];  }    const headers = data[0];  const rows = data.slice(1);    return rows.map(row => {    const obj = {};    headers.forEach((header, index) => {      obj[header] = row[index];    });    return obj;  });}
 
-/** * ดึงรายชื่อนักเรียนตามชั้นและห้อง (ฟังก์ชันหลักที่ใช้ทั่วทั้งระบบ) * @param {string} grade - ระดับชั้น เช่น "ป.1" * @param {string} classNo - หมายเลขห้อง เช่น "1" * @returns {Array<Object>} รายชื่อนักเรียน */function U_getStudentsByClass(grade, classNo) {  const sheet = U_getSheet('Students');  const data = sheet.getDataRange().getValues();    if (data.length <= 1) {    return [];  }    const headers = data[0];  const rows = data.slice(1);     const colMap = {};  headers.forEach((header, index) => {    colMap[header.trim()] = index;  });    const students = [];    rows.forEach(row => {    const rowGrade = String(row[colMap['grade']] || '').trim();    const rowClass = String(row[colMap['class_no']] || '').trim();        if (rowGrade === grade.trim() && rowClass === classNo.toString().trim()) {      const student = {        id: row[colMap['student_id']] || '',        studentId: row[colMap['student_id']] || '',        idCard: row[colMap['id_card']] || '',        title: String(row[colMap['title']] || '').trim(),        firstname: String(row[colMap['firstname']] || '').trim(),        lastname: String(row[colMap['lastname']] || '').trim(),        grade: rowGrade,        classNo: rowClass,        class_no: rowClass,        gender: row[colMap['gender']] || ''      };             student.name = `${student.title}${student.firstname} ${student.lastname}`.trim();            students.push(student);    }  });     students.sort((a, b) => {    const idA = String(a.id || '');    const idB = String(b.id || '');    return idA.localeCompare(idB, 'th', { numeric: true });  });    return students;}
+/** * ดึงรายชื่อนักเรียนตามชั้นและห้อง (ฟังก์ชันหลักที่ใช้ทั่วทั้งระบบ) * @param {string} grade - ระดับชั้น เช่น "ป.1" * @param {string} classNo - หมายเลขห้อง เช่น "1" * @returns {Array<Object>} รายชื่อนักเรียน */function U_getStudentsByClass(grade, classNo) {  const sheet = U_getSheet('Students');  const data = sheet.getDataRange().getValues();    if (data.length <= 1) {    return [];  }    const headers = data[0];  const rows = data.slice(1);     const colMap = {};  headers.forEach((header, index) => {    colMap[String(header || '').trim()] = index;  });    const students = [];    rows.forEach(row => {    const rowGrade = String(row[colMap['grade']] || '').trim();    const rowClass = String(row[colMap['class_no']] || '').trim();    const rowStatus = colMap['status'] != null ? String(row[colMap['status']] || '').trim() : '';    const inactive = typeof isInactiveStudentStatus_ === 'function' ? isInactiveStudentStatus_(rowStatus) : ['จำหน่าย','ย้ายออก','พ้นสภาพ','จบการศึกษา','สำเร็จการศึกษา','inactive','graduated'].indexOf(rowStatus) !== -1;    if (inactive) return;        if (rowGrade === grade.trim() && rowClass === classNo.toString().trim()) {      const student = {        id: row[colMap['student_id']] || '',        studentId: row[colMap['student_id']] || '',        idCard: row[colMap['id_card']] || '',        title: String(row[colMap['title']] || '').trim(),        firstname: String(row[colMap['firstname']] || '').trim(),        lastname: String(row[colMap['lastname']] || '').trim(),        grade: rowGrade,        classNo: rowClass,        class_no: rowClass,        gender: row[colMap['gender']] || ''      };             student.name = `${student.title}${student.firstname} ${student.lastname}`.trim();            students.push(student);    }  });     students.sort((a, b) => {    const idA = String(a.id || '');    const idB = String(b.id || '');    return idA.localeCompare(idB, 'th', { numeric: true });  });    return students;}
 
 /** * Alias สำหรับความเข้ากันได้กับโค้ดเดิม */function U_getStudentsForAttendance(grade, classNo) {  return U_getStudentsByClass(grade, classNo);}
 
@@ -104,4 +104,55 @@ function _sortBySubjectName(arr, nameKey) {
     return nameA.localeCompare(nameB, 'th');
   });
   return arr;
+}
+
+// Year-aware override for the compact helper above.
+function U_getStudentsByClass(grade, classNo) {
+  const sheet = (typeof AY_getStudentsSheetForRead === 'function') ? AY_getStudentsSheetForRead() : U_getSheet('Students');
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return [];
+
+  const headers = data[0];
+  const rows = data.slice(1);
+  const colMap = {};
+  headers.forEach(function(header, index) {
+    colMap[String(header || '').trim()] = index;
+  });
+
+  const currentAcademicYear = (typeof AY_getCurrentAcademicYear === 'function') ? AY_getCurrentAcademicYear(false) : '';
+  const targetGrade = String(grade || '').trim();
+  const targetClass = String(classNo || '').trim();
+  const students = [];
+
+  rows.forEach(function(row) {
+    const rowGrade = String(row[colMap.grade] || '').trim();
+    const rowClass = String(row[colMap.class_no] || '').trim();
+    const rowStatus = colMap.status != null ? String(row[colMap.status] || '').trim() : '';
+    const inactive = typeof isInactiveStudentStatus_ === 'function'
+      ? isInactiveStudentStatus_(rowStatus)
+      : ['จำหน่าย','ย้ายออก','พ้นสภาพ','จบการศึกษา','สำเร็จการศึกษา','inactive','graduated'].indexOf(rowStatus) !== -1;
+    if (inactive) return;
+    if (typeof AY_rowMatchesAcademicYear === 'function' && !AY_rowMatchesAcademicYear(row, headers, currentAcademicYear)) return;
+    if (rowGrade !== targetGrade || rowClass !== targetClass) return;
+
+    const student = {
+      id: row[colMap.student_id] || '',
+      studentId: row[colMap.student_id] || '',
+      idCard: row[colMap.id_card] || '',
+      title: String(row[colMap.title] || '').trim(),
+      firstname: String(row[colMap.firstname] || '').trim(),
+      lastname: String(row[colMap.lastname] || '').trim(),
+      grade: rowGrade,
+      classNo: rowClass,
+      class_no: rowClass,
+      gender: row[colMap.gender] || ''
+    };
+    student.name = `${student.title}${student.firstname} ${student.lastname}`.trim();
+    students.push(student);
+  });
+
+  students.sort(function(a, b) {
+    return String(a.id || '').localeCompare(String(b.id || ''), 'th', { numeric: true });
+  });
+  return students;
 }

@@ -1,0 +1,202 @@
+<div class="growth-page">
+  <style>
+    .growth-page { font-family: 'Sarabun', system-ui, sans-serif; color: #1f2937; }
+    .growth-band { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 14px; }
+    .growth-title { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
+    .growth-title h2 { font-size: 1.35rem; margin: 0; font-weight: 700; }
+    .growth-grid { display:grid; grid-template-columns: repeat(6, minmax(120px, 1fr)); gap: 10px; align-items:end; }
+    .growth-field label { display:block; font-size:.86rem; font-weight:600; margin-bottom:5px; color:#475569; }
+    .growth-field input, .growth-field select { width:100%; border:1px solid #cbd5e1; border-radius:6px; padding:8px 10px; min-height:38px; }
+    .growth-actions { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+    .growth-btn { border:0; border-radius:6px; padding:9px 14px; font-weight:700; cursor:pointer; display:inline-flex; gap:6px; align-items:center; }
+    .growth-btn.primary { background:#2563eb; color:#fff; }
+    .growth-btn.secondary { background:#e2e8f0; color:#0f172a; }
+    .growth-btn.success { background:#16a34a; color:#fff; }
+    .growth-btn:disabled { opacity:.55; cursor:not-allowed; }
+    .growth-table-wrap { overflow:auto; border:1px solid #e5e7eb; border-radius:8px; }
+    .growth-table { width:100%; border-collapse:collapse; min-width:920px; }
+    .growth-table th { background:#f8fafc; color:#334155; font-size:.86rem; text-align:left; padding:10px; border-bottom:1px solid #e5e7eb; white-space:nowrap; }
+    .growth-table td { padding:8px 10px; border-bottom:1px solid #eef2f7; vertical-align:middle; }
+    .growth-table input { width:100%; min-width:88px; border:1px solid #cbd5e1; border-radius:6px; padding:7px 8px; }
+    .growth-table .name { min-width:190px; font-weight:600; }
+    .growth-status { padding:5px 8px; border-radius:999px; font-size:.82rem; font-weight:700; background:#eef2ff; color:#3730a3; display:inline-block; }
+    .growth-muted { color:#64748b; font-size:.92rem; }
+    .growth-alert { padding:10px 12px; border-radius:8px; margin-bottom:12px; display:none; }
+    .growth-alert.ok { display:block; background:#dcfce7; color:#166534; }
+    .growth-alert.info { display:block; background:#dbeafe; color:#1e40af; }
+    .growth-alert.err { display:block; background:#fee2e2; color:#991b1b; }
+    .growth-loading { display:none; align-items:center; gap:10px; padding:12px; border:1px solid #bfdbfe; border-radius:8px; background:#eff6ff; color:#1d4ed8; margin-bottom:12px; font-weight:700; }
+    .growth-loading.show { display:flex; }
+    .growth-spinner { width:18px; height:18px; border:3px solid #bfdbfe; border-top-color:#2563eb; border-radius:50%; animation:sgSpin .8s linear infinite; flex:0 0 auto; }
+    @keyframes sgSpin { to { transform:rotate(360deg); } }
+    @media (max-width: 1100px) { .growth-grid { grid-template-columns: repeat(3, minmax(120px, 1fr)); } }
+    @media (max-width: 720px) { .growth-grid { grid-template-columns: 1fr 1fr; } .growth-title { align-items:flex-start; flex-direction:column; } }
+  </style>
+
+  <div class="growth-band">
+    <div class="growth-title">
+      <h2><i class="bi bi-clipboard2-pulse"></i> บันทึกน้ำหนัก-ส่วนสูง</h2>
+      <div class="growth-actions">
+        <button class="growth-btn secondary" type="button" onclick="SGEntry.loadStudents()"><i class="bi bi-arrow-clockwise"></i> โหลดใหม่</button>
+        <button class="growth-btn success" type="button" id="sgSaveBtn" onclick="SGEntry.save()" disabled><i class="bi bi-save"></i> บันทึกทั้งห้อง</button>
+      </div>
+    </div>
+    <div class="growth-grid">
+      <div class="growth-field"><label>ปีการศึกษา</label><input id="sgYear" inputmode="numeric"></div>
+      <div class="growth-field"><label>เดือน</label><select id="sgMonth"></select></div>
+      <div class="growth-field"><label>รอบที่</label><select id="sgRound"><option value="1">รอบที่ 1</option><option value="2">รอบที่ 2</option></select></div>
+      <div class="growth-field"><label>วันที่ชั่งวัด</label><input id="sgDate" type="date"></div>
+      <div class="growth-field"><label>ชั้น</label><select id="sgGrade"><option value="">เลือกชั้น</option></select></div>
+      <div class="growth-field"><label>ห้อง</label><select id="sgClass"><option value="">เลือกห้อง</option></select></div>
+    </div>
+  </div>
+
+  <div id="sgAlert" class="growth-alert"></div>
+  <div id="sgLoading" class="growth-loading"><span class="growth-spinner"></span><span id="sgLoadingText">กำลังโหลด...</span></div>
+
+  <div class="growth-band">
+    <div class="growth-title">
+      <div>
+        <strong id="sgCount">ยังไม่ได้โหลดรายชื่อ</strong>
+        <div class="growth-muted">ระบบจะคำนวณ BMI และอัปเดตค่าน้ำหนัก-ส่วนสูงล่าสุดกลับไปยังข้อมูลนักเรียน</div>
+      </div>
+    </div>
+    <div class="growth-table-wrap">
+      <table class="growth-table">
+        <thead>
+          <tr>
+            <th style="width:70px">เลขที่</th>
+            <th>รหัส</th>
+            <th>ชื่อ-นามสกุล</th>
+            <th>เพศ</th>
+            <th>น้ำหนัก (กก.)</th>
+            <th>ส่วนสูง (ซม.)</th>
+            <th>BMI</th>
+            <th>สถานะ</th>
+            <th>หมายเหตุ</th>
+          </tr>
+        </thead>
+        <tbody id="sgRows"><tr><td colspan="9" class="growth-muted">เลือกระดับชั้นและห้อง ระบบจะโหลดรายชื่ออัตโนมัติ</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    window.SGEntry = (function(){
+      var students = [];
+      var isLoading = false;
+      var lastLoadKey = '';
+      var monthNames = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+      function $(id){ return document.getElementById(id); }
+      function alertBox(msg, ok, info){
+        var el = $('sgAlert'); el.textContent = msg || ''; el.className = 'growth-alert ' + (info ? 'info' : (ok ? 'ok' : 'err'));
+        if (!msg) el.className = 'growth-alert';
+      }
+      function busy(on, text){
+        $('sgSaveBtn').disabled = on || students.length === 0;
+        var box = $('sgLoading'); var label = $('sgLoadingText');
+        if (on) { label.textContent = text || 'กำลังโหลด...'; box.classList.add('show'); }
+        else { box.classList.remove('show'); }
+      }
+      function today(){
+        var d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      }
+      function initMonths(){
+        $('sgMonth').innerHTML = monthNames.map(function(n,i){ return '<option value="'+(i+1)+'">'+n+'</option>'; }).join('');
+      }
+      function init(){
+        initMonths(); $('sgDate').value = today();
+        google.script.run.withSuccessHandler(function(res){
+          if (res && res.success) { $('sgYear').value = res.academicYear || ''; $('sgMonth').value = res.month || '1'; $('sgRound').value = res.roundNo || '1'; }
+        }).getStudentGrowthDefaults();
+        google.script.run.withSuccessHandler(function(grades){
+          $('sgGrade').innerHTML = '<option value="">เลือกชั้น</option>' + (grades || []).map(function(g){ return '<option value="'+g+'">'+g+'</option>'; }).join('');
+        }).getAvailableGrades();
+        $('sgGrade').addEventListener('change', function(){
+          students = [];
+          lastLoadKey = '';
+          $('sgCount').textContent = 'ยังไม่ได้โหลดรายชื่อ';
+          $('sgRows').innerHTML = '<tr><td colspan="9" class="growth-muted">เลือกห้อง แล้วระบบจะโหลดรายชื่ออัตโนมัติ</td></tr>';
+          $('sgSaveBtn').disabled = true;
+          $('sgClass').innerHTML = '<option value="">กำลังโหลด...</option>';
+          google.script.run.withSuccessHandler(function(classes){
+            $('sgClass').innerHTML = '<option value="">เลือกห้อง</option>' + (classes || []).map(function(c){ return '<option value="'+c+'">'+c+'</option>'; }).join('');
+          }).getAvailableClasses($('sgGrade').value);
+        });
+        $('sgClass').addEventListener('change', autoLoadStudentsIfReady);
+      }
+      function getLoadKey(){
+        return [$('sgGrade').value, $('sgClass').value, $('sgYear').value, $('sgMonth').value, $('sgRound').value].join('|');
+      }
+      function autoLoadStudentsIfReady(){
+        if (!$('sgGrade').value || !$('sgClass').value || isLoading) return;
+        var key = getLoadKey();
+        if (key === lastLoadKey) return;
+        loadStudents();
+      }
+      function calc(row){
+        var w = Number(row.querySelector('.sg-w').value || 0);
+        var h = Number(row.querySelector('.sg-h').value || 0);
+        var bmi = '';
+        if (w > 0 && h > 0) bmi = Math.round((w / Math.pow(h/100, 2)) * 100) / 100;
+        row.querySelector('.sg-bmi').textContent = bmi || '-';
+      }
+      function render(){
+        var body = $('sgRows');
+        if (!students.length) {
+          body.innerHTML = '<tr><td colspan="9" class="growth-muted">ไม่พบนักเรียนในชั้น/ห้องนี้</td></tr>';
+          $('sgSaveBtn').disabled = true; return;
+        }
+        body.innerHTML = students.map(function(s, idx){
+          return '<tr data-id="'+s.student_id+'">'+
+            '<td>'+(idx+1)+'</td><td>'+s.student_id+'</td><td class="name">'+(s.student_name||'')+'</td><td>'+(s.gender||'')+'</td>'+
+            '<td><input class="sg-w" type="number" min="0" step="0.1" value="'+(s.weight_kg||'')+'"></td>'+
+            '<td><input class="sg-h" type="number" min="0" step="0.1" value="'+(s.height_cm||'')+'"></td>'+
+            '<td class="sg-bmi">'+(s.bmi||'-')+'</td><td><span class="growth-status">'+(s.nutrition_status||'รอบันทึก')+'</span></td>'+
+            '<td><input class="sg-note" value="'+(s.note||'').replace(/"/g,'&quot;')+'"></td></tr>';
+        }).join('');
+        Array.prototype.forEach.call(document.querySelectorAll('#sgRows tr'), function(row){
+          row.querySelector('.sg-w').addEventListener('input', function(){ calc(row); });
+          row.querySelector('.sg-h').addEventListener('input', function(){ calc(row); });
+          calc(row);
+        });
+        $('sgSaveBtn').disabled = false;
+      }
+      function loadStudents(){
+        if (!$('sgGrade').value || !$('sgClass').value) {
+          alertBox('กรุณาเลือกระดับชั้นและห้อง', false);
+          return;
+        }
+        isLoading = true;
+        lastLoadKey = getLoadKey();
+        alertBox('', true); busy(true, 'กำลังโหลดรายชื่อนักเรียนและข้อมูลที่เคยบันทึก...');
+        google.script.run.withSuccessHandler(function(res){
+          if (!res || !res.success) { alertBox((res && res.message) || 'โหลดรายชื่อไม่สำเร็จ', false); students = []; render(); isLoading = false; busy(false); return; }
+          students = res.students || []; $('sgCount').textContent = 'นักเรียน ' + students.length + ' คน';
+          render(); isLoading = false; busy(false); alertBox('โหลดรายชื่อเรียบร้อยแล้ว', true);
+        }).withFailureHandler(function(err){ alertBox(err.message || String(err), false); isLoading = false; busy(false); })
+        .getStudentGrowthStudents($('sgGrade').value, $('sgClass').value, $('sgYear').value, $('sgMonth').value, $('sgRound').value);
+      }
+      function save(){
+        var rows = Array.prototype.map.call(document.querySelectorAll('#sgRows tr[data-id]'), function(tr){
+          var s = students.find(function(x){ return x.student_id === tr.dataset.id; }) || {};
+          return Object.assign({}, s, {
+            weight_kg: tr.querySelector('.sg-w').value,
+            height_cm: tr.querySelector('.sg-h').value,
+            note: tr.querySelector('.sg-note').value
+          });
+        });
+        busy(true, 'กำลังบันทึกข้อมูลทั้งห้อง...');
+        alertBox('กำลังบันทึกข้อมูล โปรดรอสักครู่', true, true);
+        google.script.run.withSuccessHandler(function(res){
+          if (res && res.success) { alertBox(res.message + ' (' + res.saved + ' รายการ)', true); loadStudents(); }
+          else { alertBox((res && res.message) || 'บันทึกไม่สำเร็จ', false); busy(false); }
+        }).withFailureHandler(function(err){ alertBox(err.message || String(err), false); busy(false); })
+        .saveStudentGrowthBatch({ academicYear:$('sgYear').value, month:$('sgMonth').value, roundNo:$('sgRound').value, measureDate:$('sgDate').value, grade:$('sgGrade').value, classNo:$('sgClass').value, records: rows });
+      }
+      setTimeout(init, 0);
+      return { loadStudents: loadStudents, save: save };
+    })();
+  </script>
+</div>

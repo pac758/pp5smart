@@ -1,0 +1,217 @@
+<style>
+  .pp5r-page { max-width: 1180px; margin: 0 auto; color: #0f172a; }
+  .pp5r-header { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; margin-bottom:16px; }
+  .pp5r-title { margin:0; font-size:1.35rem; font-weight:800; }
+  .pp5r-subtitle { margin:4px 0 0; color:#64748b; font-size:.88rem; }
+  .pp5r-panel { background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:16px; margin-bottom:14px; }
+  .pp5r-controls { display:grid; grid-template-columns:repeat(4, minmax(140px, 1fr)); gap:12px; align-items:end; }
+  .pp5r-label { display:block; font-size:.78rem; font-weight:700; color:#475569; margin-bottom:5px; }
+  .pp5r-input, .pp5r-select { width:100%; border:1px solid #cbd5e1; border-radius:6px; padding:8px 10px; font-size:.92rem; background:#fff; }
+  .pp5r-btn { border:0; border-radius:6px; padding:9px 12px; font-weight:700; background:#2563eb; color:#fff; cursor:pointer; }
+  .pp5r-btn.secondary { background:#0f766e; }
+  .pp5r-btn:disabled { opacity:.6; cursor:not-allowed; }
+  .pp5r-score { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .pp5r-badge { display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:5px 10px; font-weight:800; font-size:.82rem; }
+  .pp5r-badge.ok { background:#dcfce7; color:#166534; }
+  .pp5r-badge.warn { background:#fef3c7; color:#92400e; }
+  .pp5r-badge.bad { background:#fee2e2; color:#991b1b; }
+  .pp5r-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px; }
+  .pp5r-metric { border:1px solid #e2e8f0; border-radius:8px; padding:12px; background:#f8fafc; }
+  .pp5r-metric .num { font-size:1.35rem; font-weight:800; }
+  .pp5r-metric .label { color:#64748b; font-size:.82rem; }
+  .pp5r-list { margin:8px 0 0; padding-left:20px; }
+  .pp5r-list li { margin:5px 0; line-height:1.45; }
+  .pp5r-section-title { font-size:.95rem; font-weight:800; margin:0 0 8px; display:flex; align-items:center; gap:7px; }
+  .pp5r-table { width:100%; border-collapse:collapse; font-size:.88rem; }
+  .pp5r-table th, .pp5r-table td { border-bottom:1px solid #e2e8f0; padding:8px; text-align:left; vertical-align:top; }
+  .pp5r-table th { background:#f8fafc; color:#475569; font-size:.78rem; }
+  .pp5r-muted { color:#64748b; }
+  .pp5r-empty { color:#64748b; text-align:center; padding:20px; }
+  @media (max-width: 820px) {
+    .pp5r-header { flex-direction:column; }
+    .pp5r-controls, .pp5r-grid { grid-template-columns:1fr; }
+  }
+</style>
+
+<div class="pp5r-page animate-fade-in">
+  <div class="pp5r-header">
+    <div>
+      <h2 class="pp5r-title"><i class="bi bi-clipboard2-check"></i> ตรวจความพร้อม ปพ.5</h2>
+      <div class="pp5r-subtitle">ตรวจข้อมูลรายห้องก่อนพิมพ์เอกสาร ปพ.5 และรายงานปลายปี</div>
+    </div>
+    <button class="pp5r-btn secondary" id="pp5rMatrixBtn" type="button"><i class="bi bi-grid-3x3-gap"></i> ภาพรวมทุกห้อง</button>
+  </div>
+
+  <div class="pp5r-panel">
+    <div class="pp5r-controls">
+      <div>
+        <label class="pp5r-label" for="pp5rYear">ปีการศึกษา</label>
+        <input class="pp5r-input" id="pp5rYear" inputmode="numeric" pattern="\d{4}">
+      </div>
+      <div>
+        <label class="pp5r-label" for="pp5rGrade">ชั้น</label>
+        <select class="pp5r-select" id="pp5rGrade"></select>
+      </div>
+      <div>
+        <label class="pp5r-label" for="pp5rClass">ห้อง</label>
+        <select class="pp5r-select" id="pp5rClass"></select>
+      </div>
+      <button class="pp5r-btn" id="pp5rCheckBtn" type="button"><i class="bi bi-search"></i> ตรวจรายห้อง</button>
+    </div>
+  </div>
+
+  <div id="pp5rOutput" class="pp5r-panel">
+    <div class="pp5r-empty">เลือกระดับชั้นและห้องเพื่อเริ่มตรวจความพร้อม</div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var fallbackGrades = ['อ.1','อ.2','อ.3','ป.1','ป.2','ป.3','ป.4','ป.5','ป.6','ม.1','ม.2','ม.3'];
+  var fallbackClasses = ['1','2','3','4','5','6'];
+  var yearEl = document.getElementById('pp5rYear');
+  var gradeEl = document.getElementById('pp5rGrade');
+  var classEl = document.getElementById('pp5rClass');
+  var outputEl = document.getElementById('pp5rOutput');
+  var checkBtn = document.getElementById('pp5rCheckBtn');
+  var matrixBtn = document.getElementById('pp5rMatrixBtn');
+
+  function currentAcademicYear() {
+    var d = new Date();
+    var be = d.getFullYear() + 543;
+    return d.getMonth() + 1 >= 5 ? be : be - 1;
+  }
+
+  function esc(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function(ch) {
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]);
+    });
+  }
+
+  function setBusy(btn, busy) {
+    btn.disabled = busy;
+    btn.dataset.oldText = btn.dataset.oldText || btn.innerHTML;
+    btn.innerHTML = busy ? '<span class="spinner-border spinner-border-sm"></span> กำลังตรวจ...' : btn.dataset.oldText;
+  }
+
+  function fillSelect(el, values) {
+    el.innerHTML = values.map(function(v) { return '<option value="' + esc(v) + '">' + esc(v) + '</option>'; }).join('');
+  }
+
+  function runServer(name, args) {
+    args = args || [];
+    return new Promise(function(resolve, reject) {
+      if (typeof google === 'undefined' || !google.script || !google.script.run) {
+        reject(new Error('ไม่สามารถเชื่อมต่อ Apps Script ได้'));
+        return;
+      }
+      var runner = google.script.run.withSuccessHandler(resolve).withFailureHandler(reject);
+      runner[name].apply(runner, args);
+    });
+  }
+
+  function init() {
+    yearEl.value = currentAcademicYear();
+    fillSelect(gradeEl, fallbackGrades);
+    fillSelect(classEl, fallbackClasses);
+    runServer('getAvailableGrades').then(function(grades) {
+      if (Array.isArray(grades) && grades.length) fillSelect(gradeEl, grades);
+      loadClasses();
+    }).catch(loadClasses);
+  }
+
+  function loadClasses() {
+    var grade = gradeEl.value;
+    runServer('getAvailableClasses', [grade]).then(function(classes) {
+      if (Array.isArray(classes) && classes.length) fillSelect(classEl, classes);
+    }).catch(function() {
+      fillSelect(classEl, fallbackClasses);
+    });
+  }
+
+  function renderIssueList(title, items, type) {
+    if (!items || !items.length) return '';
+    return '<div class="pp5r-panel">' +
+      '<h3 class="pp5r-section-title"><span class="pp5r-badge ' + type + '">' + esc(title) + '</span></h3>' +
+      '<ul class="pp5r-list">' + items.map(function(item) { return '<li>' + esc(item) + '</li>'; }).join('') + '</ul>' +
+      '</div>';
+  }
+
+  function renderSummary(res) {
+    if (!res || !res.success) {
+      outputEl.innerHTML = '<div class="pp5r-badge bad">ตรวจไม่สำเร็จ</div><p class="pp5r-muted mt-2">' + esc(res && res.message || 'ไม่ทราบสาเหตุ') + '</p>';
+      return;
+    }
+
+    var statusClass = res.ready ? 'ok' : 'bad';
+    var statusText = res.ready ? 'พร้อม' : 'ต้องแก้ไขก่อน';
+    var sections = res.sections || {};
+    var assessmentRows = Object.keys(sections.assessments || {}).map(function(key) {
+      var item = sections.assessments[key] || {};
+      return '<tr><td>' + esc(key) + '</td><td>' + (item.ok ? '<span class="pp5r-badge ok">ครบ</span>' : '<span class="pp5r-badge warn">ยังไม่ครบ</span>') + '</td><td>' + esc((item.missingStudents || []).length) + '</td></tr>';
+    }).join('');
+
+    outputEl.innerHTML =
+      '<div class="pp5r-score">' +
+        '<span class="pp5r-badge ' + statusClass + '">' + statusText + '</span>' +
+        '<strong>' + esc(res.grade) + '/' + esc(res.classNo) + '</strong>' +
+        '<span class="pp5r-muted">ปีการศึกษา ' + esc(res.academicYear) + '</span>' +
+        '<span class="pp5r-muted">คะแนนความพร้อม ' + esc(res.score) + '/100</span>' +
+      '</div>' +
+      '<div class="pp5r-grid mt-3">' +
+        '<div class="pp5r-metric"><div class="num">' + esc(res.totals && res.totals.students || 0) + '</div><div class="label">นักเรียน</div></div>' +
+        '<div class="pp5r-metric"><div class="num">' + esc(res.totals && res.totals.subjects || 0) + '</div><div class="label">รายวิชา</div></div>' +
+        '<div class="pp5r-metric"><div class="num">' + esc((res.blockingIssues || []).length) + '</div><div class="label">ประเด็นต้องแก้</div></div>' +
+      '</div>' +
+      renderIssueList('ต้องแก้ไข', res.blockingIssues, 'bad') +
+      renderIssueList('ควรตรวจเพิ่ม', res.warnings, 'warn') +
+      '<div class="pp5r-panel">' +
+        '<h3 class="pp5r-section-title"><i class="bi bi-check2-square"></i> ผลประเมินรายหมวด</h3>' +
+        '<table class="pp5r-table"><thead><tr><th>หมวด</th><th>สถานะ</th><th>ขาดกี่คน</th></tr></thead><tbody>' +
+        (assessmentRows || '<tr><td colspan="3" class="pp5r-muted">ไม่มีข้อมูลหมวดประเมิน</td></tr>') +
+        '</tbody></table>' +
+      '</div>';
+  }
+
+  function renderMatrix(res) {
+    if (!res || !res.success) {
+      outputEl.innerHTML = '<div class="pp5r-badge bad">ตรวจภาพรวมไม่สำเร็จ</div><p class="pp5r-muted mt-2">' + esc(res && res.message || 'ไม่ทราบสาเหตุ') + '</p>';
+      return;
+    }
+    var rows = (res.classes || []).map(function(row) {
+      return '<tr>' +
+        '<td>' + esc(row.grade) + '</td>' +
+        '<td>' + esc(row.classNo) + '</td>' +
+        '<td>' + (row.ready ? '<span class="pp5r-badge ok">พร้อม</span>' : '<span class="pp5r-badge bad">ต้องแก้</span>') + '</td>' +
+        '<td>' + esc(row.score) + '</td>' +
+        '<td>' + esc(row.blockers) + '</td>' +
+        '<td>' + esc(row.warnings) + '</td>' +
+        '<td>' + esc(row.summary) + '</td>' +
+      '</tr>';
+    }).join('');
+    outputEl.innerHTML =
+      '<h3 class="pp5r-section-title"><i class="bi bi-grid-3x3-gap"></i> ภาพรวมทุกห้อง ปีการศึกษา ' + esc(res.academicYear) + '</h3>' +
+      '<table class="pp5r-table"><thead><tr><th>ชั้น</th><th>ห้อง</th><th>สถานะ</th><th>คะแนน</th><th>ต้องแก้</th><th>ควรตรวจ</th><th>สรุป</th></tr></thead><tbody>' +
+      (rows || '<tr><td colspan="7" class="pp5r-empty">ไม่พบข้อมูลห้องเรียน</td></tr>') +
+      '</tbody></table>';
+  }
+
+  gradeEl.addEventListener('change', loadClasses);
+  checkBtn.addEventListener('click', function() {
+    setBusy(checkBtn, true);
+    runServer('getPp5ReadinessSummary', [gradeEl.value, classEl.value, yearEl.value])
+      .then(renderSummary)
+      .catch(function(err) { renderSummary({ success:false, message: err.message || err }); })
+      .finally(function() { setBusy(checkBtn, false); });
+  });
+  matrixBtn.addEventListener('click', function() {
+    setBusy(matrixBtn, true);
+    runServer('getPp5ReadinessMatrix', [yearEl.value])
+      .then(renderMatrix)
+      .catch(function(err) { renderMatrix({ success:false, message: err.message || err }); })
+      .finally(function() { setBusy(matrixBtn, false); });
+  });
+
+  init();
+})();
+</script>

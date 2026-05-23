@@ -497,6 +497,7 @@ function S_getSemester() {
 var S_YEARLY_SHEETS = [
   'SCORES_WAREHOUSE',
   'การประเมินอ่านคิดเขียน',
+  'ประเมินอ่านคิดเขียน5เกณฑ์',
   'การประเมินคุณลักษณะ',
   'การประเมินกิจกรรมพัฒนาผู้เรียน',
   'การประเมินสมรรถนะ',
@@ -505,7 +506,7 @@ var S_YEARLY_SHEETS = [
 ];
 
 /** ชีตที่ใช้ร่วมกันทุกปี — จะถูก snapshot เป็น ชื่อ_ปี เมื่อเปลี่ยนปีการศึกษา */
-var S_SHARED_SHEETS = ['Students', 'รายวิชา', 'HomeroomTeachers'];
+var S_SHARED_SHEETS = ['Students', 'รายวิชา', 'HomeroomTeachers', 'StudentGrowthRecords', 'GrowthCriteria'];
 
 /**
  * ดึง Sheet object ของชีตที่ใช้ร่วม (Students/รายวิชา/HomeroomTeachers)

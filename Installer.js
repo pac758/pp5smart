@@ -18,7 +18,7 @@ function diagnoseSheetsStatus() {
   var year = '';
   try { year = S_getAcademicYear(); } catch(_) {}
 
-  var permanent = ['global_settings','Users','Students','รายวิชา','Holidays','HomeroomTeachers'];
+var permanent = ['global_settings','Users','Students','รายวิชา','Holidays','HomeroomTeachers','StudentGrowthRecords','GrowthCriteria'];
   var yearlyBase = ['SCORES_WAREHOUSE','การประเมินอ่านคิดเขียน','การประเมินคุณลักษณะ','การประเมินกิจกรรมพัฒนาผู้เรียน','การประเมินสมรรถนะ','AttendanceLog','ความเห็นครู'];
   var otherExpected = ['สรุปการมาเรียน','สรุปวันมา','โปรไฟล์นักเรียน'];
 
@@ -153,6 +153,86 @@ function fixSpreadsheetId() {
     Logger.log('❌ เปิด Spreadsheet ไม่ได้: ' + e.message);
     Logger.log('กรุณาตรวจสอบ ID อีกครั้ง');
   }
+}
+
+/**
+ * � RESTORE: คืนสถานะนักเรียน ป.6 จาก 'จำหน่าย' กลับเป็น active
+ * รันจาก GAS Editor แล้วดู Execution log
+ */
+function restoreGraduatedP6() {
+  var ss = SS();
+  var sheet = ss.getSheetByName('Students');
+  if (!sheet) { Logger.log('❌ ไม่พบชีต Students'); return; }
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var gradeIdx = headers.indexOf('grade');
+  var statusIdx = headers.indexOf('status');
+  if (gradeIdx < 0 || statusIdx < 0) { Logger.log('❌ ไม่พบ column grade หรือ status'); return; }
+  var restored = 0;
+  for (var r = 1; r < data.length; r++) {
+    var grade = String(data[r][gradeIdx] || '').trim();
+    var status = String(data[r][statusIdx] || '').trim();
+    if (grade === 'ป.6' && status === 'จำหน่าย') {
+      sheet.getRange(r + 1, statusIdx + 1).setValue('');
+      restored++;
+      Logger.log('✅ คืนสถานะ: แถว ' + (r+1) + ' ' + data[r][3] + ' ' + data[r][4] + ' (ป.6)');
+    }
+  }
+  // ล้าง cache
+  try { CacheService.getScriptCache().removeAll(['fast_student_stats_v1','dashboard_summary_v5','dashboard_summary_v3','system_settings_v1']); } catch(_e){}
+  Logger.log('=== คืนสถานะนักเรียน ป.6 เสร็จ: ' + restored + ' คน ===');
+}
+
+/**
+ * �🔍 DEBUG: ตรวจสอบ Students sheet — รันจาก GAS Editor แล้วดู Execution log
+ */
+function debugStudentsSheet() {
+  var ssId = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
+  Logger.log('SPREADSHEET_ID: ' + ssId);
+  if (!ssId) { Logger.log('❌ ไม่มี SPREADSHEET_ID'); return; }
+  var ss = SpreadsheetApp.openById(ssId);
+  Logger.log('Spreadsheet name: ' + ss.getName());
+  var sheet = ss.getSheetByName('Students');
+  if (!sheet) { Logger.log('❌ ไม่พบชีต Students'); return; }
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  Logger.log('Students sheet: ' + lastRow + ' rows, ' + lastCol + ' cols');
+  if (lastRow < 1) { Logger.log('❌ ชีตว่าง'); return; }
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  Logger.log('Headers: ' + JSON.stringify(headers));
+  var gradeIdx = headers.indexOf('grade');
+  if (gradeIdx < 0) gradeIdx = headers.indexOf('ชั้น');
+  if (gradeIdx < 0) gradeIdx = headers.indexOf('ชั้นเรียน');
+  if (gradeIdx < 0) gradeIdx = headers.indexOf('ระดับชั้น');
+  Logger.log('grade column index: ' + gradeIdx);
+  var statusIdx = headers.indexOf('status');
+  if (statusIdx < 0) statusIdx = headers.indexOf('สถานะ');
+  Logger.log('status column index: ' + statusIdx);
+  if (lastRow < 2) { Logger.log('❌ ไม่มีข้อมูลนักเรียน (มีแค่ header)'); return; }
+  // นับจำนวนนักเรียนแยกชั้น + สถานะ
+  var data = sheet.getDataRange().getValues();
+  var gradeCounts = {};
+  var statusCounts = {};
+  var p6Students = [];
+  for (var r = 1; r < data.length; r++) {
+    var g = gradeIdx >= 0 ? String(data[r][gradeIdx] || '').trim() : '(ไม่มี)';
+    var s = statusIdx >= 0 ? String(data[r][statusIdx] || '').trim() : '(ไม่มี)';
+    if (!g) g = '(ว่าง)';
+    if (!s) s = '(ว่าง)';
+    gradeCounts[g] = (gradeCounts[g] || 0) + 1;
+    statusCounts[s] = (statusCounts[s] || 0) + 1;
+    if (g === 'ป.6') p6Students.push({ row: r+1, status: s, name: String(data[r][2]||'') + ' ' + String(data[r][3]||'') });
+  }
+  Logger.log('=== จำนวนนักเรียนแยกชั้น ===');
+  Logger.log(JSON.stringify(gradeCounts));
+  Logger.log('=== จำนวนนักเรียนแยกสถานะ ===');
+  Logger.log(JSON.stringify(statusCounts));
+  Logger.log('=== นักเรียน ป.6 (' + p6Students.length + ' คน) ===');
+  p6Students.slice(0, 5).forEach(function(s) { Logger.log('  แถว ' + s.row + ': ' + s.name + ' (status: ' + s.status + ')'); });
+  // ตรวจ settings
+  try { S_clearSettingsCache(); } catch(_e){}
+  var year = S_getAcademicYear();
+  Logger.log('ปีการศึกษา (จาก settings): ' + year);
 }
 
 /**
@@ -381,7 +461,9 @@ const PERMANENT_SHEETS = [
   'Students',
   'รายวิชา',
   'Holidays',
-  'HomeroomTeachers'
+  'HomeroomTeachers',
+  'StudentGrowthRecords',
+  'GrowthCriteria'
 ];
 // ชีตรายปี — จะสร้างด้วยชื่อ baseName_ปี (Plan B)
 // S_YEARLY_SHEETS อยู่ใน settings_unified.js
@@ -700,6 +782,8 @@ function setupSheetHeaders_(sheet, sheetName, formData) {
     'รายวิชา': [['ชั้น','รหัสวิชา','ชื่อวิชา','ชั่วโมง/ปี','ประเภทวิชา','ครูผู้สอน','คะแนนระหว่างปี','คะแนนปลายปี']],
     'Holidays': [['date','description','type']],
     'global_settings': [['key','value','updatedAt']],
+    'StudentGrowthRecords': [['record_id','academic_year','round_id','month','round_no','measure_date','student_id','student_name','gender','birthdate','age_years','grade','class_no','weight_kg','height_cm','bmi','nutrition_status','height_status','weight_height_status','recorder','note','created_at','updated_at']],
+    'GrowthCriteria': [['type','status','min_value','max_value','label','sort_order','active','note']],
     'SCORES_WAREHOUSE': [['student_id','grade','class_no','subject_code','subject_name','subject_type','hours','term1_total','term2_total','average','final_grade','sheet_name','academic_year','updated_at']],
     'HomeroomTeachers': [['grade','classNo','teacherName','ครูประจำชั้น 2']],
     'การประเมินอ่านคิดเขียน': [['รหัสนักเรียน','ชื่อ-นามสกุล','ชั้น','ห้อง','ภาษาไทย','คณิตศาสตร์','วิทยาศาสตร์','สังคมศึกษา','สุขศึกษา','ศิลปะ','การงาน','ภาษาอังกฤษ','สรุปผลการประเมิน','วันที่บันทึก','ผู้บันทึก']],

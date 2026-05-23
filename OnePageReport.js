@@ -108,14 +108,17 @@ function _opr_merge(tableStart, row, col, rs, cs) {
  * @param {Array<string>} studentIds - รายการ student ID
  * @returns {Array<{id:string, url:string, error:string}>}
  */
-function generateOnePageReportBatch(studentIds) {
+function generateOnePageReportBatch(studentIds, termArg, optionsMap) {
   var cache = _opr_preloadData();
-  var term = (arguments.length >= 2 && arguments[1] !== undefined && arguments[1] !== null) ? String(arguments[1]) : 'both';
+  var term = (termArg !== undefined && termArg !== null) ? String(termArg) : 'both';
+  if (!optionsMap) optionsMap = {};
   var results = [];
   for (var bi = 0; bi < studentIds.length; bi++) {
     try {
-      var url = _opr_generateSingle(studentIds[bi], cache, term);
-      results.push({id: studentIds[bi], url: url, error: ''});
+      var sid = studentIds[bi];
+      var opts = optionsMap[sid] || optionsMap['_default'] || {};
+      var url = _opr_generateSingle(sid, cache, term, opts);
+      results.push({id: sid, url: url, error: ''});
     } catch (e) {
       results.push({id: studentIds[bi], url: '', error: e.message});
     }
@@ -278,8 +281,9 @@ function _opr_getWarehouseForClass_(grade, classNo, cache) {
 /**
  * สร้าง PDF สำหรับนักเรียน 1 คน (ใช้ cache จาก preload)
  */
-function _opr_generateSingle(studentId, cache) {
-  var term = (arguments.length >= 3 && arguments[2] !== undefined && arguments[2] !== null) ? String(arguments[2]).trim() : 'both';
+function _opr_generateSingle(studentId, cache, termParam, options) {
+  var term = (termParam !== undefined && termParam !== null) ? String(termParam).trim() : 'both';
+  if (!options) options = {};
   if (term !== '1' && term !== '2' && term !== 'both') term = 'both';
   var student = getStudentInfo_(studentId);
   if (!student) throw new Error('ไม่พบข้อมูลนักเรียน');
@@ -493,8 +497,10 @@ function _opr_generateSingle(studentId, cache) {
     sumTable.setBorderColor('#000000');
     var sumRow = sumTable.appendTableRow();
     var sumText = 'ผลการเรียนเฉลี่ย     ' + gpa.gpa.toFixed(2) +
-                  '     คะแนนเฉลี่ยทุกวิชา     ' + avgAll.toFixed(2) +
-                  '     ได้ลำดับที่     ' + gpa.classRank;
+                  '     คะแนนเฉลี่ยทุกวิชา     ' + avgAll.toFixed(2);
+    if (options.showRank !== false) {
+      sumText += '     ได้ลำดับที่     ' + gpa.classRank;
+    }
     var sumCell = sumRow.appendTableCell(sumText);
     sumCell.setWidth(517);
     sumCell.setPaddingTop(1).setPaddingBottom(1).setPaddingLeft(4).setPaddingRight(4);
@@ -595,14 +601,19 @@ function _opr_generateSingle(studentId, cache) {
     _opr_cell(bh2.appendTableCell(''), 182, 11, false, HDR_BG);
 
     // Data row
-    // วันอนุมัติ = 31 มีนาคม ของปีการศึกษานั้น (ปี พ.ศ. + 1 เพราะจบปลายปี)
+    // วันอนุมัติ: ใช้จาก options ถ้ามี ไม่งั้นใช้ 31 มีนาคม (ปี พ.ศ. + 1)
     var yearBE = parseInt(sd.year) || (new Date().getFullYear() + 543);
-    var dateStr = '31 มีนาคม ' + (yearBE + 1);
+    var dateStr = (options.approvalDate && options.approvalDate.length > 0)
+      ? options.approvalDate
+      : '31 มีนาคม ' + (yearBE + 1);
+
+    // สถานะ: ใช้จาก options ถ้ามี ไม่งั้น default เลื่อนชั้น (เมื่อ term=both)
+    var isPromoted = (options.promotionStatus === 'retain') ? false : true;
 
     var bd = BT.appendTableRow();
 
-    // Cell 1: เลื่อนชั้น/จบ → ✓
-    var bc1 = bd.appendTableCell(term === 'both' ? '✓' : '');
+    // Cell 1: เลื่อนชั้น/จบ
+    var bc1 = bd.appendTableCell((term === 'both' && isPromoted) ? '✓' : '');
     bc1.setWidth(75);
     bc1.setVerticalAlignment(DocumentApp.VerticalAlignment.CENTER);
     bc1.setPaddingTop(2).setPaddingBottom(2).setPaddingLeft(4).setPaddingRight(4);
@@ -611,11 +622,15 @@ function _opr_generateSingle(studentId, cache) {
     bp1.setSpacingAfter(0).setSpacingBefore(0);
     bp1.editAsText().setFontSize(14).setFontFamily(F).setBold(true);
 
-    // Cell 2: ซ้ำชั้น → ว่าง
-    var bc1b = bd.appendTableCell('');
+    // Cell 2: ซ้ำชั้น
+    var bc1b = bd.appendTableCell((term === 'both' && !isPromoted) ? '✓' : '');
     bc1b.setWidth(75);
     bc1b.setVerticalAlignment(DocumentApp.VerticalAlignment.CENTER);
     bc1b.setPaddingTop(2).setPaddingBottom(2).setPaddingLeft(4).setPaddingRight(4);
+    var bp1b = bc1b.getChild(0).asParagraph();
+    bp1b.setAlignment(CENTER);
+    bp1b.setSpacingAfter(0).setSpacingBefore(0);
+    bp1b.editAsText().setFontSize(14).setFontFamily(F).setBold(true);
 
     // Cell 3: วันที่
     var bc2 = bd.appendTableCell(dateStr);
@@ -716,12 +731,12 @@ function _opr_generateSingle(studentId, cache) {
 /**
  * สร้าง PDF สำหรับ 1 คน (เรียกจาก UI ทีละคน — backward compatible)
  */
-function generateOnePageReportPdf(studentId) {
+function generateOnePageReportPdf(studentId, termArg, options) {
   try {
     var cache = _opr_preloadData();
-    var term = (arguments.length >= 2 && arguments[1] !== undefined && arguments[1] !== null) ? String(arguments[1]).trim() : 'both';
+    var term = (termArg !== undefined && termArg !== null) ? String(termArg).trim() : 'both';
     if (term !== '1' && term !== '2' && term !== 'both') term = 'both';
-    return _opr_generateSingle(studentId, cache, term);
+    return _opr_generateSingle(studentId, cache, term, options || {});
   } catch (e) {
     Logger.log('OnePageReport Error: ' + e.message + '\n' + e.stack);
     throw new Error('สร้างรายงานไม่สำเร็จ: ' + e.message);

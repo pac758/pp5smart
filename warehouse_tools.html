@@ -71,6 +71,12 @@
     </div>
   </form>
 
+  <div class="mt-3">
+    <button type="button" class="btn btn-outline-primary" onclick="checkWarehouseHealth()">
+      <i class="fas fa-stethoscope"></i> ตรวจสุขภาพคลังคะแนน
+    </button>
+  </div>
+
   <div id="warehouseResult" class="mt-4"></div>
 </div>
 
@@ -95,6 +101,485 @@
 </style>
 
 <script>
+function whEscapeHtml(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function whSampleList(title, count, rows) {
+  rows = rows || [];
+  if (!count) return '';
+  const items = rows.map(function(x) { return '<li>' + whEscapeHtml(x) + '</li>'; }).join('');
+  const more = count > rows.length ? '<li class="text-muted">...และอีก ' + (count - rows.length) + ' รายการ</li>' : '';
+  return '<div class="mt-2"><strong>' + whEscapeHtml(title) + ': ' + count + '</strong><ul class="mb-0">' + items + more + '</ul></div>';
+}
+
+function whSnapshotList(title, items) {
+  items = items || [];
+  if (!items.length) return '';
+  const rows = items.slice(0, 40).map(function(item) {
+    const status = !item.exists ? '<span class="badge bg-danger">ไม่พบต้นทาง</span>' :
+      item.alreadyExists ? '<span class="badge bg-secondary">มีแล้ว</span>' :
+      '<span class="badge bg-success">จะสร้าง</span>';
+    return '<li>' + status + ' ' + whEscapeHtml(item.source) + ' → ' + whEscapeHtml(item.target) + ' <span class="text-muted">(' + (item.rows || 0) + ' แถว)</span></li>';
+  }).join('');
+  const more = items.length > 40 ? '<li class="text-muted">...และอีก ' + (items.length - 40) + ' รายการ</li>' : '';
+  return '<div class="mt-3"><strong>' + whEscapeHtml(title) + '</strong><ul class="mb-0">' + rows + more + '</ul></div>';
+}
+
+function renderAcademicYearSnapshotPlan(res) {
+  const plan = res.plan || {};
+  const totals = plan.totals || {};
+  return `
+    <div class="alert alert-info">
+      <h5 class="mb-1"><i class="bi bi-layers"></i> แผน Snapshot ปีการศึกษา ${whEscapeHtml(res.targetYear)}</h5>
+      <div>ขั้นนี้เป็นการคัดลอกชีตเป็นชื่อ <code>_ปีการศึกษา</code> เท่านั้น ไม่เปลี่ยนปี ไม่เลื่อนชั้น ไม่ลบ และไม่ rename ชีตเดิม</div>
+      <hr>
+      <div><strong>จะสร้าง:</strong> ${totals.toCreate || 0} ชีต | <strong>มีอยู่แล้ว:</strong> ${totals.alreadyExists || 0} ชีต | <strong>ไม่พบต้นทาง:</strong> ${totals.missingSource || 0} ชีต</div>
+    </div>
+    <div class="border rounded p-3">
+      ${whSnapshotList('ชีตร่วม เช่น Students/รายวิชา', plan.sharedSheets)}
+      ${whSnapshotList('ชีตรายปี เช่น SCORES_WAREHOUSE/ประเมิน/AttendanceLog', plan.yearlySheets)}
+      ${whSnapshotList('ชีตคะแนนรายวิชา', plan.scoreSheets)}
+    </div>
+  `;
+}
+
+function previewAcademicYearSnapshotsUI() {
+  const year = document.getElementById('whYear').value;
+  const resultDiv = document.getElementById('warehouseResult');
+  resultDiv.innerHTML = '<div class="alert alert-info"><span class="spinner-border spinner-border-sm me-2"></span>กำลังสร้างแผน Snapshot...</div>';
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (!res || !res.success) {
+        resultDiv.innerHTML = '<div class="alert alert-danger"><strong>พรีวิวไม่สำเร็จ:</strong> ' + whEscapeHtml((res && res.message) || 'ไม่ทราบสาเหตุ') + '</div>';
+        return;
+      }
+      resultDiv.innerHTML = renderAcademicYearSnapshotPlan(res);
+    })
+    .withFailureHandler(function(error) {
+      resultDiv.innerHTML = '<div class="alert alert-danger"><strong>เกิดข้อผิดพลาด:</strong> ' + whEscapeHtml(error.message) + '</div>';
+    })
+    .previewAcademicYearSnapshots(year);
+}
+
+function createAcademicYearSnapshotsUI() {
+  const year = document.getElementById('whYear').value;
+  const labelYear = year || 'ปีการศึกษาปัจจุบัน';
+  if (!confirm('ยืนยันสร้าง Snapshot สำหรับ ' + labelYear + ' ?\n\nขั้นนี้จะคัดลอกชีตสำคัญเป็นชื่อ _ปีการศึกษา เท่านั้น\nไม่เปลี่ยนปี ไม่เลื่อนชั้น ไม่ลบข้อมูล และไม่ rename ชีตเดิม')) {
+    return;
+  }
+
+  const resultDiv = document.getElementById('warehouseResult');
+  resultDiv.innerHTML = '<div class="alert alert-info"><span class="spinner-border spinner-border-sm me-2"></span>กำลังสร้าง Snapshot ปีเก่า กรุณารอสักครู่...</div>';
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (!res || !res.success) {
+        const errs = res && res.errors && res.errors.length ? '<ul><li>' + res.errors.map(whEscapeHtml).join('</li><li>') + '</li></ul>' : '';
+        resultDiv.innerHTML = '<div class="alert alert-warning"><strong>สร้าง Snapshot ไม่ครบ:</strong> ' + whEscapeHtml((res && res.message) || 'ไม่ทราบสาเหตุ') + errs + '</div>';
+        return;
+      }
+      const created = whSampleList('สร้างแล้ว', res.createdCount, res.created);
+      const skipped = whSampleList('ข้าม', res.skippedCount, res.skipped);
+      resultDiv.innerHTML = '<div class="alert alert-success"><strong>' + whEscapeHtml(res.message) + '</strong><br>ขั้นนี้ยังไม่ได้เปลี่ยนปีหรือเลื่อนชั้น</div>' + created + skipped;
+    })
+    .withFailureHandler(function(error) {
+      resultDiv.innerHTML = '<div class="alert alert-danger"><strong>เกิดข้อผิดพลาด:</strong> ' + whEscapeHtml(error.message) + '</div>';
+    })
+    .createAcademicYearSnapshots(year);
+}
+
+function renderExternalArchivePlan(res) {
+  const candidates = res.candidates || [];
+  const rows = candidates.slice(0, 80).map(function(item) {
+    return '<tr>' +
+      '<td>' + whEscapeHtml(item.name) + '</td>' +
+      '<td class="text-end">' + (item.dataRows || 0) + '</td>' +
+      '<td class="text-end">' + (item.columns || 0) + '</td>' +
+    '</tr>';
+  }).join('');
+  const more = candidates.length > 80
+    ? '<div class="small text-muted mt-2">...และอีก ' + (candidates.length - 80) + ' ชีต</div>'
+    : '';
+  const archiveLink = res.archive && res.archive.url
+    ? '<a href="' + whEscapeHtml(res.archive.url) + '" target="_blank" rel="noopener">เปิดไฟล์คลัง</a>'
+    : '<span class="text-muted">ยังไม่มีไฟล์คลัง</span>';
+  const missing = whSampleList('ยังไม่มีในไฟล์คลัง', (res.missing || []).length, res.missing || []);
+  const mismatched = whSampleList('ขนาดไม่ตรง', (res.mismatched || []).length, res.mismatched || []);
+  const badge = res.readyToCleanup ? 'success' : (res.archiveAvailable ? 'warning' : 'info');
+
+  return `
+    <div class="alert alert-${badge}">
+      <h5 class="mb-1"><i class="bi bi-folder2-open"></i> ไฟล์คลังปีเก่า ${whEscapeHtml(res.targetYear)}</h5>
+      <div>${whEscapeHtml(res.message || '')}</div>
+      <hr>
+      <div><strong>ชีตในไฟล์หลัก:</strong> ${res.candidateCount || 0} ชีต | <strong>ตรวจผ่านในไฟล์คลัง:</strong> ${res.verifiedCount || 0} ชีต | <strong>สถานะ:</strong> ${res.readyToCleanup ? 'พร้อมล้างชีตปีเก่าออกจากไฟล์หลัก' : 'ยังไม่พร้อมล้าง'}</div>
+      <div class="mt-1"><strong>ไฟล์คลัง:</strong> ${archiveLink}</div>
+      ${res.isCurrentYear ? '<div class="mt-2 text-danger"><strong>คำเตือน:</strong> ปีนี้เป็นปีปัจจุบัน ไม่ควรส่งออกเป็นคลังเก่า</div>' : ''}
+      ${missing}
+      ${mismatched}
+    </div>
+    <div class="table-responsive border rounded">
+      <table class="table table-sm align-middle mb-0">
+        <thead class="table-light">
+          <tr><th>ชีตที่จะย้ายไปคลัง</th><th class="text-end">แถวข้อมูล</th><th class="text-end">คอลัมน์</th></tr>
+        </thead>
+        <tbody>${rows || '<tr><td colspan="3" class="text-muted">ยังไม่พบชีตปีนี้ในไฟล์หลัก</td></tr>'}</tbody>
+      </table>
+    </div>
+    ${more}
+  `;
+}
+
+function previewExternalArchiveUI() {
+  const year = document.getElementById('whYear').value;
+  const resultDiv = document.getElementById('warehouseResult');
+  resultDiv.innerHTML = '<div class="alert alert-info"><span class="spinner-border spinner-border-sm me-2"></span>กำลังตรวจไฟล์คลังปีเก่า...</div>';
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (!res || !res.success) {
+        resultDiv.innerHTML = '<div class="alert alert-danger"><strong>พรีวิวไฟล์คลังไม่สำเร็จ:</strong> ' + whEscapeHtml((res && res.message) || 'ไม่ทราบสาเหตุ') + '</div>';
+        return;
+      }
+      resultDiv.innerHTML = renderExternalArchivePlan(res);
+    })
+    .withFailureHandler(function(error) {
+      resultDiv.innerHTML = '<div class="alert alert-danger"><strong>เกิดข้อผิดพลาด:</strong> ' + whEscapeHtml(error.message) + '</div>';
+    })
+    .previewAcademicYearExternalArchive(year);
+}
+
+function createExternalArchiveUI() {
+  const year = document.getElementById('whYear').value;
+  if (!year) {
+    alert('กรุณาระบุปีการศึกษาเก่าที่ต้องการส่งออก เช่น 2568');
+    return;
+  }
+  if (!confirm('ยืนยันส่งออกชีตปี ' + year + ' ไปไฟล์คลังแยก?\n\nขั้นนี้จะคัดลอกชีต _' + year + ' ไป Spreadsheet แยกแบบ read-only/data-only\nยังไม่ลบชีตในไฟล์หลัก')) {
+    return;
+  }
+
+  const resultDiv = document.getElementById('warehouseResult');
+  resultDiv.innerHTML = '<div class="alert alert-info"><span class="spinner-border spinner-border-sm me-2"></span>กำลังส่งออกไปไฟล์คลังปีเก่า...</div>';
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (!res || !res.success) {
+        const errs = res && res.errors && res.errors.length ? whSampleList('ข้อผิดพลาด', res.errors.length, res.errors) : '';
+        resultDiv.innerHTML = '<div class="alert alert-warning"><strong>ส่งออกไฟล์คลังยังไม่สมบูรณ์:</strong> ' + whEscapeHtml((res && res.message) || 'ไม่ทราบสาเหตุ') + '</div>' + errs;
+        return;
+      }
+      const link = res.archiveUrl ? '<br><a href="' + whEscapeHtml(res.archiveUrl) + '" target="_blank" rel="noopener">เปิดไฟล์คลังปี ' + whEscapeHtml(res.targetYear) + '</a>' : '';
+      resultDiv.innerHTML = '<div class="alert alert-success"><strong>' + whEscapeHtml(res.message) + '</strong><br>สร้างใหม่ ' + (res.createdCount || 0) + ' ชีต, ข้าม ' + (res.skippedCount || 0) + ' ชีต, ตรวจผ่าน ' + (res.verifiedCount || 0) + ' ชีต' + link + '</div>' +
+        whSampleList('สร้างในไฟล์คลังแล้ว', res.createdCount, res.created) +
+        whSampleList('ข้าม', res.skippedCount, res.skipped);
+    })
+    .withFailureHandler(function(error) {
+      resultDiv.innerHTML = '<div class="alert alert-danger"><strong>เกิดข้อผิดพลาด:</strong> ' + whEscapeHtml(error.message) + '</div>';
+    })
+    .createAcademicYearExternalArchive(year);
+}
+
+function cleanupExternalArchiveUI() {
+  const year = document.getElementById('whYear').value;
+  if (!year) {
+    alert('กรุณาระบุปีการศึกษาเก่าที่ต้องการล้าง เช่น 2568');
+    return;
+  }
+  if (!confirm('ยืนยันล้างชีต _' + year + ' ออกจากไฟล์หลัก?\n\nระบบจะทำได้เฉพาะเมื่อไฟล์คลังปีเก่าตรวจครบแล้วเท่านั้น\nข้อมูลในไฟล์คลังจะยังอยู่เพื่อเปิดดูย้อนหลัง')) {
+    return;
+  }
+
+  const resultDiv = document.getElementById('warehouseResult');
+  resultDiv.innerHTML = '<div class="alert alert-info"><span class="spinner-border spinner-border-sm me-2"></span>กำลังล้างชีตปีเก่าจากไฟล์หลัก...</div>';
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (!res || !res.success) {
+        const missing = res && res.missing ? whSampleList('ยังขาดในไฟล์คลัง', res.missing.length, res.missing) : '';
+        const mismatched = res && res.mismatched ? whSampleList('ขนาดไม่ตรง', res.mismatched.length, res.mismatched) : '';
+        resultDiv.innerHTML = '<div class="alert alert-warning"><strong>ยังล้างไม่ได้:</strong> ' + whEscapeHtml((res && res.message) || 'ไม่ทราบสาเหตุ') + '</div>' + missing + mismatched;
+        return;
+      }
+      const link = res.archiveUrl ? '<br><a href="' + whEscapeHtml(res.archiveUrl) + '" target="_blank" rel="noopener">เปิดไฟล์คลัง</a>' : '';
+      resultDiv.innerHTML = '<div class="alert alert-success"><strong>' + whEscapeHtml(res.message) + '</strong>' + link + '</div>' +
+        whSampleList('ลบออกจากไฟล์หลักแล้ว', res.deletedCount, res.deleted);
+    })
+    .withFailureHandler(function(error) {
+      resultDiv.innerHTML = '<div class="alert alert-danger"><strong>เกิดข้อผิดพลาด:</strong> ' + whEscapeHtml(error.message) + '</div>';
+    })
+    .cleanupArchivedYearSheetsFromMain(year);
+}
+
+function restoreExternalArchiveUI() {
+  const year = document.getElementById('whYear').value;
+  if (!year) {
+    alert('กรุณาระบุปีการศึกษาเก่าที่ต้องการกู้คืน เช่น 2568');
+    return;
+  }
+  if (!confirm('ยืนยันกู้คืนชีตปี ' + year + ' จากไฟล์คลังกลับเข้าไฟล์หลัก?\n\nใช้เมื่อต้องกลับไปแก้ข้อมูลปีเก่า เช่น ประเมินสมรรถนะ 2568\nระบบจะไม่เขียนทับชีตที่มีอยู่แล้ว')) {
+    return;
+  }
+
+  const resultDiv = document.getElementById('warehouseResult');
+  resultDiv.innerHTML = '<div class="alert alert-info"><span class="spinner-border spinner-border-sm me-2"></span>กำลังกู้คืนชีตปีเก่าจากไฟล์คลัง...</div>';
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (!res || !res.success) {
+        const errs = res && res.errors ? whSampleList('ข้อผิดพลาด', res.errors.length, res.errors) : '';
+        resultDiv.innerHTML = '<div class="alert alert-warning"><strong>กู้คืนยังไม่สมบูรณ์:</strong> ' + whEscapeHtml((res && res.message) || 'ไม่ทราบสาเหตุ') + '</div>' + errs;
+        return;
+      }
+      const link = res.archiveUrl ? '<br><a href="' + whEscapeHtml(res.archiveUrl) + '" target="_blank" rel="noopener">เปิดไฟล์คลัง</a>' : '';
+      resultDiv.innerHTML = '<div class="alert alert-success"><strong>' + whEscapeHtml(res.message) + '</strong>' + link + '<br>หลังจากนี้ให้กด “สลับปีใช้งาน” เป็นปี ' + whEscapeHtml(res.targetYear) + ' แล้วไปทำรายการที่ค้างไว้</div>' +
+        whSampleList('กู้คืนเข้าไฟล์หลักแล้ว', res.restoredCount, res.restored) +
+        whSampleList('ข้าม', res.skippedCount, res.skipped);
+    })
+    .withFailureHandler(function(error) {
+      resultDiv.innerHTML = '<div class="alert alert-danger"><strong>เกิดข้อผิดพลาด:</strong> ' + whEscapeHtml(error.message) + '</div>';
+    })
+    .restoreAcademicYearFromExternalArchive(year);
+}
+
+function switchAcademicYearUI() {
+  const year = document.getElementById('whYear').value;
+  if (!year) {
+    alert('กรุณาระบุปีการศึกษาที่ต้องการใช้งาน เช่น 2568 หรือ 2569');
+    return;
+  }
+  if (!confirm('ยืนยันสลับปีการศึกษาใช้งานเป็น ' + year + ' ?\n\nคำสั่งนี้เปลี่ยนเฉพาะค่า ปีการศึกษา ในการตั้งค่า\nไม่เลื่อนชั้น ไม่ลบข้อมูล ไม่สร้างชีตใหม่')) {
+    return;
+  }
+
+  const resultDiv = document.getElementById('warehouseResult');
+  resultDiv.innerHTML = '<div class="alert alert-info"><span class="spinner-border spinner-border-sm me-2"></span>กำลังสลับปีการศึกษา...</div>';
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (!res || !res.success) {
+        resultDiv.innerHTML = '<div class="alert alert-danger"><strong>สลับปีไม่สำเร็จ:</strong> ' + whEscapeHtml((res && res.message) || 'ไม่ทราบสาเหตุ') + '</div>';
+        return;
+      }
+      resultDiv.innerHTML = '<div class="alert alert-success"><strong>' + whEscapeHtml(res.message) + '</strong><br>จากปี ' + whEscapeHtml(res.beforeYear || '-') + ' เป็นปี ' + whEscapeHtml(res.currentYear || '-') + '<br>แนะนำให้รีเฟรชหน้า แล้วเข้าเมนูที่ต้องทำงานต่อ</div>';
+    })
+    .withFailureHandler(function(error) {
+      resultDiv.innerHTML = '<div class="alert alert-danger"><strong>เกิดข้อผิดพลาด:</strong> ' + whEscapeHtml(error.message) + '</div>';
+    })
+    .switchAcademicYearOnly(year);
+}
+
+function renderCurrentYearWorkingPlan(res) {
+  const totals = res.totals || {};
+  const rows = (res.sheets || []).map(function(item) {
+    const status = item.targetExists ? '<span class="badge bg-secondary">มีแล้ว</span>' :
+      item.sourceExists ? '<span class="badge bg-primary">จะสร้าง</span>' :
+      '<span class="badge bg-danger">ไม่พบต้นทาง</span>';
+    const warn = item.missingAcademicYearColumn ? ' <span class="badge bg-warning text-dark">ไม่มีคอลัมน์ปี</span>' : '';
+    return '<tr>' +
+      '<td>' + status + warn + '</td>' +
+      '<td>' + whEscapeHtml(item.source || '-') + '</td>' +
+      '<td>' + whEscapeHtml(item.target) + '</td>' +
+      '<td class="text-end">' + (item.sourceRows || 0) + '</td>' +
+      '<td class="text-end">' + (item.explicitTargetYearRows || 0) + '</td>' +
+      '<td class="text-end">' + (item.blankYearRows || 0) + '</td>' +
+    '</tr>';
+  }).join('');
+
+  return `
+    <div class="alert alert-primary">
+      <h5 class="mb-1"><i class="bi bi-window-stack"></i> แผนเตรียมชีตปีปัจจุบัน ${whEscapeHtml(res.targetYear)}</h5>
+      <div>${whEscapeHtml(res.note || '')}</div>
+      <hr>
+      <div><strong>จะสร้าง:</strong> ${totals.toCreate || 0} ชีต | <strong>มีแล้ว:</strong> ${totals.alreadyExists || 0} ชีต | <strong>แถวปีนี้ที่จะคัดลอก:</strong> ${totals.explicitTargetYearRows || 0} แถว | <strong>แถวปีว่าง:</strong> ${totals.blankYearRows || 0} แถว</div>
+    </div>
+    <div class="table-responsive border rounded">
+      <table class="table table-sm align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>สถานะ</th>
+            <th>ต้นทาง</th>
+            <th>ปลายทาง</th>
+            <th class="text-end">แถวต้นทาง</th>
+            <th class="text-end">แถวปีนี้</th>
+            <th class="text-end">แถวปีว่าง</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function previewCurrentYearWorkingSheetsUI() {
+  const year = document.getElementById('whYear').value;
+  const resultDiv = document.getElementById('warehouseResult');
+  resultDiv.innerHTML = '<div class="alert alert-info"><span class="spinner-border spinner-border-sm me-2"></span>กำลังพรีวิวชีตปีปัจจุบัน...</div>';
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (!res || !res.success) {
+        resultDiv.innerHTML = '<div class="alert alert-danger"><strong>พรีวิวไม่สำเร็จ:</strong> ' + whEscapeHtml((res && res.message) || 'ไม่ทราบสาเหตุ') + '</div>';
+        return;
+      }
+      resultDiv.innerHTML = renderCurrentYearWorkingPlan(res);
+    })
+    .withFailureHandler(function(error) {
+      resultDiv.innerHTML = '<div class="alert alert-danger"><strong>เกิดข้อผิดพลาด:</strong> ' + whEscapeHtml(error.message) + '</div>';
+    })
+    .previewCurrentYearWorkingSheets(year);
+}
+
+function createCurrentYearWorkingSheetsUI() {
+  const year = document.getElementById('whYear').value;
+  const labelYear = year || 'ปีการศึกษาปัจจุบัน';
+  if (!confirm('ยืนยันสร้างชีตปีปัจจุบันสำหรับ ' + labelYear + ' ?\n\nระบบจะสร้างชีต _ปีนี้ สำหรับข้อมูลรายปี เช่น SCORES_WAREHOUSE_ปี\nและคัดลอกเฉพาะแถวที่ academic_year ตรงปีนี้เท่านั้น\nไม่ลบ ไม่ rename ไม่เลื่อนชั้น')) {
+    return;
+  }
+
+  const resultDiv = document.getElementById('warehouseResult');
+  resultDiv.innerHTML = '<div class="alert alert-info"><span class="spinner-border spinner-border-sm me-2"></span>กำลังสร้างชีตปีปัจจุบัน...</div>';
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (!res || !res.success) {
+        const errs = res && res.errors && res.errors.length ? '<ul><li>' + res.errors.map(whEscapeHtml).join('</li><li>') + '</li></ul>' : '';
+        resultDiv.innerHTML = '<div class="alert alert-warning"><strong>สร้างชีตปีปัจจุบันไม่ครบ:</strong> ' + whEscapeHtml((res && res.message) || 'ไม่ทราบสาเหตุ') + errs + '</div>';
+        return;
+      }
+      const created = whSampleList('สร้างแล้ว', res.createdCount, res.created);
+      const skipped = whSampleList('ข้าม', res.skippedCount, res.skipped);
+      resultDiv.innerHTML = '<div class="alert alert-success"><strong>' + whEscapeHtml(res.message) + '</strong><br>คัดลอกแถวปีนี้ ' + (res.copiedRows || 0) + ' แถว โดยไม่แตะข้อมูลเดิม</div>' + created + skipped;
+    })
+    .withFailureHandler(function(error) {
+      resultDiv.innerHTML = '<div class="alert alert-danger"><strong>เกิดข้อผิดพลาด:</strong> ' + whEscapeHtml(error.message) + '</div>';
+    })
+    .createCurrentYearWorkingSheets(year);
+}
+
+function runAcademicYearAudit() {
+  const year = document.getElementById('whYear').value;
+  const resultDiv = document.getElementById('warehouseResult');
+
+  resultDiv.innerHTML = '<div class="alert alert-info"><span class="spinner-border spinner-border-sm me-2"></span>กำลังตรวจข้อมูลปีการศึกษาแบบ read-only...</div>';
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (!res || !res.success) {
+        resultDiv.innerHTML = '<div class="alert alert-danger"><strong>ตรวจไม่สำเร็จ:</strong> ' + whEscapeHtml((res && res.message) || 'ไม่ทราบสาเหตุ') + '</div>';
+        return;
+      }
+
+      const s = res.students || {};
+      const w = res.warehouse || {};
+      const sc = res.scoreSheets || {};
+      const badge = res.ok ? 'success' : 'warning';
+      const recommendations = (res.recommendations || []).map(function(x) {
+        return '<li>' + whEscapeHtml(x) + '</li>';
+      }).join('');
+
+      let html = `
+        <div class="alert alert-${badge}">
+          <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+            <div>
+              <h5 class="mb-1"><i class="bi bi-calendar-check"></i> ตรวจข้อมูลปีการศึกษา ${whEscapeHtml(res.targetYear)}</h5>
+              <div>${res.ok ? 'ไม่พบประเด็นสำคัญ' : 'พบประเด็นที่ควรตรวจ/ซ่อม'} ${res.issueCount || 0} รายการ</div>
+            </div>
+            <span class="badge bg-${badge === 'success' ? 'success' : 'warning'} text-${badge === 'success' ? 'light' : 'dark'}">READ ONLY</span>
+          </div>
+          ${recommendations ? '<hr><strong>คำแนะนำ:</strong><ul class="mb-0">' + recommendations + '</ul>' : ''}
+        </div>
+        <div class="row g-3">
+          <div class="col-lg-4">
+            <div class="border rounded p-3 h-100">
+              <h6 class="text-primary mb-2">Students</h6>
+              <div>ทั้งหมด: ${s.totalRows || 0} แถว</div>
+              <div>ปีปัจจุบัน: ${s.currentYearRows || 0} แถว</div>
+              <div>ใช้งานอยู่ปีปัจจุบัน: ${s.activeCurrentRows || 0} คน</div>
+              <div>ไม่มีคอลัมน์ academic_year: ${s.missingAcademicYearColumn ? 'ใช่' : 'ไม่ใช่'}</div>
+              ${whSampleList('academic_year ว่าง', s.blankYearCount, s.blankYearRows)}
+              ${whSampleList('ปีเก่าแต่ยัง active', s.oldYearActiveCount, s.oldYearActiveRows)}
+              ${whSampleList('ป.6/ม.3 ปีเก่ายัง active', s.oldTerminalActiveCount, s.oldTerminalActiveRows)}
+              ${whSampleList('ไม่มีรหัสนักเรียน', s.missingStudentIdCount, s.missingStudentIdRows)}
+            </div>
+          </div>
+          <div class="col-lg-4">
+            <div class="border rounded p-3 h-100">
+              <h6 class="text-primary mb-2">SCORES_WAREHOUSE</h6>
+              <div>ชีต: ${whEscapeHtml(w.sheetName || '-')}</div>
+              <div>ทั้งหมด: ${w.totalRows || 0} แถว</div>
+              <div>ไม่มีคอลัมน์ academic_year: ${w.missingAcademicYearColumn ? 'ใช่' : 'ไม่ใช่'}</div>
+              ${whSampleList('academic_year ว่าง', w.blankYearCount, w.blankYearRows)}
+              ${whSampleList('ปีไม่ตรง', w.wrongYearCount, w.wrongYearRows)}
+              ${whSampleList('ไม่มีในรายชื่อนักเรียนปีปัจจุบัน', w.notCurrentStudentCount, w.notCurrentStudentRows)}
+              ${whSampleList('รายการซ้ำ', w.duplicateKeyCount, w.duplicateKeys)}
+            </div>
+          </div>
+          <div class="col-lg-4">
+            <div class="border rounded p-3 h-100">
+              <h6 class="text-primary mb-2">ชีตคะแนนรายวิชา</h6>
+              <div>พบชีตคะแนน: ${sc.totalScoreSheets || 0} ชีต</div>
+              ${whSampleList('ยังไม่มี suffix ปี', sc.unsuffixedCount, sc.unsuffixedSheets)}
+              ${whSampleList('suffix เป็นปีอื่น', sc.oldYearSuffixCount, sc.oldYearSuffixSheets)}
+              ${whSampleList('ชีต ป.6 ที่ควรตรวจ', sc.suspiciousCurrentP6Count, sc.suspiciousCurrentP6Sheets)}
+            </div>
+          </div>
+        </div>
+      `;
+      resultDiv.innerHTML = html;
+    })
+    .withFailureHandler(function(error) {
+      resultDiv.innerHTML = '<div class="alert alert-danger"><strong>เกิดข้อผิดพลาด:</strong> ' + whEscapeHtml(error.message) + '</div>';
+    })
+    .auditAcademicYearData(year);
+}
+
+function checkWarehouseHealth() {
+  const grade = document.getElementById('whGrade').value;
+  const classNo = document.getElementById('whClassNo').value;
+  const year = document.getElementById('whYear').value;
+  const resultDiv = document.getElementById('warehouseResult');
+
+  if (!grade || !classNo) {
+    resultDiv.innerHTML = '<div class="alert alert-warning"><i class="fas fa-exclamation-triangle"></i> กรุณาเลือกชั้นและห้องก่อนตรวจสุขภาพคลังคะแนน</div>';
+    return;
+  }
+
+  resultDiv.innerHTML = '<div class="alert alert-info"><span class="spinner-border spinner-border-sm me-2"></span>กำลังตรวจสุขภาพคลังคะแนน...</div>';
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (!res || !res.success) {
+        resultDiv.innerHTML = '<div class="alert alert-danger"><strong>ตรวจไม่สำเร็จ:</strong> ' + ((res && res.message) || 'ไม่ทราบสาเหตุ') + '</div>';
+        return;
+      }
+      const issues = [];
+      if (res.missingFromWarehouse && res.missingFromWarehouse.length) issues.push('<li>ยังไม่เข้า warehouse: ' + res.missingFromWarehouse.join(', ') + '</li>');
+      if (res.duplicateWarehouseKeys && res.duplicateWarehouseKeys.length) issues.push('<li>พบข้อมูลซ้ำ: ' + res.duplicateWarehouseKeys.join(', ') + '</li>');
+      if (res.wrongAcademicYearRows && res.wrongAcademicYearRows.length) issues.push('<li>ปีการศึกษาไม่ตรง: ' + res.wrongAcademicYearRows.join(', ') + '</li>');
+      if (res.staleWarehouseRows && res.staleWarehouseRows.length) issues.push('<li>มีรายการเก่าที่ไม่พบชีตคะแนนต้นทาง: ' + res.staleWarehouseRows.slice(0, 20).join(', ') + (res.staleWarehouseRows.length > 20 ? ' ...' : '') + '</li>');
+      if (res.blankSubjectCodes && res.blankSubjectCodes.length) issues.push('<li>วิชาที่ยังไม่มีรหัสวิชาใน warehouse: ' + res.blankSubjectCodes.slice(0, 20).join(', ') + (res.blankSubjectCodes.length > 20 ? ' ...' : '') + '</li>');
+      resultDiv.innerHTML = `
+        <div class="alert ${res.ok ? 'alert-success' : 'alert-warning'}">
+          <strong>${res.ok ? 'ปกติ' : 'ควรตรวจเพิ่ม'}</strong> ${res.message}<br>
+          <small>คาดหวัง ${res.expectedScoreRows} รายการ / ใน warehouse ${res.warehouseRows} รายการ</small>
+          ${issues.length ? '<ul class="mt-2 mb-0">' + issues.join('') + '</ul>' : ''}
+        </div>
+      `;
+    })
+    .withFailureHandler(function(error) {
+      resultDiv.innerHTML = '<div class="alert alert-danger"><strong>เกิดข้อผิดพลาด:</strong> ' + error.message + '</div>';
+    })
+    .getScoresWarehouseHealth(grade, classNo, year);
+}
+
 /**
  * ฟังก์ชันรีบิลด์คลังคะแนน
  */

@@ -32,16 +32,21 @@ function getAvailableGrades() {
     // 🎯 วิธีที่ 1: อ่านจากชีต "Students"
     // ============================================
     try {
-      const studentsSheet = ss.getSheetByName("Students");
+      const studentsSheet = (typeof AY_getStudentsSheetForRead === 'function') ? AY_getStudentsSheetForRead() : ss.getSheetByName("Students");
       if (studentsSheet) {
         const data = studentsSheet.getDataRange().getValues();
         
         if (data.length > 1) {
           const headers = data[0];
           const gradeIndex = headers.indexOf("grade");
+          const statusIndex = headers.indexOf("status");
+          const currentAcademicYear = (typeof AY_getCurrentAcademicYear === 'function') ? AY_getCurrentAcademicYear(false) : '';
           
           if (gradeIndex !== -1) {
             for (let i = 1; i < data.length; i++) {
+              const st = statusIndex >= 0 ? String(data[i][statusIndex] || '').trim() : '';
+              if (typeof isInactiveStudentStatus_ === 'function' && isInactiveStudentStatus_(st)) continue;
+              if (typeof AY_rowMatchesAcademicYear === 'function' && !AY_rowMatchesAcademicYear(data[i], headers, currentAcademicYear)) continue;
               const grade = String(data[i][gradeIndex] || '').trim();
               if (grade) {
                 gradesSet.add(grade);
@@ -114,15 +119,20 @@ function getAvailableClassNos(grade) {
     grade = String(grade || '').trim();
     if (!grade) return [];
     var ss = SS();
-    var sheet = ss.getSheetByName('Students');
+    var sheet = (typeof AY_getStudentsSheetForRead === 'function') ? AY_getStudentsSheetForRead() : ss.getSheetByName('Students');
     if (!sheet) return [];
     var data = sheet.getDataRange().getValues();
     var headers = data[0];
     var gradeIdx = headers.indexOf('grade');
     var classIdx = headers.indexOf('class_no');
+    var statusIdx = headers.indexOf('status');
     if (gradeIdx === -1 || classIdx === -1) return [];
     var classSet = new Set();
+    var currentAcademicYear = (typeof AY_getCurrentAcademicYear === 'function') ? AY_getCurrentAcademicYear(false) : '';
     for (var i = 1; i < data.length; i++) {
+      var st = statusIdx >= 0 ? String(data[i][statusIdx] || '').trim() : '';
+      if (typeof isInactiveStudentStatus_ === 'function' && isInactiveStudentStatus_(st)) continue;
+      if (typeof AY_rowMatchesAcademicYear === 'function' && !AY_rowMatchesAcademicYear(data[i], headers, currentAcademicYear)) continue;
       if (String(data[i][gradeIdx] || '').trim() === grade) {
         var c = String(data[i][classIdx] || '').trim();
         if (c) classSet.add(c);
@@ -432,15 +442,18 @@ function getScoreData(sheetName) {
     
     // ดึงหัวตาราง (แถวที่ 3)
     const headers = data[2] || [];
+    const activeStudentIds = getActiveStudentIdsForScores_();
     
     // ดึงข้อมูลนักเรียนและคะแนน (เริ่มจากแถวที่ 5)
     const studentData = [];
     for (let i = 4; i < data.length; i++) {
       const row = data[i];
       if (row[0] && row[1] && row[2]) { // มี ลำดับ, รหัส, ชื่อ
+        const sid = String(row[1] || '').trim();
+        if (!isActiveScoreStudent_(sid, activeStudentIds)) continue;
         const studentRow = {
           order: row[0],
-          studentId: row[1],
+          studentId: sid,
           studentName: row[2],
           scores: row.slice(3) // คะแนนทั้งหมด
         };
@@ -939,6 +952,11 @@ function saveScoreSheetData(sheetName, term, studentScores, fullScores, fullFina
  */
 function _syncSubjectToWarehouse_(sheetName, studentRows) {
   if (!studentRows || studentRows.length === 0) return;
+  var activeStudentIds = getActiveStudentIdsForScores_();
+  studentRows = studentRows.filter(function(s) {
+    return isActiveScoreStudent_(s && s.id, activeStudentIds);
+  });
+  if (studentRows.length === 0) return;
 
   // แยก subjectName และ grade-class จาก sheetName
   const lastSpace = sheetName.lastIndexOf(' ');
@@ -990,6 +1008,7 @@ function _syncSubjectToWarehouse_(sheetName, studentRows) {
   const iGrade = whHeaders.indexOf('grade');
   const iClass = whHeaders.indexOf('class_no');
   const iCode  = whHeaders.indexOf('subject_code');
+  const iSheet = whHeaders.indexOf('sheet_name');
   if (iSid < 0 || iGrade < 0 || iClass < 0 || iCode < 0) return; // header ไม่ตรง
 
   const iName = whHeaders.indexOf('subject_name');
@@ -1030,7 +1049,9 @@ function _syncSubjectToWarehouse_(sheetName, studentRows) {
     if (rowGrade !== grade || rowClass != classNo) continue;
     var rowCode = String(whData[ri][iCode]);
     var rowName = iName >= 0 ? String(whData[ri][iName] || '').trim() : '';
-    if (rowCode === subjectCode || rowName === subjectName) {
+    var rowSheetName = iSheet >= 0 ? String(whData[ri][iSheet] || '').trim() : '';
+    var sameSubject = (subjectCode && rowCode === subjectCode) || (subjectName && rowName === subjectName) || rowSheetName === sheetName;
+    if (sameSubject) {
       var rowSid = String(whData[ri][iSid] || '').trim();
       existingRowMap[rowSid] = ri; // 0-based index in whData
       existingRowIndices.push(ri);
@@ -1170,6 +1191,7 @@ function _batchRebuild_(ss, scoreSheets, filterGrade, filterClassNo) {
   // --- Step 3: อ่านทุกชีตคะแนน → สร้าง newRows ทั้งหมดใน memory ---
   var newRows = [];
   var sheetCount = 0;
+  var activeStudentIds = getActiveStudentIdsForScores_();
 
   scoreSheets.forEach(function(item) {
     var data = item.sheet.getDataRange().getValues();
@@ -1189,6 +1211,7 @@ function _batchRebuild_(ss, scoreSheets, filterGrade, filterClassNo) {
       var r = data[i];
       var sid = String(r[1] || '').trim();
       if (!sid) continue;
+      if (!isActiveScoreStudent_(sid, activeStudentIds)) continue;
 
       var term1Total = Number(r[layout.term1.total]) || 0;
       var term2Total = Number(r[layout.term2.total]) || 0;
@@ -1289,6 +1312,106 @@ function rebuildScoresWarehouseAll(year) {
   return 'Rebuild สำเร็จ: ทั้งหมด ' + result.sheetCount + ' วิชา, ' + result.rowCount + ' รายการ';
 }
 
+function getScoresWarehouseHealth(grade, classNo, year) {
+  try {
+    var ss = SS();
+    grade = String(grade || '').trim();
+    classNo = String(classNo || '').trim();
+    year = String(year || (typeof S_getAcademicYear === 'function' ? S_getAcademicYear() : '') || '').trim();
+    if (!grade || !classNo) throw new Error('กรุณาระบุชั้นและห้อง');
+
+    var scoreSheets = _findScoreSheets_(ss, grade, classNo);
+    var wh = (typeof S_getYearlySheet === 'function') ? S_getYearlySheet('SCORES_WAREHOUSE', year) : ss.getSheetByName('SCORES_WAREHOUSE');
+    if (!wh) throw new Error('ไม่พบชีต SCORES_WAREHOUSE สำหรับปี ' + year);
+
+    var expected = {};
+    var scoreSheetNames = {};
+    var scoreRows = 0;
+    scoreSheets.forEach(function(item) {
+      scoreSheetNames[item.name] = true;
+      var data = item.sheet.getDataRange().getValues();
+      if (data.length < 5) return;
+      var layout = detectSheetLayout_(item.sheet);
+      for (var i = 4; i < data.length; i++) {
+        var r = data[i];
+        var sid = String(r[1] || '').trim();
+        if (!sid) continue;
+        var t1 = Number(r[layout.term1.total]) || 0;
+        var t2 = Number(r[layout.term2.total]) || 0;
+        var avg = Number(r[layout.yearAvgCol]) || 0;
+        if (t1 > 0 || t2 > 0 || avg > 0) {
+          expected[sid + '|' + item.name] = {
+            studentId: sid,
+            sheetName: item.name,
+            subjectName: item.subjectName,
+            term1: t1,
+            term2: t2,
+            average: avg
+          };
+          scoreRows++;
+        }
+      }
+    });
+
+    var whData = wh.getDataRange().getValues();
+    var h = whData[0] || [];
+    var idx = {};
+    h.forEach(function(name, i) { idx[String(name || '').trim()] = i; });
+
+    var warehouseRows = 0;
+    var seen = {};
+    var duplicates = [];
+    var blankSubjectCodes = [];
+    var wrongYearRows = [];
+    var staleRows = [];
+    for (var ri = 1; ri < whData.length; ri++) {
+      var row = whData[ri];
+      if (String(row[idx.grade] || '').trim() !== grade || String(row[idx.class_no] || '').trim() !== classNo) continue;
+      warehouseRows++;
+      var sid = String(row[idx.student_id] || '').trim();
+      var sheetName = String(row[idx.sheet_name] || '').trim();
+      var subjectName = String(row[idx.subject_name] || '').trim();
+      var key = sid + '|' + (sheetName || subjectName);
+      if (seen[key]) duplicates.push(key);
+      seen[key] = true;
+      if (!String(row[idx.subject_code] || '').trim()) blankSubjectCodes.push(sid + ' ' + (subjectName || sheetName || '(ไม่ทราบวิชา)'));
+      if (idx.academic_year !== undefined && String(row[idx.academic_year] || '').trim() && String(row[idx.academic_year] || '').trim() !== year) {
+        wrongYearRows.push(sid + ' ' + (subjectName || sheetName || '(ไม่ทราบวิชา)') + ' ปี=' + row[idx.academic_year]);
+      }
+      if (sheetName && !scoreSheetNames[sheetName]) {
+        staleRows.push(sid + ' ' + sheetName);
+      }
+    }
+
+    var missing = [];
+    Object.keys(expected).forEach(function(key) {
+      var exp = expected[key];
+      if (!seen[key] && !seen[exp.studentId + '|' + exp.subjectName]) {
+        missing.push(exp.studentId + ' ' + exp.subjectName);
+      }
+    });
+
+    return {
+      success: true,
+      academicYear: year,
+      grade: grade,
+      classNo: classNo,
+      scoreSheetCount: scoreSheets.length,
+      expectedScoreRows: scoreRows,
+      warehouseRows: warehouseRows,
+      ok: missing.length === 0 && duplicates.length === 0 && wrongYearRows.length === 0 && staleRows.length === 0,
+      missingFromWarehouse: missing,
+      duplicateWarehouseKeys: duplicates,
+      blankSubjectCodes: blankSubjectCodes,
+      wrongAcademicYearRows: wrongYearRows,
+      staleWarehouseRows: staleRows,
+      message: 'ตรวจคลังคะแนน ' + grade + '/' + classNo + ': scoreSheets=' + scoreSheets.length + ', expected=' + scoreRows + ', warehouse=' + warehouseRows
+    };
+  } catch (e) {
+    return { success: false, message: e.message || String(e) };
+  }
+}
+
 /**
  * ✅ Diagnostic: ตรวจสอบข้อมูลคะแนนระหว่างชีตคะแนน vs SCORES_WAREHOUSE
  * รันจาก Apps Script Editor: Run > debugScoreWarehouseCheck
@@ -1367,6 +1490,50 @@ function calculateFinalGrade(score) {
   return "0";
 }
 
+function getActiveStudentIdsForScores_() {
+  var ss = SS();
+  var sheet = (typeof AY_getStudentsSheetForRead === 'function') ? AY_getStudentsSheetForRead() : ss.getSheetByName('Students');
+  if (!sheet) return null;
+
+  var data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return {};
+
+  var rawHeaders = data[0];
+  var headers = rawHeaders.map(function(h) { return String(h || '').trim().toLowerCase(); });
+  function findCol(names) {
+    for (var i = 0; i < names.length; i++) {
+      var idx = headers.indexOf(String(names[i]).toLowerCase());
+      if (idx >= 0) return idx;
+    }
+    return -1;
+  }
+
+  var idIdx = findCol(['student_id', 'รหัสนักเรียน', 'รหัส']);
+  var statusIdx = findCol(['status', 'สถานะ']);
+  if (idIdx < 0) return null;
+
+  var activeIds = {};
+  var currentAcademicYear = (typeof AY_getCurrentAcademicYear === 'function') ? AY_getCurrentAcademicYear(false) : '';
+  for (var r = 1; r < data.length; r++) {
+    var sid = String(data[r][idIdx] || '').trim();
+    if (!sid) continue;
+    if (typeof AY_rowMatchesAcademicYear === 'function' && !AY_rowMatchesAcademicYear(data[r], rawHeaders, currentAcademicYear)) continue;
+    var status = statusIdx >= 0 ? String(data[r][statusIdx] || '').trim() : '';
+    var inactive = (typeof isInactiveStudentStatus_ === 'function')
+      ? isInactiveStudentStatus_(status)
+      : ['จำหน่าย', 'ย้ายออก', 'พ้นสภาพ', 'จบ', 'จบการศึกษา', 'สำเร็จการศึกษา', 'ลาออก', 'inactive', 'graduated', 'transferred', 'deleted'].indexOf(status.toLowerCase().replace(/\s+/g, '')) !== -1;
+    if (!inactive) activeIds[sid] = true;
+  }
+
+  return activeIds;
+}
+
+function isActiveScoreStudent_(studentId, activeIds) {
+  if (activeIds === null) return true;
+  var sid = String(studentId || '').trim();
+  return !!sid && !!activeIds[sid];
+}
+
 /**
  * ✅ ดึงข้อมูลคะแนนจากชีตตาม term1 และ term2 - แก้ไขแล้ว
  */
@@ -1382,6 +1549,7 @@ function getScoreSheetData(sheetName) {
     // ✅ ตรวจ layout ชีต (15 vs 16 col/term) อัตโนมัติ
     const sheetLayout = detectSheetLayout_(sheet);
     Logger.log('📐 getScoreSheetData layout: ' + sheetLayout.layout + ' for ' + sheetName);
+    var activeStudentIds = getActiveStudentIdsForScores_();
 
     // ดึงคะแนนเต็มจากชีตรายวิชา (fallback เมื่อชีตคะแนนยังไม่มีค่า)
     var subjectFsCfg = null;
@@ -1415,6 +1583,8 @@ function getScoreSheetData(sheetName) {
       for (let i = startRow - 1; i < data.length; i++) {
         const row = data[i];
         if (!row[1] || !row[2]) continue;
+        var sid = String(row[1] || '').trim();
+        if (!isActiveScoreStudent_(sid, activeStudentIds)) continue;
         
         // ดึงคะแนน 9 ช่อง (ครั้งที่ 1-9 ตัวชี้วัด)
         const scores = scoreSlots.map(function(idx) { return idx >= 0 ? (Number(row[idx]) || 0) : 0; });
@@ -1430,7 +1600,7 @@ function getScoreSheetData(sheetName) {
                      (nameStr.indexOf('เด็กหญิง') !== -1 || nameStr.indexOf('นางสาว') === 0) ? 'หญิง' : '';
         
         rows.push({ 
-          id: row[1], 
+          id: sid, 
           name: row[2], 
           gender: gender,
           scores, 
@@ -1450,8 +1620,10 @@ function getScoreSheetData(sheetName) {
     for (var yi = startRow - 1; yi < data.length; yi++) {
       var yRow = data[yi];
       if (!yRow[1] || !yRow[2]) continue;
+      var ySid = String(yRow[1] || '').trim();
+      if (!isActiveScoreStudent_(ySid, activeStudentIds)) continue;
       yearSummary.push({
-        id: yRow[1],
+        id: ySid,
         name: yRow[2],
         yearAvg: yRow[sheetLayout.yearAvgCol] !== undefined && yRow[sheetLayout.yearAvgCol] !== '' ? Number(yRow[sheetLayout.yearAvgCol]) || 0 : 0,
         yearGrade: String(yRow[sheetLayout.yearGradeCol] || '')
@@ -1606,6 +1778,7 @@ function getSubjectScoreData(subjectName, subjectCode, grade, classNo) {
     // ✅ ตรวจ layout ชีต (15 vs 16 col/term) อัตโนมัติ
     const sheetLayout = detectSheetLayout_(scoreSheet);
     Logger.log('📐 getSubjectScoreData layout: ' + sheetLayout.layout + ' for ' + foundSheetName);
+    const activeStudentIds = getActiveStudentIdsForScores_();
     
     // ดึงข้อมูลพื้นฐาน
     const sheetSubjectCode = data[0][1] || subjectCode;
@@ -1631,10 +1804,12 @@ function getSubjectScoreData(subjectName, subjectCode, grade, classNo) {
       
       // ข้ามแถวที่ไม่มีข้อมูลครบ
       if (!row[0] || !row[1] || !row[2]) continue;
+      const sid = String(row[1] || '').trim();
+      if (!isActiveScoreStudent_(sid, activeStudentIds)) continue;
       
       const student = {
         no: row[0],
-        studentId: String(row[1]).trim(),
+        studentId: sid,
         name: String(row[2]).trim(),
         term1: extractTermByLayout(row, sheetLayout.term1),
         term2: extractTermByLayout(row, sheetLayout.term2),
@@ -1753,7 +1928,7 @@ function getSystemSettings() {
     Logger.log('❌ getSystemSettings error:', error);
     return {
       schoolName: 'โรงเรียน',
-      academicYear: '2568', 
+      academicYear: (typeof AY_getCurrentAcademicYear === 'function') ? AY_getCurrentAcademicYear(false) : String(S_getCurrentAcademicYear_()),
       directorName: 'ผู้อำนวยการ',
       directorTitle: 'ผู้อำนวยการสถานศึกษา',
       academicHead: 'หัวหน้างานวิชาการ',

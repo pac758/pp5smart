@@ -1016,7 +1016,7 @@ function createPp6PDFHTML(reportData, term) {
   const { student, academic, attendance, activities, characteristics, settings } = reportData;
   
   const schoolName = settings.schoolName || settings['ชื่อโรงเรียน'] || 'โรงเรียนของเรา';
-  const academicYear = settings.academicYear || settings['ปีการศึกษา'] || '2568';
+  const academicYear = settings.academicYear || settings['ปีการศึกษา'] || ((typeof AY_getCurrentAcademicYear === 'function') ? AY_getCurrentAcademicYear(false) : String(S_getCurrentAcademicYear_()));
   
   // ส่วนหัว
   const logoHtml = settings.logoDataUrl ? 

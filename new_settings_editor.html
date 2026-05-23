@@ -265,11 +265,175 @@
       background: rgba(255,255,255,0.65);
       color: var(--muted);
     }
-    #status .alert,
-    #switchStatus .alert{
+    .top-summary{
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .summary-card{
+      background: rgba(255,255,255,0.82);
+      border: 1px solid rgba(15,23,42,0.08);
+      border-radius: 18px;
+      box-shadow: 0 10px 24px rgba(15,23,42,0.05);
+      padding: 14px 16px;
+      min-height: 92px;
+    }
+    .summary-label{
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .summary-value{
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.25;
+      word-break: break-word;
+    }
+    .summary-meta{
+      margin-top: 4px;
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+    .settings-shell{
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 18px;
+    }
+    .section-intro{
+      margin-bottom: 14px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .mini-note{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 12px;
+      background: rgba(79,70,229,0.08);
+      color: #3730a3;
+      font-size: 0.84rem;
+      font-weight: 700;
+    }
+    .card-header-content{
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .card-subtitle{
+      color: rgba(255,255,255,0.9);
+      font-size: 0.84rem;
+      font-weight: 500;
+      margin-top: 2px;
+    }
+    .stack-card{
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .setting-grid-2{
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .media-panel{
+      display: grid;
+      grid-template-columns: 180px minmax(0, 1fr);
+      gap: 18px;
+      align-items: center;
+    }
+    .preview-panel{
+      background: linear-gradient(180deg, rgba(248,250,252,0.95), rgba(255,255,255,0.92));
+      border: 1px dashed rgba(15,23,42,0.12);
+      border-radius: 18px;
+      padding: 18px;
+      text-align: center;
+    }
+    .preview-panel .field-help{
+      margin-top: 10px;
+      margin-bottom: 0;
+    }
+    .danger-soft{
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.14);
+      color: #7f1d1d;
+      border-radius: 16px;
+      padding: 14px 16px;
+    }
+    .preview-box{
+      border: 1px solid rgba(59,130,246,0.16);
+      background: rgba(239,246,255,0.78);
+      border-radius: 16px;
+      padding: 12px;
+    }
+    .sticky-savebar{
+      position: sticky;
+      bottom: 14px;
+      z-index: 20;
+      margin-top: 22px;
+    }
+    .sticky-savebar-inner{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.92);
+      border: 1px solid rgba(15,23,42,0.08);
+      box-shadow: 0 14px 30px rgba(15,23,42,0.10);
+      backdrop-filter: blur(10px);
+    }
+    .sticky-savebar-title{
+      font-size: 0.92rem;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 2px;
+    }
+    .sticky-savebar-subtitle{
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+  #status .alert,
+  #switchStatus .alert{
       border-radius: 14px;
       border: 1px solid rgba(15,23,42,0.08);
       box-shadow: 0 10px 22px rgba(15,23,42,0.06);
+    }
+    @media (max-width: 767.98px){
+      .top-summary{
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .setting-grid-2{
+        grid-template-columns: 1fr;
+      }
+      .media-panel{
+        grid-template-columns: 1fr;
+      }
+      .actions-row{
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .actions-row .actions{
+        width: 100%;
+        justify-content: stretch;
+      }
+      .actions-row .actions .btn,
+      .sticky-savebar-inner .btn{
+        width: 100%;
+      }
+      .sticky-savebar-inner{
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+    @media (max-width: 575.98px){
+      .top-summary{
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -281,138 +445,159 @@
           <h2 class="page-title">
             <i class="bi bi-sliders me-1"></i> ตั้งค่าระบบกลาง
           </h2>
-          <p class="page-subtitle">จัดการข้อมูลโรงเรียน บุคลากร โลโก้ และการตั้งค่า PDF โดยยังคงการทำงานเดิมทั้งหมด</p>
+          <p class="page-subtitle">รวมข้อมูลที่ผู้ใช้ต้องตั้งค่าบ่อยไว้ในหน้าเดียว แยกส่วนข้อมูลทั่วไป งานพิมพ์เอกสาร และการเปลี่ยนปีการศึกษาให้ชัดเจน</p>
+        </div>
+        <div class="mini-note"><i class="bi bi-shield-check"></i> บันทึกได้ทันที โดยยังคง logic เดิมของระบบ</div>
+      </div>
+      <div class="top-summary">
+        <div class="summary-card">
+          <div class="summary-label">โรงเรียน</div>
+          <div class="summary-value" id="summarySchoolName">-</div>
+          <div class="summary-meta">ข้อมูลที่ใช้แสดงบนเอกสารและหัวรายงาน</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">ปีการศึกษา / ภาคเรียน</div>
+          <div class="summary-value"><span id="summaryAcademicYear">-</span> / <span id="summarySemester">-</span></div>
+          <div class="summary-meta">ค่ากลางที่ใช้ทั้งระบบ</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">ผู้อำนวยการ</div>
+          <div class="summary-value" id="summaryDirectorName">-</div>
+          <div class="summary-meta">ใช้ในลายเซ็นและหัวเอกสาร</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">สถานะการพิมพ์ PDF</div>
+          <div class="summary-value" id="summaryPdfFolder">ยังไม่ตั้งค่า</div>
+          <div class="summary-meta">ดูจากโฟลเดอร์บันทึก PDF</div>
         </div>
       </div>
     </div>
 
-    <div class="row g-4">
-      <!-- ข้อมูลโรงเรียน -->
-      <div class="col-lg-6">
-        <div class="card h-100 shadow-sm">
-          <div class="card-header bg-primary text-white">
-            <i class="bi bi-building"></i> ข้อมูลโรงเรียน
+    <div class="settings-shell">
+      <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+          <i class="bi bi-house-gear"></i>
+          <div class="card-header-content">
+            <div>ข้อมูลทั่วไปของโรงเรียน</div>
+            <div class="card-subtitle">ส่วนที่ผู้ใช้แก้ไขบ่อยที่สุด เช่น ชื่อโรงเรียน ปีการศึกษา และผู้บริหาร</div>
           </div>
-          <div class="card-body">
-            <div class="mb-3">
+        </div>
+        <div class="card-body stack-card">
+          <div class="section-intro">จัดกลุ่มข้อมูลให้กรอกง่ายขึ้น โดยแยกข้อมูลโรงเรียนและข้อมูลผู้บริหารไว้ในบล็อกเดียว</div>
+          <div class="setting-grid-2">
+            <div>
               <label for="schoolName" class="form-label">ชื่อโรงเรียน</label>
               <input id="schoolName" type="text" class="form-control" />
             </div>
-            <div class="mb-3">
+            <div>
               <label for="schoolAddress" class="form-label">ที่อยู่โรงเรียน</label>
               <input id="schoolAddress" type="text" class="form-control" />
             </div>
-            <div class="row">
-              <div class="col-6 mb-3">
-                <label for="academicYear" class="form-label">ปีการศึกษา</label>
-                <input id="academicYear" type="number" class="form-control" />
-              </div>
-              <div class="col-6 mb-3">
-                <label for="semester" class="form-label">ภาคเรียน</label>
-                <input id="semester" type="number" class="form-control" />
-              </div>
+            <div>
+              <label for="academicYear" class="form-label">ปีการศึกษา</label>
+              <input id="academicYear" type="number" class="form-control" />
+            </div>
+            <div>
+              <label for="semester" class="form-label">ภาคเรียน</label>
+              <input id="semester" type="number" class="form-control" />
             </div>
           </div>
-        </div>
-      </div>
-
-      <!-- บุคลากร -->
-      <div class="col-lg-6">
-        <div class="card h-100 shadow-sm">
-          <div class="card-header bg-success text-white">
-            <i class="bi bi-people-fill"></i> บุคลากร
-          </div>
-          <div class="card-body">
-            <div class="mb-3">
+          <div class="setting-grid-2">
+            <div>
               <label for="directorName" class="form-label">ชื่อผู้อำนวยการ</label>
               <input id="directorName" type="text" class="form-control" />
             </div>
-            <div class="mb-3">
+            <div>
               <label for="directorPosition" class="form-label">ตำแหน่งผู้อำนวยการ</label>
               <input id="directorPosition" type="text" class="form-control" />
             </div>
-            <div class="mb-3">
-              <label for="supervisorName" class="form-label">ชื่อหัวหน้างานวิชาการ</label>
-              <input id="supervisorName" type="text" class="form-control" />
-            </div>
+          </div>
+          <div>
+            <label for="supervisorName" class="form-label">ชื่อหัวหน้างานวิชาการ</label>
+            <input id="supervisorName" type="text" class="form-control" />
+            <div class="field-help">ใช้ในเอกสารที่เกี่ยวกับการรับรองผลการเรียนและงานวิชาการ</div>
           </div>
         </div>
       </div>
 
-      <div class="col-12">
-        <div class="card shadow-sm">
-          <div class="card-header bg-secondary text-white">
-            <i class="bi bi-gear-wide-connected"></i> การตั้งค่าขั้นสูง
-            <span class="step-pill"><i class="bi bi-1-circle-fill"></i> ขั้นตอนที่ 1</span>
+      <div class="card shadow-sm">
+        <div class="card-header bg-secondary text-white">
+          <i class="bi bi-printer"></i>
+          <div class="card-header-content">
+            <div>การพิมพ์เอกสารและไฟล์ PDF</div>
+            <div class="card-subtitle">ตั้งค่าโลโก้และโฟลเดอร์ปลายทางสำหรับเอกสารที่ระบบสร้าง</div>
           </div>
-          <div class="card-body">
-            <div class="row align-items-center g-3">
-              <div class="col-md-4 text-center">
-                <img id="logoPreview" class="img-thumbnail" style="max-height: 120px; object-fit: contain;" alt="โลโก้" />
-                <div class="field-help">พรีวิวโลโก้จากรหัสไฟล์ Google Drive</div>
-              </div>
-              <div class="col-md-8">
-                <div class="mb-3">
-                  <label for="logoFileId" class="form-label">รหัสโลโก้ Google Drive</label>
-                  <input type="text" id="logoFileId" class="form-control" placeholder="เช่น 1AbC..."/>
-                  <div class="field-help">ระบบจะพยายามโหลดรูปจากหลาย URL อัตโนมัติ</div>
-                </div>
-                <div class="mb-1">
-                  <label for="pdfSaveFolderId" class="form-label">รหัสโฟลเดอร์สำหรับบันทึก PDF</label>
-                  <input type="text" id="pdfSaveFolderId" class="form-control" placeholder="เช่น 1XyZ..."/>
-                  <div class="field-help">ใช้สำหรับบันทึกไฟล์รายงาน PDF ที่สร้างจากระบบ</div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <span class="step-pill"><i class="bi bi-1-circle-fill"></i> ขั้นตอนที่ 1</span>
         </div>
-      </div>
-    </div>
-
-    <!-- เปลี่ยนปีการศึกษา -->
-    <div class="row g-4 mt-1">
-      <div class="col-12">
-        <div class="card shadow-sm border-warning">
-          <div class="card-header bg-warning text-dark">
-            <i class="bi bi-calendar-event"></i> เปลี่ยนปีการศึกษา
-            <span class="step-pill dark"><i class="bi bi-2-circle-fill"></i> ขั้นตอนที่ 2</span>
-          </div>
-          <div class="card-body">
-            <p class="text-muted mb-3" style="font-size:0.9rem;">
-              ระบบจะ <strong>สำรอง Spreadsheet ทั้งไฟล์</strong> ไว้ในโฟลเดอร์ Archive แล้วล้างข้อมูลคะแนน/ประเมิน/เวลาเรียน เพื่อเริ่มต้นปีการศึกษาใหม่
-              <br>ข้อมูลนักเรียน, รายวิชา, ผู้ใช้ จะ <strong>ยังคงอยู่</strong>
-            </p>
-            <div id="switchPreview" class="mb-3" style="display:none;">
-              <div class="alert alert-info app-alert py-2 mb-2" id="previewInfo"></div>
+        <div class="card-body stack-card">
+          <div class="section-intro">ตั้งค่าเพียงครั้งเดียว แล้วระบบจะนำไปใช้กับรายงาน PDF และเอกสารอื่นอัตโนมัติ</div>
+          <div class="media-panel">
+            <div class="preview-panel">
+              <img id="logoPreview" class="img-thumbnail" style="max-height: 120px; object-fit: contain;" alt="โลโก้" />
+              <div class="field-help">พรีวิวโลโก้จากรหัสไฟล์ Google Drive</div>
             </div>
-            <div class="actions-row">
+            <div class="stack-card">
               <div>
-                <label class="form-label fw-bold">ปีการศึกษาใหม่ (พ.ศ.)</label>
-                <input type="number" id="newAcademicYear" class="form-control" style="width:160px;" />
-                <div class="field-help">แนะนำให้กด “ดูข้อมูลก่อนเปลี่ยน” เพื่อเช็คจำนวนชีต/จำนวนนักเรียนก่อนทำจริง</div>
+                <label for="logoFileId" class="form-label">รหัสโลโก้ Google Drive</label>
+                <input type="text" id="logoFileId" class="form-control" placeholder="เช่น 1AbC..."/>
+                <div class="field-help">วางเฉพาะ File ID ของรูปโลโก้ ระบบจะพยายามโหลดรูปให้อัตโนมัติ</div>
               </div>
-              <div class="actions">
-                <button id="previewSwitchBtn" class="btn btn-warning-soft">
-                  <i class="bi bi-eye"></i> ดูข้อมูลก่อนเปลี่ยน
-                </button>
-                <button id="switchYearBtn" class="btn btn-danger" disabled>
-                  <i class="bi bi-exclamation-triangle-fill"></i> เปลี่ยนปีการศึกษา
-                </button>
+              <div>
+                <label for="pdfSaveFolderId" class="form-label">รหัสโฟลเดอร์สำหรับบันทึก PDF</label>
+                <input type="text" id="pdfSaveFolderId" class="form-control" placeholder="เช่น 1XyZ..."/>
+                <div class="field-help">ใช้เป็นปลายทางเก็บไฟล์ PDF ทั้งหมดจากระบบ เพื่อให้ค้นหาไฟล์ย้อนหลังได้ง่าย</div>
               </div>
             </div>
-            <div id="switchStatus" class="mt-3"></div>
           </div>
+        </div>
+      </div>
+
+      <div class="card shadow-sm border-warning">
+        <div class="card-header bg-warning text-dark">
+          <i class="bi bi-calendar-event"></i>
+          <div class="card-header-content">
+            <div>เปลี่ยนปีการศึกษา</div>
+            <div class="card-subtitle" style="color: rgba(17,24,39,0.76);">ส่วนนี้เป็นงานระดับระบบ ควรตรวจข้อมูลก่อนกดทำจริงทุกครั้ง</div>
+          </div>
+          <span class="step-pill dark"><i class="bi bi-2-circle-fill"></i> ขั้นตอนที่ 2</span>
+        </div>
+        <div class="card-body stack-card">
+          <div class="danger-soft">ระบบจะสำรองไฟล์ สร้าง snapshot ของชีตสำคัญ และเตรียมข้อมูลปีใหม่ โดยข้อมูลเดิมยังคงอยู่ในรูปแบบที่ย้อนดูได้</div>
+          <div class="actions-row">
+            <div>
+              <label class="form-label fw-bold">ปีการศึกษาใหม่ (พ.ศ.)</label>
+              <input type="number" id="newAcademicYear" class="form-control" style="width:160px;" />
+              <div class="field-help">แนะนำให้กด “ดูข้อมูลก่อนเปลี่ยน” เพื่อตรวจสอบผลกระทบก่อนดำเนินการ</div>
+            </div>
+            <div class="actions">
+              <button id="previewSwitchBtn" class="btn btn-warning-soft">
+                <i class="bi bi-eye"></i> ดูข้อมูลก่อนเปลี่ยน
+              </button>
+              <button id="switchYearBtn" class="btn btn-danger" disabled>
+                <i class="bi bi-exclamation-triangle-fill"></i> เปลี่ยนปีการศึกษา
+              </button>
+            </div>
+          </div>
+          <div id="switchPreview" class="preview-box" style="display:none;">
+            <div class="alert alert-info app-alert py-2 mb-0" id="previewInfo"></div>
+          </div>
+          <div id="switchStatus" class="mt-1"></div>
         </div>
       </div>
     </div>
 
-    <!-- ปุ่มบันทึก + สถานะ -->
-    <div class="mt-4 text-center">
-      <button id="saveBtn" class="btn btn-primary btn-lg px-5">
-    <i class="bi bi-save-fill"></i> บันทึกการตั้งค่าทั้งหมด
-</button>
-<div id="status" class="mt-3"></div>
-  </div>
+    <div class="sticky-savebar">
+      <div class="sticky-savebar-inner">
+        <div>
+          <div class="sticky-savebar-title">บันทึกการตั้งค่าทั้งหมด</div>
+          <div class="sticky-savebar-subtitle">อัปเดตข้อมูลโรงเรียน บุคลากร โลโก้ และปลายทาง PDF พร้อมล้าง cache ให้ระบบใช้งานค่าล่าสุดทันที</div>
+        </div>
+        <button id="saveBtn" class="btn btn-primary btn-lg px-5">
+          <i class="bi bi-save-fill"></i> บันทึกการตั้งค่าทั้งหมด
+        </button>
+      </div>
+      <div id="status" class="mt-3"></div>
+    </div>
 <script>
 // ========= Settings Editor Namespace =========
 if (typeof window.SettingsEditor === 'undefined') {
@@ -537,9 +722,23 @@ if (typeof window.SettingsEditor === 'undefined') {
             }
             
             this.handleLogoDisplay(settings);
+            this.refreshSummary(settings || {});
             if (!(settings && settings.__meta)) {
                 this.setStatus('');
             }
+        },
+
+        refreshSummary: function(settings) {
+            var setText = function(id, value) {
+                var el = document.getElementById(id);
+                if (el) el.textContent = value || '-';
+            };
+            setText('summarySchoolName', settings['ชื่อโรงเรียน'] || settings.schoolName || '-');
+            setText('summaryAcademicYear', settings['ปีการศึกษา'] || settings.academicYear || '-');
+            setText('summarySemester', settings['ภาคเรียน'] || settings.semester || '-');
+            setText('summaryDirectorName', settings['ชื่อผู้อำนวยการ'] || settings.directorName || '-');
+            var folderVal = settings['pdfSaveFolderId'] || settings.pdfSaveFolderId || '';
+            setText('summaryPdfFolder', folderVal ? 'พร้อมใช้งาน' : 'ยังไม่ตั้งค่า');
         },
 
         initializeSettingsPage: function() {

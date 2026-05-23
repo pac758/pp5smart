@@ -972,39 +972,173 @@ body.menu-open {
 .app-brand {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.7rem;
   margin: 0;
   flex-shrink: 0;
   min-width: 0;
+  min-height: 46px;
+  padding: 0.28rem 0.45rem 0.28rem 0.25rem;
+  border-radius: 14px;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.app-brand:hover {
+  background: rgba(79, 70, 229, 0.06);
 }
 
 @media (max-width: 992px) {
   .app-brand {
     gap: 0.5rem;
+    min-height: 40px;
+    padding-right: 0.25rem;
   }
 }
 
 .logo-wrapper {
   position: relative;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 38px;
-  min-width: 38px;
+  width: 44px;
+  height: 44px;
   flex-shrink: 0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #4F46E5 0%, #06B6D4 100%);
+  box-shadow: 0 10px 22px rgba(79, 70, 229, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  overflow: hidden;
+}
+
+.logo-wrapper::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 72% 20%, rgba(255, 255, 255, 0.42) 0 7px, transparent 8px),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.18), transparent 48%);
+  pointer-events: none;
+}
+
+.brand-mark {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  z-index: 1;
+  filter: drop-shadow(0 3px 5px rgba(15, 23, 42, 0.18));
+}
+
+.brand-mark .sheet {
+  fill: #ffffff;
+}
+
+.brand-mark .fold {
+  fill: #CFFAFE;
+}
+
+.brand-mark .line {
+  stroke: #4F46E5;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.brand-mark .chart {
+  fill: none;
+  stroke: #06B6D4;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.brand-mark .check {
+  fill: none;
+  stroke: #10B981;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.brand-wordmark {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  line-height: 1;
+}
+
+.brand-text {
+  font-weight: 800;
+  letter-spacing: 0;
+  font-family: 'Sarabun', sans-serif;
+  font-size: 1.55rem;
+  color: var(--gray-900);
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.brand-text .brand-p5 {
+  color: var(--primary);
+}
+
+.brand-text .brand-smart {
+  color: #0F172A;
+}
+
+.brand-tagline {
+  margin-top: 0.2rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 @media (max-width: 992px) {
   .logo-wrapper {
-    height: 30px;
-    min-width: 30px;
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+  }
+
+  .brand-mark {
+    width: 29px;
+    height: 29px;
+  }
+
+  .brand-text {
+    font-size: 1.22rem;
+  }
+
+  .brand-tagline {
+    display: none;
   }
 }
 
+@media (max-width: 720px) {
+  .brand-wordmark {
+    display: none;
+  }
+}
+
+[data-theme="dark"] .app-brand:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="dark"] .brand-text .brand-smart {
+  color: #F8FAFC;
+}
+
+[data-theme="dark"] .brand-tagline {
+  color: #94A3B8;
+}
+
+.logo-placeholder,
+.app-logo-img,
+.logo-fallback-icon {
+  display: none;
+}
+
+/* Legacy logo classes kept harmless for older cached markup. */
 .logo-placeholder {
-  position: absolute;
-  inset: 0;
-  display: flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
@@ -1115,38 +1249,6 @@ body.menu-open {
   }
 }
 
-.brand-text {
-  font-weight: 700;
-  letter-spacing: 0.2px;
-  font-family: 'Sarabun', sans-serif;
-  font-size: 1.4rem;
-  color: var(--gray-800);
-  white-space: nowrap;
-  line-height: 1.2;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-@media (max-width: 992px) {
-  .brand-text {
-    font-size: 1.15rem;
-  }
-}
-
-[data-theme="dark"] .brand-text {
-  background: linear-gradient(135deg, #A5B4FC 0%, #C7D2FE 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.app-brand:hover .app-logo-img.loaded {
-  filter: drop-shadow(0 3px 8px rgba(79, 70, 229, 0.2));
-  transform: scale(1.02);
-}
-
 /* =========================
    UTILITIES
    ========================= */
@@ -1221,6 +1323,398 @@ body.menu-open {
   padding: 0.2em 0.5em;
   vertical-align: middle;
 }
+
+/* =========================
+   MOBILE PROFESSIONAL LAYOUT
+   ========================= */
+@media (max-width: 991.98px) {
+  :root {
+    --header-height: 96px;
+  }
+
+  .app-header {
+    height: var(--header-height);
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    grid-template-rows: 50px 34px;
+    align-items: center;
+    gap: 4px 8px;
+    padding: 6px 10px 8px;
+  }
+
+  .menu-toggle {
+    grid-column: 1;
+    grid-row: 1;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    border-radius: 12px;
+  }
+
+  .app-brand {
+    grid-column: 2;
+    grid-row: 1;
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .app-brand:hover {
+    background: transparent;
+  }
+
+  .logo-wrapper {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+  }
+
+  .brand-mark {
+    width: 29px;
+    height: 29px;
+  }
+
+  .brand-wordmark {
+    display: flex;
+    min-width: 0;
+  }
+
+  .brand-text {
+    font-size: 1.2rem;
+  }
+
+  .brand-tagline {
+    display: none;
+  }
+
+  .header-actions {
+    grid-column: 3;
+    grid-row: 1;
+    margin-left: 0;
+    gap: 4px;
+  }
+
+  .header-actions .header-link {
+    display: none !important;
+  }
+
+  .theme-toggle {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: var(--gray-100);
+  }
+
+  [data-theme="dark"] .theme-toggle {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  #user-info {
+    display: none !important;
+  }
+
+  .page-indicator {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    min-width: 0;
+    height: 34px;
+    padding: 3px 8px;
+    border-radius: 11px;
+    background: rgba(79, 70, 229, 0.07);
+    border: 1px solid rgba(79, 70, 229, 0.12);
+    gap: 8px;
+  }
+
+  .page-indicator .page-home {
+    width: 28px;
+    height: 28px;
+    border-radius: 9px;
+    flex: 0 0 28px;
+  }
+
+  .page-indicator .page-title {
+    font-size: 0.88rem;
+    line-height: 1.1;
+    max-width: 100%;
+  }
+
+  .page-indicator .page-subtitle {
+    display: none;
+  }
+
+  .main-content {
+    margin-top: var(--header-height);
+    padding: 8px;
+    padding-bottom: calc(74px + env(safe-area-inset-bottom));
+  }
+
+  .content-card {
+    padding: 0;
+    border-radius: 0;
+    overflow: visible;
+  }
+
+  .mobile-quick-menu {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 5px;
+    padding: 7px 8px calc(7px + env(safe-area-inset-bottom));
+    box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.08);
+  }
+
+  html.menu-open .mobile-quick-menu {
+    display: none;
+  }
+
+  .mobile-quick-menu .quick-btn {
+    min-width: 0;
+    min-height: 54px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    border-radius: 14px;
+    padding: 6px 4px;
+    color: var(--gray-700);
+    background: transparent;
+  }
+
+  .mobile-quick-menu .quick-btn.active {
+    color: var(--primary);
+    background: rgba(79, 70, 229, 0.10);
+  }
+
+  .mobile-quick-menu .quick-btn i {
+    display: block;
+    margin: 0;
+    font-size: 1.08rem;
+    line-height: 1;
+  }
+
+  .mobile-quick-menu .quick-label {
+    display: block;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+
+  [data-theme="dark"] .mobile-quick-menu .quick-btn {
+    background: transparent;
+    color: #CBD5E1;
+  }
+
+  [data-theme="dark"] .mobile-quick-menu .quick-btn.active {
+    color: #C7D2FE;
+    background: rgba(99, 102, 241, 0.18);
+  }
+}
+
+@media (max-width: 380px) {
+  .brand-wordmark {
+    display: none;
+  }
+
+  .app-header {
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+  }
+}
+
+/* =========================
+   THAI DATE PICKER
+   ========================= */
+.thai-global-date {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  min-width: 150px;
+}
+
+.thai-global-date-native {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  inset: auto auto 0 0 !important;
+}
+
+.thai-global-date-button {
+  width: 100%;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  text-align: left;
+  font-family: 'Sarabun', sans-serif;
+  cursor: pointer;
+}
+
+.thai-global-date-button .date-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thai-global-date-button .date-icon {
+  flex: 0 0 auto;
+  opacity: 0.78;
+}
+
+.thai-date-popover {
+  position: fixed;
+  width: 310px;
+  max-width: calc(100vw - 24px);
+  padding: 12px;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  background: #fff;
+  color: #1F2937;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.18);
+  z-index: 99999;
+  font-family: 'Sarabun', sans-serif;
+}
+
+[data-theme="dark"] .thai-date-popover {
+  background: #111827;
+  color: #E5E7EB;
+  border-color: #374151;
+}
+
+.thai-date-popover.hidden {
+  display: none !important;
+}
+
+.thai-date-popover-head {
+  display: grid;
+  grid-template-columns: 34px 1fr 34px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.thai-date-popover-title {
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 800;
+  color: inherit;
+}
+
+.thai-date-popover-nav,
+.thai-date-popover-day,
+.thai-date-popover-today {
+  border: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.thai-date-popover-nav {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: #F8FAFC;
+  color: #334155;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.thai-date-popover-nav:hover {
+  background: #EEF2FF;
+  color: #4F46E5;
+}
+
+[data-theme="dark"] .thai-date-popover-nav {
+  background: #1F2937;
+  color: #E5E7EB;
+}
+
+.thai-date-popover-weekdays,
+.thai-date-popover-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.thai-date-popover-weekdays {
+  margin-bottom: 4px;
+  text-align: center;
+  color: #64748B;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.thai-date-popover-day {
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.thai-date-popover-day:hover {
+  background: #EEF2FF;
+  color: #4338CA;
+}
+
+.thai-date-popover-day.is-muted {
+  color: #CBD5E1;
+  font-weight: 500;
+}
+
+[data-theme="dark"] .thai-date-popover-day.is-muted {
+  color: #64748B;
+}
+
+.thai-date-popover-day.is-today {
+  box-shadow: inset 0 0 0 1.5px #94A3B8;
+}
+
+.thai-date-popover-day.is-selected {
+  background: #3B82F6;
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(59, 130, 246, 0.3);
+}
+
+.thai-date-popover-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #F1F5F9;
+}
+
+[data-theme="dark"] .thai-date-popover-foot {
+  border-color: #253044;
+}
+
+.thai-date-popover-today {
+  min-height: 30px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #EEF2FF;
+  color: #4F46E5;
+  font-weight: 800;
+}
+
+.thai-date-popover-today:hover {
+  background: #E0E7FF;
+}
+
+@media (max-width: 576px) {
+  .thai-date-popover {
+    width: min(310px, calc(100vw - 16px));
+  }
+}
   </style>
 </head>
 
@@ -1240,21 +1734,19 @@ body.menu-open {
     </button>
 
     <h1 class="app-title app-brand">
-      <div class="logo-wrapper" id="logoWrapper">
-        <div class="logo-placeholder">
-          <i class="bi bi-journal-text logo-placeholder-icon"></i>
-        </div>
-        <img id="brandLogo"
-             class="app-logo-img"
-             src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='1'%3E%3C/svg%3E"
-             alt="P5Smart Logo"
-             loading="eager"
-             decoding="async" />
-        <div class="logo-fallback-icon">
-          <i class="bi bi-journal-bookmark-fill"></i>
-        </div>
+      <div class="logo-wrapper" aria-hidden="true">
+        <svg class="brand-mark" viewBox="0 0 40 40" focusable="false">
+          <path class="sheet" d="M11 5h13l7 7v21a3 3 0 0 1-3 3H11a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3Z"/>
+          <path class="fold" d="M24 5v7h7Z"/>
+          <path class="line" d="M14 16h8M14 21h6"/>
+          <path class="chart" d="M14 28l4-4 3 3 5-7"/>
+          <path class="check" d="M24 28l3 3 6-7"/>
+        </svg>
       </div>
-      <span class="brand-text">P5Smart</span>
+      <span class="brand-wordmark">
+        <span class="brand-text"><span class="brand-p5">P5</span><span class="brand-smart">Smart</span></span>
+        <span class="brand-tagline">School Records</span>
+      </span>
     </h1>
 
     <div class="page-indicator" aria-label="ตำแหน่งปัจจุบัน">
@@ -1308,6 +1800,7 @@ body.menu-open {
       <li class="nav-item admin-only" data-page="subjectManager"><a href="#" class="nav-link" data-page="subjectManager"><i class="fas fa-book"></i> จัดการรายวิชา</a></li>
       <li class="nav-item admin-only" data-page="teacher_editor"><a href="#" class="nav-link" data-page="teacher_editor"><i class="fas fa-chalkboard-teacher"></i> จัดการครูประจำชั้น</a></li>
       <li class="nav-item admin-only" data-page="admin_panel"><a href="#" class="nav-link" data-page="admin_panel"><i class="fas fa-users-cog"></i> จัดการผู้ใช้</a></li>
+      <li class="nav-item admin-only" data-page="academic_year_tools"><a href="#" class="nav-link" data-page="academic_year_tools"><i class="bi bi-calendar2-range"></i> จัดการปีการศึกษา</a></li>
       <li class="nav-item admin-only"><a href="#" class="nav-link" onclick="AppNavigation.setupNewYear();return false;"><i class="bi bi-calendar2-plus"></i> เตรียมข้อมูลปีการศึกษาใหม่</a></li>
       <li class="nav-item admin-only"><a href="#" class="nav-link" onclick="AppNavigation.checkSystemUpdate();return false;"><i class="bi bi-arrow-repeat"></i> เช็คอัปเดตระบบ</a></li>
       <li class="nav-item admin-only master-only"><a href="#" class="nav-link" onclick="AppNavigation.exportSystemZip();return false;"><i class="fas fa-file-export"></i> ส่งออกระบบให้โรงเรียนอื่น</a></li>
@@ -1321,6 +1814,13 @@ body.menu-open {
       <li class="nav-item admin-only teacher-only" data-page="parent_info_report"><a href="#" class="nav-link" data-page="parent_info_report"><i class="bi bi-pencil-square"></i> แก้ไขข้อมูลผู้ปกครอง</a></li>
       <li class="nav-item admin-only teacher-only" data-page="import"><a href="#" class="nav-link" data-page="import"><i class="fas fa-file-import"></i> นำเข้ารายชื่อ (DMC)</a></li>
       <li class="nav-item teacher-only" data-page="export_pdf_page"><a href="#" class="nav-link" data-page="export_pdf_page"><i class="bi bi-file-earmark-pdf"></i> ส่งออกรายชื่อ PDF</a></li>
+      <li class="nav-item teacher-only" data-page="graduation_management"><a href="#" class="nav-link" data-page="graduation_management"><i class="fas fa-graduation-cap"></i> จัดการนักเรียนจบ</a></li>
+    </ul>
+
+    <ul class="menu-group" aria-label="สุขภาพนักเรียน">
+      <li class="menu-header" aria-haspopup="true" aria-controls="submenuFlyout"><i class="bi bi-heart-pulse me-2"></i>สุขภาพนักเรียน<span class="toggle-icon"><i class="fas fa-chevron-down"></i></span></li>
+      <li class="nav-item teacher-only" data-page="student_growth_entry"><a href="#" class="nav-link" data-page="student_growth_entry"><i class="bi bi-clipboard2-pulse"></i> บันทึกน้ำหนัก-ส่วนสูง</a></li>
+      <li class="nav-item teacher-only" data-page="student_growth_report"><a href="#" class="nav-link" data-page="student_growth_report"><i class="bi bi-bar-chart-line"></i> รายงานน้ำหนัก-ส่วนสูง</a></li>
     </ul>
 
     <ul class="menu-group" aria-label="เวลาเรียน">
@@ -1395,18 +1895,19 @@ body.menu-open {
         color: #818CF8;
       }
       
-      /* แสดง sub-items ของ reports-menu เสมอบน Mobile */
+      /* reports-menu: ใช้ accordion ปกติบน Mobile */
       @media (max-width: 991.98px) {
         .reports-menu .nav-item {
-          display: block !important;
-          max-height: none !important;
-          opacity: 1 !important;
-          overflow: visible !important;
+          display: block;
+          max-height: 200px;
+          opacity: 1;
+          overflow: visible;
         }
         .reports-menu.menu-collapsed .nav-item {
-          display: block !important;
-          max-height: none !important;
-          opacity: 1 !important;
+          max-height: 0;
+          opacity: 0;
+          overflow: hidden;
+          padding: 0;
         }
       }
     </style>
@@ -1431,6 +1932,18 @@ body.menu-open {
         <a href="#" class="nav-link" data-page="pp5_full_book">
           <i class="bi bi-journal-bookmark-fill"></i>
           <span>ปพ.5 รวมเล่ม (PDF)</span>
+        </a>
+      </li>
+      <li class="nav-item teacher-only" data-page="pp5_readiness">
+        <a href="#" class="nav-link" data-page="pp5_readiness">
+          <i class="bi bi-clipboard2-check"></i>
+          <span>ตรวจความพร้อม ปพ.5</span>
+        </a>
+      </li>
+      <li class="nav-item teacher-only" data-page="pp5_approval">
+        <a href="#" class="nav-link" data-page="pp5_approval">
+          <i class="bi bi-shield-check"></i>
+          <span>ส่งงาน / อนุมัติ ปพ.5</span>
         </a>
       </li>
       <li class="nav-item" data-page="report_card_generator">
@@ -1697,6 +2210,7 @@ function setActivePage(page) {
   document.getElementById('contentFrame')?.setAttribute('data-current-page', page);
 
   try { updatePageIndicator_(page); } catch (_e) {}
+  try { renderMobileQuickMenu_(); } catch (_e) {}
 }
 
 function updatePageIndicator_(page) {
@@ -1742,6 +2256,242 @@ function showLoadError(pageName) {
   window.NavGuard.isLoadingSince = 0;
 }
 window.showLoadError = showLoadError;
+
+/* =========================
+   THAI DATE PICKER
+========================= */
+window.ThaiDatePicker = (function() {
+  const MONTHS = [
+    'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+    'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+  ];
+  let activeInput = null;
+  let activeButton = null;
+  let viewYear = 0;
+  let viewMonth = 0;
+  let observerStarted = false;
+
+  function pad(n) {
+    return String(n).padStart(2, '0');
+  }
+
+  function toLocalDateString(date) {
+    return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate());
+  }
+
+  function parseDate(value) {
+    if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+    const parts = value.split('-').map(Number);
+    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+    if (isNaN(d.getTime())) return null;
+    return d;
+  }
+
+  function formatThai(value) {
+    const d = parseDate(value);
+    if (!d) return 'เลือกวันที่';
+    return d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + (d.getFullYear() + 543);
+  }
+
+  function getPopover() {
+    let pop = document.getElementById('thaiGlobalDatePopover');
+    if (pop) return pop;
+    pop = document.createElement('div');
+    pop.id = 'thaiGlobalDatePopover';
+    pop.className = 'thai-date-popover hidden';
+    pop.innerHTML =
+      '<div class="thai-date-popover-head">' +
+        '<button type="button" class="thai-date-popover-nav" data-date-nav="-1" aria-label="เดือนก่อนหน้า">‹</button>' +
+        '<div class="thai-date-popover-title" id="thaiGlobalDateTitle">-</div>' +
+        '<button type="button" class="thai-date-popover-nav" data-date-nav="1" aria-label="เดือนถัดไป">›</button>' +
+      '</div>' +
+      '<div class="thai-date-popover-weekdays" aria-hidden="true">' +
+        '<span>จ</span><span>อ</span><span>พ</span><span>พฤ</span><span>ศ</span><span>ส</span><span>อา</span>' +
+      '</div>' +
+      '<div class="thai-date-popover-grid" id="thaiGlobalDateGrid"></div>' +
+      '<div class="thai-date-popover-foot"><button type="button" class="thai-date-popover-today" data-date-today="1">วันนี้</button></div>';
+    document.body.appendChild(pop);
+    pop.addEventListener('click', function(e) {
+      const nav = e.target.closest('[data-date-nav]');
+      if (nav) {
+        changeMonth(parseInt(nav.dataset.dateNav, 10));
+        return;
+      }
+      const today = e.target.closest('[data-date-today]');
+      if (today) {
+        selectDate(toLocalDateString(new Date()));
+        return;
+      }
+      const day = e.target.closest('[data-date-value]');
+      if (day) selectDate(day.dataset.dateValue);
+    });
+    return pop;
+  }
+
+  function positionPopover() {
+    if (!activeButton) return;
+    const pop = getPopover();
+    const rect = activeButton.getBoundingClientRect();
+    const width = Math.min(310, window.innerWidth - 24);
+    let left = rect.left;
+    if (left + width > window.innerWidth - 12) left = window.innerWidth - width - 12;
+    if (left < 12) left = 12;
+    let top = rect.bottom + 8;
+    const estimatedHeight = 360;
+    if (top + estimatedHeight > window.innerHeight - 12 && rect.top > estimatedHeight) {
+      top = rect.top - estimatedHeight - 8;
+    }
+    if (top < 12) top = 12;
+    pop.style.left = left + 'px';
+    pop.style.top = top + 'px';
+    pop.style.width = width + 'px';
+  }
+
+  function open(input, button) {
+    activeInput = input;
+    activeButton = button;
+    const base = parseDate(input.value) || new Date();
+    viewYear = base.getFullYear();
+    viewMonth = base.getMonth();
+    render();
+    positionPopover();
+    getPopover().classList.remove('hidden');
+    button.setAttribute('aria-expanded', 'true');
+  }
+
+  function close() {
+    const pop = document.getElementById('thaiGlobalDatePopover');
+    if (pop) pop.classList.add('hidden');
+    if (activeButton) activeButton.setAttribute('aria-expanded', 'false');
+    activeInput = null;
+    activeButton = null;
+  }
+
+  function changeMonth(delta) {
+    viewMonth += delta;
+    if (viewMonth < 0) {
+      viewMonth = 11;
+      viewYear--;
+    } else if (viewMonth > 11) {
+      viewMonth = 0;
+      viewYear++;
+    }
+    render();
+    positionPopover();
+  }
+
+  function selectDate(value) {
+    if (!activeInput) return;
+    const d = parseDate(value);
+    if (!d) return;
+    activeInput.value = toLocalDateString(d);
+    updateButton(activeInput);
+    activeInput.dispatchEvent(new Event('input', { bubbles: true }));
+    activeInput.dispatchEvent(new Event('change', { bubbles: true }));
+    close();
+  }
+
+  function render() {
+    const pop = getPopover();
+    const title = pop.querySelector('#thaiGlobalDateTitle');
+    const grid = pop.querySelector('#thaiGlobalDateGrid');
+    const selectedValue = activeInput ? activeInput.value : '';
+    const todayValue = toLocalDateString(new Date());
+    const first = new Date(viewYear, viewMonth, 1);
+    const offset = (first.getDay() + 6) % 7;
+    const start = new Date(viewYear, viewMonth, 1 - offset);
+    title.textContent = MONTHS[viewMonth] + ' ' + (viewYear + 543);
+    let html = '';
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+      const value = toLocalDateString(d);
+      const classes = ['thai-date-popover-day'];
+      if (d.getMonth() !== viewMonth) classes.push('is-muted');
+      if (value === todayValue) classes.push('is-today');
+      if (value === selectedValue) classes.push('is-selected');
+      html += '<button type="button" class="' + classes.join(' ') + '" data-date-value="' + value + '" aria-label="' +
+        d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + (d.getFullYear() + 543) + '">' + d.getDate() + '</button>';
+    }
+    grid.innerHTML = html;
+  }
+
+  function updateButton(input) {
+    const button = input._thaiDateButton;
+    if (!button) return;
+    const text = button.querySelector('.date-text');
+    if (text) text.textContent = formatThai(input.value);
+  }
+
+  function enhanceInput(input) {
+    if (!input || input.dataset.thaiDateEnhanced === '1' || input.dataset.noThaiDate === '1') return;
+    if (input.closest('.thai-date-picker')) return;
+    input.dataset.thaiDateEnhanced = '1';
+
+    const wrap = document.createElement('span');
+    wrap.className = 'thai-global-date';
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'form-control thai-global-date-button';
+    if (input.classList.contains('form-control-sm')) button.classList.add('form-control-sm');
+    button.setAttribute('aria-haspopup', 'dialog');
+    button.setAttribute('aria-expanded', 'false');
+    button.innerHTML = '<span class="date-text"></span><span class="date-icon">📅</span>';
+    wrap.appendChild(button);
+
+    input.classList.add('thai-global-date-native');
+    input._thaiDateButton = button;
+    updateButton(input);
+
+    button.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (activeInput === input && !getPopover().classList.contains('hidden')) close();
+      else open(input, button);
+    });
+    input.addEventListener('focus', function() { open(input, button); });
+    input.addEventListener('input', function() { updateButton(input); });
+    input.addEventListener('change', function() { updateButton(input); });
+  }
+
+  function enhance(root) {
+    const base = root || document;
+    base.querySelectorAll('input[type="date"]').forEach(enhanceInput);
+  }
+
+  function startObserver() {
+    if (observerStarted) return;
+    observerStarted = true;
+    document.addEventListener('click', function(e) {
+      const pop = document.getElementById('thaiGlobalDatePopover');
+      if (!pop || pop.classList.contains('hidden')) return;
+      if (pop.contains(e.target)) return;
+      if (activeButton && activeButton.contains(e.target)) return;
+      close();
+    }, true);
+    window.addEventListener('resize', positionPopover);
+    window.addEventListener('scroll', positionPopover, true);
+    const frame = document.getElementById('contentFrame');
+    if (frame) {
+      new MutationObserver(function() { enhance(frame); }).observe(frame, { childList: true, subtree: true });
+    }
+    enhance(document);
+  }
+
+  return {
+    enhance: enhance,
+    startObserver: startObserver,
+    formatThai: formatThai
+  };
+})();
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function() { window.ThaiDatePicker.startObserver(); });
+} else {
+  window.ThaiDatePicker.startObserver();
+}
 
 window.handleLoadError = function(action, pageName) {
   switch (action) {
@@ -1825,6 +2575,10 @@ function loadPage(page) {
               }
             }
           }, 300);
+
+          setTimeout(() => {
+            if (window.ThaiDatePicker) window.ThaiDatePicker.enhance(frame);
+          }, 80);
           
           resolve();
         } catch (e) {
@@ -2368,82 +3122,24 @@ function attachFavoriteStars_() {
 function renderMobileQuickMenu_() {
   const wrap = document.getElementById('mobileQuickMenu');
   if (!wrap) return;
+  const currentPage = document.body.getAttribute('data-current-page') || '';
   const fav = getFavorites_();
   const pages = (fav && fav.length) ? fav.slice(0, 4) : ['dashboard','attendance_daily','score_table_viewer','studentList'];
   const moreBtn = { page: '__more__', label: 'เพิ่มเติม', icon: '<i class="bi bi-three-dots"></i>' };
 
   const renderBtn = (page) => {
     if (page === '__more__') {
-      return '<button class="quick-btn" type="button" onclick="document.getElementById(\'mobileSidebarToggle\').click();"><i class="bi bi-three-dots"></i> เพิ่มเติม</button>';
+      return '<button class="quick-btn" type="button" onclick="document.getElementById(\'mobileSidebarToggle\').click();" aria-label="เมนูเพิ่มเติม"><i class="bi bi-three-dots"></i><span class="quick-label">เพิ่มเติม</span></button>';
     }
     const link = document.querySelector('.nav-link[data-page="' + page + '"]');
     const iconHtml = link?.querySelector('i')?.outerHTML || '<i class="bi bi-grid"></i>';
     const label = link?.querySelector('.nav-label')?.dataset?.rawLabel || link?.textContent?.trim() || page;
-    return '<button class="quick-btn" type="button" onclick="navigateTo(\'' + page + '\')">' + iconHtml + ' ' + escapeHtml_(label) + '</button>';
+    const activeClass = page === currentPage ? ' active' : '';
+    return '<button class="quick-btn' + activeClass + '" type="button" onclick="navigateTo(\'' + page + '\')" aria-label="' + escapeHtml_(label) + '">' + iconHtml + '<span class="quick-label">' + escapeHtml_(label) + '</span></button>';
   };
 
   wrap.innerHTML = pages.map(p => renderBtn(p)).join('') + renderBtn(moreBtn.page);
 }
-
-/* =========================
-   LOGO LOADER
-========================= */
-(function initLogoLoader() {
-  const LOGO_FILE_ID = '1wKhKmevYdQ4EDu7qAJKHNo7bRQYpmMjv';
-  const LOCAL_LOGO_PATH = 'images/logo.png';
-  
-  const logoWrapper = document.getElementById('logoWrapper');
-  const logoImg = document.getElementById('brandLogo');
-  
-  if (!logoWrapper || !logoImg) return;
-  
-  function showLogoSuccess(url) {
-    const img = new Image();
-    img.onload = function() {
-      logoImg.src = url;
-      logoImg.classList.add('loaded');
-      logoWrapper.classList.add('logo-ready');
-      logoWrapper.classList.remove('logo-error');
-    };
-    img.onerror = tryLocalLogo;
-    img.src = url;
-  }
-  
-  function tryLocalLogo() {
-    const img = new Image();
-    img.onload = function() {
-      logoImg.src = LOCAL_LOGO_PATH;
-      logoImg.classList.add('loaded');
-      logoWrapper.classList.add('logo-ready');
-      logoWrapper.classList.remove('logo-error');
-    };
-    img.onerror = showFallbackIcon;
-    img.src = LOCAL_LOGO_PATH;
-  }
-  
-  function showFallbackIcon() {
-    logoWrapper.classList.add('logo-error');
-    logoWrapper.classList.remove('logo-ready');
-    logoImg.classList.remove('loaded');
-  }
-  
-  function loadLogo() {
-    if (typeof google !== 'undefined' && google.script && google.script.run) {
-      google.script.run
-        .withSuccessHandler(function(url) {
-          if (url) showLogoSuccess(url);
-          else tryLocalLogo();
-        })
-        .withFailureHandler(tryLocalLogo)
-        .getLogoDataUrl(LOGO_FILE_ID);
-    } else {
-      const driveUrl = 'https://drive.google.com/uc?export=view&id=' + LOGO_FILE_ID + '&t=' + Date.now();
-      showLogoSuccess(driveUrl);
-    }
-  }
-  
-  loadLogo();
-})();
 
 /* =========================
    APP INITIALIZATION
@@ -2540,14 +3236,10 @@ document.addEventListener('DOMContentLoaded', function() {
     removeMasterOnly_();
   }
   
-  // Show/hide parent menu based on role
+  // Show parent menu for all roles (admin/teacher can preview/manage)
   const parentMenuItem = document.getElementById('parentPortalMenuItem');
   if (parentMenuItem) {
-    if (role === 'parent') {
-      parentMenuItem.style.display = 'block';
-    } else {
-      parentMenuItem.style.display = 'none';
-    }
+    parentMenuItem.style.display = 'block';
   }
   
   // Hide teacher-specific menu items for parents

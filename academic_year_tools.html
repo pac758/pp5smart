@@ -1,0 +1,1175 @@
+<div class="animate-fade-in ay-tools">
+  <div class="ay-page-head">
+    <div class="ay-heading">
+      <div class="ay-heading-icon"><i class="bi bi-calendar2-range"></i></div>
+      <div>
+        <div class="ay-kicker">ตั้งค่าระบบ</div>
+        <h2>จัดการปีการศึกษา</h2>
+        <p>เลือกปีทำงาน แก้ข้อมูลย้อนหลัง และกลับมาปีปัจจุบันโดยไม่ต้องจำคำสั่งเทคนิค</p>
+      </div>
+    </div>
+    <div class="ay-status-stack" aria-live="polite">
+      <span id="ayCurrentBadge" class="ay-status-pill ay-status-primary">ปีปัจจุบัน ...</span>
+      <span id="ayAvailableBadge" class="ay-status-pill">กำลังอ่านปีในระบบ...</span>
+    </div>
+  </div>
+
+  <div class="ay-control-strip">
+    <div class="ay-year-field">
+      <label for="ayYear"><i class="bi bi-calendar3"></i> ปีที่ต้องการแก้หรือจัดการ</label>
+      <input id="ayYear" type="text" class="form-control" placeholder="เช่น 2568 หรือ 2569" pattern="\d{4}" inputmode="numeric">
+    </div>
+    <div class="ay-control-note">
+      <i class="bi bi-info-circle"></i>
+      <span>กรอกปีเก่าเมื่อต้องการย้อนกลับไปแก้ข้อมูล เช่น 2568</span>
+    </div>
+  </div>
+
+  <section class="ay-fast-panel" aria-label="งานหลัก">
+    <div class="ay-fast-head">
+      <div>
+        <div class="ay-mini-label">สถานะระบบ</div>
+        <h3 id="ayNowYearText">กำลังอ่านปีที่ใช้งาน...</h3>
+        <p>เลือกงานหลักด้านล่างได้เลย ระบบจะจัดลำดับคำสั่งให้เอง</p>
+      </div>
+      <button type="button" class="btn ay-btn ay-btn-current" data-ay-action onclick="ayUseCurrentYear()">
+        <i class="bi bi-house-check"></i>
+        ใช้งานปีปัจจุบัน <span id="ayReturnYearText">...</span>
+      </button>
+    </div>
+
+    <div class="ay-choice-grid">
+      <article class="ay-choice-card">
+        <div class="ay-choice-title">
+          <span class="ay-choice-no">1</span>
+          <div>
+            <h4>เริ่มแก้ปีเก่า</h4>
+            <p>ใช้เมื่อจะกลับไปแก้ข้อมูลปีที่ปิดไปแล้ว</p>
+          </div>
+        </div>
+        <button type="button" class="btn ay-btn ay-btn-primary ay-main-action" data-ay-action onclick="ayStartOldYearWork()">
+          <i class="bi bi-pencil-square"></i>
+          เริ่มแก้ปี <span id="ayTargetStartText">ที่กรอก</span>
+        </button>
+      </article>
+
+      <article class="ay-choice-card ay-choice-finish">
+        <div class="ay-choice-title">
+          <span class="ay-choice-no">2</span>
+          <div>
+            <h4>แก้เสร็จแล้ว</h4>
+            <p>ใช้เมื่อแก้ปีเก่าเสร็จ และต้องกลับมาทำงานปีปัจจุบัน</p>
+          </div>
+        </div>
+        <button type="button" class="btn ay-btn ay-btn-success ay-main-action" data-ay-action onclick="ayFinishOldYearWork()">
+          <i class="bi bi-check2-square"></i>
+          เก็บงานแล้วกลับปี <span id="ayTargetReturnText">ปัจจุบัน</span>
+        </button>
+      </article>
+    </div>
+  </section>
+
+  <details class="ay-advanced-tools">
+    <summary><i class="bi bi-tools"></i> เครื่องมือขั้นสูง สำหรับตรวจหรือแก้เฉพาะจุด</summary>
+    <div class="ay-workflow">
+    <section class="ay-step">
+      <div class="ay-section-head">
+        <span class="ay-step-no">1</span>
+        <div>
+          <h5><i class="bi bi-clipboard-check"></i> ตรวจและเตรียมปี</h5>
+          <p>ตรวจสถานะข้อมูล และสร้างชุดชีตสำหรับปีที่กำลังใช้งาน</p>
+        </div>
+      </div>
+      <div class="ay-action-grid">
+        <button type="button" class="btn ay-btn ay-btn-success" data-ay-action onclick="ayAuditYear()">
+          <i class="bi bi-calendar-check"></i> ตรวจข้อมูลปี
+        </button>
+        <button type="button" class="btn ay-btn ay-btn-light" data-ay-action onclick="ayPreviewCurrentYear()">
+          <i class="bi bi-window-stack"></i> พรีวิวชีตปีปัจจุบัน
+        </button>
+        <button type="button" class="btn ay-btn ay-btn-primary" data-ay-action onclick="ayCreateCurrentYear()">
+          <i class="bi bi-plus-square"></i> สร้างชีตปีปัจจุบัน
+        </button>
+      </div>
+    </section>
+
+    <section class="ay-step">
+      <div class="ay-section-head">
+        <span class="ay-step-no">2</span>
+        <div>
+          <h5><i class="bi bi-folder2-open"></i> เก็บปีเก่าเข้าไฟล์คลัง</h5>
+          <p>ส่งออกชีตปีเก่าไปไฟล์คลังแยก แล้วล้างออกจากไฟล์หลักเมื่อระบบตรวจครบ</p>
+        </div>
+      </div>
+      <div class="ay-action-grid">
+        <button type="button" class="btn ay-btn ay-btn-light" data-ay-action onclick="ayPreviewArchive()">
+          <i class="bi bi-folder2-open"></i> พรีวิวไฟล์คลัง
+        </button>
+        <button type="button" class="btn ay-btn ay-btn-dark" data-ay-action onclick="ayExportArchive()">
+          <i class="bi bi-box-arrow-up-right"></i> ส่งออกปีที่ระบุ
+        </button>
+        <button type="button" class="btn ay-btn ay-btn-danger" data-ay-action onclick="ayCleanupArchivedYear()">
+          <i class="bi bi-scissors"></i> ล้างชีตปีเก่าจากไฟล์หลัก
+        </button>
+      </div>
+    </section>
+
+    <section class="ay-step ay-step-focus">
+      <div class="ay-section-head">
+        <span class="ay-step-no">3</span>
+        <div>
+          <h5><i class="bi bi-arrow-counterclockwise"></i> ย้อนกลับไปแก้ปีเก่า</h5>
+          <p>กู้คืนชีตปีเก่าจากคลัง สลับปีใช้งาน แก้ข้อมูล แล้วส่งกลับเข้าคลังอีกครั้ง</p>
+        </div>
+      </div>
+      <div class="ay-action-grid ay-action-grid-two">
+        <button type="button" class="btn ay-btn ay-btn-warning" data-ay-action onclick="ayRestoreArchive()">
+          <i class="bi bi-arrow-counterclockwise"></i> กู้คืนจากคลัง
+        </button>
+        <button type="button" class="btn ay-btn ay-btn-primary" data-ay-action onclick="aySwitchYear()">
+          <i class="bi bi-calendar2-check"></i> สลับปีใช้งาน
+        </button>
+      </div>
+    </section>
+    </div>
+  </details>
+
+  <div id="ayResult" class="ay-result"></div>
+</div>
+
+<style>
+
+.ay-tools {
+  --ay-blue: #4f6ef7;
+  --ay-blue-deep: #3b52cc;
+  --ay-blue-dark: #1e3a8a;
+  --ay-green: #059669;
+  --ay-green-light: #d1fae5;
+  --ay-amber: #d97706;
+  --ay-amber-light: #fef3c7;
+  --ay-red: #dc2626;
+  --ay-red-light: #fee2e2;
+  --ay-ink: #0f172a;
+  --ay-muted: #64748b;
+  --ay-line: #e2e8f0;
+  --ay-soft: #f8fafc;
+  --ay-card: #ffffff;
+  --ay-radius: 16px;
+  --ay-shadow-sm: 0 1px 3px rgba(15,23,42,.06), 0 1px 2px rgba(15,23,42,.04);
+  --ay-shadow-md: 0 4px 12px rgba(15,23,42,.08), 0 2px 4px rgba(15,23,42,.04);
+  --ay-shadow-lg: 0 10px 32px rgba(15,23,42,.1), 0 4px 8px rgba(15,23,42,.06);
+  --ay-gradient: linear-gradient(135deg, #4f6ef7 0%, #7c5cfc 50%, #a855f7 100%);
+  animation: ayFadeUp .5s cubic-bezier(.16,1,.3,1) both;
+  color: var(--ay-ink);
+  max-width: 1280px;
+}
+
+/* ── Header ── */
+.ay-page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.25rem 1.5rem;
+  margin: 0 0 1.25rem;
+  border-radius: var(--ay-radius);
+  background: var(--ay-card);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--ay-line);
+  box-shadow: var(--ay-shadow-sm);
+}
+.ay-page-head::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(79,110,247,.08), transparent 36%);
+  pointer-events: none;
+}
+
+.ay-heading {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.ay-heading-icon {
+  width: 56px; height: 56px;
+  display: inline-flex;
+  align-items: center; justify-content: center;
+  flex: 0 0 56px;
+  border: 2px solid #c7d2fe;
+  border-radius: 14px;
+  background: #eef2ff;
+  color: var(--ay-blue);
+  font-size: 1.6rem;
+}
+
+.ay-kicker {
+  color: var(--ay-blue);
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  margin-bottom: .15rem;
+}
+
+.ay-page-head h2 {
+  margin: 0;
+  color: var(--ay-ink);
+  font-size: 1.65rem;
+  font-weight: 900;
+  line-height: 1.2;
+  letter-spacing: -.02em;
+}
+
+.ay-page-head p {
+  margin: .3rem 0 0;
+  color: var(--ay-muted);
+  font-size: .92rem;
+  font-weight: 500;
+}
+
+/* ── Status badges ── */
+.ay-status-stack {
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: .5rem;
+  flex: 0 0 auto;
+}
+
+.ay-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  min-height: 30px;
+  padding: .3rem .8rem;
+  border: 1px solid #dbeafe;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: var(--ay-blue-dark);
+  font-size: .82rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ay-status-primary {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #047857;
+}
+.ay-status-primary::before {
+  content: '';
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 6px #34d399;
+  animation: ayPulse 2s ease-in-out infinite;
+}
+
+/* ── Year input ── */
+.ay-control-strip {
+  display: grid;
+  grid-template-columns: minmax(260px, 380px) minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: end;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+  border: 1px solid var(--ay-line);
+  border-radius: var(--ay-radius);
+  background: var(--ay-card);
+  box-shadow: var(--ay-shadow-sm);
+}
+
+.ay-year-field label {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin-bottom: .5rem;
+  color: var(--ay-ink);
+  font-size: .88rem;
+  font-weight: 700;
+}
+.ay-year-field label i { color: var(--ay-blue); }
+
+.ay-year-field .form-control {
+  height: 48px;
+  border: 2px solid var(--ay-line);
+  border-radius: 12px;
+  color: var(--ay-ink);
+  font-size: 1.1rem;
+  font-weight: 800;
+  padding: .5rem 1rem;
+  transition: border-color .2s, box-shadow .2s;
+}
+.ay-year-field .form-control:focus {
+  border-color: var(--ay-blue);
+  box-shadow: 0 0 0 4px rgba(79,110,247,.15);
+}
+
+.ay-control-note {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  min-height: 48px;
+  padding: .65rem .85rem;
+  color: var(--ay-muted);
+  font-size: .88rem;
+  border-radius: 12px;
+  background: var(--ay-soft);
+}
+.ay-control-note i { color: var(--ay-blue); font-size: 1.1rem; }
+
+/* ── Main choices ── */
+.ay-fast-panel {
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--ay-line);
+  border-radius: var(--ay-radius);
+  background: var(--ay-card);
+  box-shadow: var(--ay-shadow-sm);
+}
+
+.ay-fast-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.ay-mini-label {
+  color: var(--ay-muted);
+  font-size: .78rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.ay-fast-head h3 {
+  margin: .15rem 0 .2rem;
+  color: var(--ay-ink);
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+
+.ay-fast-head p {
+  margin: 0;
+  color: var(--ay-muted);
+  font-size: .9rem;
+}
+
+.ay-btn-current {
+  min-width: 230px;
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: var(--ay-blue-dark);
+}
+
+.ay-btn-current:hover {
+  background: #dbeafe;
+  color: var(--ay-blue-dark);
+}
+
+.ay-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  padding-top: 1rem;
+}
+
+.ay-choice-card {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid #dbeafe;
+  border-radius: 14px;
+  background: #f8fbff;
+}
+
+.ay-choice-finish {
+  border-color: #bbf7d0;
+  background: #f7fef9;
+}
+
+.ay-choice-title {
+  display: flex;
+  align-items: flex-start;
+  gap: .85rem;
+}
+
+.ay-choice-no {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border-radius: 10px;
+  background: var(--ay-blue);
+  color: #fff;
+  font-size: .95rem;
+  font-weight: 900;
+}
+
+.ay-choice-finish .ay-choice-no {
+  background: var(--ay-green);
+}
+
+.ay-choice-card h4 {
+  margin: 0 0 .2rem;
+  color: var(--ay-ink);
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+.ay-choice-card p {
+  margin: 0;
+  color: var(--ay-muted);
+  font-size: .88rem;
+  line-height: 1.45;
+}
+
+.ay-main-action {
+  width: 100%;
+  min-height: 52px;
+}
+
+.ay-advanced-tools {
+  margin-top: 1rem;
+}
+
+.ay-advanced-tools > summary {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  min-height: 48px;
+  padding: .75rem 1rem;
+  border: 1px solid var(--ay-line);
+  border-radius: 12px;
+  background: var(--ay-soft);
+  color: var(--ay-ink);
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: var(--ay-shadow-sm);
+}
+
+.ay-advanced-tools[open] > summary {
+  margin-bottom: 1rem;
+}
+
+/* ── Workflow steps ── */
+.ay-workflow {
+  display: grid;
+  gap: 1rem;
+  position: relative;
+}
+
+.ay-step {
+  border: 1px solid var(--ay-line);
+  border-radius: var(--ay-radius);
+  background: var(--ay-card);
+  overflow: hidden;
+  box-shadow: var(--ay-shadow-sm);
+  transition: box-shadow .25s, transform .25s;
+  position: relative;
+}
+.ay-step::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  border-radius: 4px 0 0 4px;
+  background: var(--ay-line);
+  transition: background .25s;
+}
+.ay-step:hover {
+  box-shadow: var(--ay-shadow-md);
+  transform: translateY(-2px);
+}
+.ay-step:nth-child(1)::before { background: var(--ay-green); }
+.ay-step:nth-child(2)::before { background: var(--ay-amber); }
+.ay-step:nth-child(3)::before { background: var(--ay-blue); }
+
+.ay-step:nth-child(1) { animation: ayFadeUp .5s cubic-bezier(.16,1,.3,1) .1s both; }
+.ay-step:nth-child(2) { animation: ayFadeUp .5s cubic-bezier(.16,1,.3,1) .2s both; }
+.ay-step:nth-child(3) { animation: ayFadeUp .5s cubic-bezier(.16,1,.3,1) .3s both; }
+
+.ay-step-focus {
+  border-color: #c7d2fe;
+  box-shadow: var(--ay-shadow-md), 0 0 0 3px rgba(79,110,247,.08);
+}
+.ay-step-focus::before { background: var(--ay-blue) !important; width: 5px; }
+
+.ay-section-head {
+  display: flex;
+  align-items: flex-start;
+  gap: .9rem;
+  border-bottom: 1px solid #f1f5f9;
+  padding: 1.15rem 1.25rem 1rem;
+}
+
+.ay-step-no {
+  display: inline-flex;
+  align-items: center; justify-content: center;
+  width: 34px; height: 34px;
+  flex: 0 0 34px;
+  border-radius: 10px;
+  font-size: .9rem;
+  font-weight: 900;
+  color: #fff;
+}
+.ay-step:nth-child(1) .ay-step-no { background: linear-gradient(135deg, #059669, #34d399); }
+.ay-step:nth-child(2) .ay-step-no { background: linear-gradient(135deg, #d97706, #fbbf24); }
+.ay-step:nth-child(3) .ay-step-no { background: linear-gradient(135deg, #4f6ef7, #7c5cfc); }
+
+.ay-section-head h5 {
+  margin: 0 0 .25rem;
+  color: var(--ay-ink);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+.ay-section-head h5 i { margin-right: .25rem; }
+
+.ay-section-head p {
+  margin: 0;
+  color: var(--ay-muted);
+  font-size: .88rem;
+  line-height: 1.5;
+}
+
+/* ── Action buttons ── */
+.ay-action-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .75rem;
+  padding: 1rem 1.25rem 1.25rem;
+}
+.ay-action-grid-two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+.ay-btn {
+  display: inline-flex;
+  align-items: center; justify-content: center;
+  gap: .5rem;
+  min-height: 48px;
+  border-radius: 12px;
+  font-size: .9rem;
+  font-weight: 700;
+  white-space: normal;
+  border: 2px solid transparent;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all .2s cubic-bezier(.16,1,.3,1);
+}
+.ay-btn::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,.12) 0%, transparent 100%);
+  pointer-events: none;
+}
+.ay-btn:hover { transform: translateY(-2px); box-shadow: var(--ay-shadow-md); }
+.ay-btn:active { transform: translateY(0); }
+
+.ay-btn-light {
+  border-color: var(--ay-line);
+  background: var(--ay-card);
+  color: var(--ay-ink);
+}
+.ay-btn-light:hover { background: var(--ay-soft); border-color: #cbd5e1; color: var(--ay-ink); }
+
+.ay-btn-primary {
+  background: var(--ay-gradient);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(79,110,247,.3);
+}
+.ay-btn-primary:hover { box-shadow: 0 6px 20px rgba(79,110,247,.35); color: #fff; }
+
+.ay-btn-dark {
+  background: linear-gradient(135deg, #1e293b, #334155);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(15,23,42,.25);
+}
+.ay-btn-dark:hover { box-shadow: 0 6px 20px rgba(15,23,42,.3); color: #fff; }
+
+.ay-btn-success {
+  background: var(--ay-green-light);
+  color: var(--ay-green);
+  border-color: #a7f3d0;
+}
+.ay-btn-success:hover { background: #a7f3d0; color: #047857; }
+
+.ay-btn-warning {
+  background: var(--ay-amber-light);
+  color: var(--ay-amber);
+  border-color: #fde68a;
+}
+.ay-btn-warning:hover { background: #fde68a; color: #b45309; }
+
+.ay-btn-danger {
+  background: var(--ay-red-light);
+  color: var(--ay-red);
+  border-color: #fecaca;
+}
+.ay-btn-danger:hover { background: #fecaca; color: #b91c1c; }
+
+/* ── Result area ── */
+.ay-result { margin-top: 1.25rem; }
+.ay-result .alert { border-radius: var(--ay-radius); box-shadow: var(--ay-shadow-sm); }
+.ay-table { max-height: 420px; overflow: auto; border-radius: 12px; }
+.ay-progress-list {
+  display: grid;
+  gap: .55rem;
+  margin-top: .85rem;
+}
+.ay-progress-step {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .65rem;
+  padding: .65rem .75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+}
+.ay-progress-step span {
+  min-width: 0;
+  color: var(--ay-ink);
+  font-weight: 700;
+}
+.ay-progress-step small {
+  color: var(--ay-muted);
+  font-size: .78rem;
+  white-space: nowrap;
+}
+.ay-spin {
+  animation: aySpin 1s linear infinite;
+}
+
+/* ── Animations ── */
+@keyframes ayFadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes ayPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: .5; transform: scale(1.3); }
+}
+@keyframes aySpin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Responsive ── */
+@media (max-width: 576px) {
+  .ay-page-head { flex-direction: column; align-items: flex-start; padding: 1.25rem; margin: 0 0 1rem; }
+  .ay-heading { flex-direction: column; }
+  .ay-status-stack { flex-direction: column; align-items: flex-start; }
+  .ay-control-strip { grid-template-columns: 1fr; }
+  .ay-fast-head { flex-direction: column; align-items: stretch; }
+  .ay-btn-current { width: 100%; min-width: 0; }
+  .ay-choice-grid { grid-template-columns: 1fr; }
+  .ay-action-grid, .ay-action-grid-two { grid-template-columns: 1fr; }
+  .ay-section-head { padding: 1rem; }
+  .ay-action-grid { padding: .85rem 1rem 1rem; }
+}
+</style>
+
+<script>
+function ayEscapeHtml(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+var aySystemInfo = { currentYear: '', computedYear: '', availableYears: [] };
+
+function ayBindYearInput() {
+  const input = document.getElementById('ayYear');
+  if (input && !input.dataset.ayBound) {
+    input.dataset.ayBound = '1';
+    input.addEventListener('input', ayUpdateModeLabels);
+  }
+}
+
+function ayGetReturnYear() {
+  return String((aySystemInfo && aySystemInfo.computedYear) || '').trim();
+}
+
+function ayUpdateModeLabels() {
+  const input = document.getElementById('ayYear');
+  const target = ((input && input.value) || '').trim();
+  const currentYear = String((aySystemInfo && aySystemInfo.currentYear) || '').trim();
+  const returnYear = ayGetReturnYear();
+  const labelTarget = target || 'ที่กรอก';
+  const labelReturn = returnYear || 'ปัจจุบัน';
+
+  const nowYearText = document.getElementById('ayNowYearText');
+  const returnYearText = document.getElementById('ayReturnYearText');
+  const targetStartText = document.getElementById('ayTargetStartText');
+  const targetReturnText = document.getElementById('ayTargetReturnText');
+
+  if (nowYearText) {
+    nowYearText.textContent = currentYear
+      ? 'ตอนนี้ระบบใช้งานปี ' + currentYear
+      : 'ยังอ่านปีที่ใช้งานไม่สำเร็จ';
+  }
+  if (returnYearText) returnYearText.textContent = labelReturn;
+  if (targetStartText) targetStartText.textContent = labelTarget;
+  if (targetReturnText) targetReturnText.textContent = labelReturn;
+}
+
+function ayInitInfo() {
+  ayBindYearInput();
+  if (typeof google === 'undefined' || !google.script || !google.script.run) {
+    ayUpdateModeLabels();
+    return;
+  }
+  google.script.run
+    .withSuccessHandler(function(info) {
+      info = info || {};
+      const currentYear = info.currentYear || '';
+      const computedYear = info.computedYear || '';
+      const availableYears = Array.isArray(info.availableYears) ? info.availableYears.filter(Boolean) : [];
+      aySystemInfo = {
+        currentYear: String(currentYear || ''),
+        computedYear: String(computedYear || ''),
+        availableYears: availableYears
+      };
+      const currentBadge = document.getElementById('ayCurrentBadge');
+      const availableBadge = document.getElementById('ayAvailableBadge');
+      if (currentBadge) currentBadge.textContent = 'ใช้งานอยู่ ' + (currentYear || '-');
+      if (availableBadge) {
+        availableBadge.textContent = availableYears.length
+          ? 'ปีตามปฏิทิน ' + (computedYear || '-') + ' | ปีในระบบ ' + availableYears.join(', ')
+          : 'ปีตามปฏิทิน ' + (computedYear || '-');
+      }
+      const input = document.getElementById('ayYear');
+      if (input && currentYear && !input.value) input.value = currentYear;
+      ayUpdateModeLabels();
+    })
+    .withFailureHandler(function() {
+      const currentBadge = document.getElementById('ayCurrentBadge');
+      const availableBadge = document.getElementById('ayAvailableBadge');
+      if (currentBadge) currentBadge.textContent = 'ปีปัจจุบัน -';
+      if (availableBadge) availableBadge.textContent = 'อ่านปีในระบบไม่สำเร็จ';
+      ayUpdateModeLabels();
+    })
+    .AY_getAcademicYearInfo();
+}
+
+function ayGetYear() {
+  const year = (document.getElementById('ayYear').value || '').trim();
+  if (!/^\d{4}$/.test(year)) {
+    alert('กรุณากรอกปีการศึกษา 4 หลัก เช่น 2568 หรือ 2569');
+    return '';
+  }
+  return year;
+}
+
+function aySetBusy(isBusy) {
+  document.querySelectorAll('.ay-tools [data-ay-action]').forEach(function(btn) {
+    btn.disabled = isBusy;
+  });
+}
+
+function ayResultHtml(type, title, message) {
+  return '<div class="alert alert-' + type + '"><strong>' + ayEscapeHtml(title) + '</strong>' +
+    (message ? '<br>' + ayEscapeHtml(message) : '') + '</div>';
+}
+
+function aySetLoading(text) {
+  document.getElementById('ayResult').innerHTML =
+    '<div class="alert alert-info"><span class="spinner-border spinner-border-sm me-2"></span>' +
+    ayEscapeHtml(text) + '</div>';
+}
+
+function ayList(title, count, rows) {
+  rows = rows || [];
+  if (!count && !rows.length) return '';
+  const items = rows.slice(0, 80).map(function(x) {
+    return '<li>' + ayEscapeHtml(x) + '</li>';
+  }).join('');
+  const more = count > rows.length
+    ? '<li class="text-muted">และอีก ' + (count - rows.length) + ' รายการ</li>'
+    : '';
+  return '<div class="mt-3"><strong>' + ayEscapeHtml(title) + ': ' + (count || rows.length) +
+    '</strong><ul class="mb-0">' + items + more + '</ul></div>';
+}
+
+function ayCall(method, args, loadingText, renderSuccess) {
+  const resultDiv = document.getElementById('ayResult');
+  aySetBusy(true);
+  aySetLoading(loadingText);
+
+  const runner = google.script.run
+    .withSuccessHandler(function(res) {
+      aySetBusy(false);
+      if (!res || !res.success) {
+        resultDiv.innerHTML = ayFailureHtml('ทำรายการไม่สำเร็จ', res);
+        return;
+      }
+      resultDiv.innerHTML = renderSuccess ? renderSuccess(res) : ayRenderGeneric(res);
+    })
+    .withFailureHandler(function(error) {
+      aySetBusy(false);
+      resultDiv.innerHTML = ayResultHtml('danger', 'เกิดข้อผิดพลาด', error.message);
+    });
+
+  runner[method].apply(runner, args || []);
+}
+
+function ayFailureHtml(title, res) {
+  res = res || {};
+  return ayResultHtml('danger', title || 'ทำรายการไม่สำเร็จ', res.message || 'ไม่ทราบสาเหตุ') +
+    ayList('รายการที่ขาด', (res.missing && res.missing.length) || 0, res.missing || []) +
+    ayList('รายการขนาดไม่ตรง', (res.mismatched && res.mismatched.length) || 0, res.mismatched || []) +
+    ayList('ข้อผิดพลาด', (res.errors && res.errors.length) || 0, res.errors || []);
+}
+
+function ayRunServer(method, args) {
+  return new Promise(function(resolve, reject) {
+    const runner = google.script.run
+      .withSuccessHandler(resolve)
+      .withFailureHandler(reject);
+    runner[method].apply(runner, args || []);
+  });
+}
+
+function aySetSequenceProgress(title, steps, activeIndex) {
+  const rows = steps.map(function(step, index) {
+    const done = index < activeIndex;
+    const active = index === activeIndex;
+    const icon = done ? 'bi-check-circle-fill text-success' : (active ? 'bi-arrow-repeat text-primary ay-spin' : 'bi-circle text-muted');
+    const state = done ? 'เสร็จแล้ว' : (active ? 'กำลังทำงาน' : 'รอทำงาน');
+    return '<div class="ay-progress-step">' +
+      '<i class="bi ' + icon + '"></i>' +
+      '<span>' + ayEscapeHtml(step.label) + '</span>' +
+      '<small>' + ayEscapeHtml(state) + '</small>' +
+    '</div>';
+  }).join('');
+
+  document.getElementById('ayResult').innerHTML =
+    '<div class="alert alert-info"><strong>' + ayEscapeHtml(title) + '</strong>' +
+    '<div class="ay-progress-list">' + rows + '</div></div>';
+}
+
+function ayRunSequence(title, steps, successTitle, successMessage, onDone) {
+  const resultDiv = document.getElementById('ayResult');
+  const results = [];
+  aySetBusy(true);
+
+  function runNext(index) {
+    if (index >= steps.length) {
+      aySetBusy(false);
+      if (typeof onDone === 'function') onDone(results);
+      ayInitInfo();
+      resultDiv.innerHTML = ayResultHtml('success', successTitle, successMessage || '') +
+        '<div class="ay-progress-list ay-progress-complete">' +
+        steps.map(function(step) {
+          return '<div class="ay-progress-step"><i class="bi bi-check-circle-fill text-success"></i><span>' +
+            ayEscapeHtml(step.label) + '</span><small>เสร็จแล้ว</small></div>';
+        }).join('') +
+        '</div>';
+      return;
+    }
+
+    const step = steps[index];
+    aySetSequenceProgress(title, steps, index);
+    ayRunServer(step.method, step.args)
+      .then(function(res) {
+        if (!res || !res.success) {
+          aySetBusy(false);
+          resultDiv.innerHTML = ayFailureHtml(step.label + ' ไม่สำเร็จ', res);
+          return;
+        }
+        results.push(res);
+        runNext(index + 1);
+      })
+      .catch(function(error) {
+        aySetBusy(false);
+        resultDiv.innerHTML = ayResultHtml('danger', step.label + ' ไม่สำเร็จ', (error && error.message) || String(error || 'ไม่ทราบสาเหตุ'));
+      });
+  }
+
+  runNext(0);
+}
+
+function ayRenderGeneric(res) {
+  const link = res.archiveUrl
+    ? '<br><a href="' + ayEscapeHtml(res.archiveUrl) + '" target="_blank" rel="noopener">เปิดไฟล์คลัง</a>'
+    : '';
+  return ayResultHtml('success', res.message || 'ทำรายการสำเร็จ', '') + link +
+    ayList('สร้างหรืออัปเดต', res.createdCount, res.created) +
+    ayList('กู้คืน', res.restoredCount, res.restored) +
+    ayList('ลบออกจากไฟล์หลัก', res.deletedCount, res.deleted) +
+    ayList('ข้าม', res.skippedCount, res.skipped) +
+    ayList('ข้อผิดพลาด', res.errorCount, res.errors);
+}
+
+function ayRenderAudit(res) {
+  const s = res.students || {};
+  const w = res.warehouse || {};
+  const sc = res.scoreSheets || {};
+  const tone = res.ok ? 'success' : 'warning';
+  const recommendations = (res.recommendations || []).map(function(x) {
+    return '<li>' + ayEscapeHtml(x) + '</li>';
+  }).join('');
+
+  return `
+    <div class="alert alert-${tone}">
+      <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+        <div>
+          <h5 class="mb-1"><i class="bi bi-calendar-check"></i> ตรวจข้อมูลปีการศึกษา ${ayEscapeHtml(res.targetYear)}</h5>
+          <div>${res.ok ? 'ไม่พบประเด็นสำคัญ' : 'พบประเด็นที่ควรตรวจ'} ${res.issueCount || 0} รายการ</div>
+        </div>
+        <span class="badge ${res.ok ? 'text-bg-success' : 'text-bg-warning'}">READ ONLY</span>
+      </div>
+      ${recommendations ? '<hr><strong>คำแนะนำ:</strong><ul class="mb-0">' + recommendations + '</ul>' : ''}
+    </div>
+    <div class="row g-3">
+      <div class="col-lg-4">
+        <div class="border rounded p-3 h-100">
+          <h6 class="text-primary mb-2">Students</h6>
+          <div>ทั้งหมด: ${s.totalRows || 0} แถว</div>
+          <div>ปีนี้: ${s.currentYearRows || 0} แถว</div>
+          <div>ใช้งานอยู่ปีนี้: ${s.activeCurrentRows || 0} คน</div>
+          ${ayList('ปีเก่ายัง active', s.oldYearActiveCount, s.oldYearActiveRows)}
+          ${ayList('academic_year ว่าง', s.blankYearCount, s.blankYearRows)}
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="border rounded p-3 h-100">
+          <h6 class="text-primary mb-2">SCORES_WAREHOUSE</h6>
+          <div>ชีต: ${ayEscapeHtml(w.sheetName || '-')}</div>
+          <div>ทั้งหมด: ${w.totalRows || 0} แถว</div>
+          ${ayList('ปีไม่ตรง', w.wrongYearCount, w.wrongYearRows)}
+          ${ayList('รายการซ้ำ', w.duplicateKeyCount, w.duplicateKeys)}
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="border rounded p-3 h-100">
+          <h6 class="text-primary mb-2">ชีตคะแนนรายวิชา</h6>
+          <div>พบชีตคะแนน: ${sc.totalScoreSheets || 0} ชีต</div>
+          ${ayList('ยังไม่มี suffix ปี', sc.unsuffixedCount, sc.unsuffixedSheets)}
+          ${ayList('suffix เป็นปีอื่น', sc.oldYearSuffixCount, sc.oldYearSuffixSheets)}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function ayRenderCurrentPlan(res) {
+  const totals = res.totals || {};
+  const rows = (res.sheets || []).map(function(item) {
+    const badge = !item.sourceExists
+      ? '<span class="badge text-bg-danger">ไม่พบต้นทาง</span>'
+      : (item.targetExists ? '<span class="badge text-bg-secondary">มีแล้ว</span>' : '<span class="badge text-bg-primary">จะสร้าง</span>');
+    return '<tr>' +
+      '<td>' + badge + '</td>' +
+      '<td>' + ayEscapeHtml(item.source || '-') + '</td>' +
+      '<td>' + ayEscapeHtml(item.target || '-') + '</td>' +
+      '<td class="text-end">' + (item.sourceRows || 0) + '</td>' +
+      '<td class="text-end">' + (item.explicitTargetYearRows || 0) + '</td>' +
+      '<td class="text-end">' + (item.blankYearRows || 0) + '</td>' +
+    '</tr>';
+  }).join('');
+
+  return `
+    <div class="alert alert-primary">
+      <h5 class="mb-1"><i class="bi bi-window-stack"></i> แผนเตรียมชีตปีปัจจุบัน ${ayEscapeHtml(res.targetYear)}</h5>
+      <div>จะสร้าง ${totals.toCreate || 0} ชีต | มีแล้ว ${totals.alreadyExists || 0} ชีต | แถวปีนี้ที่จะคัดลอก ${totals.explicitTargetYearRows || 0} แถว</div>
+    </div>
+    <div class="table-responsive ay-table border rounded">
+      <table class="table table-sm align-middle mb-0">
+        <thead class="table-light">
+          <tr><th>สถานะ</th><th>ต้นทาง</th><th>ปลายทาง</th><th class="text-end">แถวต้นทาง</th><th class="text-end">แถวปีนี้</th><th class="text-end">แถวปีว่าง</th></tr>
+        </thead>
+        <tbody>${rows || '<tr><td colspan="6" class="text-muted">ไม่มีข้อมูล</td></tr>'}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function ayRenderArchivePlan(res) {
+  const rows = (res.candidates || []).slice(0, 120).map(function(item) {
+    return '<tr>' +
+      '<td>' + ayEscapeHtml(item.name) + '</td>' +
+      '<td class="text-end">' + (item.dataRows || 0) + '</td>' +
+      '<td class="text-end">' + (item.columns || 0) + '</td>' +
+    '</tr>';
+  }).join('');
+  const link = res.archive && res.archive.url
+    ? '<a href="' + ayEscapeHtml(res.archive.url) + '" target="_blank" rel="noopener">เปิดไฟล์คลัง</a>'
+    : '<span class="text-muted">ยังไม่มีไฟล์คลัง</span>';
+  const tone = res.readyToCleanup ? 'success' : (res.archiveAvailable ? 'warning' : 'info');
+
+  return `
+    <div class="alert alert-${tone}">
+      <h5 class="mb-1"><i class="bi bi-folder2-open"></i> ไฟล์คลังปีเก่า ${ayEscapeHtml(res.targetYear)}</h5>
+      <div>${ayEscapeHtml(res.message || '')}</div>
+      <hr>
+      <div>ชีตในไฟล์หลัก ${res.candidateCount || 0} ชีต | ตรวจผ่านในไฟล์คลัง ${res.verifiedCount || 0} ชีต | ${res.readyToCleanup ? 'พร้อมล้างจากไฟล์หลัก' : 'ยังไม่พร้อมล้างจากไฟล์หลัก'}</div>
+      <div class="mt-1">ไฟล์คลัง: ${link}</div>
+      ${res.isCurrentYear ? '<div class="mt-2 text-danger"><strong>คำเตือน:</strong> ปีนี้เป็นปีปัจจุบัน ไม่ควรส่งออกเป็นคลังปีเก่า</div>' : ''}
+      ${ayList('ยังไม่มีในไฟล์คลัง', (res.missing || []).length, res.missing || [])}
+      ${ayList('ขนาดไม่ตรง', (res.mismatched || []).length, res.mismatched || [])}
+    </div>
+    <div class="table-responsive ay-table border rounded">
+      <table class="table table-sm align-middle mb-0">
+        <thead class="table-light">
+          <tr><th>ชีตปีที่ระบุในไฟล์หลัก</th><th class="text-end">แถวข้อมูล</th><th class="text-end">คอลัมน์</th></tr>
+        </thead>
+        <tbody>${rows || '<tr><td colspan="3" class="text-muted">ยังไม่พบชีตปีนี้ในไฟล์หลัก</td></tr>'}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function ayRequireReturnYear() {
+  const returnYear = ayGetReturnYear();
+  if (!returnYear) {
+    alert('ยังอ่านปีปัจจุบันตามปฏิทินไม่สำเร็จ กรุณารีเฟรชหน้านี้แล้วลองใหม่');
+    return '';
+  }
+  return returnYear;
+}
+
+function ayRequireOldYear() {
+  const year = ayGetYear();
+  if (!year) return '';
+  const returnYear = ayRequireReturnYear();
+  if (!returnYear) return '';
+  if (year === returnYear) {
+    alert('ปี ' + year + ' เป็นปีปัจจุบันอยู่แล้ว\n\nช่องนี้ใช้กรอกปีเก่าที่ต้องการย้อนกลับไปแก้ เช่น 2568');
+    return '';
+  }
+  return year;
+}
+
+function ayUseCurrentYear() {
+  const returnYear = ayRequireReturnYear();
+  if (!returnYear) return;
+  if (!confirm('ยืนยันกลับไปใช้งานปีปัจจุบัน ' + returnYear + ' ?')) return;
+
+  ayRunSequence(
+    'กำลังกลับไปปีปัจจุบัน',
+    [{ label: 'สลับระบบไปปี ' + returnYear, method: 'switchAcademicYearOnly', args: [returnYear] }],
+    'พร้อมใช้งานปี ' + returnYear,
+    'ตอนนี้ระบบตั้งปีการศึกษาเป็น ' + returnYear,
+    function() {
+      const input = document.getElementById('ayYear');
+      if (input) input.value = returnYear;
+      ayUpdateModeLabels();
+    }
+  );
+}
+
+function ayStartOldYearWork() {
+  const year = ayRequireOldYear();
+  if (!year) return;
+  if (!confirm('ยืนยันเริ่มแก้ข้อมูลปี ' + year + ' ?\n\nระบบจะดึงชีตปีนี้จากไฟล์คลัง แล้วสลับระบบไปปี ' + year)) return;
+
+  ayRunSequence(
+    'กำลังเตรียมให้แก้ปี ' + year,
+    [
+      { label: 'ดึงชีตปี ' + year + ' จากไฟล์คลัง', method: 'restoreAcademicYearFromExternalArchive', args: [year] },
+      { label: 'สลับระบบไปปี ' + year, method: 'switchAcademicYearOnly', args: [year] }
+    ],
+    'พร้อมแก้ข้อมูลปี ' + year,
+    'ตอนนี้ระบบตั้งปีการศึกษาเป็น ' + year + ' แล้ว แก้ข้อมูลในเมนูปกติได้เลย',
+    function() {
+      const input = document.getElementById('ayYear');
+      if (input) input.value = year;
+      ayUpdateModeLabels();
+    }
+  );
+}
+
+function ayFinishOldYearWork() {
+  const year = ayRequireOldYear();
+  if (!year) return;
+  const returnYear = ayRequireReturnYear();
+  if (!returnYear) return;
+  if (!confirm('ยืนยันว่าแก้ข้อมูลปี ' + year + ' เสร็จแล้ว?\n\nระบบจะเก็บกลับไฟล์คลัง ล้างชีตปีเก่าออกจากไฟล์หลัก แล้วกลับไปปี ' + returnYear)) return;
+
+  ayRunSequence(
+    'กำลังปิดงานปี ' + year,
+    [
+      { label: 'เก็บปี ' + year + ' กลับเข้าไฟล์คลัง', method: 'createAcademicYearExternalArchive', args: [year] },
+      { label: 'ล้างชีตปี ' + year + ' ออกจากไฟล์หลัก', method: 'cleanupArchivedYearSheetsFromMain', args: [year] },
+      { label: 'กลับไปใช้งานปี ' + returnYear, method: 'switchAcademicYearOnly', args: [returnYear] }
+    ],
+    'ปิดงานปี ' + year + ' เรียบร้อย',
+    'ข้อมูลถูกเก็บกลับไฟล์คลัง และระบบกลับมาใช้งานปี ' + returnYear,
+    function() {
+      const input = document.getElementById('ayYear');
+      if (input) input.value = returnYear;
+      ayUpdateModeLabels();
+    }
+  );
+}
+
+function ayAuditYear() {
+  const year = ayGetYear();
+  if (!year) return;
+  ayCall('auditAcademicYearData', [year], 'กำลังตรวจข้อมูลปีการศึกษา...', ayRenderAudit);
+}
+
+function ayPreviewCurrentYear() {
+  const year = ayGetYear();
+  if (!year) return;
+  ayCall('previewCurrentYearWorkingSheets', [year], 'กำลังพรีวิวชีตปีปัจจุบัน...', ayRenderCurrentPlan);
+}
+
+function ayCreateCurrentYear() {
+  const year = ayGetYear();
+  if (!year) return;
+  if (!confirm('ยืนยันสร้างชีตปีปัจจุบัน ' + year + ' ?\n\nระบบจะสร้างเฉพาะชีตที่ยังไม่มี และคัดลอกเฉพาะแถวที่ academic_year ตรงปีนี้')) return;
+  ayCall('createCurrentYearWorkingSheets', [year], 'กำลังสร้างชีตปีปัจจุบัน...', ayRenderGeneric);
+}
+
+function ayPreviewArchive() {
+  const year = ayGetYear();
+  if (!year) return;
+  ayCall('previewAcademicYearExternalArchive', [year], 'กำลังตรวจไฟล์คลังปีเก่า...', ayRenderArchivePlan);
+}
+
+function ayExportArchive() {
+  const year = ayGetYear();
+  if (!year) return;
+  if (!confirm('ยืนยันส่งออกชีตปี ' + year + ' ไปไฟล์คลังแยก?\n\nยังไม่ลบชีตในไฟล์หลักจนกว่าจะกดล้างชีตปีเก่า')) return;
+  ayCall('createAcademicYearExternalArchive', [year], 'กำลังส่งออกปีที่ระบุไปไฟล์คลัง...', ayRenderGeneric);
+}
+
+function ayCleanupArchivedYear() {
+  const year = ayGetYear();
+  if (!year) return;
+  if (!confirm('ยืนยันล้างชีต _' + year + ' ออกจากไฟล์หลัก?\n\nระบบจะทำได้เฉพาะเมื่อไฟล์คลังตรวจครบแล้ว')) return;
+  ayCall('cleanupArchivedYearSheetsFromMain', [year], 'กำลังล้างชีตปีเก่าจากไฟล์หลัก...', ayRenderGeneric);
+}
+
+function ayRestoreArchive() {
+  const year = ayGetYear();
+  if (!year) return;
+  if (!confirm('ยืนยันกู้คืนชีตปี ' + year + ' จากไฟล์คลังกลับเข้าไฟล์หลัก?\n\nใช้เมื่อต้องย้อนกลับไปบันทึกหรือแก้ข้อมูลปีเก่า')) return;
+  ayCall('restoreAcademicYearFromExternalArchive', [year], 'กำลังกู้คืนจากไฟล์คลัง...', ayRenderGeneric);
+}
+
+function aySwitchYear() {
+  const year = ayGetYear();
+  if (!year) return;
+  if (!confirm('ยืนยันสลับปีการศึกษาใช้งานเป็น ' + year + ' ?\n\nคำสั่งนี้เปลี่ยนเฉพาะค่าปีการศึกษา ไม่ลบ ไม่เลื่อนชั้น และไม่สร้างชีตใหม่')) return;
+  ayCall('switchAcademicYearOnly', [year], 'กำลังสลับปีการศึกษาใช้งาน...', function(res) {
+    ayInitInfo();
+    return ayRenderGeneric(res);
+  });
+}
+
+ayInitInfo();
+</script>

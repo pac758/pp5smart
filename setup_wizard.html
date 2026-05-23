@@ -554,8 +554,17 @@ function doInstall() {
 }
 
 function goToApp() {
-  const baseUrl = window.location.href.split('?')[0];
-  window.location.href = baseUrl + '?page=login';
+  google.script.run
+    .withSuccessHandler(function(url) {
+      // เพิ่ม timestamp เพื่อบังคับ browser reload (URL เดิมกับใหม่ต่างกัน)
+      var separator = url.indexOf('?') === -1 ? '?' : '&';
+      window.top.location.href = url + separator + '_t=' + Date.now();
+    })
+    .withFailureHandler(function() {
+      // Fallback: reload top window
+      try { window.top.location.reload(); } catch(e) { window.location.reload(); }
+    })
+    .getDeploymentUrl();
 }
 
 function toggleBoundInfo() {

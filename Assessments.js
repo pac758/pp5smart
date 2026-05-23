@@ -574,10 +574,16 @@ function rtw5HeaderIndex_(sheet) {
 function ensureRTW5SheetAndHeaders_() {
   var ss = SS();
   var sheet = null;
-  try { if (typeof S_getYearlySheet === 'function') sheet = S_getYearlySheet(RTW5_SHEET); } catch(_) {}
-  if (!sheet) sheet = ss.getSheetByName(RTW5_SHEET);
+  var targetName = RTW5_SHEET;
+  try {
+    if (typeof S_sheetName === 'function') {
+      targetName = S_sheetName(RTW5_SHEET);
+    }
+  } catch (_) {}
+  try { sheet = ss.getSheetByName(targetName); } catch (_) {}
+  if (!sheet && targetName === RTW5_SHEET) sheet = ss.getSheetByName(RTW5_SHEET);
   if (!sheet) {
-    sheet = ss.insertSheet(RTW5_SHEET);
+    sheet = ss.insertSheet(targetName);
     sheet.getRange(1, 1, 1, RTW5_HEADERS.length).setValues([RTW5_HEADERS]);
     var headerRange = sheet.getRange(1, 1, 1, RTW5_HEADERS.length);
     headerRange.setBackground('#e8f5e9');
@@ -698,6 +704,83 @@ function calculateSubjectScoreResult_(scores) {
 // SECTION E: GET FUNCTIONS (อ่านข้อมูล)
 // ============================================================
 
+function isInactiveAssessmentStudent_(status) {
+  var st = String(status || '').trim().toLowerCase().replace(/\s+/g, '');
+  if (!st) return false;
+  return [
+    'จำหน่าย', 'ย้ายออก', 'พ้นสภาพ', 'จบ', 'จบการศึกษา', 'สำเร็จการศึกษา',
+    'ลาออก', 'พักการเรียน', 'inactive', 'graduated', 'transferred', 'deleted'
+  ].indexOf(st) !== -1;
+}
+
+function shouldIncludeHistoricalTerminalAssessmentStudent_(grade, status, academicYear) {
+  var targetYear = Number(AY_normalizeYear_(academicYear));
+  var computedYear = Number((typeof AY_computeAcademicYearFromDate === 'function') ? AY_computeAcademicYearFromDate(new Date()) : '');
+  if (!targetYear || !computedYear || targetYear >= computedYear) return false;
+
+  var g = String(grade || '').trim().replace(/\s+/g, '');
+  if (g !== 'ป.6' && g !== 'ม.3') return false;
+
+  var st = String(status || '').trim().toLowerCase().replace(/\s+/g, '');
+  return [
+    'จำหน่าย',
+    'จบ',
+    'จบการศึกษา',
+    'สำเร็จการศึกษา',
+    'graduated'
+  ].indexOf(st) !== -1;
+}
+
+function getActiveStudentsForAssessment_(grade, classNo) {
+  var ss = SS();
+  var studentsSheet = (typeof AY_getStudentsSheetForRead === 'function') ? AY_getStudentsSheetForRead() : ss.getSheetByName('Students');
+  if (!studentsSheet) throw new Error('ไม่พบชีต Students');
+
+  var values = studentsSheet.getDataRange().getValues();
+  if (!values || values.length < 2) return [];
+
+  var headers = values[0].map(function(h) { return String(h || '').trim(); });
+  var col = {};
+  headers.forEach(function(h, i) { col[h] = i; });
+
+  var idIdx = col.student_id != null ? col.student_id : 0;
+  var titleIdx = col.title != null ? col.title : 2;
+  var firstIdx = col.firstname != null ? col.firstname : 3;
+  var lastIdx = col.lastname != null ? col.lastname : 4;
+  var gradeIdx = col.grade != null ? col.grade : 5;
+  var classIdx = col.class_no != null ? col.class_no : 6;
+  var statusIdx = col.status != null ? col.status : -1;
+  var currentAcademicYear = (typeof AY_getCurrentAcademicYear === 'function') ? AY_getCurrentAcademicYear(false) : '';
+
+  var students = values.slice(1)
+    .filter(function(row) {
+      var sid = String(row[idIdx] || '').trim();
+      if (!sid) return false;
+      if (String(row[gradeIdx] || '').trim() !== grade) return false;
+      if (String(row[classIdx] || '').trim() !== classNo) return false;
+      if (typeof AY_rowMatchesAcademicYear === 'function' && !AY_rowMatchesAcademicYear(row, headers, currentAcademicYear)) return false;
+      if (statusIdx < 0) return true;
+      var status = row[statusIdx];
+      if (!isInactiveAssessmentStudent_(status)) return true;
+      return shouldIncludeHistoricalTerminalAssessmentStudent_(row[gradeIdx], status, currentAcademicYear);
+    })
+    .map(function(row) {
+      var sid = String(row[idIdx] || '').trim();
+      return {
+        id: sid,
+        studentId: sid,
+        name: (String(row[titleIdx] || '').trim() + String(row[firstIdx] || '').trim() + ' ' + String(row[lastIdx] || '').trim()).trim(),
+        grade: String(row[gradeIdx] || '').trim(),
+        classNo: String(row[classIdx] || '').trim()
+      };
+    });
+
+  students.sort(function(a, b) {
+    return String(a.studentId || a.id).localeCompare(String(b.studentId || b.id), undefined, { numeric: true });
+  });
+  return students;
+}
+
 // ----- E1. Characteristic -----
 function getStudentsForCharacteristic(grade, classNo) {
   var validated = validateGradeAndClass_(grade, classNo);
@@ -705,20 +788,7 @@ function getStudentsForCharacteristic(grade, classNo) {
   classNo = validated.classNo;
 
   var ss = SS();
-  var studentsSheet = ss.getSheetByName('Students');
-  if (!studentsSheet) throw new Error('ไม่พบชีต Students');
-  var data = studentsSheet.getRange(2, 1, studentsSheet.getLastRow() - 1, 7).getValues();
-  var students = data
-    .filter(function(r) { return String(r[5]) === grade && String(r[6]) === classNo && String(r[0]); })
-    .map(function(r) {
-      return {
-        studentId: String(r[0]),
-        name: ((r[2] || '') + (r[3] || '') + ' ' + (r[4] || '')).trim(),
-        grade: r[5],
-        classNo: r[6]
-      };
-    });
-  students.sort(function(a, b) { return String(a.studentId).localeCompare(String(b.studentId), undefined, { numeric: true }); });
+  var students = getActiveStudentsForAssessment_(grade, classNo);
 
   var result = ensureCharSheetAndHeaders_();
   var sheet = result.sheet;
@@ -743,20 +813,7 @@ function getStudentsForActivity(grade, classNo) {
   classNo = validated.classNo;
 
   var ss = SS();
-  var studentsSheet = ss.getSheetByName('Students');
-  if (!studentsSheet) throw new Error('ไม่พบชีต Students');
-  var data = studentsSheet.getRange(2, 1, studentsSheet.getLastRow() - 1, 7).getValues();
-  var students = data
-    .filter(function(r) { return String(r[5]) === grade && String(r[6]) === classNo && String(r[0]); })
-    .map(function(r) {
-      return {
-        id: String(r[0]).trim(),
-        name: ((r[2] || '') + (r[3] || '') + ' ' + (r[4] || '')).trim(),
-        grade: r[5],
-        classNo: r[6]
-      };
-    });
-  students.sort(function(a, b) { return String(a.id).localeCompare(String(b.id), undefined, { numeric: true }); });
+  var students = getActiveStudentsForAssessment_(grade, classNo);
 
   var sheet = S_getYearlySheet(ACTIVITY_SHEET);
   var map = new Map();
@@ -791,19 +848,7 @@ function getStudentsForCompetency(grade, classNo) {
   classNo = validated.classNo;
 
   var ss = SS();
-  var studentsSheet = ss.getSheetByName('Students');
-  var data = studentsSheet.getRange(2, 1, studentsSheet.getLastRow() - 1, 7).getValues();
-  var students = data
-    .filter(function(r) { return String(r[5]) === grade && String(r[6]) === classNo; })
-    .map(function(r) {
-      return {
-        id: String(r[0]).trim(),
-        name: ((r[2] || '') + (r[3] || '') + ' ' + (r[4] || '')).trim(),
-        grade: r[5],
-        classNo: r[6]
-      };
-    });
-  students.sort(function(a, b) { return String(a.id).localeCompare(String(b.id)); });
+  var students = getActiveStudentsForAssessment_(grade, classNo);
 
   var sheet = ensureCompetencySheetAndHeaders_();
   var map = new Map();
@@ -817,8 +862,8 @@ function getStudentsForCompetency(grade, classNo) {
   }
   return students.map(function(s) {
     return {
-      studentId: s.id, name: s.name, grade: s.grade, classNo: s.classNo,
-      scores: map.get(s.id) || Array(25).fill('')
+      studentId: s.studentId, name: s.name, grade: s.grade, classNo: s.classNo,
+      scores: map.get(s.studentId) || Array(25).fill('')
     };
   });
 }
@@ -831,24 +876,7 @@ function getStudentsForSubjectScore(grade, classNo) {
     classNo = validated.classNo;
 
     var ss = SS();
-    var studentsSheet = ss.getSheetByName('Students');
-    if (!studentsSheet) throw new Error('ไม่พบชีต "Students"');
-
-    var lastRow = studentsSheet.getLastRow();
-    if (lastRow < 2) return [];
-    var studentsData = studentsSheet.getRange(2, 1, lastRow - 1, 7).getValues();
-
-    var students = studentsData
-      .filter(function(row) { return String(row[5] || '').trim() === grade && String(row[6] || '').trim() === classNo && String(row[0] || '').trim(); })
-      .map(function(row) {
-        return {
-          studentId: String(row[0]).trim(),
-          name: (String(row[2] || '').trim() + String(row[3] || '').trim() + ' ' + String(row[4] || '').trim()).trim(),
-          grade: String(row[5]).trim(),
-          classNo: String(row[6]).trim()
-        };
-      });
-    students.sort(function(a, b) { return String(a.studentId).localeCompare(String(b.studentId)); });
+    var students = getActiveStudentsForAssessment_(grade, classNo);
 
     var result = ensureRTWSheetAndHeaders_();
     var sheet = result.sheet;
@@ -892,20 +920,7 @@ function getStudentsForRTW5(grade, classNo) {
   classNo = validated.classNo;
 
   var ss = SS();
-  var studentsSheet = ss.getSheetByName('Students');
-  if (!studentsSheet) throw new Error('ไม่พบชีต Students');
-  var data = studentsSheet.getRange(2, 1, studentsSheet.getLastRow() - 1, 7).getValues();
-  var students = data
-    .filter(function(r) { return String(r[5]) === grade && String(r[6]) === classNo && String(r[0]); })
-    .map(function(r) {
-      return {
-        studentId: String(r[0]),
-        name: ((r[2] || '') + (r[3] || '') + ' ' + (r[4] || '')).trim(),
-        grade: r[5],
-        classNo: r[6]
-      };
-    });
-  students.sort(function(a, b) { return String(a.studentId).localeCompare(String(b.studentId), undefined, { numeric: true }); });
+  var students = getActiveStudentsForAssessment_(grade, classNo);
 
   var result = ensureRTW5SheetAndHeaders_();
   var sheet = result.sheet;
@@ -1320,7 +1335,7 @@ function getPDFCommonData_(grade, classNo) {
 
   return {
     schoolName: settings['ชื่อโรงเรียน'] || 'โรงเรียน...',
-    academicYear: settings['ปีการศึกษา'] || '2568',
+    academicYear: settings['ปีการศึกษา'] || ((typeof AY_getCurrentAcademicYear === 'function') ? AY_getCurrentAcademicYear(false) : String(S_getCurrentAcademicYear_())),
     directorName: settings['ชื่อผู้อำนวยการ'] || '...',
     teacherName: getHomeroomTeacher(grade, classNo),
     logoBase64: logoBase64

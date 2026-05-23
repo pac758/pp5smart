@@ -206,7 +206,7 @@ function setupNewAcademicYear() {
  * ✅ ดึงรายชื่อนักเรียนสำหรับเช็คชื่อ (ใช้โค้ดเดิมที่ทำงานได้)
  */
 function getStudentsForAttendance(grade, classNo) {
-  const sheet = SS().getSheetByName("Students");
+  const sheet = (typeof AY_getStudentsSheetForRead === 'function') ? AY_getStudentsSheetForRead() : SS().getSheetByName("Students");
   if (!sheet) throw new Error('ไม่พบชีต "Students" กรุณาตรวจสอบว่ามีชีตนักเรียนในระบบ');
   const data = sheet.getDataRange().getValues();
   const result = [];
@@ -216,6 +216,7 @@ function getStudentsForAttendance(grade, classNo) {
   // หา index ของ status column
   const headers = data[0];
   const statusCol = headers.indexOf ? headers.indexOf('status') : -1;
+  const currentAcademicYear = (typeof AY_getCurrentAcademicYear === 'function') ? AY_getCurrentAcademicYear(false) : '';
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
@@ -223,8 +224,9 @@ function getStudentsForAttendance(grade, classNo) {
     // กรองนักเรียนที่จำหน่าย/ย้ายออก/พ้นสภาพ
     if (statusCol !== -1) {
       const st = String(row[statusCol] || '').trim();
-      if (st === 'จำหน่าย' || st === 'ย้ายออก' || st === 'พ้นสภาพ') continue;
+      if (typeof isInactiveStudentStatus_ === 'function' ? isInactiveStudentStatus_(st) : (st === 'จำหน่าย' || st === 'ย้ายออก' || st === 'พ้นสภาพ')) continue;
     }
+    if (typeof AY_rowMatchesAcademicYear === 'function' && !AY_rowMatchesAcademicYear(row, headers, currentAcademicYear)) continue;
 
     if (String(row[5]).trim() === grade && String(row[6]).trim() === classNo) {
       const student = {

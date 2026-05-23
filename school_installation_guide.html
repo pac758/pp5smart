@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>คู่มือการติดตั้งระบบสำหรับโรงเรียนปลายทาง</title>
+  <style>
+    @page { size: A4; margin: 18mm 16mm 18mm 16mm; }
+    body {
+      font-family: "TH Sarabun New", "Sarabun", "Tahoma", sans-serif;
+      color: #1f2937;
+      line-height: 1.5;
+      font-size: 16px;
+      margin: 0;
+    }
+    h1 { font-size: 28px; margin: 0 0 8px; color: #0f172a; }
+    h2 { font-size: 21px; margin: 18px 0 6px; color: #0f172a; }
+    p { margin: 6px 0; }
+    ol, ul { margin: 4px 0 8px 22px; }
+    li { margin: 4px 0; }
+    .muted { color: #475569; }
+    .box {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin: 10px 0;
+    }
+    .checklist li::marker { content: "☐  "; }
+    .footnote {
+      margin-top: 20px;
+      padding-top: 8px;
+      border-top: 1px solid #cbd5e1;
+      font-size: 14px;
+      color: #475569;
+    }
+  </style>
+</head>
+<body>
+  <h1>คู่มือการติดตั้งและเริ่มใช้งานระบบบริหารจัดการสถานศึกษา</h1>
+  <p class="muted">สำหรับโรงเรียนปลายทาง (ฉบับย่อใช้งานจริง)</p>
+
+  <h2>1) วัตถุประสงค์</h2>
+  <p>เอกสารนี้จัดทำเพื่อให้โรงเรียนสามารถติดตั้งระบบและเริ่มใช้งานได้อย่างถูกต้อง ลดปัญหาในขั้นตอนการตั้งค่าครั้งแรก และตรวจสอบความพร้อมก่อนเปิดใช้จริง</p>
+
+  <h2>2) สิ่งที่ต้องเตรียม</h2>
+  <ul>
+    <li>บัญชี Google สำหรับผู้ดูแลระบบ</li>
+    <li>สิทธิ์ใช้งาน Google Sheets และ Google Apps Script</li>
+    <li>ผู้รับผิดชอบติดตั้งอย่างน้อย 1 คน (แนะนำ 2 คน: หลัก/สำรอง)</li>
+  </ul>
+
+  <h2>3) ขั้นตอนติดตั้ง</h2>
+  <ol>
+    <li>เปิดลิงก์ Template Spreadsheet ที่ได้รับ แล้วเลือก <strong>File → Make a copy</strong></li>
+    <li>เปิด <strong>Extensions → Apps Script</strong></li>
+    <li>เลือกฟังก์ชัน <strong>debugSetupStatus</strong> แล้วกด <strong>Run</strong> เพื่อ <strong>Authorize</strong> ครั้งแรก</li>
+    <li>ไปที่ <strong>Deploy → New deployment → Web app</strong></li>
+    <li>กำหนดค่า <strong>Execute as: Me</strong> และ <strong>Who has access</strong> ตามนโยบายโรงเรียน</li>
+    <li>กด <strong>Deploy</strong> แล้วคัดลอก URL</li>
+    <li>เปิด URL ระบบ เข้า <strong>Setup Wizard</strong> และวาง URL ของ Spreadsheet สำเนา</li>
+    <li>กรอกข้อมูลโรงเรียนให้ครบ แล้วบันทึก</li>
+  </ol>
+
+  <div class="box">
+    <strong>เหตุผลที่ต้องรัน debugSetupStatus ครั้งแรก</strong>
+    <ul>
+      <li>เพื่ออนุญาตสิทธิ์ให้ Script เข้าถึง Spreadsheet / Properties / Drive</li>
+      <li>เพื่อตรวจสอบความพร้อมของระบบก่อนเปิด Web App</li>
+      <li>ลดโอกาสเกิดข้อผิดพลาดสิทธิ์ไม่พอระหว่าง Setup Wizard</li>
+    </ul>
+  </div>
+
+  <h2>4) Checklist ก่อนเปิดใช้งานจริง</h2>
+  <ul class="checklist">
+    <li>เข้า Dashboard ได้ตามปกติ</li>
+    <li>บันทึกหน้า "ตั้งค่าระบบ" ได้</li>
+    <li>เพิ่ม/แก้ไขข้อมูลนักเรียนได้</li>
+    <li>ทดสอบออกรายงาน PDF อย่างน้อย 1 รายงานได้</li>
+    <li>ครูผู้ใช้งานเข้าเมนูหลักตามสิทธิ์ได้</li>
+  </ul>
+
+  <h2>5) ปัญหาที่พบบ่อย</h2>
+  <ul>
+    <li><strong>เปิดระบบแล้วแจ้งสิทธิ์ไม่พอ</strong> → กลับไปรัน <strong>debugSetupStatus</strong> และ Authorize ใหม่</li>
+    <li><strong>บันทึกแล้วข้อมูลไม่อัปเดต</strong> → รีเฟรชหน้า (<strong>Ctrl+F5</strong>) และตรวจว่าใช้ URL deployment ล่าสุด</li>
+    <li><strong>ผู้ใช้บางคนเข้าไม่ได้</strong> → ตรวจค่า <strong>Who has access</strong> ใน Deployment</li>
+  </ul>
+
+  <div class="footnote">
+    เอกสารนี้ใช้สำหรับส่งมอบระบบให้โรงเรียนปลายทาง สามารถพิมพ์หรือส่งต่อเป็น PDF ได้ทันที
+  </div>
+</body>
+</html>
