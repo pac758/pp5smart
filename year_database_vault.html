@@ -271,50 +271,87 @@
 
 <script>
 function setupYear_database_vaultPage() {
-  loadRegistryData();
+  const loadingEl = vaultEl('registryLoading');
+  if (loadingEl && loadingEl.dataset.vaultBooted === '1') return;
+  if (loadingEl) loadingEl.dataset.vaultBooted = '1';
+  setTimeout(loadRegistryData, 0);
+}
+
+function vaultEl(id) {
+  return document.getElementById(id);
+}
+
+function vaultSetText(id, text) {
+  const el = vaultEl(id);
+  if (el) el.textContent = text == null ? '' : String(text);
+  return el;
+}
+
+function vaultSetHtml(id, html) {
+  const el = vaultEl(id);
+  if (el) el.innerHTML = html || '';
+  return el;
+}
+
+function vaultToggle(id, show) {
+  const el = vaultEl(id);
+  if (el) el.classList.toggle('d-none', !show);
+  return el;
+}
+
+function renderRegistryError(message) {
+  const tbody = vaultEl('registryBody');
+  if (tbody) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-5">' + String(message || 'โหลดข้อมูลไม่สำเร็จ') + '</td></tr>';
+  }
 }
 
 function showOverlay(title, subtitle, details) {
-  document.getElementById('overlayTitle').textContent = title || 'กำลังจัดเก็บข้อมูล...';
-  document.getElementById('overlaySub').textContent = subtitle || 'กรุณาห้ามปิดเบราว์เซอร์หรือหยุดการทำงาน';
-  if (details) {
-    document.getElementById('overlayDetails').innerHTML = details;
-  } else {
-    document.getElementById('overlayDetails').innerHTML = '• ระบบกำลังประมวลผลคำสั่งหลังบ้านอย่างปลอดภัย...<br>• กรุณารอสักครู่ รายการนี้อาจใช้เวลาประมาณ 1-3 นาที';
-  }
-  document.getElementById('vaultOverlay').classList.remove('d-none');
+  vaultSetText('overlayTitle', title || 'กำลังจัดเก็บข้อมูล...');
+  vaultSetText('overlaySub', subtitle || 'กรุณาห้ามปิดเบราว์เซอร์หรือหยุดการทำงาน');
+  vaultSetHtml('overlayDetails', details || '• ระบบกำลังประมวลผลคำสั่งหลังบ้านอย่างปลอดภัย...<br>• กรุณารอสักครู่ รายการนี้อาจใช้เวลาประมาณ 1-3 นาที');
+  vaultToggle('vaultOverlay', true);
 }
 
 function hideOverlay() {
-  document.getElementById('vaultOverlay').classList.add('d-none');
+  vaultToggle('vaultOverlay', false);
 }
 
 function loadRegistryData() {
-  document.getElementById('registryLoading').classList.remove('d-none');
-  document.getElementById('registryContainer').classList.add('d-none');
+  vaultToggle('registryLoading', true);
+  vaultToggle('registryContainer', false);
   
   if (typeof google !== 'undefined' && google.script && google.script.run) {
     google.script.run
       .withSuccessHandler(function(response) {
-        document.getElementById('registryLoading').classList.add('d-none');
-        document.getElementById('registryContainer').classList.remove('d-none');
+        vaultToggle('registryLoading', false);
+        vaultToggle('registryContainer', true);
         
         if (response && response.success) {
-          renderRegistryTable(response);
+          try {
+            renderRegistryTable(response);
+          } catch (err) {
+            console.error('renderRegistryTable failed:', err);
+            renderRegistryError('โหลดข้อมูลสำเร็จ แต่แสดงผลตารางไม่ได้: ' + (err && err.message ? err.message : err));
+            showToastError('โหลดข้อมูลสำเร็จ แต่แสดงผลตารางไม่ได้ กรุณารีเฟรชหน้าอีกครั้ง');
+          }
         } else {
-          showToastError('เกิดข้อผิดพลาดในการโหลดข้อมูลทะเบียนคลัง: ' + (response.message || ''));
+          renderRegistryError('เกิดข้อผิดพลาดในการโหลดข้อมูลทะเบียนคลัง');
+          showToastError('เกิดข้อผิดพลาดในการโหลดข้อมูลทะเบียนคลัง: ' + ((response && response.message) || ''));
         }
       })
       .withFailureHandler(function(err) {
-        document.getElementById('registryLoading').classList.add('d-none');
-        showToastError('การเชื่อมต่อกับระบบหลังบ้านล้มเหลว: ' + err.message);
+        vaultToggle('registryLoading', false);
+        vaultToggle('registryContainer', true);
+        renderRegistryError('การเชื่อมต่อกับระบบหลังบ้านล้มเหลว');
+        showToastError('การเชื่อมต่อกับระบบหลังบ้านล้มเหลว: ' + (err && err.message ? err.message : err));
       })
       .getYearDatabaseRegistry();
   } else {
     // Mock simulation data if running offline
     setTimeout(function() {
-      document.getElementById('registryLoading').classList.add('d-none');
-      document.getElementById('registryContainer').classList.remove('d-none');
+      vaultToggle('registryLoading', false);
+      vaultToggle('registryContainer', true);
       renderRegistryTable({
         success: true,
         currentYear: '2568',
@@ -339,19 +376,26 @@ function showToastError(msg) {
 }
 
 function renderRegistryTable(data) {
-  document.getElementById('currentYearDisplay').textContent = data.currentYear;
+  data = data || {};
+  vaultSetText('currentYearDisplay', data.currentYear || '-');
   
   const editingBanner = document.getElementById('editingWarningBanner');
   const normalBanner = document.getElementById('normalBanner');
-  if (data.isEditingOldYear) {
-    editingBanner.classList.remove('d-none');
-    normalBanner.classList.add('d-none');
-  } else {
-    editingBanner.classList.add('d-none');
-    normalBanner.classList.remove('d-none');
+  if (editingBanner && normalBanner) {
+    if (data.isEditingOldYear) {
+      editingBanner.classList.remove('d-none');
+      normalBanner.classList.add('d-none');
+    } else {
+      editingBanner.classList.add('d-none');
+      normalBanner.classList.remove('d-none');
+    }
   }
   
   const tbody = document.getElementById('registryBody');
+  if (!tbody) {
+    console.warn('registryBody not found');
+    return;
+  }
   tbody.innerHTML = '';
   
   if (!data.years || data.years.length === 0) {
@@ -763,4 +807,12 @@ function cleanupSheets(year) {
     }
   }
 }
+
+(function bootYearDatabaseVaultPage() {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupYear_database_vaultPage, { once: true });
+  } else {
+    setTimeout(setupYear_database_vaultPage, 0);
+  }
+})();
 </script>
