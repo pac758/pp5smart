@@ -987,7 +987,9 @@ function getStudentParentData(studentId) {
 function saveParentData(formData) {
   try {
     const ss = SS();
-    const sheet = AY_getStudentsSheetForRead();
+    const sheet = (typeof AY_getStudentsSheetForWrite === 'function')
+      ? AY_getStudentsSheetForWrite()
+      : AY_getStudentsSheetForRead();
     if (!sheet) throw new Error('ไม่พบชีต Students');
 
     const data = sheet.getDataRange().getValues();

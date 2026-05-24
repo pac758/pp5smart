@@ -781,7 +781,7 @@ body.menu-open {
   .menu-header.flyout-active::after {
     color: var(--sidebar-active-border);
   }
-  
+
   .sidebar.searching .menu-group .nav-item {
     display: block;
   }
@@ -1811,7 +1811,6 @@ body.menu-open {
       <li class="nav-item" data-page="studentList"><a href="#" class="nav-link" data-page="studentList"><i class="fas fa-list-ul"></i> รายชื่อนักเรียน</a></li>
       <li class="nav-item admin-only" data-page="addStudent"><a href="#" class="nav-link" data-page="addStudent"><i class="fas fa-user-plus"></i> เพิ่มนักเรียน</a></li>
       <li class="nav-item admin-only teacher-only" data-page="deleteStudent"><a href="#" class="nav-link" data-page="deleteStudent"><i class="fas fa-user-cog"></i> แก้ไข/จำหน่ายนักเรียน</a></li>
-      <li class="nav-item admin-only teacher-only" data-page="parent_info_report"><a href="#" class="nav-link" data-page="parent_info_report"><i class="bi bi-pencil-square"></i> ข้อมูลผู้ปกครอง</a></li>
       <li class="nav-item admin-only teacher-only" data-page="import"><a href="#" class="nav-link" data-page="import"><i class="fas fa-file-import"></i> นำเข้ารายชื่อ (DMC)</a></li>
       <li class="nav-item teacher-only" data-page="export_pdf_page"><a href="#" class="nav-link" data-page="export_pdf_page"><i class="bi bi-file-earmark-pdf"></i> พิมพ์รายชื่อนักเรียน</a></li>
       <li class="nav-item teacher-only" data-page="graduation_management"><a href="#" class="nav-link" data-page="graduation_management"><i class="fas fa-graduation-cap"></i> นักเรียนจบการศึกษา</a></li>
@@ -1974,7 +1973,8 @@ body.menu-open {
 
     <ul class="menu-group" aria-label="ผู้ปกครอง">
       <li class="menu-header" aria-haspopup="true" aria-controls="submenuFlyout"><i class="fas fa-users me-2"></i>ผู้ปกครอง<span class="toggle-icon"><i class="fas fa-chevron-down"></i></span></li>
-      <li class="nav-item" data-page="parent_portal" id="parentPortalMenuItem"><a href="#" class="nav-link" data-page="parent_portal"><i class="bi bi-people-fill"></i> ดูข้อมูลสำหรับผู้ปกครอง</a></li>
+      <li class="nav-item" data-page="parent_portal"><a href="#" class="nav-link" data-page="parent_portal"><i class="bi bi-search-heart"></i> ตรวจผลการเรียนผู้ปกครอง</a></li>
+      <li class="nav-item teacher-only" data-page="parent_info_report"><a href="#" class="nav-link" data-page="parent_info_report"><i class="bi bi-pencil-square"></i> แก้ไขข้อมูลผู้ปกครอง</a></li>
     </ul>
 
     <ul class="menu-group" aria-label="ช่วยเหลือ">
@@ -2214,10 +2214,11 @@ function updateMode() {
 function updateURL(page) { try { history.pushState({ page }, '', '?page=' + page); } catch (_) {} }
 
 function setActivePage(page) {
-  document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+  document.querySelectorAll('.nav-item, .menu-header').forEach(item => item.classList.remove('active'));
   document.querySelectorAll('[data-page="' + page + '"]').forEach(item => {
     const navItem = item.closest('.nav-item');
     if (navItem) navItem.classList.add('active');
+    else if (item.classList && item.classList.contains('menu-header')) item.classList.add('active');
   });
   document.body.setAttribute('data-current-page', page);
   document.getElementById('contentFrame')?.setAttribute('data-current-page', page);
@@ -2231,7 +2232,7 @@ function updatePageIndicator_(page) {
   const subEl = document.getElementById('currentPageSubtitle');
   if (!titleEl || !subEl) return;
 
-  const link = document.querySelector('.nav-link[data-page="' + page + '"]');
+  const link = document.querySelector('.nav-link[data-page="' + page + '"], .menu-header[data-page="' + page + '"]');
   const label = link?.querySelector('.nav-label')?.dataset?.rawLabel || link?.textContent?.trim() || page;
   const group = link?.closest('.menu-group');
   const groupLabel = group?.getAttribute('aria-label') || '';
@@ -3006,13 +3007,15 @@ function handleSearch(query) {
   
   sidebar?.classList.add('searching');
   menuGroups.forEach(group => {
+    const headerText = String(group.querySelector('.menu-header')?.textContent || '').toLowerCase();
+    const headerMatches = headerText.includes(query);
     const items = group.querySelectorAll('.nav-item');
-    let hasVisible = false;
+    let hasVisible = headerMatches && items.length === 0;
     items.forEach(item => {
       const link = item.querySelector('.nav-link');
       const raw = link?.querySelector('.nav-label')?.dataset?.rawLabel || link?.textContent || '';
       const text = String(raw).toLowerCase();
-      const match = text.includes(query);
+      const match = headerMatches || text.includes(query);
       item.style.display = match ? 'block' : 'none';
       if (match) hasVisible = true;
     });
@@ -3255,12 +3258,6 @@ document.addEventListener('DOMContentLoaded', function() {
     removeMasterOnly_();
   }
   
-  // Show parent menu for all roles (admin/teacher can preview/manage)
-  const parentMenuItem = document.getElementById('parentPortalMenuItem');
-  if (parentMenuItem) {
-    parentMenuItem.style.display = 'block';
-  }
-  
   // Hide teacher-specific menu items for parents
   if (role === 'parent') {
     document.querySelectorAll('.teacher-only').forEach(el => el.remove());
@@ -3309,6 +3306,15 @@ document.addEventListener('DOMContentLoaded', function() {
       header.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
+
+        const directPage = header.getAttribute('data-page');
+        if (directPage) {
+          closeFlyout();
+          activeFlyoutHeader = null;
+          closeMobileSidebar();
+          navigateTo(directPage);
+          return;
+        }
         
         // Re-evaluate on every click to handle orientation changes
         const isTouchNow = window.matchMedia('(pointer: coarse)').matches;
