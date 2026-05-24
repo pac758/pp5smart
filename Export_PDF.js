@@ -819,6 +819,28 @@ function getStudentAttendanceSummary(studentId) {
 // 🆕 ฟังก์ชันสำหรับแก้ไขข้อมูลผู้ปกครอง (เพิ่มใหม่)
 // =================================================================
 
+function PI_fullStoredName_(firstName, lastName) {
+  const first = String(firstName || '').trim();
+  const last = String(lastName || '').trim();
+  if (!last || first === last || first.endsWith(' ' + last)) return first;
+  return `${first} ${last}`.trim();
+}
+
+function PI_ensureParentEditColumns_(sheet) {
+  let headers = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 1)).getValues()[0];
+  const required = [
+    'father_phone', 'father_status', 'mother_phone', 'mother_status',
+    'guardian_name', 'guardian_relation', 'guardian_occupation', 'guardian_phone',
+    'subdistrict', 'district', 'province', 'postal_code'
+  ];
+  const missing = required.filter(name => headers.indexOf(name) === -1);
+  if (missing.length) {
+    sheet.getRange(1, headers.length + 1, 1, missing.length).setValues([missing]);
+    headers = headers.concat(missing);
+  }
+  return headers;
+}
+
 /**
  * ✅ ค้นหานักเรียนสำหรับแก้ไข (ฉบับปรับปรุง: คำนวณเลขที่อัตโนมัติ)
  */
@@ -950,13 +972,13 @@ function getStudentParentData(studentId) {
       studentNo: calculatedStudentNo, // ✨ ใช้เลขที่ที่คำนวณได้ใหม่
       
       // ข้อมูลบิดา
-      fatherName: targetRow[colMap['father_name']] || '',
+      fatherName: PI_fullStoredName_(targetRow[colMap['father_name']], targetRow[colMap['father_lastname']]),
       fatherOccupation: targetRow[colMap['father_occupation']] || '',
       fatherPhone: targetRow[colMap['father_phone']] || '',
       fatherStatus: targetRow[colMap['father_status']] || 'มีชีวิต',
       
       // ข้อมูลมารดา
-      motherName: targetRow[colMap['mother_name']] || '',
+      motherName: PI_fullStoredName_(targetRow[colMap['mother_name']], targetRow[colMap['mother_lastname']]),
       motherOccupation: targetRow[colMap['mother_occupation']] || '',
       motherPhone: targetRow[colMap['mother_phone']] || '',
       motherStatus: targetRow[colMap['mother_status']] || 'มีชีวิต',
@@ -992,8 +1014,8 @@ function saveParentData(formData) {
       : AY_getStudentsSheetForRead();
     if (!sheet) throw new Error('ไม่พบชีต Students');
 
-    const data = sheet.getDataRange().getValues();
-    const headers = data[0];
+    const headers = PI_ensureParentEditColumns_(sheet);
+    const data = sheet.getRange(1, 1, sheet.getLastRow(), headers.length).getValues();
     
     // สร้าง map ของคอลัมน์
     const colMap = {};
@@ -1009,6 +1031,8 @@ function saveParentData(formData) {
         // อัปเดตข้อมูลบิดา
         if (colMap['father_name'] !== undefined) 
           sheet.getRange(row, colMap['father_name'] + 1).setValue(formData.fatherName || '');
+        if (colMap['father_lastname'] !== undefined)
+          sheet.getRange(row, colMap['father_lastname'] + 1).setValue('');
         if (colMap['father_occupation'] !== undefined) 
           sheet.getRange(row, colMap['father_occupation'] + 1).setValue(formData.fatherOccupation || '');
         if (colMap['father_phone'] !== undefined) 
@@ -1019,6 +1043,8 @@ function saveParentData(formData) {
         // อัปเดตข้อมูลมารดา
         if (colMap['mother_name'] !== undefined) 
           sheet.getRange(row, colMap['mother_name'] + 1).setValue(formData.motherName || '');
+        if (colMap['mother_lastname'] !== undefined)
+          sheet.getRange(row, colMap['mother_lastname'] + 1).setValue('');
         if (colMap['mother_occupation'] !== undefined) 
           sheet.getRange(row, colMap['mother_occupation'] + 1).setValue(formData.motherOccupation || '');
         if (colMap['mother_phone'] !== undefined) 

@@ -970,6 +970,39 @@ function importCsvStudents(csvContent) {
     }
 
     const dataToImport = rows.slice(2); // ข้อมูลเริ่มจากแถวที่ 3
+    const dmcHeaders = rows[1] || [];
+    const dmcColMap = {};
+    dmcHeaders.forEach((header, index) => {
+      const key = String(header || '').trim();
+      if (key && dmcColMap[key] == null) dmcColMap[key] = index;
+    });
+    function dmcCol_(header, fallbackIndex) {
+      return dmcColMap[header] == null ? fallbackIndex : dmcColMap[header];
+    }
+    function joinDmcName_(parts) {
+      return parts.map(value => String(value || '').trim()).filter(Boolean).join(' ');
+    }
+    const dmcCol = {
+      address: dmcCol_('บ้านเลขที่', 18),
+      moo: dmcCol_('หมู่', 19),
+      road: dmcCol_('ถนน/ซอย', 20),
+      subdistrict: dmcCol_('ตำบล', 21),
+      district: dmcCol_('อำเภอ', 22),
+      province: dmcCol_('จังหวัด', 23),
+      guardianTitle: dmcCol_('คำนำหน้าชื่อผู้ปกครอง', 24),
+      guardianFirstName: dmcCol_('ชื่อผู้ปกครอง', 25),
+      guardianLastName: dmcCol_('นามสกุลผู้ปกครอง', 26),
+      guardianOccupation: dmcCol_('อาชีพของผู้ปกครอง', 27),
+      guardianRelation: dmcCol_('ความเกี่ยวข้องของผู้ปกครองกับนักเรียน', 28),
+      fatherTitle: dmcCol_('คำนำหน้าชื่อบิดา', 29),
+      fatherFirstName: dmcCol_('ชื่อบิดา', 30),
+      fatherLastName: dmcCol_('นามสกุลบิดา', 31),
+      fatherOccupation: dmcCol_('อาชีพของบิดา', 32),
+      motherTitle: dmcCol_('คำนำหน้าชื่อมารดา', 33),
+      motherFirstName: dmcCol_('ชื่อมารดา', 34),
+      motherLastName: dmcCol_('นามสกุลมารดา', 35),
+      motherOccupation: dmcCol_('อาชีพของมารดา', 36)
+    };
 
     const ss = SS();
     let sheet = (typeof AY_getStudentsSheetForWrite === 'function') ? AY_getStudentsSheetForWrite() : ss.getSheetByName("Students");
@@ -986,8 +1019,10 @@ function importCsvStudents(csvContent) {
 
     // ถ้าชีตยังไม่มีคอลัมน์เหล่านี้ให้เพิ่ม header อัตโนมัติ
     const extraCols = ['academic_year', 'birthdate', 'weight', 'height', 'blood_type', 'religion',
-      'address', 'father_name', 'father_lastname', 'father_occupation',
-      'mother_name', 'mother_lastname', 'mother_occupation'];
+      'address', 'subdistrict', 'district', 'province', 'postal_code',
+      'father_name', 'father_lastname', 'father_occupation', 'father_phone', 'father_status',
+      'mother_name', 'mother_lastname', 'mother_occupation', 'mother_phone', 'mother_status',
+      'guardian_name', 'guardian_relation', 'guardian_occupation', 'guardian_phone'];
     extraCols.forEach(name => {
       if (col[name] == null) {
         const newColIdx = sheetHeaders.length;
@@ -1038,7 +1073,14 @@ function importCsvStudents(csvContent) {
       const birthdate = parseThaiBirthdate(row[10]);
       const weight = row[12] !== '' && row[12] != null ? Number(row[12]) || '' : '';
       const height = row[13] !== '' && row[13] != null ? Number(row[13]) || '' : '';
-      const addrParts = [row[18], 'หมู่ '+(row[19]||''), row[20], 'ต.'+(row[21]||''), 'อ.'+(row[22]||''), 'จ.'+(row[23]||'')];
+      const addrParts = [
+        row[dmcCol.address],
+        'หมู่ ' + (row[dmcCol.moo] || ''),
+        row[dmcCol.road],
+        'ต.' + (row[dmcCol.subdistrict] || ''),
+        'อ.' + (row[dmcCol.district] || ''),
+        'จ.' + (row[dmcCol.province] || '')
+      ];
 
       setCol('student_id', String(row[5] || '').trim());
       setCol('id_card',    String(row[2] || '').trim());
@@ -1055,12 +1097,18 @@ function importCsvStudents(csvContent) {
       setCol('blood_type', String(row[14] || '').trim());
       setCol('religion',   String(row[15] || '').trim());
       setCol('address',    addrParts.map(p=>String(p||'').trim()).filter(p=>p&&p!=='หมู่ '&&p!=='ต.'&&p!=='อ.'&&p!=='จ.').join(' '));
-      setCol('father_name',       String(row[28] || '').trim());
-      setCol('father_lastname',   String(row[29] || '').trim());
-      setCol('father_occupation', String(row[30] || '').trim());
-      setCol('mother_name',       String(row[31] || '').trim());
-      setCol('mother_lastname',   String(row[32] || '').trim());
-      setCol('mother_occupation', String(row[33] || '').trim());
+      setCol('subdistrict', String(row[dmcCol.subdistrict] || '').trim());
+      setCol('district',    String(row[dmcCol.district] || '').trim());
+      setCol('province',    String(row[dmcCol.province] || '').trim());
+      setCol('guardian_name', joinDmcName_([row[dmcCol.guardianTitle], row[dmcCol.guardianFirstName], row[dmcCol.guardianLastName]]));
+      setCol('guardian_relation', String(row[dmcCol.guardianRelation] || '').trim());
+      setCol('guardian_occupation', String(row[dmcCol.guardianOccupation] || '').trim());
+      setCol('father_name',       joinDmcName_([row[dmcCol.fatherTitle], row[dmcCol.fatherFirstName]]));
+      setCol('father_lastname',   String(row[dmcCol.fatherLastName] || '').trim());
+      setCol('father_occupation', String(row[dmcCol.fatherOccupation] || '').trim());
+      setCol('mother_name',       joinDmcName_([row[dmcCol.motherTitle], row[dmcCol.motherFirstName]]));
+      setCol('mother_lastname',   String(row[dmcCol.motherLastName] || '').trim());
+      setCol('mother_occupation', String(row[dmcCol.motherOccupation] || '').trim());
       setCol('status',     'active');
       return d;
     }
