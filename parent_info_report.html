@@ -154,11 +154,54 @@
     }
     
     .form-section {
-      display: none;
-      background: white;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      display: block;
+      background: transparent;
+      padding: 0;
+    }
+
+    .parent-edit-modal .modal-dialog {
+      max-width: min(1120px, calc(100vw - 32px));
+    }
+
+    .parent-edit-modal .modal-content {
+      border: none;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 18px 44px rgba(15, 23, 42, 0.2);
+    }
+
+    .parent-edit-modal .modal-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid #e5e7eb;
+      background: #fff;
+    }
+
+    .parent-edit-modal .modal-title {
+      color: #111827;
+      font-weight: 700;
+      font-size: 1.12rem;
+    }
+
+    .parent-edit-modal .modal-subtitle {
+      color: #64748b;
+      font-size: 0.88rem;
+      margin-top: 3px;
+    }
+
+    .parent-edit-modal .modal-body {
+      background: #f8fafc;
+      padding: 22px 24px;
+    }
+
+    .parent-edit-modal .modal-footer {
+      background: #fff;
+      padding: 14px 24px;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .parent-edit-modal .student-info-badge {
+      background: #eff6ff;
+      border-left-color: #2563eb;
     }
     
     .section-header {
@@ -358,7 +401,7 @@
       }
       
       .form-section {
-        padding: 20px 15px;
+        padding: 0;
       }
       
       .student-info-badge {
@@ -375,6 +418,13 @@
       
       .tab-content {
         padding: 20px 15px;
+      }
+
+      .parent-edit-modal .modal-body,
+      .parent-edit-modal .modal-header,
+      .parent-edit-modal .modal-footer {
+        padding-left: 15px;
+        padding-right: 15px;
       }
     }
   </style>
@@ -438,14 +488,27 @@
           </div>
         </div>
 
-        <!-- Edit Form Section -->
-       <div id="editFormSection" class="form-section">
+        <div id="editStatusAlert" class="alert" style="display: none;" role="alert"></div>
+
+        <!-- Edit Parent Data Modal -->
+        <div class="modal fade parent-edit-modal" id="parentEditModal" tabindex="-1" aria-labelledby="parentEditModalLabel" aria-hidden="true">
+          <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
+            <div class="modal-content">
+              <form id="parentForm">
+                <div class="modal-header">
+                  <div>
+                    <h5 class="modal-title" id="parentEditModalLabel"><i class="fas fa-user-edit text-primary me-2"></i>แก้ไขข้อมูลผู้ปกครอง</h5>
+                    <div class="modal-subtitle">ตรวจสอบข้อมูลให้ถูกต้อง แล้วกดบันทึกด้านล่าง</div>
+                  </div>
+                  <button type="button" class="btn-close" id="modalCloseBtn" aria-label="ปิด"></button>
+                </div>
+                <div id="editFormSection" class="modal-body form-section">
+                  <div id="modalStatusAlert" class="alert" style="display: none;" role="alert"></div>
   <div class="student-info-badge">
     <h5><i class="fas fa-user-graduate"></i> ข้อมูลนักเรียน</h5>
     <div id="studentInfoDisplay" class="info-row"></div>
   </div>
 
-  <form id="parentForm">
     <input type="hidden" id="studentId" name="studentId">
 
     <div class="section-header">
@@ -573,18 +636,19 @@
       </div>
     </div>
 
-    <div class="d-flex gap-2 justify-content-end">
-      <button type="button" class="btn btn-cancel" id="cancelBtn">
-        <i class="fas fa-times"></i> ยกเลิก
-      </button>
-      <button type="submit" class="btn btn-save">
-        <i class="fas fa-save"></i> บันทึกข้อมูล
-      </button>
-    </div>
-  </form>
-</div> 
-
-        <div id="editStatusAlert" class="alert" style="display: none;" role="alert"></div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-cancel" id="cancelBtn">
+                    <i class="fas fa-times"></i> ยกเลิก
+                  </button>
+                  <button type="submit" class="btn btn-save">
+                    <i class="fas fa-save"></i> บันทึกข้อมูล
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Tab 2: พิมพ์รายงาน PDF -->
@@ -665,9 +729,12 @@
         searchBtn: document.getElementById("searchBtn"),
         searchResults: document.getElementById("searchResults"),
         studentList: document.getElementById("studentList"),
+        parentEditModal: document.getElementById("parentEditModal"),
         editFormSection: document.getElementById("editFormSection"),
         parentForm: document.getElementById("parentForm"),
         cancelBtn: document.getElementById("cancelBtn"),
+        modalCloseBtn: document.getElementById("modalCloseBtn"),
+        modalStatusAlert: document.getElementById("modalStatusAlert"),
         guardianSameAsParent: document.getElementById("guardianSameAsParent"),
         selectGrade: document.getElementById("selectGrade"),
         selectClass: document.getElementById("selectClass"),
@@ -681,6 +748,11 @@
         console.error('❌ Missing DOM elements:', missingElements);
         return;
       }
+
+      const editModal = bootstrap.Modal.getOrCreateInstance(elements.parentEditModal, {
+        backdrop: 'static',
+        keyboard: false
+      });
 
       // console.log('✅ All DOM elements found');
 
@@ -854,15 +926,17 @@
           }
         });
 
-        // ปุ่มยกเลิก
-        elements.cancelBtn.addEventListener('click', function() {
+        // ปุ่มยกเลิก/ปิด modal
+        function cancelEditing() {
           if (confirm('ต้องการยกเลิกการแก้ไขหรือไม่?')) {
-            elements.editFormSection.style.display = 'none';
+            editModal.hide();
             elements.parentForm.reset();
             elements.parentForm.classList.remove('was-validated');
-            elements.searchResults.style.display = 'block';
+            hideModalStatus();
           }
-        });
+        }
+        elements.cancelBtn.addEventListener('click', cancelEditing);
+        elements.modalCloseBtn.addEventListener('click', cancelEditing);
 
         // Submit form
         elements.parentForm.addEventListener('submit', function(e) {
@@ -870,26 +944,26 @@
           
           if (!this.checkValidity()) {
             this.classList.add('was-validated');
-            showStatus('กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน', 'warning');
+            showModalStatus('กรุณาตรวจสอบรูปแบบข้อมูลก่อนบันทึก เช่น เบอร์โทรศัพท์หรือรหัสไปรษณีย์', 'warning');
             return;
           }
 
           const formData = collectFormData();
           
-          showStatus('กำลังบันทึกข้อมูล...', 'info');
+          showModalStatus('กำลังบันทึกข้อมูล...', 'info');
 
           google.script.run
             .withSuccessHandler(function() {
-              showStatus('บันทึกข้อมูลสำเร็จ!', 'success');
+              showModalStatus('บันทึกข้อมูลสำเร็จ!', 'success');
               setTimeout(function() {
-                elements.editFormSection.style.display = 'none';
+                editModal.hide();
                 elements.parentForm.reset();
                 elements.parentForm.classList.remove('was-validated');
-                elements.searchResults.style.display = 'none';
-              }, 2000);
+                hideModalStatus();
+              }, 900);
             })
             .withFailureHandler(function(error) {
-              showStatus(`เกิดข้อผิดพลาด: ${error.message}`, 'danger');
+              showModalStatus(`เกิดข้อผิดพลาด: ${error.message}`, 'danger');
             })
             .saveParentData(formData);
         });
@@ -942,10 +1016,9 @@
           .withSuccessHandler(function(data) {
             // console.log('✅ Student data loaded:', data);
             fillForm(data);
-            elements.editFormSection.style.display = 'block';
-            elements.searchResults.style.display = 'none';
             hideStatus();
-            elements.editFormSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            hideModalStatus();
+            editModal.show();
           })
           .withFailureHandler(function(error) {
             console.error('❌ Load student error:', error);
@@ -1032,6 +1105,16 @@
         if (alert) {
           alert.style.display = 'none';
         }
+      }
+
+      function showModalStatus(message, type) {
+        elements.modalStatusAlert.className = `alert alert-${type}`;
+        elements.modalStatusAlert.textContent = message;
+        elements.modalStatusAlert.style.display = 'block';
+      }
+
+      function hideModalStatus() {
+        elements.modalStatusAlert.style.display = 'none';
       }
 
       function showPDFStatus(message, type) {
