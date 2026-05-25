@@ -161,16 +161,28 @@
 
     .parent-edit-modal .modal-dialog {
       max-width: min(1120px, calc(100vw - 32px));
+      height: calc(100vh - 2rem);
+      margin: 1rem auto;
     }
 
     .parent-edit-modal .modal-content {
       border: none;
       border-radius: 14px;
       overflow: hidden;
+      height: 100%;
+      max-height: 100%;
       box-shadow: 0 18px 44px rgba(15, 23, 42, 0.2);
     }
 
+    .parent-edit-modal .modal-content > form {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-height: 0;
+    }
+
     .parent-edit-modal .modal-header {
+      flex: 0 0 auto;
       padding: 18px 24px;
       border-bottom: 1px solid #e5e7eb;
       background: #fff;
@@ -189,11 +201,17 @@
     }
 
     .parent-edit-modal .modal-body {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
       background: #f8fafc;
       padding: 22px 24px;
     }
 
     .parent-edit-modal .modal-footer {
+      flex: 0 0 auto;
       background: #fff;
       padding: 14px 24px;
       border-top: 1px solid #e5e7eb;
@@ -202,6 +220,42 @@
     .parent-edit-modal .student-info-badge {
       background: #eff6ff;
       border-left-color: #2563eb;
+    }
+
+    .parent-modal-loading {
+      display: none;
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      background: rgba(248, 250, 252, 0.97);
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      min-height: 260px;
+    }
+
+    .parent-edit-modal.is-loading .parent-modal-loading {
+      display: flex;
+    }
+
+    .parent-modal-loading .spinner-border {
+      width: 2.4rem;
+      height: 2.4rem;
+      color: #2563eb;
+    }
+
+    .parent-modal-loading strong {
+      display: block;
+      margin-top: 14px;
+      color: #1e3a8a;
+      font-size: 1rem;
+    }
+
+    .parent-modal-loading span {
+      display: block;
+      margin-top: 4px;
+      color: #64748b;
+      font-size: 0.9rem;
     }
     
     .section-header {
@@ -426,6 +480,16 @@
         padding-left: 15px;
         padding-right: 15px;
       }
+
+      .parent-edit-modal .modal-dialog {
+        height: 100vh;
+        margin: 0;
+        max-width: 100%;
+      }
+
+      .parent-edit-modal .modal-content {
+        border-radius: 0;
+      }
     }
   </style>
 </head>
@@ -503,6 +567,13 @@
                   <button type="button" class="btn-close" id="modalCloseBtn" aria-label="ปิด"></button>
                 </div>
                 <div id="editFormSection" class="modal-body form-section">
+                  <div class="parent-modal-loading" id="parentModalLoading" aria-live="polite">
+                    <div>
+                      <div class="spinner-border" role="status" aria-hidden="true"></div>
+                      <strong id="parentModalLoadingTitle">กำลังโหลดข้อมูลนักเรียน</strong>
+                      <span>โปรดรอสักครู่</span>
+                    </div>
+                  </div>
                   <div id="modalStatusAlert" class="alert" style="display: none;" role="alert"></div>
   <div class="student-info-badge">
     <h5><i class="fas fa-user-graduate"></i> ข้อมูลนักเรียน</h5>
@@ -641,7 +712,7 @@
                   <button type="button" class="btn btn-cancel" id="cancelBtn">
                     <i class="fas fa-times"></i> ยกเลิก
                   </button>
-                  <button type="submit" class="btn btn-save">
+                  <button type="submit" class="btn btn-save" id="saveParentBtn">
                     <i class="fas fa-save"></i> บันทึกข้อมูล
                   </button>
                 </div>
@@ -735,6 +806,8 @@
         cancelBtn: document.getElementById("cancelBtn"),
         modalCloseBtn: document.getElementById("modalCloseBtn"),
         modalStatusAlert: document.getElementById("modalStatusAlert"),
+        parentModalLoadingTitle: document.getElementById("parentModalLoadingTitle"),
+        saveParentBtn: document.getElementById("saveParentBtn"),
         guardianSameAsParent: document.getElementById("guardianSameAsParent"),
         selectGrade: document.getElementById("selectGrade"),
         selectClass: document.getElementById("selectClass"),
@@ -754,6 +827,13 @@
         keyboard: false
       });
       let isFormDirty = false;
+      let activeStudentRequestId = 0;
+
+      function setStudentLoading(isLoading, title) {
+        elements.parentEditModal.classList.toggle('is-loading', isLoading);
+        elements.parentModalLoadingTitle.textContent = title || 'กำลังโหลดข้อมูลนักเรียน';
+        elements.saveParentBtn.disabled = isLoading || !String(document.getElementById('studentId').value || '').trim();
+      }
 
       // console.log('✅ All DOM elements found');
 
@@ -930,6 +1010,8 @@
         // ปุ่มยกเลิก/ปิด modal
         function cancelEditing() {
           if (!isFormDirty || confirm('มีข้อมูลที่ยังไม่ได้บันทึก ต้องการปิดโดยไม่บันทึกหรือไม่?')) {
+            activeStudentRequestId++;
+            setStudentLoading(false);
             editModal.hide();
             elements.parentForm.reset();
             elements.parentForm.classList.remove('was-validated');
@@ -1019,20 +1101,28 @@
       }
 
       function loadStudentData(studentId) {
-        showStatus('กำลังโหลดข้อมูล...', 'info');
+        const requestId = ++activeStudentRequestId;
+        elements.parentForm.reset();
+        elements.parentForm.classList.remove('was-validated');
+        elements.editFormSection.scrollTop = 0;
+        hideStatus();
+        hideModalStatus();
+        setStudentLoading(true, 'กำลังโหลดข้อมูลนักเรียน');
+        editModal.show();
         
         google.script.run
           .withSuccessHandler(function(data) {
+            if (requestId !== activeStudentRequestId) return;
             // console.log('✅ Student data loaded:', data);
             fillForm(data);
             isFormDirty = false;
-            hideStatus();
-            hideModalStatus();
-            editModal.show();
+            setStudentLoading(false);
           })
           .withFailureHandler(function(error) {
+            if (requestId !== activeStudentRequestId) return;
             console.error('❌ Load student error:', error);
-            showStatus(`เกิดข้อผิดพลาด: ${error.message}`, 'danger');
+            setStudentLoading(false);
+            showModalStatus(`เกิดข้อผิดพลาดในการโหลดข้อมูล: ${error.message}`, 'danger');
           })
           .getStudentParentData(studentId);
       }
