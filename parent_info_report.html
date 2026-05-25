@@ -753,6 +753,7 @@
         backdrop: 'static',
         keyboard: false
       });
+      let isFormDirty = false;
 
       // console.log('✅ All DOM elements found');
 
@@ -928,15 +929,22 @@
 
         // ปุ่มยกเลิก/ปิด modal
         function cancelEditing() {
-          if (confirm('ต้องการยกเลิกการแก้ไขหรือไม่?')) {
+          if (!isFormDirty || confirm('มีข้อมูลที่ยังไม่ได้บันทึก ต้องการปิดโดยไม่บันทึกหรือไม่?')) {
             editModal.hide();
             elements.parentForm.reset();
             elements.parentForm.classList.remove('was-validated');
             hideModalStatus();
+            isFormDirty = false;
           }
         }
         elements.cancelBtn.addEventListener('click', cancelEditing);
         elements.modalCloseBtn.addEventListener('click', cancelEditing);
+        elements.parentForm.addEventListener('input', function() {
+          isFormDirty = true;
+        });
+        elements.parentForm.addEventListener('change', function() {
+          isFormDirty = true;
+        });
 
         // Submit form
         elements.parentForm.addEventListener('submit', function(e) {
@@ -956,6 +964,7 @@
             .withSuccessHandler(function() {
               showModalStatus('บันทึกข้อมูลสำเร็จ!', 'success');
               setTimeout(function() {
+                isFormDirty = false;
                 editModal.hide();
                 elements.parentForm.reset();
                 elements.parentForm.classList.remove('was-validated');
@@ -1016,6 +1025,7 @@
           .withSuccessHandler(function(data) {
             // console.log('✅ Student data loaded:', data);
             fillForm(data);
+            isFormDirty = false;
             hideStatus();
             hideModalStatus();
             editModal.show();
